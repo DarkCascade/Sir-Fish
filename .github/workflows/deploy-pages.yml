@@ -39,7 +39,10 @@ jobs:
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: builds/web
+          # use_preset_export_path copies the exported "Web" preset folder
+          # *into* builds/web rather than flattening it, so index.html ends
+          # up at builds/web/Web/index.html.
+          path: builds/web/Web
 
   deploy:
     needs: build
