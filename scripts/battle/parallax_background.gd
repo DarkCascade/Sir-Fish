@@ -5,12 +5,11 @@ extends Node3D
 ## [v3, V15] Layers 1-3 (Hills/FarTrees/NearTrees) are generated here from a
 ## periodic profile (ParallaxProfiles) and baked to one shared SurfaceTool mesh
 ## per layer - seamless by construction (spec 7.5). Layers 4-5 (Ground/Brush)
-## stay as placeholder procedural geometry until the Blender pass (M8d, spec
-## 23.4) and keep their pre-v3 per-tile build. tile_width is per-layer now,
-## not a single @export: 36.0 for the generated layers, 12.0 for the modelled
-## ones (spec 5.8, 7.4.1) - a slow layer needs a long period so its repeat
-## isn't visible; a fast one does not. Do NOT name any parameter `scale` here -
-## it shadows Node3D.scale.
+## are Blender-authored tiles (M8d, spec 23.4), instanced once per tile from
+## the imported .glb. tile_width is per-layer now, not a single @export: 36.0
+## for the generated layers, 12.0 for the modelled ones (spec 5.8, 7.4.1) - a
+## slow layer needs a long period so its repeat isn't visible; a fast one does
+## not. Do NOT name any parameter `scale` here - it shadows Node3D.scale.
 
 const PROC_LAYERS: Array[String] = ["LayerHills", "LayerFarTrees", "LayerNearTrees"]
 
@@ -80,7 +79,7 @@ func _build_tiles() -> void:
 				tile.name = "Tile%d" % i
 				tile.position.x = -w + w * float(i)
 				layer.add_child(tile)
-				_populate_legacy_tile(layer.name, tile, i, w)
+				_populate_env_tile(layer.name, tile)
 
 ## Layers 1-3 (spec 7.5.3). R1: one baked Mesh per layer, the SAME resource
 ## instanced three times - variety comes from richness within one tile, never
@@ -95,10 +94,12 @@ func _build_proc_layer(layer: Node3D, w: float) -> void:
 			mesh = _build_hills_mesh(w)
 			color = Tuning.C_FAR_HILLS
 		"LayerFarTrees":
-			mesh = _build_trees_mesh(String(layer.name), w, 1.7, 0.55, 21)
+			# Height raised for M8d's empty-sky fix (spec 7.2, 20.6).
+			mesh = _build_trees_mesh(String(layer.name), w, 2.3, 0.55, 21)
 			color = Tuning.C_MID_TREES
 		"LayerNearTrees":
-			mesh = _build_trees_mesh(String(layer.name), w, 2.6, 0.85, 15)
+			# Height raised for M8d's empty-sky fix (spec 7.2, 20.6).
+			mesh = _build_trees_mesh(String(layer.name), w, 3.6, 0.85, 15)
 			color = Tuning.C_NEAR_TREES
 		_:
 			return
@@ -185,56 +186,34 @@ func _build_trees_mesh(layer_name: String, w: float, height: float,
 		st.append_from(trunk, 0, Transform3D(Basis(), Vector3(x, h * 0.12, 0)))
 	return st.commit()
 
-# --- legacy per-tile placeholder geometry (layers 4-5, until M8d) -----------
+# --- environment tiles, Blender-authored (layers 4-5, spec 23.4) ------------
 
-func _add_mesh(parent: Node3D, mesh: Mesh, color: Color, pos: Vector3,
-		rot_deg: Vector3 = Vector3.ZERO, mesh_scale: Vector3 = Vector3.ONE) -> MeshInstance3D:
-	var mi := MeshInstance3D.new()
-	mi.mesh = mesh
-	mi.material_override = CelMaterials.flat(color)
-	mi.position = pos
-	mi.rotation_degrees = rot_deg
-	mi.scale = mesh_scale
-	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	parent.add_child(mi)
-	return mi
+const GROUND_TILE_SCENE := preload("res://assets/meshes/env_ground.glb")
+const BRUSH_TILE_SCENE := preload("res://assets/meshes/env_brush.glb")
 
-func _populate_legacy_tile(layer_name: StringName, tile: Node3D, variant: int, w: float) -> void:
+func _populate_env_tile(layer_name: StringName, tile: Node3D) -> void:
+	var scene: PackedScene
 	match String(layer_name):
 		"LayerGround":
-			_build_ground(tile, variant, w)
+			scene = GROUND_TILE_SCENE
 		"LayerBrush":
-			_build_brush(tile, variant, w)
+			scene = BRUSH_TILE_SCENE
+		_:
+			return
+	var model := scene.instantiate()
+	tile.add_child(model)
+	_reassign_cel_materials(model)
 
-func _build_ground(tile: Node3D, _variant: int, w: float) -> void:
-	var slab := BoxMesh.new()
-	slab.size = Vector3(w, 1.2, 8.0)
-	_add_mesh(tile, slab, Tuning.C_GROUND, Vector3(0, -0.6, 0))
-	# Darker stripe bands so the scroll speed is legible on a flat plane.
-	var bands := 6
-	for i: int in range(bands):
-		var stripe := BoxMesh.new()
-		stripe.size = Vector3(w / float(bands) * 0.45, 0.02, 7.6)
-		var x := -w * 0.5 + w * (float(i) + 0.5) / float(bands)
-		_add_mesh(tile, stripe, Tuning.C_GROUND.darkened(0.18), Vector3(x, 0.01, 0))
-
-func _build_brush(tile: Node3D, variant: int, w: float) -> void:
-	var rand := RandomNumberGenerator.new()
-	rand.seed = hash("brush-%d" % variant)
-	var count := 6
-	for i: int in range(count):
-		var x := -w * 0.5 + w * (float(i) + 0.5) / float(count)
-		x += rand.randf_range(-0.5, 0.5)
-		var s := rand.randf_range(0.6, 1.1)
-		var bush := SphereMesh.new()
-		bush.radius = 0.55 * s
-		bush.height = 0.7 * s
-		bush.radial_segments = 8
-		bush.rings = 4
-		_add_mesh(tile, bush, Tuning.C_BRUSH, Vector3(x, 0.12 * s, 0))
-		var bush2 := SphereMesh.new()
-		bush2.radius = 0.38 * s
-		bush2.height = 0.5 * s
-		bush2.radial_segments = 8
-		bush2.rings = 4
-		_add_mesh(tile, bush2, Tuning.C_BRUSH, Vector3(x + 0.45 * s, 0.05 * s, 0.2))
+## Swaps the imported StandardMaterial3D on each mesh part for the cel +
+## outline pairing, reading the colour the .glb already carries rather than
+## hardcoding it here - the same swap combatant_rig.gd's generic loop does
+## for character models (spec 23.3, 6.3). Both layers keep the engine's
+## default shadow casting: layer 4 sits at character depth and layer 5 must
+## read as the same world, not a flat-silhouette overlay (spec 23.4).
+func _reassign_cel_materials(root: Node) -> void:
+	for mi: MeshInstance3D in CelMaterials._all_mesh_instances(root):
+		var albedo := Color.WHITE
+		var src := mi.get_active_material(0)
+		if src is BaseMaterial3D:
+			albedo = (src as BaseMaterial3D).albedo_color
+		mi.material_override = CelMaterials.cel(albedo)

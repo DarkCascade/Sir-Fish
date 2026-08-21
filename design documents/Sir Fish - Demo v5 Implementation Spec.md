@@ -2934,8 +2934,8 @@ For each gate: `play_scene`, drive it with `Debug` and the runtime tools, screen
 | M7.6 | Twelve items: bar overlap, status icons, framing, coin glyphs, victory subtitle, third id check, shop pause, marquee removal, banner, corpse fade, dead-hero slide, chunk fling | **Complete and gated**, with four screenshot items owed (§24) |
 | M8a | Sir Fish: three-bone rig, seven clips, glTF export, Godot swap | **Complete and gated**, with three items owed (§24) |
 | **M8b** | **The three heroes** | **Complete and gated. E19–E23 done and re-verified** (§21.2); two §24 items remain, re-homed to M8c (R28) |
-| M8c | The three enemies | Not started |
-| M8d | Environment layers 4 and 5 | Not started |
+| M8c | The three enemies | **Complete and gated** (shadow monster, orc barbarian, orc warlord) |
+| M8d | Environment layers 4 and 5 | **Complete and gated.** `GroundTile`/`BrushTile` modelled in `Environment`, exported as `env_ground.glb`/`env_brush.glb`, instanced per tile with the generic cel-material reassignment; hills/tree-canopy heights raised for the empty-sky item; `.blend` saved |
 | M8e | Full integration | Not started |
 
 > **M8b is complete, and it is now complete twice over.** It passed its original gate, and the five things the v5 audit found afterward — two live art defects, one dead duplicate, and two facts about the `.blend` nobody had checked (§0.6) — are fixed and re-verified: rest-pose assertion, a `capture_frames` sweep of both touched heroes, all eight headless tests, `get_editor_errors` clean on a fresh `play_scene`, and the `.blend` saved with fake-user-protected actions. M8c can start clean.

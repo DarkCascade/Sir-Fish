@@ -134,6 +134,14 @@ func tick(delta: float) -> void:
 			state = State.IDLE
 			play_anim(&"idle")
 
+## Turn-based combat (experiment). Called by BattleDirector's per-frame loop
+## the instant this combatant's cooldown reaches zero. The combatant does not
+## act immediately - it hands the request to the director, which queues it
+## and dispatches turns one at a time in arrival order.
+func request_turn() -> void:
+	if director != null:
+		director.request_turn(self)
+
 # --- animation --------------------------------------------------------------
 
 func play_anim(anim_name: StringName) -> void:

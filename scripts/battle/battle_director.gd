@@ -11,6 +11,21 @@ var enemies: Array[Combatant] = []
 var _active: bool = false
 var _resolving: bool = false
 
+## Dev-only combat-mode toggle (not exposed to the player in any way). True:
+## combatants request a turn on cooldown expiry and the director dispatches
+## them one at a time via _turn_queue, below. False: a combatant acts the
+## instant its cooldown expires, same as before turn-based combat existed -
+## multiple combatants can act simultaneously.
+@export var turn_based_combat: bool = true
+
+## Turn-based combat. Combatants no longer act the instant their cooldown
+## expires - they request a turn, the director queues requests in the order
+## they arrive, and only the combatant at the front of the queue is told to
+## act. One combatant acts at a time; everyone else keeps waiting even if
+## their own cooldown has also finished. Unused when turn_based_combat is false.
+var _turn_queue: Array[Combatant] = []
+var _acting: Combatant = null
+
 signal corpse_cleanup_done()
 
 var _pending_corpse_fades: int = 0
@@ -80,6 +95,8 @@ func _spawn_combatant(stats: CombatantStats, pos: Vector3, hp: int) -> Combatant
 func start_combat(enemy_stat_ids: Array) -> void:
 	clear_enemies()
 	_resolving = false
+	_turn_queue.clear()
+	_acting = null
 	# Step 1 of spec 10.1: every hero picks up the current item bonuses first.
 	for h: Combatant in living_heroes():
 		h.apply_party_bonuses()
@@ -115,6 +132,8 @@ func _roll_initial_cooldown(c: Combatant) -> void:
 
 func stop_combat() -> void:
 	_active = false
+	_turn_queue.clear()
+	_acting = null
 
 func is_active() -> bool:
 	return _active
@@ -135,10 +154,44 @@ func _process(delta: float) -> void:
 		# matches the bar, which reads 0 throughout an attack (spec 11.3).
 		if c.state == Combatant.State.ATTACKING:
 			continue
+		# Already queued (or currently acting) - its cooldown stays at 0 rather
+		# than drifting negative while it waits its turn.
+		if c == _acting or _turn_queue.has(c):
+			continue
 		c.cooldown_remaining -= delta
 		if c.cooldown_remaining <= 0.0 and c.state == Combatant.State.IDLE:
-			_take_action(c)
+			c.request_turn()
+	_advance_turn_queue()
 	_check_resolution()
+
+## Called by a combatant (see Combatant.request_turn) when its cooldown has
+## expired. In turn-based mode this just appends to the queue in arrival
+## order and lets _advance_turn_queue() dispatch it later. In real-time mode
+## there is no queueing - the combatant acts immediately, same as before
+## turn-based combat existed.
+func request_turn(c: Combatant) -> void:
+	if not turn_based_combat:
+		_take_action(c)
+		return
+	if c == _acting or _turn_queue.has(c):
+		return
+	_turn_queue.append(c)
+
+## Dispatches the next queued combatant once nobody is mid-action. Only one
+## combatant acts at a time - everyone else's turn request just waits in line.
+func _advance_turn_queue() -> void:
+	if _acting != null:
+		if is_instance_valid(_acting) and _acting.state == Combatant.State.ATTACKING:
+			return
+		_acting = null
+	if _turn_queue.is_empty():
+		return
+	var c: Combatant = _turn_queue.pop_front()
+	if not is_instance_valid(c) or not c.is_alive():
+		return
+	_take_action(c)
+	if c.state == Combatant.State.ATTACKING:
+		_acting = c
 
 ## Heroes left-to-right, then enemies left-to-right. Returns a copy, because
 ## actions can kill combatants mid-iteration (spec 10.2).
