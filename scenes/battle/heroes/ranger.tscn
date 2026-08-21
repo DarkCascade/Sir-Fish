@@ -1,0 +1,10 @@
+[gd_scene format=3 uid="uid://h5sagamckvdl"]
+
+[ext_resource type="PackedScene" path="res://scenes/battle/combatant.tscn" id="1_base"]
+[ext_resource type="Resource" path="res://resources/stats/ranger.tres" id="2_stats"]
+[ext_resource type="PackedScene" uid="uid://qfpv3hmrgm4o" path="res://assets/meshes/ranger.glb" id="3_wkbqa"]
+
+[node name="Ranger" unique_id=731900439 instance=ExtResource("1_base")]
+stats = ExtResource("2_stats")
+
+[node name="Model" parent="Visual/Rig" index="0" unique_id=1138789782 instance=ExtResource("3_wkbqa")]

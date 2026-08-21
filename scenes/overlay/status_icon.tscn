@@ -1,0 +1,11 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/overlay/status_icon.gd" id="1_icon"]
+
+[node name="StatusIcon" type="Control"]
+custom_minimum_size = Vector2(140, 140)
+offset_right = 140.0
+offset_bottom = 140.0
+pivot_offset = Vector2(70, 70)
+mouse_filter = 2
+script = ExtResource("1_icon")

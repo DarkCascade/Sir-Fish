@@ -1,0 +1,73 @@
+[gd_scene format=3 uid="uid://ca7k4yy4xudam"]
+
+[ext_resource type="Script" uid="uid://jyyxcmeq45pq" path="res://scripts/modals/shop_sell_row.gd" id="1_row"]
+[ext_resource type="Script" uid="uid://0h1qqxld8x2i" path="res://scripts/console/coin_glyph.gd" id="2_3r0x6"]
+
+[node name="ShopSellRow" type="PanelContainer" unique_id=243028113]
+custom_minimum_size = Vector2(880, 180)
+offset_right = 880.0
+offset_bottom = 180.0
+script = ExtResource("1_row")
+
+[node name="Row" type="HBoxContainer" parent="." unique_id=1508353889]
+layout_mode = 2
+theme_override_constants/separation = 20
+
+[node name="Edge" type="ColorRect" parent="Row" unique_id=873486950]
+custom_minimum_size = Vector2(12, 0)
+layout_mode = 2
+size_flags_horizontal = 0
+size_flags_vertical = 3
+mouse_filter = 2
+color = Color(0.721569, 0.698039, 0.768627, 1)
+
+[node name="Layout" type="VBoxContainer" parent="Row" unique_id=1194020043]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 6
+
+[node name="Info" type="VBoxContainer" parent="Row/Layout" unique_id=83528743]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="NameLabel" type="Label" parent="Row/Layout/Info" unique_id=904539612]
+layout_mode = 2
+theme_override_font_sizes/font_size = 38
+
+[node name="SubtitleLabel" type="Label" parent="Row/Layout/Info" unique_id=800441220]
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+
+[node name="ModsLabel" type="Label" parent="Row/Layout/Info" unique_id=2037614013]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.607843, 0.576471, 0.682353, 1)
+theme_override_font_sizes/font_size = 26
+
+[node name="SellButton" type="Button" parent="Row/Layout" unique_id=1120782536]
+layout_mode = 2
+theme_override_font_sizes/font_size = 32
+text = "Sell"
+
+[node name="Content" type="HBoxContainer" parent="Row/Layout/SellButton" unique_id=1603621531]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/separation = 8
+alignment = 1
+
+[node name="CoinGlyph" type="Control" parent="Row/Layout/SellButton/Content" unique_id=1569846682]
+custom_minimum_size = Vector2(30, 30)
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+script = ExtResource("2_3r0x6")
+radius = 13.0
+
+[node name="AmountLabel" type="Label" parent="Row/Layout/SellButton/Content" unique_id=1812893640]
+layout_mode = 2
+theme_override_font_sizes/font_size = 32
+vertical_alignment = 1

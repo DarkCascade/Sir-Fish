@@ -1,0 +1,10 @@
+[gd_resource type="FontVariation" format=3]
+
+; Spec 6.5 / Q20. The display face is synthesised from Godot's built-in default
+; font at runtime, so no font file ships and the no-third-party-assets rule
+; (spec 0.1.2) holds. base_font is deliberately left unset: an empty base_font
+; resolves to the theme's default font.
+[resource]
+variation_embolden = 0.35
+variation_transform = Transform2D(1.06, 0, 0, 1, 0, 0)
+spacing_glyph = 2

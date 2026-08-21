@@ -1,0 +1,73 @@
+[gd_scene format=3 uid="uid://5yna4hm1ka5t"]
+
+[ext_resource type="Theme" uid="uid://b2apiaquobtkx" path="res://assets/theme.tres" id="1_theme"]
+[ext_resource type="PackedScene" uid="uid://hj7ehes107fs" path="res://scenes/battle/battle_world.tscn" id="2_world"]
+[ext_resource type="PackedScene" path="res://scenes/overlay/battle_overlay.tscn" id="3_overlay"]
+[ext_resource type="PackedScene" uid="uid://dci8jwa8rm2vw" path="res://scenes/console/console.tscn" id="4_console"]
+[ext_resource type="PackedScene" uid="uid://kej5dqemgbji" path="res://scenes/modals/shop_modal.tscn" id="5_shop"]
+[ext_resource type="PackedScene" path="res://scenes/modals/run_summary.tscn" id="6_summary"]
+[ext_resource type="Script" uid="uid://c3xbq35shguud" path="res://scripts/run/run_controller.gd" id="7_run"]
+
+[node name="Main" type="Control" unique_id=508576918]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme = ExtResource("1_theme")
+
+[node name="BattleView" type="SubViewportContainer" parent="." unique_id=646866483]
+layout_mode = 0
+offset_right = 1080.0
+offset_bottom = 640.0
+mouse_filter = 2
+stretch = true
+
+[node name="BattleViewport" type="SubViewport" parent="BattleView" unique_id=2034243892]
+handle_input_locally = false
+size = Vector2i(1080, 640)
+render_target_update_mode = 4
+
+[node name="BattleWorld" parent="BattleView/BattleViewport" unique_id=1107194419 instance=ExtResource("2_world")]
+
+[node name="BattleOverlay" parent="." unique_id=32027013 instance=ExtResource("3_overlay")]
+layout_mode = 0
+anchors_preset = 0
+
+[node name="ConsoleDivider" type="ColorRect" parent="." unique_id=1112842998]
+layout_mode = 0
+offset_top = 640.0
+offset_right = 1080.0
+offset_bottom = 648.0
+mouse_filter = 2
+color = Color(0.94902, 0.760784, 0.188235, 1)
+
+[node name="Console" parent="." unique_id=1670680176 instance=ExtResource("4_console")]
+layout_mode = 0
+offset_top = 648.0
+offset_bottom = 1920.0
+
+[node name="ModalLayer" type="Control" parent="." unique_id=1653471209]
+process_mode = 3
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="ShopModal" parent="ModalLayer" unique_id=172756316 instance=ExtResource("5_shop")]
+visible = false
+layout_mode = 1
+
+[node name="RunSummary" parent="ModalLayer" unique_id=211290834 instance=ExtResource("6_summary")]
+visible = false
+layout_mode = 1
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="RunController" type="Node" parent="." unique_id=940384693]
+script = ExtResource("7_run")

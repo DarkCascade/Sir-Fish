@@ -1,0 +1,132 @@
+[gd_scene format=3 uid="uid://kej5dqemgbji"]
+
+[ext_resource type="Script" uid="uid://51k4gi4hxnsl" path="res://scripts/modals/shop_modal.gd" id="1_shop"]
+[ext_resource type="Script" uid="uid://0h1qqxld8x2i" path="res://scripts/console/coin_glyph.gd" id="2_sufjm"]
+
+[sub_resource type="StyleBoxFlat" id="close_style"]
+bg_color = Color(0.878431, 0.192157, 0.192157, 1)
+corner_radius_top_left = 16
+corner_radius_top_right = 16
+corner_radius_bottom_right = 16
+corner_radius_bottom_left = 16
+
+[node name="ShopModal" type="Control" unique_id=1760504196]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_shop")
+
+[node name="Scrim" type="ColorRect" parent="." unique_id=614514941]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.058824, 0.054902, 0.078431, 0.65)
+
+[node name="Panel" type="PanelContainer" parent="." unique_id=2103503703]
+layout_mode = 0
+offset_left = 60.0
+offset_top = 360.0
+offset_right = 1020.0
+offset_bottom = 1560.0
+pivot_offset = Vector2(480, 600)
+
+[node name="Layout" type="VBoxContainer" parent="Panel" unique_id=27946051]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Header" type="HBoxContainer" parent="Panel/Layout" unique_id=187187251]
+custom_minimum_size = Vector2(0, 80)
+layout_mode = 2
+
+[node name="Title" type="Label" parent="Panel/Layout/Header" unique_id=1970117224]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"DisplayLabel"
+theme_override_colors/font_color = Color(0.94902, 0.760784, 0.188235, 1)
+theme_override_font_sizes/font_size = 56
+text = "SHOP"
+vertical_alignment = 1
+
+[node name="GoldBox" type="HBoxContainer" parent="Panel/Layout/Header" unique_id=1306977565]
+layout_mode = 2
+theme_override_constants/separation = 8
+alignment = 2
+
+[node name="CoinGlyph" type="Control" parent="Panel/Layout/Header/GoldBox" unique_id=1007049179]
+custom_minimum_size = Vector2(36, 36)
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+script = ExtResource("2_sufjm")
+radius = 16.0
+
+[node name="GoldLabel" type="Label" parent="Panel/Layout/Header/GoldBox" unique_id=2076791992]
+layout_mode = 2
+theme_type_variation = &"DisplayLabel"
+theme_override_colors/font_color = Color(0.94902, 0.760784, 0.188235, 1)
+theme_override_font_sizes/font_size = 44
+text = "0"
+horizontal_alignment = 2
+vertical_alignment = 1
+
+[node name="CloseButton" type="Button" parent="Panel/Layout/Header" unique_id=1846278750]
+custom_minimum_size = Vector2(72, 72)
+layout_mode = 2
+size_flags_vertical = 4
+theme_override_colors/font_color = Color(1, 0.964706, 0.878431, 1)
+theme_override_font_sizes/font_size = 40
+theme_override_styles/normal = SubResource("close_style")
+theme_override_styles/pressed = SubResource("close_style")
+theme_override_styles/hover = SubResource("close_style")
+text = "X"
+
+[node name="Tabs" type="TabContainer" parent="Panel/Layout" unique_id=1772781655]
+layout_mode = 2
+size_flags_vertical = 3
+current_tab = 0
+
+[node name="Buy" type="ScrollContainer" parent="Panel/Layout/Tabs" unique_id=1735448592]
+layout_mode = 2
+metadata/_tab_index = 0
+
+[node name="BuyList" type="VBoxContainer" parent="Panel/Layout/Tabs/Buy" unique_id=941998829]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 16
+
+[node name="Sell" type="Control" parent="Panel/Layout/Tabs" unique_id=232405765]
+visible = false
+layout_mode = 2
+metadata/_tab_index = 1
+
+[node name="Scroll" type="ScrollContainer" parent="Panel/Layout/Tabs/Sell" unique_id=640588636]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="SellList" type="VBoxContainer" parent="Panel/Layout/Tabs/Sell/Scroll" unique_id=627807647]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 16
+
+[node name="EmptyLabel" type="Label" parent="Panel/Layout/Tabs/Sell" unique_id=1404045742]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(0.607843, 0.576471, 0.682353, 1)
+theme_override_font_sizes/font_size = 36
+text = "Nothing to sell."
+horizontal_alignment = 1
+vertical_alignment = 1

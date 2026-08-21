@@ -1,0 +1,9 @@
+# Godot 4+ specific ignores
+.godot/
+/android/
+
+# Exported build output (regenerated via export_project) and Blender's
+# auto-backup of the previous save - neither is source.
+/builds/
+*.blend1
+

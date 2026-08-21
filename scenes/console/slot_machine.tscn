@@ -1,0 +1,138 @@
+[gd_scene format=3 uid="uid://pgqpokgjbr7y"]
+
+[ext_resource type="Script" uid="uid://yt0r63qht4yd" path="res://scripts/console/slot_machine.gd" id="1_slot"]
+[ext_resource type="PackedScene" path="res://scenes/console/slot_reel.tscn" id="2_reel"]
+
+[sub_resource type="StyleBoxFlat" id="cabinet"]
+bg_color = Color(0.2, 0.172549, 0.258824, 1)
+border_width_left = 6
+border_width_top = 6
+border_width_right = 6
+border_width_bottom = 6
+border_color = Color(0.94902, 0.760784, 0.188235, 1)
+corner_radius_top_left = 28
+corner_radius_top_right = 28
+corner_radius_bottom_right = 28
+corner_radius_bottom_left = 28
+
+[sub_resource type="ParticleProcessMaterial" id="confetti_mat"]
+emission_shape = 3
+emission_box_extents = Vector3(400, 10, 1)
+direction = Vector3(0, -1, 0)
+spread = 40.0
+initial_velocity_min = 300.0
+initial_velocity_max = 620.0
+gravity = Vector3(0, 900, 0)
+scale_min = 0.6
+scale_max = 1.4
+color = Color(0.94902, 0.760784, 0.188235, 1)
+
+[node name="SlotMachine" type="Control" unique_id=806678853]
+custom_minimum_size = Vector2(1080, 600)
+layout_mode = 3
+anchors_preset = 0
+offset_right = 1080.0
+offset_bottom = 600.0
+pivot_offset = Vector2(540, 300)
+mouse_filter = 2
+script = ExtResource("1_slot")
+
+[node name="Cabinet" type="Panel" parent="." unique_id=637650508]
+layout_mode = 0
+offset_left = 110.0
+offset_top = 20.0
+offset_right = 970.0
+offset_bottom = 580.0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("cabinet")
+
+[node name="ReelWindow0" type="ColorRect" parent="." unique_id=674027282]
+clip_contents = true
+layout_mode = 0
+offset_left = 160.0
+offset_top = 60.0
+offset_right = 400.0
+offset_bottom = 540.0
+mouse_filter = 2
+color = Color(0.137255, 0.121569, 0.180392, 1)
+
+[node name="Reel" parent="ReelWindow0" unique_id=601092897 instance=ExtResource("2_reel")]
+anchors_preset = 0
+
+[node name="ReelWindow1" type="ColorRect" parent="." unique_id=907213563]
+clip_contents = true
+layout_mode = 0
+offset_left = 420.0
+offset_top = 60.0
+offset_right = 660.0
+offset_bottom = 540.0
+mouse_filter = 2
+color = Color(0.137255, 0.121569, 0.180392, 1)
+
+[node name="Reel" parent="ReelWindow1" unique_id=1657117379 instance=ExtResource("2_reel")]
+anchors_preset = 0
+
+[node name="ReelWindow2" type="ColorRect" parent="." unique_id=1514290024]
+clip_contents = true
+layout_mode = 0
+offset_left = 680.0
+offset_top = 60.0
+offset_right = 920.0
+offset_bottom = 540.0
+mouse_filter = 2
+color = Color(0.137255, 0.121569, 0.180392, 1)
+
+[node name="Reel" parent="ReelWindow2" unique_id=297440533 instance=ExtResource("2_reel")]
+anchors_preset = 0
+
+[node name="Payline" type="ColorRect" parent="." unique_id=1951106064]
+layout_mode = 0
+offset_left = 140.0
+offset_top = 298.0
+offset_right = 940.0
+offset_bottom = 302.0
+mouse_filter = 2
+color = Color(0.878431, 0.192157, 0.192157, 1)
+
+[node name="PaylineArrowLeft" type="ColorRect" parent="." unique_id=2077087270]
+layout_mode = 0
+offset_left = 116.0
+offset_top = 288.0
+offset_right = 140.0
+offset_bottom = 312.0
+rotation = 0.785398
+pivot_offset = Vector2(12, 12)
+mouse_filter = 2
+color = Color(0.878431, 0.192157, 0.192157, 1)
+
+[node name="PaylineArrowRight" type="ColorRect" parent="." unique_id=462468818]
+layout_mode = 0
+offset_left = 940.0
+offset_top = 288.0
+offset_right = 964.0
+offset_bottom = 312.0
+rotation = 0.785398
+pivot_offset = Vector2(12, 12)
+mouse_filter = 2
+color = Color(0.878431, 0.192157, 0.192157, 1)
+
+[node name="Banner" type="Label" parent="." unique_id=325995368]
+layout_mode = 0
+offset_right = 1080.0
+offset_bottom = 600.0
+theme_type_variation = &"DisplayLabel"
+theme_override_colors/font_color = Color(0.94902, 0.760784, 0.188235, 1)
+theme_override_colors/font_outline_color = Color(0.058824, 0.054902, 0.078431, 1)
+theme_override_constants/outline_size = 14
+theme_override_font_sizes/font_size = 72
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Confetti" type="GPUParticles2D" parent="." unique_id=70700889]
+position = Vector2(540, 40)
+emitting = false
+amount = 40
+lifetime = 1.4
+one_shot = true
+explosiveness = 1.0
+process_material = SubResource("confetti_mat")

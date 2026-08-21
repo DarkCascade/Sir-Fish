@@ -1,0 +1,61 @@
+[gd_scene format=4 uid="uid://hj7ehes107fs"]
+
+[ext_resource type="PackedScene" path="res://scenes/battle/parallax_background.tscn" id="1_parallax"]
+[ext_resource type="Script" uid="uid://cne4kj8xgfg35" path="res://scripts/battle/battle_world.gd" id="2_world"]
+
+[sub_resource type="Environment" id="env"]
+background_mode = 1
+background_color = Color(0.494, 0.784, 0.89, 1)
+ambient_light_source = 2
+ambient_light_color = Color(0.658824, 0.847059, 0.909804, 1)
+ambient_light_energy = 0.55
+glow_enabled = true
+glow_intensity = 0.5
+glow_bloom = 0.15
+glow_hdr_threshold = 1.1
+adjustment_enabled = true
+adjustment_saturation = 1.15
+
+[node name="BattleWorld" type="Node3D" unique_id=1613809176 groups=["battle_world"]]
+script = ExtResource("2_world")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1615472504]
+environment = SubResource("env")
+
+[node name="KeyLight" type="DirectionalLight3D" parent="." unique_id=345915961]
+transform = Transform3D(0.819152, 0, 0.573576, 0.368688, 0.766044, -0.526541, -0.439385, 0.642788, 0.627507, 0, 6, 0)
+light_color = Color(1, 0.952941, 0.839216, 1)
+light_energy = 1.4
+shadow_enabled = true
+shadow_bias = 0.03
+
+[node name="FillLight" type="DirectionalLight3D" parent="." unique_id=67591685]
+transform = Transform3D(-0.819152, 0, -0.573576, -0.196175, 0.939693, 0.280166, 0.538986, 0.34202, -0.769751, 0, 6, 0)
+light_color = Color(0.607843, 0.784314, 0.960784, 1)
+light_energy = 0.35
+
+[node name="BattleCamera" type="Camera3D" parent="." unique_id=911126898]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.2, 12)
+projection = 1
+current = true
+size = 5.8
+far = 200.0
+
+[node name="ParallaxBackground" parent="." unique_id=1200247927 instance=ExtResource("1_parallax")]
+
+[node name="HeroSlots" type="Node3D" parent="." unique_id=996271290]
+
+[node name="Slot0" type="Marker3D" parent="HeroSlots" unique_id=2047441285]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.2, 0, 0)
+
+[node name="Slot1" type="Marker3D" parent="HeroSlots" unique_id=278099978]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3, 0, 0)
+
+[node name="Slot2" type="Marker3D" parent="HeroSlots" unique_id=120457826]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.8, 0, 0)
+
+[node name="EnemyRoot" type="Node3D" parent="." unique_id=1694323710]
+
+[node name="PropRoot" type="Node3D" parent="." unique_id=1907003442]
+
+[node name="ProjectileRoot" type="Node3D" parent="." unique_id=895279928]

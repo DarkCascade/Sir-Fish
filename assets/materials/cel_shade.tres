@@ -1,0 +1,22 @@
+[gd_resource type="ShaderMaterial" load_steps=3 format=3]
+
+[ext_resource type="Shader" path="res://assets/shaders/cel_shade.gdshader" id="1_cel"]
+[ext_resource type="Shader" path="res://assets/shaders/outline.gdshader" id="2_outline"]
+
+[sub_resource type="ShaderMaterial" id="outline_pass"]
+shader = ExtResource("2_outline")
+shader_parameter/outline_color = Color(0.058824, 0.054902, 0.078431, 1)
+shader_parameter/outline_width = 0.018
+
+[resource]
+render_priority = 0
+shader = ExtResource("1_cel")
+next_pass = SubResource("outline_pass")
+shader_parameter/albedo = Color(1, 1, 1, 1)
+shader_parameter/band_count = 3.0
+shader_parameter/shadow_tint = Color(0.45, 0.52, 0.78, 1)
+shader_parameter/rim_amount = 0.35
+shader_parameter/rim_color = Color(1, 1, 1, 1)
+shader_parameter/emission_color = Color(0, 0, 0, 1)
+shader_parameter/emission_strength = 0.0
+shader_parameter/alpha = 1.0

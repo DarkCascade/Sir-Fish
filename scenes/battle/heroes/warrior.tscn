@@ -1,0 +1,10 @@
+[gd_scene format=3 uid="uid://ci6f53awy85uy"]
+
+[ext_resource type="PackedScene" path="res://scenes/battle/combatant.tscn" id="1_base"]
+[ext_resource type="Resource" uid="uid://dvlsv4sefg0ct" path="res://resources/stats/warrior.tres" id="2_stats"]
+[ext_resource type="PackedScene" uid="uid://dhoyd6genqvmj" path="res://assets/meshes/warrior.glb" id="3_nq622"]
+
+[node name="Warrior" unique_id=641446051 instance=ExtResource("1_base")]
+stats = ExtResource("2_stats")
+
+[node name="Model" parent="Visual/Rig" index="0" unique_id=1416943464 instance=ExtResource("3_nq622")]

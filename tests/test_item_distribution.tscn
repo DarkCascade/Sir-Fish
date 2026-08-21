@@ -1,0 +1,6 @@
+[gd_scene format=3 uid="uid://chet4hlr2nx68"]
+
+[ext_resource type="Script" uid="uid://dufys2e72uu53" path="res://tests/test_item_distribution.gd" id="1_52syc"]
+
+[node name="TestItemDistribution" type="Node" unique_id=1148077433]
+script = ExtResource("1_52syc")

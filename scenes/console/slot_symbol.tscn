@@ -1,0 +1,11 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/console/slot_symbol.gd" id="1_sym"]
+
+[node name="SlotSymbol" type="Control"]
+custom_minimum_size = Vector2(240, 160)
+offset_right = 240.0
+offset_bottom = 160.0
+pivot_offset = Vector2(120, 80)
+mouse_filter = 2
+script = ExtResource("1_sym")

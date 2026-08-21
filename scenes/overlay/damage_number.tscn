@@ -1,0 +1,9 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/overlay/damage_number.gd" id="1_num"]
+
+[node name="DamageNumber" type="Label"]
+theme_type_variation = &"DisplayLabel"
+mouse_filter = 2
+horizontal_alignment = 1
+script = ExtResource("1_num")

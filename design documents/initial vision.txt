@@ -1,0 +1,178 @@
+# Sir Fish
+## the autobattler with a slot machine incremental
+### Primary Mechanics and Important Bits
+- the top third of the screen is an autobattler with a party of heroes and a series of encounters
+- the bottom two thirds of the screen is the player's management console
+  - as the heroes resolve level encounters, the player will be playing slots to help the party
+  - by buying upgrades and finding items in the world, the slot machines give bigger and better bonuses more often
+- when encounters are resolved, the game should start the moving phase with the scrolling background and such and then proceed to the next encounter
+### Assets
+- this game will *only* feature generated assets
+  - the blender mcp should come in handy for generating assets
+- this is a 2.5d game, so the characters, enemies, buildings, etc. are all 3d models but the camera is looking side-on
+- the art style should represent cel shading with a focus on primary colors
+  - positive references: breath of the wild, crosscode, monster train
+  - negative references: doom, halls of torment, voin
+- for this draft, generate these characters:
+  - (hero) human warrior in heavy armor with a sword and a shield
+    - primary attack: sword swing
+	  - a simple swing of the sword
+	- special: defend
+	  - brings up the shield in a defensive stance
+	  - extra visual effect: a shield icon in a blue circle appears overlaid on the character to represent a bonus to defense
+  - (hero) human ranger in medium armor with a bow and arrow
+    - primary attack: shoot arrow
+	  - ready the bow while aiming upward
+	  - a physical arrow should spawn and arc over the battlefield to land on the target enemy
+	- special: bomb arrow
+	  - same as the primary but the arrow has a bag filled with explosive powder with a fuse coming out of it that's lit
+	  - the arrow should follow the same path as the primary arrow but upon reaching the enemy party it should explode and damage all enemies
+  - (hero) human priest in cloth armor with a staff
+    - primary attack: magic bolt
+	  - raise the staff and summon a lightning bolt over the target enemy's head
+	  - extra visual effect: the lightning bolt should come crashing down on the enemy in spectacular visual fashion
+	    - consider whether darkening the battlefield to make the lightning bolt more prominent looks good or not
+	- special: heal
+	  - raise the staff and heal one party member with the same strength as the primary attack
+	  - extra visual effect: a translucent green "+" in a green circle overlays the targeted hero
+	    - this icon shrinks while fading out
+  - (enemy) shadow monster:
+    - a nebulous vaguely humanoid blob of black smoke
+	- smoke should wisp off the character as it moves around
+	- small red glowing eyes behind the smoke
+	- attack: swipe
+	  - a melee attack featuring a swipe of one hand like a claw
+  - (enemy) orc barbarian:
+    - a large humanoid with green skin
+	- wields a two-handed axe
+	- attack: melee
+	  - swing the axe with all its might
+- each character should feature these animations:
+  - idle: weaving back and forth slowly in a combat stance
+  - hero characters *only* should have a run animation
+  - attack: custom as described above
+  - hurt: a cringe or cower or other similar action to represent being physically hit by an attack
+  - die: keel over and end up lying on the floor
+  - characters with special abilities should have an additional animation for that special ability
+### Level Design
+- the game features a roguelike-esque map system where a level is made up of a series of encounters with a boss at the end
+- this game will generate the level map like normal but without branching paths
+- the level map will also be hidden from the player
+- encounters can be one of these things:
+  - combat
+    - the party will face a group of foes
+	- every character in combat acts without player input
+	- every character has an attack timer, and that character will attack when its timer runs out
+	- every combatant will have a minimalist health bar and a minimalist cooldown bar above its head
+	  - upon taking damage, the affected part of the health bar should visually detach from the main bar and float off in a random direction while fading out
+	  - for example if a character with 100 hp gets hit for 20 damage, the rightmost 20% of that character's health bar should detach and float away while fading out
+	- upon reaching <= 0 hp, a hero should play a death animation and lie motionless on the ground
+	  - dead heroes should be left behind as the hero party continues their journey
+	- upon reaching <= 0 hp, enemy characters should play a death animation, wait 1.5 seconds, then fade out
+	- the cooldown bar should appear above the health bar and represent the cooldown status of a character
+	  - for example, if a character has a 1.5 second attack cooldown, then after their attack finishes, their cooldown bar would fill to 100% and drain as the cooldown completes
+### UI/UX Design
+- the top third of the screen is reserved for encounter resolution
+  - the party of heroes is depicted on the left, in this order from left to right: priest, ranger, warrior
+  - the background for this area should be a forest scene that's constructed to support parallax scrolling
+  - between encounters, alive hero party characters should switch to their run animation and the background should start scrolling
+  - if a combat encounter has resolved and one or more hero characters are dead then those character models should move to the left and off the screen as though the surviving party members are leaving them behind
+    - caveat: if *all* heroes are dead then that's a game over and handled as described below
+  - follow these steps for each encounter, then follow the specific extra steps depending on the type of encounter:
+    - the background should stop scrolling over a short time, similar to an easing tween animation
+	- the party of heroes should switch to their idle animation
+  - combat encounters:
+	- the encounter enemies should fade in quickly on the right side with idle animations already playing
+	- health bars and cooldown bars should pop into existence
+	- to avoid first turn chaos, cooldowns for *every* character in the encounter should start half full
+	  - this staggers actions taken in combat because if every character started ready the very first frame would be several attacks all happening at once, which is way too hard to follow as a player
+	- cooldowns are decremented each turn by the millisecond delta since the last frame (standard practice)
+	- when a cooldown <= 0, the character will immediately attack
+	- for this first stab, let's keep attack targeting random:
+	  - heroes attack a random enemy character
+	  - enemies attack a random hero character
+	- when a character's health reaches zero, they should play their die animation and enter a DEAD state
+	  - characters in DEAD state are unable to be targeted or take any action
+	  - enemies in DEAD state will fade out over 2 seconds and then destroy themselves
+	  - heroes in DEAD state will lie motionless on the ground and be left behind when the party moves next
+	- if all heroes are dead then that's game over
+	- if all enemies are dead then the encounter is considered resolved
+  - loot encounters:
+    - a closed treasure chest pops in on the right side of the screen
+	- the chest should play a fun open animation with plenty of effects and juice
+	- the contents of the chest are transferred to the party inventory
+	- the encounter is considered resolved
+  - shop encounters:
+    - a little house stylized as a medieval shop pops in on the right side of the screen
+	- a modal appears with two tabs:
+      - the first tab, titled "Buy", offers three items for sale
+	    - items should be pulled from the global item pool at random
+	    - items that cost more gold than the party has should be grayed out
+	    - the player should be able to tap on items that the party can afford
+	    - if the player taps on an affordable item, that item should be transferred to the player inventory and the party gold should be deducted appropriately
+	    - affordability of items should be re-analyzed as party gold changes from buying or selling
+	      - ex. one item costs 200, one costs 250, one costs 300
+		  - the party has 350 gold
+		  - all three items should be affordable
+		  - the player selects the middle item
+		  - the middle item price should change to "SOLD!" and the item should gray out
+		  - the left and right items should now be grayed out since the party can't afford them anymore
+      - the second tab, "Sell", enables the party to sell their items
+	    - the party inventory should be displayed with a button under each item showing its value
+		- the player should be able to sell items by clicking those buttons, gaining that amount of gold and losing the item
+		- equipped items should neither be displayed nor be considered sellable
+	  - there should be a small red X close button on the upper right of the modal
+	  - when the modal is closed, the encounter is considered resolved
+### Itemization
+- items are data objects:
+  - name: randomly generated from various nouns and verbs (fat knife, wimpy sword, etc.)
+  - rarity+type: weapon, potion, relic
+    - a modal with item information would show, "Magic Sword" or "Common Bow", etc.
+    - weapons are for future usage to equip the hero party
+	- potions are for future usage for various effects
+	- relics are for future usage for modifying the management area
+  - modifiers as randomly assigned according to rarity:
+    - common: zero
+	- uncommon: one
+	- magic: two
+	- rare: three
+  - value of the item
+    - this is a computed value representing the base value of the item modified by its rarity and modifiers
+- the game should feature a global pool of random item components
+- the game should feature an item generator that pulls random components together to create items
+- components for items are split into categories:
+  - weapon types: axe, sword, bow, dagger, staff
+  - rarity: common, uncommon, magic, rare (higher is better)
+  - damage modifiers: increased damage or elemental modifiers (ice, fire, lightning)
+  - rarity and modifiers each come with a base multiplier that is applied to the item: for now randomize these multipliers but make a note for later to enhance this system
+- base weapon type should come with a base value:
+  - axe: 20 gold
+  - sword: 22 gold
+  - bow: 20 gold
+  - dagger: 18 gold
+  - staff: 25 gold
+- other systems should be able to request items from the global pool in bulk and this itemizer should generate X items and return them
+### Management Console
+- the bottom two-thirds of the screen are reserved for the player's management console
+- this will feature slots as well as buttons for purchasing upgrades
+- for this draft there will be one slot that is only operational during combat encounters:
+  - this should be a typical 3-reel slot machine like you'd see in America in the 1980s
+    - three spaces visible per reel per stop
+	- one payline: center
+  - for this draft the possible symbols are a blue stylized lightning bolt with a gold outline, a gold coin, a green plus sign with a black outline, and an empty space
+  - the slot machine spins in perpetuity without player input if the current encounter is appropriate for it
+  - the slot machine acts like a normal slot machine, where each reel stops at a random position and payouts are assessed
+    - for this draft, engineer the reels such that wins occur on roughly 50% of spins
+	- a win is considered 2 or 3 of the same icon on the payline
+	  - 2 lightning: enemies are struck for damage calculated as the average of the damage inflicted by the last three hero strikes
+	  - 3 lightning: enemies are struck for damage calculated as double the average of the damage inflicted by the last three hero strikes
+	  - 2 gold: the party receives 25 gold
+	  - 3 gold: the party receives 50 gold
+	  - 2 green plus sign: the hero with the lowest health is healed for 25% of their max health
+	  - 3 green plus sign: the entire hero party is healed for 25% of their max health
+- between encounters and during non-combat encounters, the slot machine should do nothing
+- under the slot machine there should be one button, "Increase Party Damage"
+  - this button, when clicked, will increase the damage of each party member by 10% for 30 seconds
+  - while this buff is active, the button should be unclickable and a progress bar should appear behind the text on the button itself
+    - this progress bar should start at 100% and drain over the length of the buff to 0%
+	- when the progress bar hits 0% the button should be clickable once more

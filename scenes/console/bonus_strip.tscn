@@ -1,0 +1,10 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/console/bonus_strip.gd" id="1_bonus"]
+
+[node name="BonusStrip" type="Control"]
+custom_minimum_size = Vector2(1080, 30)
+offset_right = 1080.0
+offset_bottom = 30.0
+mouse_filter = 2
+script = ExtResource("1_bonus")

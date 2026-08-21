@@ -1,0 +1,25 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/battle/parallax_background.gd" id="1_parallax"]
+
+[node name="ParallaxBackground" type="Node3D"]
+script = ExtResource("1_parallax")
+
+[node name="LayerHills" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -14)
+metadata/speed_mult = 0.1
+
+[node name="LayerFarTrees" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -9)
+metadata/speed_mult = 0.28
+
+[node name="LayerNearTrees" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -5)
+metadata/speed_mult = 0.55
+
+[node name="LayerGround" type="Node3D" parent="."]
+metadata/speed_mult = 1.0
+
+[node name="LayerBrush" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 3)
+metadata/speed_mult = 1.35

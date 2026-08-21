@@ -1,0 +1,76 @@
+[gd_scene format=3 uid="uid://dj2cw0wfjaloi"]
+
+[ext_resource type="Script" uid="uid://c054pnnc8kfy0" path="res://scripts/modals/shop_buy_card.gd" id="1_card"]
+[ext_resource type="Script" uid="uid://0h1qqxld8x2i" path="res://scripts/console/coin_glyph.gd" id="2_kylpl"]
+
+[node name="ShopBuyCard" type="PanelContainer" unique_id=1168865359]
+custom_minimum_size = Vector2(880, 260)
+offset_right = 880.0
+offset_bottom = 260.0
+script = ExtResource("1_card")
+
+[node name="Row" type="HBoxContainer" parent="." unique_id=1269767436]
+layout_mode = 2
+theme_override_constants/separation = 20
+
+[node name="Edge" type="ColorRect" parent="Row" unique_id=2134850984]
+custom_minimum_size = Vector2(12, 0)
+layout_mode = 2
+size_flags_horizontal = 0
+size_flags_vertical = 3
+mouse_filter = 2
+color = Color(0.721569, 0.698039, 0.768627, 1)
+
+[node name="Layout" type="HBoxContainer" parent="Row" unique_id=78601741]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 20
+
+[node name="Info" type="VBoxContainer" parent="Row/Layout" unique_id=1001257327]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="NameLabel" type="Label" parent="Row/Layout/Info" unique_id=1864656627]
+layout_mode = 2
+theme_type_variation = &"DisplayLabel"
+theme_override_colors/font_color = Color(1, 0.964706, 0.878431, 1)
+theme_override_font_sizes/font_size = 44
+
+[node name="SubtitleLabel" type="Label" parent="Row/Layout/Info" unique_id=337761693]
+layout_mode = 2
+theme_override_font_sizes/font_size = 30
+
+[node name="Modifiers" type="VBoxContainer" parent="Row/Layout/Info" unique_id=544854862]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="PriceBox" type="VBoxContainer" parent="Row/Layout" unique_id=1641175052]
+custom_minimum_size = Vector2(220, 0)
+layout_mode = 2
+alignment = 1
+
+[node name="PriceRow" type="HBoxContainer" parent="Row/Layout/PriceBox" unique_id=1076484790]
+layout_mode = 2
+theme_override_constants/separation = 8
+alignment = 2
+
+[node name="CoinGlyph" type="Control" parent="Row/Layout/PriceBox/PriceRow" unique_id=940027668]
+custom_minimum_size = Vector2(34, 34)
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+script = ExtResource("2_kylpl")
+radius = 15.0
+
+[node name="PriceLabel" type="Label" parent="Row/Layout/PriceBox/PriceRow" unique_id=1473001721]
+layout_mode = 2
+theme_type_variation = &"DisplayLabel"
+theme_override_colors/font_color = Color(0.94902, 0.760784, 0.188235, 1)
+theme_override_font_sizes/font_size = 46
+horizontal_alignment = 2
+
+[node name="RightMargin" type="Control" parent="Row/Layout" unique_id=1267415596]
+custom_minimum_size = Vector2(18, 0)
+layout_mode = 2
+mouse_filter = 2

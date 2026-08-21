@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="CombatantStats" format=3 uid="uid://dn1nscxq8xnly"]
+
+[ext_resource type="Script" uid="uid://j4id3pdqg34k" path="res://scripts/data/combatant_stats.gd" id="1_stats"]
+
+[resource]
+script = ExtResource("1_stats")
+id = &"priest"
+display_name = "Priest"
+is_hero = true
+max_hp = 70
+attack_cooldown = 2.0
+special_every_n_actions = 3
+special_requires_wounded_ally = true
+special_targets_opponent = false
+telegraphs_primary = true
+model_scale = 0.95
+body_color = Color(0.960784, 0.941176, 0.901961, 1)
+accent_color = Color(0.231373, 0.435294, 0.831373, 1)
+scene_path = "res://scenes/battle/heroes/priest.tscn"

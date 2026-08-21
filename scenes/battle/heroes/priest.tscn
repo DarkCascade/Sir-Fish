@@ -1,0 +1,10 @@
+[gd_scene format=3 uid="uid://bjb4wvpruslrm"]
+
+[ext_resource type="PackedScene" path="res://scenes/battle/combatant.tscn" id="1_base"]
+[ext_resource type="Resource" uid="uid://dn1nscxq8xnly" path="res://resources/stats/priest.tres" id="2_stats"]
+[ext_resource type="PackedScene" uid="uid://bfawog1wqmvg1" path="res://assets/meshes/priest.glb" id="3_4wmn8"]
+
+[node name="Priest" unique_id=992196169 instance=ExtResource("1_base")]
+stats = ExtResource("2_stats")
+
+[node name="Model" parent="Visual/Rig" index="0" unique_id=1800548899 instance=ExtResource("3_4wmn8")]

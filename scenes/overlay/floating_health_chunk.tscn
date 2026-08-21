@@ -1,0 +1,10 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/overlay/floating_health_chunk.gd" id="1_chunk"]
+
+[node name="FloatingHealthChunk" type="ColorRect"]
+offset_right = 20.0
+offset_bottom = 16.0
+mouse_filter = 2
+color = Color(0.878431, 0.192157, 0.192157, 1)
+script = ExtResource("1_chunk")

@@ -1,0 +1,10 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/console/slot_counter.gd" id="1_counter"]
+
+[node name="SlotCounter" type="Control"]
+custom_minimum_size = Vector2(172, 164)
+offset_right = 172.0
+offset_bottom = 164.0
+mouse_filter = 2
+script = ExtResource("1_counter")

@@ -1,0 +1,10 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/console/upgrade_tray.gd" id="1_tray"]
+
+[node name="UpgradeTray" type="Control"]
+custom_minimum_size = Vector2(1080, 212)
+offset_right = 1080.0
+offset_bottom = 212.0
+mouse_filter = 1
+script = ExtResource("1_tray")
