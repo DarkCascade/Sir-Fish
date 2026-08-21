@@ -34,6 +34,7 @@ jobs:
           archive_output: false
           export_debug: false
           presets_to_export: Web
+          use_preset_export_path: true
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
