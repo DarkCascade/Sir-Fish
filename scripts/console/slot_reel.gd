@@ -28,9 +28,9 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	if _spinning:
-		position_stops += SPIN_SPEED * delta
+		position_stops -= SPIN_SPEED * delta
 	elif _drifting:
-		position_stops += SPIN_SPEED * Tuning.SLOT_ATTRACT_SPEED * delta
+		position_stops -= SPIN_SPEED * Tuning.SLOT_ATTRACT_SPEED * delta
 	_layout()
 
 func start_spin() -> void:

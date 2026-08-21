@@ -17,7 +17,12 @@ static func sample(x: float, tile_width: float, base: float,
 
 ## Wavenumbers are quoted against Tuning.PARALLAX_TILE_WIDTH_PROC (36.0), so
 ## k = 3 is one full wave every 12 world units - the wavelength the 12-unit
-## build shipped with. Amplitudes are v1's, unchanged; only the period differs.
-const HILLS := [[3, 0.75, 0.0], [9, 0.35, 1.10], [21, 0.12, 2.40]]
-const HILLS_BASE := 1.50
+## build shipped with.
+##
+## Base and amplitudes raised for M8d (spec 7.2, 20.6): the empty-sky problem
+## is geometry, not camera, and this milestone's gate explicitly calls for
+## taller hills and tree canopy alongside the new modelled layers 4-5.
+## Wavenumbers (and therefore R2's periodicity guarantee) are untouched.
+const HILLS := [[3, 0.95, 0.0], [9, 0.42, 1.10], [21, 0.15, 2.40]]
+const HILLS_BASE := 1.90
 const HILLS_FLOOR := -1.50

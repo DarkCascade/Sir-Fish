@@ -144,3 +144,14 @@ node /path/to/server/build/cli.js runtime tree
 **Command groups**: project, scene, node, script, editor, input, runtime
 
 Always start by running `--help` to discover available commands. Use the CLI when MCP tools are not loaded or when you need to reduce context usage.
+
+## Project Notes
+
+### Combat: real-time vs turn-based
+
+`BattleDirector` (`scripts/battle/battle_director.gd`) supports two combat modes via the `turn_based_combat` export (default `true`), a dev-only toggle not exposed to the player in any UI:
+
+- **Turn-based**: a combatant requests a turn when its cooldown expires (`Combatant.request_turn()` → `BattleDirector.request_turn()`), requests queue in `_turn_queue` in arrival order, and `_advance_turn_queue()` dispatches one combatant at a time — the next one only acts once the current actor's animation finishes.
+- **Real-time**: `request_turn()` calls `_take_action()` immediately instead of queueing, so multiple combatants can act simultaneously (this was the only mode before turn-based combat was added).
+
+Damage calculation, targeting, abilities, and VFX are identical in both modes — only the scheduling of *when* a combatant acts changes.
