@@ -58,7 +58,7 @@ light_color = Color(0.588235, 0.709804, 0.847059, 1)
 light_energy = 0.32
 
 [node name="BattleCamera" type="Camera3D" parent="." unique_id=1438402991]
-transform = Transform3D(1, 0, 0, 0, 0.573576, 0.819152, 0, -0.819152, 0.573576, 0.11, 14, 11.62)
+transform = Transform3D(0.7431448, 0.17318371, -0.64633036, 0, 0.9659255, 0.25881895, 0.6691306, -0.19233997, 0.7178225, -14, 9, 17)
 keep_aspect = 0
 current = true
 fov = 34.0

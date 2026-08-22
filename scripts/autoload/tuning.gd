@@ -99,11 +99,15 @@ const PARTY_FORMATION := [
 	Vector2(0.5, 1.0),                    # ranger        - back rank, right
 	Vector2(0.0, 0.0),                    # warrior       - front rank, on the axis
 ]
-## Both are set by silhouette overlap, not by taste: the mage's hat is about
-## 1.2 units across and the warrior's cape about 1.0, so anything under ~2.0
-## between neighbours has them intersecting on screen at this camera angle.
-const PARTY_ROW_DEPTH := 1.8              # front rank to back rank
-const PARTY_ROW_SPREAD := 2.0             # gap between the two back-rank heroes
+## The floor both sit at is silhouette overlap - the mage's hat is about 1.2
+## units across and the warrior's cape about 1.0, so anything under ~2.0
+## between neighbours has them intersecting on screen. Both are pushed well
+## past that floor for the low chase-cam angle (BattleCamera now sits behind
+## and low, at roughly rotation (-15, -42, 0)): a wide, loose formation is
+## what reads as a party crossing open ground from that angle, where the old
+## overhead framing could get away with a tighter huddle.
+const PARTY_ROW_DEPTH := 2.4               # front rank to back rank
+const PARTY_ROW_SPREAD := 4.4              # gap between the two back-rank heroes
 
 ## The enemy line forms this far up-run from the party leader, spread across
 ## RUN_DIR's perpendicular so all three read as a facing rank. Melee closes
@@ -333,15 +337,23 @@ const TREE_HEIGHT := 4.6
 const TREE_SCALE_JITTER := 0.22           # +/- fraction on each planted tree
 
 ## Extra clearance a TREE gets on top of FIELD_CLEAR_RADIUS, because a canopy
-## is far wider than the trunk that has to miss the fighters. The canopy is
-## about 3.5 units across, so 1.75 of overhang plus half a combatant lands at
-## roughly 2.4 + 0.4 = 2.8 total.
+## is far wider than the trunk that has to miss the fighters - about 3.5 units
+## across, so 1.75 of overhang eats most of a small extra before any bare
+## ground is left over.
 ##
-## Do not raise this casually. At the 50/50 split the battle view is only ~12
-## world units wide, so every unit here is a sixth of the frame turned into
-## bald grass down the middle - at the first pass of 1.6 the exclusion band was
-## 8 units and pushed trees off screen entirely.
-const TREE_CLEAR_EXTRA := 0.4
+## Widened well past that floor for the low chase-cam angle (BattleCamera at
+## roughly position (-14, 9, 17), rotation (-15, -42, 0)): looking nearly
+## straight up the run corridor, the treeline reads as a wall pressing in from
+## both sides unless the clearing is generously wide. 2.4 + 3.0 = 5.4 total,
+## which nets to roughly a 3.65-unit bare half-width once the canopy overhang
+## is subtracted - comfortably outside PARTY_ROW_SPREAD's widest hero (2.2).
+##
+## The old overhead framing (BattleCamera pitched steeply down) could read a
+## much narrower gap, because it looked down the LENGTH of the corridor for
+## only a short on-screen distance rather than staring straight into the
+## treeline - raise this again with that in mind if the camera goes back to
+## something closer to top-down.
+const TREE_CLEAR_EXTRA := 3.0
 
 # --- 5.9 Health chunk [v3.5 D6] ---------------------------------------------
 const CHUNK_FLING_X := 45.0               # was an inline +/-90 in floating_health_chunk.gd
