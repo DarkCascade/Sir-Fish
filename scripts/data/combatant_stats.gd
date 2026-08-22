@@ -1,6 +1,17 @@
 class_name CombatantStats
 extends Resource
 
+## [overworld prototype] How this character reaches its target, which is now a
+## real distance across the field rather than a fixed gap on one axis.
+##
+## MELEE blinks to the target and back (see Ability._teleport_strike). RANGED
+## and MAGIC never move - they spawn something that flies to the target and
+## resolves on arrival. This is a data flag rather than an `id` check for the
+## same reason special_targets_opponent is: the two orcs share one .glb and
+## one id prefix, the shadow monster is melee without being an orc, and adding
+## a fourth enemy should not mean editing a match statement in ability.gd.
+enum AttackStyle { MELEE, RANGED, MAGIC }
+
 @export var id: StringName = &""
 @export var display_name: String = ""
 @export var is_hero: bool = false
@@ -26,6 +37,7 @@ extends Resource
 ## warning glow) before its special resolves. Priest-only; replaces a
 ## hardcoded `stats.id == &"priest"` branch in ability.gd (spec 2.6).
 @export var telegraphs_primary: bool = false
+@export var attack_style: AttackStyle = AttackStyle.MELEE
 @export var model_scale: float = 1.0
 @export var body_color: Color = Color.WHITE
 @export var accent_color: Color = Color.WHITE

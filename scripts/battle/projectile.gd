@@ -32,7 +32,10 @@ func launch(source: Combatant, target: Combatant, director, bomb: bool) -> void:
 		_damage = maxi(1, int(round(float(source.stats.base_damage)
 			* source.damage_multiplier * Tuning.RANGER_BOMB_AOE_MULT)))
 	_start = source.hand_world_position()
-	_end = target.hit_world_position() if target != null else _start + Vector3(6, 0, 0)
+	# [overworld prototype] The fallback aim is down the run axis, not +X: the
+	# ranger can be facing anywhere on the field now.
+	_end = target.hit_world_position() if target != null \
+		else _start + Tuning.RUN_DIR * 6.0
 	global_position = _start
 	_t = 0.0
 	_flying = true
@@ -41,15 +44,23 @@ func _process(delta: float) -> void:
 	if not _flying:
 		return
 	_t = minf(1.0, _t + delta / FLIGHT_TIME)
-	# Re-read a living target's position so the arrow tracks a moving body.
+	# Re-read a living target's position so the arrow tracks a moving body -
+	# which under the overhead camera it will be, since melee fighters blink.
 	if _target != null and is_instance_valid(_target) and _target.is_alive():
 		_end = _target.hit_world_position()
+	var prev := global_position
 	var pos := _start.lerp(_end, _t) + Vector3(0, ARC_HEIGHT * 4.0 * _t * (1.0 - _t), 0)
 	global_position = pos
 
-	var flat := _end - _start
-	var dy := flat.y + ARC_HEIGHT * 4.0 * (1.0 - 2.0 * _t)
-	rotation.z = atan2(dy, flat.x)
+	# [overworld prototype] The old `rotation.z = atan2(dy, flat.x)` only aimed
+	# the shaft inside the screen plane, which was all a side-on camera could
+	# see. The arrow now flies across a ground plane in any direction, so it is
+	# aimed at its own velocity in full 3D. The mesh is built lying along +X
+	# (see _build), and look_at() points a node's -Z, hence the +X basis fix-up.
+	var step := pos - prev
+	if step.length_squared() > 0.000001:
+		look_at(pos + step, Vector3.UP)
+		rotate_object_local(Vector3.UP, PI * 0.5)
 
 	if _t >= 1.0:
 		_flying = false

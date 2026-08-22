@@ -121,7 +121,7 @@ func _on_combat_ended(victory: bool) -> void:
 func _run_loot(def: EncounterDef) -> void:
 	var chest = CHEST_SCENE.instantiate()
 	world.prop_root.add_child(chest)
-	chest.position = Vector3(world.world_x(3.2), 0, 0)
+	chest.position = world.prop_position(3.2)
 	_prop = chest
 	chest.pop_in()
 
@@ -143,7 +143,7 @@ func _run_loot(def: EncounterDef) -> void:
 func _run_shop(def: EncounterDef) -> void:
 	var building = SHOP_SCENE.instantiate()
 	world.prop_root.add_child(building)
-	building.position = Vector3(world.world_x(3.4), 0, 0)
+	building.position = world.prop_position(3.4)
 	_prop = building
 	building.pop_in()
 
@@ -174,14 +174,19 @@ func _encounter_resolved() -> void:
 ## panel's three rows are index-addressed and freeing the node would shift them.
 ## A dead hero is freed only on Retry (spec 18.3). Conceptually the party leaves
 ## them behind; visually, because the camera is fixed and the world scrolls, the
-## corpse slides left off-screen, which is the correct read.
+## corpse slides off-screen behind the party, which is the correct read.
+##
+## [overworld prototype] "Off-screen behind the party" is back down the run
+## axis now rather than along -X, so the corpse leaves through the bottom-left
+## corner - the direction the field is scrolling anyway.
 func _encounter_exit() -> void:
 	state = RunState.ENCOUNTER_EXIT
 	var dead: Array = director.dead_heroes()
 	for hero: Combatant in dead:
 		if hero.visible:
 			var tw := create_tween()
-			tw.tween_property(hero, "position:x", world.world_x(-7.0), Tuning.DEAD_HERO_EXIT_TIME) \
+			tw.tween_property(hero, "global_position", world.exit_position(),
+				Tuning.DEAD_HERO_EXIT_TIME) \
 				.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 			tw.tween_callback(func() -> void:
 				if is_instance_valid(hero):

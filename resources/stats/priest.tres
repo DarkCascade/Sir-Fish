@@ -13,6 +13,7 @@ special_every_n_actions = 3
 special_requires_wounded_ally = true
 special_targets_opponent = false
 telegraphs_primary = true
+attack_style = 2
 model_scale = 0.95
 body_color = Color(0.960784, 0.941176, 0.901961, 1)
 accent_color = Color(0.231373, 0.435294, 0.831373, 1)

@@ -141,6 +141,15 @@ static func _recolor(rig: Node3D, part_name: String, color: Color) -> void:
 ## particles have no Blender equivalent - they are added here as plain
 ## child nodes rather than baked into the imported mesh.
 ##
+## [overworld prototype] shadow_monster.tscn also gives Model a +0.9075 Z
+## offset. The .glb's body mesh is authored 0.9 units off its own origin
+## (Blender Y = +0.907 on ShadowBody), which a side-on orthographic camera
+## could not show - the offset ran straight into the screen. Under the
+## overhead camera it puts the blob a metre to one side of its own health bar,
+## its hit anchor, and the point melee attackers blink to. The offset is
+## corrected on the node rather than in the .glb so the imported asset stays
+## byte-identical to what Blender exports.
+##
 ## Idempotency guards mirror the generic loop's (spec 8.2b.2): setup()
 ## calls this on every encounter. The smoke-material loop is scoped to the
 ## imported "Model" subtree only, not all of `rig` - eyes and wisps are
@@ -173,7 +182,12 @@ static func _shadow_eye(side: int) -> MeshInstance3D:
 	var e := MeshInstance3D.new()
 	e.name = "Eye%s" % ("L" if side < 0 else "R")
 	e.mesh = eye
-	e.position = Vector3(0.16 * float(side), 1.18, 0.44)
+	# Forward is +X (see BattleWorld.yaw_along), so the eyes sit forward on X
+	# and separate across Z. They were authored on the old side-on convention,
+	# where an enemy only ever turned 180 degrees and a 90-degree error never
+	# showed; under the overhead camera a combatant faces any direction, so a
+	# blob whose eyes point off its own shoulder is immediately visible.
+	e.position = Vector3(0.44, 1.18, 0.16 * float(side))
 	e.material_override = CelMaterials.cel(
 		Tuning.C_SHADOW_EYES, Tuning.C_SHADOW_EYES, 3.0, 0.0)
 	e.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF

@@ -6,6 +6,10 @@ extends Node
 const TRAVEL_SPEED := 4.0                 # world units/sec the parallax scrolls at full speed
 const TRAVEL_ACCEL_TIME := 0.6            # ease-in when travel starts
 const TRAVEL_DECEL_TIME := 0.9            # ease-out when arriving at an encounter
+## [overworld prototype] Unused: enemies run in from off-screen now rather
+## than fading in (see BattleDirector._run_enemy_in). Kept because the fade is
+## still the right entrance for a future indoor or ambush encounter, where
+## there is no off-screen corner to run in from.
 const ENEMY_FADE_IN_TIME := 0.35
 const ENEMY_DEATH_HOLD := 1.5             # corpse lies still before fading
 const ENEMY_DEATH_FADE := 2.0             # then fades out over this long, then queue_free
@@ -28,19 +32,72 @@ const DAMAGE_VARIANCE := 0.15             # every hit rolls damage x randf_range
 const SPECIAL_CAST_FLASH_TIME := 0.15     # [v2] universal special-cast telegraph (spec 9.6)
 
 # --- 5.3b Battlefield geometry ---------------------------------------------
-## [v3.6] How far apart the battlefield is spread, as a fraction of the authored
-## v3.5 spacing. main_layout.gd scales the camera's world width by exactly the
-## same factor, so every combatant, prop and parallax layer keeps its screen
-## POSITION - what changes is that the character models, whose size is fixed in
-## world units, cover more of those pixels. 1.0 is the authored size; 0.72 was
-## the "bigger characters" experiment, and needed ENEMY_X_MAX pulled in to 3.8 to
-## stop the widest enemy hanging off the right edge.
-const BATTLEFIELD_SCALE := 1.0
-
-const HERO_SLOT_X := [-4.0, -2.5, -1.0]   # [v3.5 F1/F3] priest, ranger, warrior (left -> right)
-const ENEMY_X_MIN := 1.2                  # [v3.5 F3] was 1.6
-const ENEMY_X_MAX := 4.0                  # [v3.5 F3] was 4.8
+## [overworld prototype] v3.6's BATTLEFIELD_SCALE is gone along with the
+## orthographic side-on camera it existed to compensate for: squeezing the
+## field and the camera's ortho size by the same factor kept screen positions
+## fixed while models grew. The overhead camera is perspective and pinned to
+## KEEP_WIDTH, so framing is set by where the camera stands, and there is no
+## squeeze left to tune. Composition now lives in 5.3c below.
 const MAX_ENEMIES := 3
+const PARTY_SIZE := 3                     # priest, ranger, warrior
+
+# --- 5.3c Overworld field [overworld prototype] -----------------------------
+## The battle is laid out on the XZ ground plane under an overhead camera, not
+## along the single X axis the side-on view used. Every position in the fight
+## derives from ONE direction vector: the party runs along RUN_DIR (up and to
+## the right on screen), the enemies form up at the far end of it, and the
+## field scrolls back along -RUN_DIR to sell the running. Rotate RUN_DIR and
+## the entire composition rotates with it - there is no second place to edit.
+##
+## -Z is "up screen" and +X is "right screen", so a vector that is mostly -Z
+## with some +X points at the upper-right corner.
+##
+## The 1:2.1 ratio is much steeper than a true 45-degree diagonal, and it is
+## picked rather than eyeballed. The viewport is portrait (1080 x 1920), so the
+## frame is 1.78x taller than it is wide, and the fight has to be that much
+## taller than it is wide to fill it. One unit along RUN_DIR moves the action
+## 0.43 to the right and 0.90 up-field, and the camera's 55-degree tilt
+## foreshortens up-field by cos(55) = 0.82 - giving a screen slope of
+## 0.90 x 0.82 / 0.43 = 1.72, near enough the frame's own 1.78. At the 1:1.6
+## first pass the fight came out squarer than the frame and wasted the top
+## third of the screen.
+const RUN_DIR := Vector3(0.42992, 0.0, -0.90283)      # normalized(1, 0, -2.1)
+
+## Where the party LEADER stands - lower-left of frame. The rest of the party
+## trails behind it down -RUN_DIR, single file (they run in a line).
+const PARTY_ANCHOR := Vector3(-1.6, 0.0, 3.4)
+const PARTY_FILE_SPACING := 1.35          # gap between heroes along the file
+
+## The enemy line forms this far up-run from the party leader, spread across
+## RUN_DIR's perpendicular so all three read as a facing rank. Wide enough to
+## put the two sides in opposite corners of a tall frame; melee closes it by
+## blinking, so the gap costs nothing mechanically.
+const ENEMY_DISTANCE := 10.0
+const ENEMY_SPREAD := 1.7                 # gap between adjacent enemies
+
+## Enemies run in from off-screen past the upper-right corner instead of
+## fading in: they spawn this far beyond their slots, down-run, and sprint to
+## them (spec 10.1's fade is replaced wholesale by this).
+const ENEMY_ENTRY_DISTANCE := 12.0
+const ENEMY_ENTRY_TIME := 1.15
+const ENEMY_ENTRY_STAGGER := 0.13         # gap between each enemy's departure
+
+# --- 5.3d Melee teleport [overworld prototype] ------------------------------
+## Melee attackers do not walk to their target - they blink to it. Ranged and
+## magic attackers never teleport; they fire something that flies instead.
+const TELEPORT_OUT_TIME := 0.13           # dissolve at the origin
+const TELEPORT_IN_TIME := 0.15            # reform at the destination
+const TELEPORT_STRIKE_GAP := 1.35         # how far short of the target it lands
+const TELEPORT_GHOSTS := 5                # afterimages left along the path
+const TELEPORT_GHOST_FADE := 0.28
+const TELEPORT_RETURN_DELAY := 0.20       # beat spent at the target after impact
+
+# --- 5.3e Magic bolt [overworld prototype] ----------------------------------
+## The priest's primary is an aimed bolt now, not a pillar dropped from the
+## sky. The sky-drop version survives only as the slot machine's payout, which
+## is a called-down strike and reads correctly as one.
+const MAGIC_BOLT_SPEED := 12.0            # world units/sec
+const MAGIC_BOLT_ARC := 0.9               # how high above the straight line it bows
 
 # --- 5.4 Economy ------------------------------------------------------------
 const STARTING_GOLD := 75                 # [v2] was 50 (spec 5.4 / Q23)
@@ -170,6 +227,41 @@ const PARALLAX_TILE_WIDTH_PROC := 36.0    # layers 1-3, generated (spec 7.5)
 const PARALLAX_TILE_WIDTH_MODEL := 12.0   # layers 4-5, modelled (spec 23.4)
 const PARALLAX_SEAM_EPSILON := 0.0001     # test_parallax_seam's tolerance
 
+# --- 5.8b Overworld field scatter [overworld prototype] ---------------------
+## The five parallax layers are gone: an overhead camera sees real ground, so
+## the field is an actual scattered plane. Props live on a rectangle in
+## RUN_DIR's frame (ACROSS x ALONG) and wrap toroidally as it scrolls, which
+## is what makes an "open field" out of a finite number of meshes.
+##
+## ALONG is generous because the camera looks down the run axis and the far
+## end of the field is on screen for a long time; ACROSS only has to cover the
+## frame's width plus a margin.
+## ACROSS has to cover the frame's full width at the FAR edge of the view,
+## where the camera sees widest - and the field rectangle is rotated ~32
+## degrees against the screen, so its corners have to reach further still.
+const FIELD_ACROSS := 56.0                # extent perpendicular to RUN_DIR
+const FIELD_ALONG := 46.0                 # extent along RUN_DIR
+const FIELD_SCATTER_SEED := 20260822      # fixed: the field is identical every run
+
+## Counts are per whole field, not per square unit - the field's size is
+## fixed, so these ARE the density.
+const FIELD_BUSHES := 90
+const FIELD_ROCKS := 70
+const FIELD_TUFTS := 160
+const FIELD_GRASS := 200
+const FIELD_TREES := 36
+
+## Nothing is scattered within this distance of the run corridor's centre
+## line, so neither the party file nor the enemy rank spawns inside a bush.
+## The bald stripe this leaves reads as the path the party is running along.
+const FIELD_CLEAR_RADIUS := 2.2
+
+## The tree is authored at twice the humanoid reference height (the warrior's
+## knight.glb stands 2.3 units at model_scale 1.0), so 4.6. Trees also take a
+## per-instance scale jitter around that.
+const TREE_HEIGHT := 4.6
+const TREE_SCALE_JITTER := 0.22           # +/- fraction on each planted tree
+
 # --- 5.9 Health chunk [v3.5 D6] ---------------------------------------------
 const CHUNK_FLING_X := 45.0               # was an inline +/-90 in floating_health_chunk.gd
 const CHUNK_FLING_Y_MIN := 25.0           # was 50
@@ -208,6 +300,24 @@ const STATUS_PANEL_H := 300
 const SLOT_MACHINE_H := 600
 const PARTY_BUTTON_H := 160
 const UPGRADE_TRAY_H := 212
+
+## The yaw that points a combatant along `dir` on the ground plane.
+##
+## A combatant's forward is +X in its own local space, which is why this is
+## atan2(-z, x). The three heroes get there via a -90 degree Y rotation on
+## their Model node (see warrior.tscn); the orcs are authored facing +X in
+## Blender. That convention is also why the side-on view could turn an enemy
+## around with nothing but `rotation.y = PI`.
+##
+## It lives here rather than on BattleWorld because Combatant needs it during
+## setup(), when reaching through `director.world` would couple a combatant's
+## own facing to the director being wired up first.
+func yaw_along(dir: Vector3) -> float:
+	var flat := Vector3(dir.x, 0.0, dir.z)
+	if flat.length_squared() < 0.000001:
+		return 0.0
+	flat = flat.normalized()
+	return atan2(-flat.z, flat.x)
 
 ## Fair-weather palette entry -> its storm equivalent (see the block above).
 func storm_tint(color: Color) -> Color:

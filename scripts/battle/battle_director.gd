@@ -105,15 +105,16 @@ func start_combat(enemy_stat_ids: Array) -> void:
 		var stats := GameState.get_stats(enemy_stat_ids[i])
 		if stats == null:
 			continue
-		var x: float = world.enemy_slot_x(i, total)
-		var c := _spawn_combatant(stats, Vector3(x, 0, 0), -1)
+		# [overworld prototype] Spec 10.1's fade-in is gone. Enemies now spawn
+		# off-screen past the top-right corner and RUN to their slots, which is
+		# the one entrance that reads correctly on an open field - a fade would
+		# have them materialise out of empty grass the camera can see straight
+		# through.
+		var slot: Vector3 = world.enemy_slot_position(i, total)
+		var c := _spawn_combatant(stats, world.enemy_entry_position(i, total), -1)
+		c.set_home(slot)
 		enemies.append(c)
-		# Fade in with the idle animation already playing (spec 10.1).
-		CelMaterials.set_alpha(c.rig, 0.0)
-		c.play_anim(&"idle")
-		var tw := c.create_tween()
-		tw.tween_method(Callable(CelMaterials, "set_alpha_on").bind(c.rig),
-			0.0, 1.0, Tuning.ENEMY_FADE_IN_TIME)
+		_run_enemy_in(c, slot, i)
 		EventBus.combatant_spawned.emit(c)
 
 	for c: Combatant in _all():
@@ -121,6 +122,32 @@ func start_combat(enemy_stat_ids: Array) -> void:
 
 	_active = true
 	EventBus.combat_started.emit(heroes, enemies)
+
+## The entrance: sprint from off-screen down the run axis into the slot, on a
+## per-enemy stagger so a rank of three arrives as a charge rather than as a
+## wall. State is RUNNING throughout, which is what stops them attacking
+## mid-approach - the per-frame loop only calls request_turn() on an IDLE
+## combatant.
+func _run_enemy_in(c: Combatant, slot: Vector3, index: int) -> void:
+	c.set_running(true)
+	c.face_dir(-Tuning.RUN_DIR)
+	if index > 0:
+		await get_tree().create_timer(float(index) * Tuning.ENEMY_ENTRY_STAGGER).timeout
+		if not is_instance_valid(c) or not c.is_alive():
+			return
+	var tw := c.create_tween()
+	tw.tween_property(c, "global_position", slot, Tuning.ENEMY_ENTRY_TIME) \
+		.set_trans(Tween.TRANS_QUINT).set_ease(Tween.EASE_OUT)
+	await tw.finished
+	if not is_instance_valid(c) or not c.is_alive():
+		return
+	c.set_running(false)
+	c.face_dir(-Tuning.RUN_DIR)
+	# Re-roll on arrival. The cooldown rolled at spawn has been draining for the
+	# whole run-in (the per-frame loop only skips ATTACKING combatants, not
+	# RUNNING ones), so without this an enemy lands already overdue and swings
+	# on the frame it stops - no beat between the charge and the first blow.
+	_roll_initial_cooldown(c)
 
 ## Half full, times a +/-10% jitter that exists only to de-sync identical enemy
 ## types that would otherwise act on the same frame (spec 10.1 / 21-D2).

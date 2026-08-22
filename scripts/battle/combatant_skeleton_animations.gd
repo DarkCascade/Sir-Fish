@@ -44,11 +44,19 @@ static func build_for(player: AnimationPlayer, stats: CombatantStats) -> bool:
 
 	var lib := AnimationLibrary.new()
 	match stats.id:
-		# Enemies take no run/special (spec 8.3). idle/hurt/die are the shared
+		# Enemies take no special (spec 8.3). idle/run/hurt/die are the shared
 		# humanoid builders unchanged (spec 9.0.3, R16); attack is the one
 		# authored clip and the warlord takes it as-is from the barbarian.
+		#
+		# [overworld prototype] `run` used to be heroes-only, because the
+		# side-on world scrolled past a stationary enemy line and an enemy
+		# never travelled. Enemies now sprint in from off the top-right corner
+		# (BattleDirector._run_enemy_in), so they need legs. required_anims()
+		# still does not DEMAND run of an enemy - the shadow monster floats and
+		# has none - it is simply available to those built on this rig.
 		&"orc_barbarian", &"orc_warlord":
 			lib.add_animation(&"idle", _humanoid_idle(skel, skel_str))
+			lib.add_animation(&"run", _humanoid_run(skel, skel_str))
 			lib.add_animation(&"attack", _orc_attack(skel, skel_str))
 			lib.add_animation(&"hurt", _humanoid_hurt(skel, skel_str))
 			lib.add_animation(&"die", _humanoid_die(skel, skel_str))

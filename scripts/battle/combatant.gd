@@ -43,6 +43,13 @@ var _status_icons: Array = []
 ## The dmg_pct share of damage_multiplier, kept apart so the party damage buff
 ## can be divided back out without wiping the item bonus (spec 17.3 / 21-D13).
 var _item_pct_multiplier: float = 1.0
+## [overworld prototype] The slot this combatant returns to after a blink. Set
+## from its spawn position, or explicitly by the director for enemies, which
+## spawn off-screen and run in to a slot they do not start on.
+var _home_position: Vector3 = Vector3.ZERO
+## True between the outbound blink and the return one, so death and the
+## animation-finished handler both know there is a trip to unwind.
+var _blinked: bool = false
 
 @onready var visual: Node3D = $Visual
 @onready var rig: Node3D = $Visual/Rig
@@ -75,9 +82,15 @@ func setup(s: CombatantStats, starting_hp: int = -1) -> void:
 	damage_reduction = 0.0
 	bonus_flat_damage = 0
 	apply_party_bonuses()
-	# Enemies face -X by rotating the whole node; never by negative scale,
-	# which would invert the inverted-hull outline normals (spec 7.3).
-	rotation.y = 0.0 if is_hero else PI
+	_home_position = global_position
+	_blinked = false
+	visual.visible = true
+	# [overworld prototype] Facing is a direction on the ground plane now, not
+	# a choice between two. Heroes face up the run axis, enemies back down it,
+	# so the two sides face each other wherever RUN_DIR points. Still done by
+	# rotating the whole node and never by negative scale, which would invert
+	# the inverted-hull outline normals (spec 7.3).
+	face_dir(Tuning.RUN_DIR if is_hero else -Tuning.RUN_DIR)
 	play_anim(&"idle")
 
 func _build() -> void:
@@ -149,6 +162,27 @@ func play_anim(anim_name: StringName) -> void:
 		return
 	anim.play(anim_name)
 
+# --- facing / home slot (overworld prototype) --------------------------------
+
+func face_dir(dir: Vector3) -> void:
+	rotation.y = Tuning.yaw_along(dir)
+
+func face_position(pos: Vector3) -> void:
+	face_dir(pos - global_position)
+
+## Faces back the way this side starts the fight facing - up the run axis for
+## a hero, down it for an enemy.
+func face_home_dir() -> void:
+	face_dir(Tuning.RUN_DIR if is_hero else -Tuning.RUN_DIR)
+
+## Enemies spawn off-screen and run in, so the slot they belong to is not the
+## position they were created at; the director tells them which it is.
+func set_home(pos: Vector3) -> void:
+	_home_position = pos
+
+func home_position() -> Vector3:
+	return _home_position
+
 func set_running(running: bool) -> void:
 	if state == State.DEAD:
 		return
@@ -163,6 +197,15 @@ func _on_animation_finished(anim_name: StringName) -> void:
 	if state == State.DEAD:
 		return                                    # the corpse holds its pose
 	if anim_name == &"attack" or anim_name == &"special":
+		# [overworld prototype] A melee attacker is standing next to its victim
+		# at this point. Blink it home BEFORE releasing the turn, so the next
+		# combatant never acts around a fighter stranded in the enemy rank.
+		if _blinked:
+			await _blink_home()
+			if not is_instance_valid(self) or state == State.DEAD:
+				return
+		else:
+			face_home_dir()
 		pending = null
 		state = State.IDLE
 		# The cooldown starts refilling only after the attack finishes, then
@@ -203,7 +246,62 @@ func _anim_special_cast() -> void:
 func begin_action(ability: Ability) -> void:
 	pending = ability
 	state = State.ATTACKING
+	if ability.wants_teleport(self):
+		_blink_strike(ability)
+		return
+	# Ranged and magic attackers never leave the file - they only turn to aim.
+	# Turning matters: HandAnchor sits at +X, so an unturned caster would fire
+	# its bolt off its own shoulder.
+	if ability.target != null and is_instance_valid(ability.target):
+		face_position(ability.target.global_position)
 	play_anim(ability.anim_name)
+
+## Blink to the target, swing, then blink home (see BattleVfx.blink_out for
+## what the effect is doing and why). `state` stays ATTACKING for the whole
+## round trip, which is what makes the turn queue hold the next combatant
+## until this one is back in the party file - one action at a time, fully
+## resolved, exactly as _advance_turn_queue() already assumed.
+##
+## The model is hidden outright rather than alpha-faded: at 0.13 s a fade is
+## imperceptible anyway, and driving rig alpha here would collide with the
+## corpse-fade tweens and CelMaterials.flash(), which own that same channel.
+func _blink_strike(ability: Ability) -> void:
+	var from := global_position
+	var dest: Vector3 = ability.strike_position(self)
+
+	BattleVfx.blink_out(self, stats.accent_color)
+	visual.visible = false
+	await get_tree().create_timer(Tuning.TELEPORT_OUT_TIME).timeout
+	if not is_instance_valid(self) or state != State.ATTACKING:
+		return                                    # died, or was cancelled, mid-blink
+
+	global_position = dest
+	_blinked = true
+	if ability.target != null and is_instance_valid(ability.target):
+		face_position(ability.target.global_position)
+	BattleVfx.blink_trail(from, dest, stats.accent_color)
+	BattleVfx.blink_in(self, stats.accent_color)
+	visual.visible = true
+	play_anim(ability.anim_name)
+
+## The return leg. Runs after the attack animation finishes, so the swing is
+## seen where it lands before the attacker leaves.
+func _blink_home() -> void:
+	await get_tree().create_timer(Tuning.TELEPORT_RETURN_DELAY).timeout
+	if not is_instance_valid(self) or state == State.DEAD:
+		return
+	var from := global_position
+	BattleVfx.blink_out(self, stats.accent_color)
+	visual.visible = false
+	await get_tree().create_timer(Tuning.TELEPORT_OUT_TIME).timeout
+	if not is_instance_valid(self) or state == State.DEAD:
+		return
+	global_position = _home_position
+	face_home_dir()
+	BattleVfx.blink_trail(from, _home_position, stats.accent_color)
+	BattleVfx.blink_in(self, stats.accent_color)
+	visual.visible = true
+	_blinked = false
 
 # --- damage / healing -------------------------------------------------------
 
@@ -273,6 +371,13 @@ func cancel_all_effects() -> void:
 	pending = null
 	if anim != null:
 		anim.stop()
+	# 1b. [overworld prototype] Dying mid-blink must not leave an invisible
+	# corpse. The body stays where it fell rather than snapping back to its
+	# slot - a corpse teleporting home with no effect playing reads as a bug,
+	# and the exit tween carries dead heroes off the field anyway (spec 12.5).
+	_blinked = false
+	if visual != null:
+		visual.visible = true
 	# 2. Drop the defence and orphan its timer.
 	damage_reduction = 0.0
 	_defend_timer = null

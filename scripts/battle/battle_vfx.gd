@@ -38,6 +38,37 @@ static func _quad(size: Vector2, color: Color) -> MeshInstance3D:
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	return mi
 
+## A quad that always turns to face the camera. Used for the blink afterimages,
+## which have to read as figures from an overhead camera that sees them from
+## any angle - a ground-plane quad would foreshorten into a sliver.
+static func _billboard(size: Vector2, color: Color) -> MeshInstance3D:
+	var mi := _quad(size, color)
+	var m := mi.material_override as StandardMaterial3D
+	m.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	m.billboard_keep_scale = true
+	m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	return mi
+
+## A flat ring lying on the ground. TorusMesh's axis is already +Y, so it needs
+## no rotation to lie in the XZ plane.
+static func _ring(inner: float, outer: float, color: Color) -> MeshInstance3D:
+	var t := TorusMesh.new()
+	t.inner_radius = inner
+	t.outer_radius = outer
+	t.rings = 24
+	t.ring_segments = 6
+	var mi := MeshInstance3D.new()
+	mi.mesh = t
+	var m := _unshaded(color)
+	m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	mi.material_override = m
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	return mi
+
+static func _set_alpha(mi: MeshInstance3D, color: Color, a: float) -> void:
+	if is_instance_valid(mi):
+		(mi.material_override as StandardMaterial3D).albedo_color = Color(color, a)
+
 static func _free_after(node: Node, seconds: float) -> void:
 	var t := node.get_tree().create_timer(seconds)
 	await t.timeout
@@ -153,6 +184,130 @@ static func death_burst(c: Combatant) -> void:
 	_burst(w, c.hit_world_position(), 16, Color(c.stats.body_color, 1.0),
 		c.stats.body_color, 0.7, 2.4, 0.10)
 
+# --- blink step (melee teleport) --------------------------------------------
+## A melee attacker does not run at its target across the field, it blinks to
+## it. The effect is three beats, and each one exists to answer a question the
+## player would otherwise ask:
+##
+##   out    - "where did it go?"      a ground ring snaps outward, the figure
+##                                    dissolves upward into motes, and a light
+##                                    column marks the spot it left.
+##   trail  - "how did it get there?" a ground streak plus a row of fading
+##                                    afterimages draws the actual path, so
+##                                    the move reads as travel, not a cut.
+##   in     - "what just arrived?"    a ring implodes onto the landing spot and
+##                                    the figure reforms out of it.
+##
+## Origin and destination are both passed in because the combatant has usually
+## already been moved by the time the trail is drawn.
+
+static func blink_out(c: Combatant, color: Color) -> void:
+	var w := world()
+	if w == null or not is_instance_valid(c):
+		return
+	var foot := c.global_position
+
+	var ring := _ring(0.16, 0.30, Color(color, 0.95))
+	w.add_child(ring)
+	ring.global_position = foot + Vector3(0, 0.04, 0)
+	ring.scale = Vector3(0.4, 0.4, 0.4)
+	var rt := ring.create_tween().set_parallel(true)
+	rt.tween_property(ring, "scale", Vector3(3.4, 1.0, 3.4), Tuning.TELEPORT_OUT_TIME * 1.6)
+	rt.tween_method(func(a: float) -> void: _set_alpha(ring, color, a),
+		0.95, 0.0, Tuning.TELEPORT_OUT_TIME * 1.6)
+	rt.chain().tween_callback(ring.queue_free)
+
+	# The column is what makes the departure read as "upward", which is what
+	# stops it looking like the model was simply hidden.
+	var col := CylinderMesh.new()
+	col.top_radius = 0.30
+	col.bottom_radius = 0.42
+	col.height = 2.4
+	col.radial_segments = 10
+	var shaft := MeshInstance3D.new()
+	shaft.mesh = col
+	var sm := _unshaded(Color(color, 0.7))
+	sm.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	shaft.material_override = sm
+	shaft.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	w.add_child(shaft)
+	shaft.global_position = foot + Vector3(0, 1.2, 0)
+	var st := shaft.create_tween().set_parallel(true)
+	st.tween_property(shaft, "scale", Vector3(0.15, 1.9, 0.15), Tuning.TELEPORT_OUT_TIME * 1.5)
+	st.tween_method(func(a: float) -> void: _set_alpha(shaft, color, a),
+		0.7, 0.0, Tuning.TELEPORT_OUT_TIME * 1.5)
+	st.chain().tween_callback(shaft.queue_free)
+
+	_burst(w, foot + Vector3(0, 0.9, 0), 20, Color(color, 1.0), color, 0.45, 2.6, 0.07,
+		Vector3(0, 2.4, 0))                       # motes rise, they do not fall
+
+static func blink_in(c: Combatant, color: Color) -> void:
+	var w := world()
+	if w == null or not is_instance_valid(c):
+		return
+	var foot := c.global_position
+
+	# Imploding, not expanding - the mirror of blink_out's ring, which is what
+	# ties the two ends of the move together.
+	var ring := _ring(0.16, 0.30, Color(color, 0.0))
+	w.add_child(ring)
+	ring.global_position = foot + Vector3(0, 0.04, 0)
+	ring.scale = Vector3(3.6, 1.0, 3.6)
+	var rt := ring.create_tween().set_parallel(true)
+	rt.tween_property(ring, "scale", Vector3(0.5, 0.5, 0.5), Tuning.TELEPORT_IN_TIME * 1.3) \
+		.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+	rt.tween_method(func(a: float) -> void: _set_alpha(ring, color, a),
+		0.1, 1.0, Tuning.TELEPORT_IN_TIME * 1.3)
+	rt.chain().tween_callback(ring.queue_free)
+
+	var flash := _billboard(Vector2(1.7, 1.7), Color(color, 0.85))
+	w.add_child(flash)
+	flash.global_position = foot + Vector3(0, 1.0, 0)
+	flash.scale = Vector3.ZERO
+	var ft := flash.create_tween().set_parallel(true)
+	ft.tween_property(flash, "scale", Vector3.ONE * 1.5, 0.16)
+	ft.tween_method(func(a: float) -> void: _set_alpha(flash, color, a), 0.85, 0.0, 0.16)
+	ft.chain().tween_callback(flash.queue_free)
+
+	dust_puff_at(foot + Vector3(0, 0.05, 0), 10)
+
+## The path itself: a bright streak along the ground plus TELEPORT_GHOSTS
+## afterimages of the figure, each fading on a stagger so the eye reads the
+## direction of travel rather than a row of static copies.
+static func blink_trail(from: Vector3, to: Vector3, color: Color) -> void:
+	var w := world()
+	if w == null:
+		return
+	var flat := to - from
+	flat.y = 0.0
+	var dist := flat.length()
+	if dist < 0.05:
+		return
+
+	var streak := _quad(Vector2(dist, 0.55), Color(color, 0.8))
+	(streak.material_override as StandardMaterial3D).blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	w.add_child(streak)
+	streak.global_position = from.lerp(to, 0.5) + Vector3(0, 0.05, 0)
+	streak.rotation = Vector3(-PI * 0.5, atan2(-flat.z, flat.x), 0.0)
+	var stw := streak.create_tween().set_parallel(true)
+	stw.tween_property(streak, "scale", Vector3(1.0, 0.15, 1.0), Tuning.TELEPORT_GHOST_FADE)
+	stw.tween_method(func(a: float) -> void: _set_alpha(streak, color, a),
+		0.8, 0.0, Tuning.TELEPORT_GHOST_FADE)
+	stw.chain().tween_callback(streak.queue_free)
+
+	for i: int in range(Tuning.TELEPORT_GHOSTS):
+		var t := (float(i) + 1.0) / float(Tuning.TELEPORT_GHOSTS + 1)
+		var ghost := _billboard(Vector2(0.85, 1.7), Color(color, 0.55))
+		w.add_child(ghost)
+		ghost.global_position = from.lerp(to, t) + Vector3(0, 0.95, 0)
+		# Later ghosts hold slightly longer, so the smear resolves toward the
+		# destination instead of collapsing evenly.
+		var life: float = Tuning.TELEPORT_GHOST_FADE * (0.55 + 0.45 * t)
+		var gt := ghost.create_tween().set_parallel(true)
+		gt.tween_method(func(a: float) -> void: _set_alpha(ghost, color, a), 0.55, 0.0, life)
+		gt.tween_property(ghost, "scale", Vector3(0.5, 1.15, 1.0), life)
+		gt.chain().tween_callback(ghost.queue_free)
+
 # --- priest / slot lightning ------------------------------------------------
 
 static func darken_pass(source: Combatant) -> void:
@@ -263,6 +418,53 @@ static func arrow_sparks(pos: Vector3) -> void:
 	if w == null:
 		return
 	_burst(w, pos, 8, Color(Tuning.C_PRIEST_CLOTH, 1.0), Tuning.C_PRIEST_CLOTH, 0.35, 2.0, 0.05)
+
+## Where an aimed spell lands. Deliberately lighter than explosion(): the
+## priest's primary fires every couple of seconds, so its impact has to read
+## instantly without dominating the frame the way a bomb arrow should.
+static func magic_burst(pos: Vector3, color: Color) -> void:
+	var w := world()
+	if w == null:
+		return
+	var s := SphereMesh.new()
+	s.radius = 0.4
+	s.height = 0.8
+	s.radial_segments = 10
+	s.rings = 6
+	var shell := MeshInstance3D.new()
+	shell.mesh = s
+	var m := _unshaded(Color(color, 0.85))
+	m.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	shell.material_override = m
+	shell.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	w.add_child(shell)
+	shell.global_position = pos
+	shell.scale = Vector3.ONE * 0.3
+
+	var ring := _ring(0.2, 0.34, Color(color, 0.9))
+	w.add_child(ring)
+	ring.global_position = Vector3(pos.x, 0.05, pos.z)
+	ring.scale = Vector3(0.4, 0.4, 0.4)
+
+	var light := OmniLight3D.new()
+	light.light_color = color
+	light.light_energy = 4.5
+	light.omni_range = 3.4
+	w.add_child(light)
+	light.global_position = pos
+
+	_burst(w, pos, 18, Color(color, 1.0), color, 0.45, 2.8, 0.07)
+
+	var tw := shell.create_tween().set_parallel(true)
+	tw.tween_property(shell, "scale", Vector3.ONE * 1.9, 0.26)
+	tw.tween_method(func(a: float) -> void: _set_alpha(shell, color, a), 0.85, 0.0, 0.26)
+	tw.tween_property(ring, "scale", Vector3(2.6, 1.0, 2.6), 0.30)
+	tw.tween_method(func(a: float) -> void: _set_alpha(ring, color, a), 0.9, 0.0, 0.30)
+	tw.tween_property(light, "light_energy", 0.0, 0.28)
+	tw.chain().tween_callback(func() -> void:
+		for n: Node in [shell, ring, light]:
+			if is_instance_valid(n):
+				n.queue_free())
 
 static func explosion(pos: Vector3) -> void:
 	var w := world()
