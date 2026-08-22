@@ -1,7 +1,7 @@
-[gd_scene format=4 uid="uid://hj7ehes107fs"]
+[gd_scene format=3 uid="uid://hj7ehes107fs"]
 
 [ext_resource type="Script" uid="uid://cne4kj8xgfg35" path="res://scripts/battle/battle_world.gd" id="2_world"]
-[ext_resource type="Script" path="res://scripts/battle/overworld_field.gd" id="3_field"]
+[ext_resource type="Script" uid="uid://bqexsymxmavbn" path="res://scripts/battle/overworld_field.gd" id="3_field"]
 
 [sub_resource type="ProceduralSkyMaterial" id="sky_mat"]
 sky_top_color = Color(0.243137, 0.505882, 0.831373, 1)
@@ -22,28 +22,28 @@ ambient_light_source = 3
 ambient_light_energy = 0.85
 tonemap_mode = 2
 tonemap_white = 2.0
-fog_enabled = true
-fog_light_color = Color(0.729412, 0.858824, 0.921569, 1)
-fog_light_energy = 1.0
-fog_sky_affect = 0.0
-fog_mode = 1
-fog_depth_begin = 38.0
-fog_depth_end = 96.0
-fog_depth_curve = 1.35
 glow_enabled = true
 glow_intensity = 0.55
 glow_bloom = 0.2
 glow_hdr_threshold = 1.05
+fog_enabled = true
+fog_mode = 1
+fog_light_color = Color(0.729412, 0.858824, 0.921569, 1)
+fog_density = 1.0
+fog_sky_affect = 0.0
+fog_depth_curve = 1.35
+fog_depth_begin = 38.0
+fog_depth_end = 96.0
 adjustment_enabled = true
 adjustment_saturation = 1.08
 
-[node name="BattleWorld" type="Node3D" groups=["battle_world"]]
+[node name="BattleWorld" type="Node3D" unique_id=2072727756 groups=["battle_world"]]
 script = ExtResource("2_world")
 
-[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=579600094]
 environment = SubResource("env")
 
-[node name="KeyLight" type="DirectionalLight3D" parent="."]
+[node name="KeyLight" type="DirectionalLight3D" parent="." unique_id=650292305]
 transform = Transform3D(-0.7623, -0.4657, 0.4496, 0, 0.6946, 0.7194, -0.6473, 0.5484, -0.5295, 0, 12, 0)
 light_color = Color(1, 0.968627, 0.894118, 1)
 light_energy = 1.15
@@ -52,26 +52,26 @@ shadow_bias = 0.04
 shadow_normal_bias = 1.4
 directional_shadow_max_distance = 48.0
 
-[node name="FillLight" type="DirectionalLight3D" parent="."]
+[node name="FillLight" type="DirectionalLight3D" parent="." unique_id=887184943]
 transform = Transform3D(-0.819152, 0, -0.573576, -0.196175, 0.939693, 0.280166, 0.538986, 0.34202, -0.769751, 0, 6, 0)
 light_color = Color(0.588235, 0.709804, 0.847059, 1)
 light_energy = 0.32
 
-[node name="BattleCamera" type="Camera3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 0.573576, 0.819152, 0, -0.819152, 0.573576, 0.48, 21.6, 14.69)
+[node name="BattleCamera" type="Camera3D" parent="." unique_id=1438402991]
+transform = Transform3D(1, 0, 0, 0, 0.573576, 0.819152, 0, -0.819152, 0.573576, 0.79, 21.6, 16.15)
 keep_aspect = 0
 current = true
 fov = 26.0
 near = 0.5
 far = 300.0
 
-[node name="OverworldField" type="Node3D" parent="."]
+[node name="OverworldField" type="Node3D" parent="." unique_id=2019343743]
 script = ExtResource("3_field")
 
-[node name="HeroSlots" type="Node3D" parent="."]
+[node name="HeroSlots" type="Node3D" parent="." unique_id=1777742883]
 
-[node name="EnemyRoot" type="Node3D" parent="."]
+[node name="EnemyRoot" type="Node3D" parent="." unique_id=639501729]
 
-[node name="PropRoot" type="Node3D" parent="."]
+[node name="PropRoot" type="Node3D" parent="." unique_id=1035734894]
 
-[node name="ProjectileRoot" type="Node3D" parent="."]
+[node name="ProjectileRoot" type="Node3D" parent="." unique_id=1777151609]

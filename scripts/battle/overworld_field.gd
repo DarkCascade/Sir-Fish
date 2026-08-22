@@ -35,6 +35,11 @@ var _groups: Array[Dictionary] = []
 var _offset: float = 0.0
 
 var _perp: Vector3 = Tuning.RUN_DIR.cross(Vector3.UP).normalized()
+## Where the fight's corridor sits on the across axis. Derived from the party
+## anchor rather than assumed to be zero: moving along RUN_DIR does not change
+## a point's across coordinate, so this one number is the lane BOTH the party
+## and the enemy rank stand in, and it is what the scatter has to keep clear.
+var _lane: float = Tuning.PARTY_ANCHOR.dot(Tuning.RUN_DIR.cross(Vector3.UP).normalized())
 
 func _ready() -> void:
 	_build_ground()
@@ -196,7 +201,7 @@ func _scatter_composite(palette: Array[Dictionary], count: int,
 	for _i: int in range(count):
 		# Trees need more clearance than clutter does: a 4.6-unit canopy sitting
 		# on the run corridor would hide the fight underneath it.
-		var spot: Variant = _spot(rand, Tuning.FIELD_CLEAR_RADIUS + 1.6)
+		var spot: Variant = _spot(rand, Tuning.FIELD_CLEAR_RADIUS + Tuning.TREE_CLEAR_EXTRA)
 		if spot == null:
 			continue
 		var s: float = 1.0 + rand.randf_range(-Tuning.TREE_SCALE_JITTER, Tuning.TREE_SCALE_JITTER)
@@ -216,7 +221,7 @@ func _spot(rand: RandomNumberGenerator, clearance: float = -1.0) -> Variant:
 	for _attempt: int in range(8):
 		var across: float = rand.randf_range(-Tuning.FIELD_ACROSS * 0.5, Tuning.FIELD_ACROSS * 0.5)
 		var along: float = rand.randf_range(0.0, Tuning.FIELD_ALONG)
-		if absf(across) >= clear:
+		if absf(across - _lane) >= clear:
 			return Vector2(across, along)
 	return null
 

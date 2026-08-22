@@ -62,16 +62,24 @@ const PARTY_SIZE := 3                     # priest, ranger, warrior
 ## -Z is "up screen" and +X is "right screen", so a vector that is mostly -Z
 ## with some +X points at the upper-right corner.
 ##
-## The 1:2.1 ratio is much steeper than a true 45-degree diagonal, and it is
-## picked rather than eyeballed. The viewport is portrait (1080 x 1920), so the
-## frame is 1.78x taller than it is wide, and the fight has to be that much
-## taller than it is wide to fill it. One unit along RUN_DIR moves the action
-## 0.43 to the right and 0.90 up-field, and the camera's 55-degree tilt
-## foreshortens up-field by cos(55) = 0.82 - giving a screen slope of
-## 0.90 x 0.82 / 0.43 = 1.72, near enough the frame's own 1.78. At the 1:1.6
-## first pass the fight came out squarer than the frame and wasted the top
-## third of the screen.
-const RUN_DIR := Vector3(0.42992, 0.0, -0.90283)      # normalized(1, 0, -2.1)
+## THE SLOPE IS DERIVED FROM THE BATTLE VIEWPORT'S ASPECT, not eyeballed. The
+## fight runs corner to corner of the frame, so it has to be exactly as much
+## taller-than-wide as the frame is. Writing RUN_DIR as normalized(1, 0, -k):
+##
+##     k = 1 / ( sin(camera tilt) * (viewport width / viewport height) )
+##
+## Because a unit along the run axis moves the action 1/L across the screen and
+## k/L up-field, and the camera's tilt foreshortens up-field by sin(55) = 0.82.
+## Recompute k whenever main_layout's split changes - it is the one number that
+## does not survive a re-split:
+##
+##     1080 x  960   (50/50, current)          k = 1.085
+##     1080 x 1920   (console hidden entirely) k = 2.170
+##     1080 x  640   (the shipped 33/66 split) k = 0.723
+##
+## Getting this wrong is not subtle: at k = 2.1 in the 50/50 viewport the fight
+## was a third taller than the frame and the back rank hung off the bottom edge.
+const RUN_DIR := Vector3(0.67772, 0.0, -0.73532)      # normalized(1, 0, -1.085)
 
 ## Where the party's FRONT rank stands - lower-left of frame. Everyone else is
 ## placed relative to it by PARTY_FORMATION.
@@ -101,7 +109,7 @@ const PARTY_ROW_SPREAD := 2.0             # gap between the two back-rank heroes
 ## RUN_DIR's perpendicular so all three read as a facing rank. Wide enough to
 ## put the two sides in opposite corners of a tall frame; melee closes it by
 ## blinking, so the gap costs nothing mechanically.
-const ENEMY_DISTANCE := 10.0
+const ENEMY_DISTANCE := 9.0
 const ENEMY_SPREAD := 1.7                 # gap between adjacent enemies
 
 ## Enemies run in from off-screen past the upper-right corner instead of
@@ -278,18 +286,32 @@ const FIELD_BUSHES := 90
 const FIELD_ROCKS := 70
 const FIELD_TUFTS := 160
 const FIELD_GRASS := 200
-const FIELD_TREES := 36
+const FIELD_TREES := 52
 
 ## Nothing is scattered within this distance of the run corridor's centre
 ## line, so neither the party formation nor the enemy rank spawns in a bush.
 ## The bald stripe this leaves reads as the path the party is running along.
-const FIELD_CLEAR_RADIUS := 2.2
+##
+## The widest thing in the corridor sets the floor: the enemy rank spreads
+## ENEMY_SPREAD (1.7) either side of the lane, plus about half a model on top.
+const FIELD_CLEAR_RADIUS := 2.4
 
 ## The tree is authored at twice the humanoid reference height (the warrior's
 ## knight.glb stands 2.3 units at model_scale 1.0), so 4.6. Trees also take a
 ## per-instance scale jitter around that.
 const TREE_HEIGHT := 4.6
 const TREE_SCALE_JITTER := 0.22           # +/- fraction on each planted tree
+
+## Extra clearance a TREE gets on top of FIELD_CLEAR_RADIUS, because a canopy
+## is far wider than the trunk that has to miss the fighters. The canopy is
+## about 3.5 units across, so 1.75 of overhang plus half a combatant lands at
+## roughly 2.4 + 0.4 = 2.8 total.
+##
+## Do not raise this casually. At the 50/50 split the battle view is only ~12
+## world units wide, so every unit here is a sixth of the frame turned into
+## bald grass down the middle - at the first pass of 1.6 the exclusion band was
+## 8 units and pushed trees off screen entirely.
+const TREE_CLEAR_EXTRA := 0.4
 
 # --- 5.9 Health chunk [v3.5 D6] ---------------------------------------------
 const CHUNK_FLING_X := 45.0               # was an inline +/-90 in floating_health_chunk.gd
