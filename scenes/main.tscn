@@ -7,6 +7,7 @@
 [ext_resource type="PackedScene" uid="uid://kej5dqemgbji" path="res://scenes/modals/shop_modal.tscn" id="5_shop"]
 [ext_resource type="PackedScene" path="res://scenes/modals/run_summary.tscn" id="6_summary"]
 [ext_resource type="Script" uid="uid://c3xbq35shguud" path="res://scripts/run/run_controller.gd" id="7_run"]
+[ext_resource type="Script" path="res://scripts/run/main_layout.gd" id="8_layout"]
 
 [node name="Main" type="Control" unique_id=508576918]
 layout_mode = 3
@@ -17,6 +18,8 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 theme = ExtResource("1_theme")
+script = ExtResource("8_layout")
+battle_height = 640.0
 
 [node name="BattleView" type="SubViewportContainer" parent="." unique_id=646866483]
 layout_mode = 0

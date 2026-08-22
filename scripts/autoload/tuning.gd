@@ -28,6 +28,15 @@ const DAMAGE_VARIANCE := 0.15             # every hit rolls damage x randf_range
 const SPECIAL_CAST_FLASH_TIME := 0.15     # [v2] universal special-cast telegraph (spec 9.6)
 
 # --- 5.3b Battlefield geometry ---------------------------------------------
+## [v3.6] How far apart the battlefield is spread, as a fraction of the authored
+## v3.5 spacing. main_layout.gd scales the camera's world width by exactly the
+## same factor, so every combatant, prop and parallax layer keeps its screen
+## POSITION - what changes is that the character models, whose size is fixed in
+## world units, cover more of those pixels. 1.0 is the authored size; 0.72 was
+## the "bigger characters" experiment, and needed ENEMY_X_MAX pulled in to 3.8 to
+## stop the widest enemy hanging off the right edge.
+const BATTLEFIELD_SCALE := 1.0
+
 const HERO_SLOT_X := [-4.0, -2.5, -1.0]   # [v3.5 F1/F3] priest, ranger, warrior (left -> right)
 const ENEMY_X_MIN := 1.2                  # [v3.5 F3] was 1.6
 const ENEMY_X_MAX := 4.0                  # [v3.5 F3] was 4.8
@@ -70,10 +79,6 @@ const SLOT_LIGHTNING_FALLBACK := 12       # used if fewer than 1 hero strike rec
 ## stopping. "Does nothing" means nothing that affects the game - not dead air.
 const SLOT_ATTRACT_SPEED := 0.15          # fraction of spin speed while drifting
 const SLOT_ATTRACT_DIM := Color(0.78, 0.78, 0.82)   # [v2] was Color(0.55, 0.55, 0.62)
-
-# --- 5.6 Party damage button -----------------------------------------------
-const PARTY_DAMAGE_BUFF_MULT := 1.10      # +10%
-const PARTY_DAMAGE_BUFF_DURATION := 30.0
 
 # --- 5.7 Upgrades [v2] ------------------------------------------------------
 const UPGRADE_MAX_LEVEL := 3

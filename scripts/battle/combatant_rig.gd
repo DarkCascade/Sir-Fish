@@ -9,15 +9,26 @@ extends RefCounted
 ## outline material is gone. Imported models now render with the materials
 ## their .glb ships. What remains here is per-character work the .glb cannot
 ## carry: the two orcs share one asset and are coloured apart at runtime, the
-## priest's orb needs an emissive material the charge animation drives, and
-## the shadow monster's body needs its translucent smoke material.
+## shadow monster's body needs its translucent smoke material, and both
+## KayKit heroes (the ranger's rogue, the priest's mage) ship every prop
+## variant switched on at once and need the surplus turned off - the priest's
+## also needs an emissive material its charge animation drives, since there is
+## no separate orb submesh to carry it.
 
 static func build(rig: Node3D, stats: CombatantStats) -> void:
 	# The shadow monster's body needs its translucent smoke material (spec
 	# 8.6), which the .glb does not carry. Same art-construction exemption
-	# category as the priest's orb branch further down (spec 4.1).
+	# category as the priest's staff-glow branch below (spec 4.1).
 	if stats.id == &"shadow_monster":
 		_finalize_shadow(rig, stats)
+		return
+
+	if stats.id == &"ranger":
+		_finalize_ranger(rig)
+		return
+
+	if stats.id == &"priest":
+		_finalize_priest(rig)
 		return
 
 	# The orc pair shares one mesh, one armature and one action set (spec
@@ -32,19 +43,50 @@ static func build(rig: Node3D, stats: CombatantStats) -> void:
 		_finalize_orc(rig, stats)
 		return
 
-	# The priest's orb needs emission (spec 9.3's charge glow, animated
-	# 1.5 -> 5.0 by CombatantSkeletonAnimations via a plain shader-parameter
-	# value track, not a bone track), which its imported material cannot
-	# carry. A one-off art-construction detail on the finished model, not a
-	# combat branch, so it is exempted from spec 4.1's standing rule.
-	if stats.id == &"priest":
-		var orb := _find_by_name(rig, "P_Orb") as MeshInstance3D
-		if orb != null:
-			var existing := orb.material_override
-			if not (existing is ShaderMaterial
-					and (existing as ShaderMaterial).get_shader_parameter("emission_strength") != null
-					and (existing as ShaderMaterial).get_shader_parameter("emission_strength") > 0.0):
-				orb.material_override = CelMaterials.cel(Tuning.C_PRIEST_ACCENT, Tuning.C_PRIEST_ACCENT, 1.5)
+# --- priest -------------------------------------------------------------
+
+## The KayKit mage asset (see priest.tscn) ships a one-handed wand alongside
+## the two-handed staff, and a closed spellbook alongside an open one, all
+## visible="true" at export - same trim as the ranger's rogue (see
+## _finalize_ranger). The staff is the natural read for "swings the staff up
+## and behind" in the cast animation (spec 9.3), so it is the one kept.
+##
+## The staff also carries the charge glow: this asset has no separate orb
+## submesh the way the old in-house rig did, so the whole staff mesh gets the
+## emissive material instead of an isolated crystal. CombatantBakedAnimations
+## drives emission_strength from 1.5 to 5.0 across the cast via a plain
+## shader-parameter value track (not a bone track), so this only needs to set
+## the baseline material once - same idempotency guard as the orc branch:
+## checking the existing material rather than reading state back off a track
+## the FIRST setup() call already wrote.
+static func _finalize_priest(rig: Node3D) -> void:
+	for part_name: String in ["1H_Wand", "Spellbook_open"]:
+		var mi := _find_by_name(rig, part_name) as MeshInstance3D
+		if mi != null:
+			mi.visible = false
+
+	var staff := _find_by_name(rig, "2H_Staff") as MeshInstance3D
+	if staff != null:
+		var existing := staff.material_override
+		if not (existing is ShaderMaterial
+				and (existing as ShaderMaterial).get_shader_parameter("emission_strength") != null
+				and (existing as ShaderMaterial).get_shader_parameter("emission_strength") > 0.0):
+			staff.material_override = CelMaterials.cel(Tuning.C_PRIEST_ACCENT, Tuning.C_PRIEST_ACCENT, 1.5)
+
+# --- ranger -------------------------------------------------------------
+
+## The KayKit rogue asset (see ranger.tscn) ships one shared handslot rig with
+## every weapon/prop option it supports - crossbow, knife, throwable - all
+## visible="true" at export, on the assumption the consumer picks one (spec
+## A3's category: no new asset, existing asset trimmed to fit). A ranged
+## attacker keeps the crossbow and drops the melee options, or the ranger
+## renders holding all four at once. Idempotent: every setup() call just
+## forces the same booleans, never adds or removes a node.
+static func _finalize_ranger(rig: Node3D) -> void:
+	for part_name: String in ["2H_Crossbow", "Knife", "Throwable", "Knife_Offhand"]:
+		var mi := _find_by_name(rig, part_name) as MeshInstance3D
+		if mi != null:
+			mi.visible = false
 
 static func _find_by_name(node: Node, node_name: String) -> Node:
 	if node.name == node_name:

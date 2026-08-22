@@ -3,9 +3,6 @@
 [ext_resource type="Script" uid="uid://cocctwxs4qpah" path="res://scripts/console/console.gd" id="1_console"]
 [ext_resource type="PackedScene" path="res://scenes/console/status_panel.tscn" id="2_status"]
 [ext_resource type="PackedScene" uid="uid://pgqpokgjbr7y" path="res://scenes/console/slot_machine.tscn" id="3_slot"]
-[ext_resource type="PackedScene" path="res://scenes/console/party_damage_button.tscn" id="4_btn"]
-[ext_resource type="PackedScene" path="res://scenes/console/sir_fish_tank.tscn" id="5_fish"]
-[ext_resource type="PackedScene" path="res://scenes/console/slot_counter.tscn" id="6_counter"]
 [ext_resource type="PackedScene" path="res://scenes/console/upgrade_tray.tscn" id="7_tray"]
 
 [node name="Console" type="Control" unique_id=354530052]
@@ -32,31 +29,10 @@ layout_mode = 0
 
 [node name="SlotMachine" parent="." unique_id=2134802586 instance=ExtResource("3_slot")]
 layout_mode = 0
-offset_top = 300.0
-offset_bottom = 900.0
-
-[node name="PartyDamageButton" parent="." unique_id=1840586982 instance=ExtResource("4_btn")]
-layout_mode = 0
-offset_left = 180.0
-offset_top = 900.0
-offset_right = 900.0
-offset_bottom = 1060.0
-
-[node name="SirFishTank" parent="." unique_id=177008691 instance=ExtResource("5_fish")]
-layout_mode = 0
-offset_left = 8.0
-offset_top = 898.0
-offset_right = 172.0
-offset_bottom = 1062.0
-
-[node name="SlotCounter" parent="." unique_id=378649428 instance=ExtResource("6_counter")]
-anchors_preset = 0
-offset_left = 908.0
-offset_top = 898.0
-offset_right = 1072.0
-offset_bottom = 1062.0
+offset_top = 130.0
+offset_bottom = 1010.0
 
 [node name="UpgradeTray" parent="." unique_id=1017938638 instance=ExtResource("7_tray")]
 anchors_preset = 0
-offset_top = 1060.0
+offset_top = 1010.0
 offset_bottom = 1272.0

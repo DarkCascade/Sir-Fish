@@ -24,13 +24,12 @@ extends RefCounted
 
 const DEG := PI / 180.0
 
-## The warrior is absent on purpose: it now runs on the KayKit knight.glb,
-## whose 41-bone armature shares no bone name with the in-house rig every
-## clip below is keyed against. Its clips come from
-## CombatantBakedAnimations, which CombatantAnimations.build() consults first.
+## The warrior, the ranger and the priest are all absent on purpose: they now
+## run on KayKit models (knight.glb, rogue.glb, mage.glb) whose 41-bone
+## armature shares no bone name with the in-house rig every clip below is
+## keyed against. Their clips come from CombatantBakedAnimations, which
+## CombatantAnimations.build() consults first.
 static var SKELETON_PATH := {
-	&"ranger": "Rig/Model/RangerRig/Skeleton3D",
-	&"priest": "Rig/Model/PriestRig/Skeleton3D",
 	&"orc_barbarian": "Rig/Model/OrcRig/Skeleton3D",
 	&"orc_warlord": "Rig/Model/OrcRig/Skeleton3D",
 }
@@ -45,20 +44,6 @@ static func build_for(player: AnimationPlayer, stats: CombatantStats) -> bool:
 
 	var lib := AnimationLibrary.new()
 	match stats.id:
-		&"ranger":
-			lib.add_animation(&"idle", _humanoid_idle(skel, skel_str))
-			lib.add_animation(&"run", _humanoid_run(skel, skel_str))
-			lib.add_animation(&"attack", _ranger_shot(skel, skel_str, false))
-			lib.add_animation(&"special", _ranger_shot(skel, skel_str, true))
-			lib.add_animation(&"hurt", _humanoid_hurt(skel, skel_str))
-			lib.add_animation(&"die", _humanoid_die(skel, skel_str))
-		&"priest":
-			lib.add_animation(&"idle", _humanoid_idle(skel, skel_str))
-			lib.add_animation(&"run", _humanoid_run(skel, skel_str))
-			lib.add_animation(&"attack", _priest_cast(skel, skel_str, 0.95, 0.55, false))
-			lib.add_animation(&"special", _priest_cast(skel, skel_str, 0.85, 0.40, true))
-			lib.add_animation(&"hurt", _humanoid_hurt(skel, skel_str))
-			lib.add_animation(&"die", _humanoid_die(skel, skel_str))
 		# Enemies take no run/special (spec 8.3). idle/hurt/die are the shared
 		# humanoid builders unchanged (spec 9.0.3, R16); attack is the one
 		# authored clip and the warlord takes it as-is from the barbarian.
@@ -229,58 +214,6 @@ static func _humanoid_die(skel: Skeleton3D, s: String) -> Animation:
 	])
 	_rot_z(a, skel, s, "Arm.L", [[0.0, 0], [0.80, -40]])
 	_rot_z(a, skel, s, "Arm.R", [[0.0, ARM_R_IDLE], [0.80, -25]])
-	return a
-
-# --- ranger (spec 9.2) -----------------------------------------------------
-
-## Both attack and special share this animation - identical draw/release
-## (spec 9.2). The bomb-arrow telegraph and impact resolution are entirely
-## handled by the projectile scene / Ability system via the same
-## _anim_special_cast / _anim_impact call-track convention as the warrior.
-static func _ranger_shot(skel: Skeleton3D, s: String, is_special: bool) -> Animation:
-	var a := _new_anim(0.80, false)
-	_rot_z(a, skel, s, "Arm.L", [[0.0, 0], [0.30, 80], [0.55, 75], [0.80, 0]])
-	_rot_z(a, skel, s, "Arm.R", [
-		[0.0, ARM_R_IDLE], [0.30, -20], [0.55, 30], [0.80, ARM_R_IDLE],
-	])
-	_pos_track(a, skel, s, "Arm.R", [
-		[0.0, Vector3(0, 0, 0)], [0.30, Vector3(-0.18, 0, 0)],
-		[0.55, Vector3(0, 0, 0)], [0.80, Vector3(0, 0, 0)],
-	])
-	_rot_z(a, skel, s, "Root", [[0.0, 0], [0.30, 14], [0.55, 4], [0.80, 0]])
-	if is_special:
-		_call(a, 0.0, &"_anim_special_cast")
-	_call(a, 0.30, &"_anim_impact")
-	return a
-
-# --- priest (spec 9.3) ------------------------------------------------------
-
-## Primary length 0.95 / impact 0.55; heal length 0.85 / impact 0.40 (spec
-## 9.3). The telegraph beat (darkening pass + warning glow) is gated on
-## stats.telegraphs_primary inside Ability.charge(), not here - this clip only
-## fires the _anim_charge call track at 0.30 for the primary, matching the
-## warrior/ranger's _anim_special_cast convention for the heal.
-static func _priest_cast(skel: Skeleton3D, s: String, length: float, impact: float,
-		is_special: bool) -> Animation:
-	var a := _new_anim(length, false)
-	# -130 swings the staff UP and BEHIND, over the shoulder.
-	_rot_z(a, skel, s, "Arm.R", [
-		[0.0, ARM_R_IDLE], [0.30, -130], [impact, -130], [length, ARM_R_IDLE],
-	])
-	# Rises on the balls of the feet.
-	_pos_track(a, skel, s, "Root", [
-		[0.0, Vector3(0, 0, 0)], [0.30, Vector3(0, 0.05, 0)],
-		[impact, Vector3(0, 0.05, 0)], [length, Vector3(0, 0, 0)],
-	])
-	# The orb charges from 1.5 to 5.0 and falls back after the beat lands.
-	_shader_param_track(a, "%s/P_Orb:material_override:shader_parameter/emission_strength" % s, [
-		[0.0, 1.5], [0.30, 5.0], [impact, 5.0], [length, 1.5],
-	])
-	if is_special:
-		_call(a, 0.0, &"_anim_special_cast")
-	else:
-		_call(a, 0.30, &"_anim_charge")
-	_call(a, impact, &"_anim_impact")
 	return a
 
 # --- orc barbarian / orc warlord (spec 9.5) ---------------------------------

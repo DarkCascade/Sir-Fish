@@ -31,15 +31,22 @@ func shake(amount: float, duration: float) -> void:
 	_shake_duration = duration
 	_shake_time = duration
 
+## The authored slots, squeezed by Tuning.BATTLEFIELD_SCALE. Every world-space x
+## in the battle goes through here or through world_x(), so the squeeze has
+## exactly one definition.
 func hero_slot_position(index: int) -> Vector3:
-	return Vector3(float(Tuning.HERO_SLOT_X[index]), 0.0, 0.0)
+	return Vector3(world_x(float(Tuning.HERO_SLOT_X[index])), 0.0, 0.0)
 
 ## Works for any enemy count (spec 7.3).
 func enemy_slot_x(index: int, total: int) -> float:
 	if total <= 1:
-		return (Tuning.ENEMY_X_MIN + Tuning.ENEMY_X_MAX) * 0.5     # 3.2
-	return Tuning.ENEMY_X_MIN \
-		+ (Tuning.ENEMY_X_MAX - Tuning.ENEMY_X_MIN) * (float(index) / float(total - 1))
+		return world_x((Tuning.ENEMY_X_MIN + Tuning.ENEMY_X_MAX) * 0.5)
+	return world_x(Tuning.ENEMY_X_MIN \
+		+ (Tuning.ENEMY_X_MAX - Tuning.ENEMY_X_MIN) * (float(index) / float(total - 1)))
+
+## An authored battlefield x, placed in the squeezed world.
+func world_x(authored: float) -> float:
+	return authored * Tuning.BATTLEFIELD_SCALE
 
 func set_scroll_speed(value: float) -> void:
 	parallax.scroll_speed = value

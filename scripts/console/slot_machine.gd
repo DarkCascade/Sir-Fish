@@ -21,7 +21,12 @@ var _home_position: Vector2
 @onready var cabinet: Panel = $Cabinet
 @onready var payline: ColorRect = $Payline
 @onready var banner: Label = $Banner
+@onready var arrow_left: ColorRect = $PaylineArrowLeft
+@onready var arrow_right: ColorRect = $PaylineArrowRight
 @onready var confetti: GPUParticles2D = $Confetti
+
+const CABINET_MARGIN := 20.0     # cabinet inset from the band's top and bottom
+const WINDOW_MARGIN := 80.0      # reel window inset from the band's top and bottom
 
 func _ready() -> void:
 	_home_position = position
@@ -31,6 +36,33 @@ func _ready() -> void:
 	EventBus.combat_started.connect(_on_combat_started)
 	EventBus.combat_ended.connect(_on_combat_ended)
 	EventBus.hero_damage_dealt.connect(_on_hero_damage_dealt)
+
+## Re-lays the cabinet for a band of `h` pixels, so the console can be given more
+## or less room without a second authored slot machine (spec 17.4). The window
+## always shows exactly three cells; everything else is measured from the centre.
+func apply_height(h: float) -> void:
+	custom_minimum_size = Vector2(1080, h)
+	size = Vector2(1080, h)
+	pivot_offset = size * 0.5
+	var mid := h * 0.5
+	var window_h := maxf(h - WINDOW_MARGIN * 2.0, 90.0)
+
+	cabinet.position = Vector2(110, CABINET_MARGIN)
+	cabinet.size = Vector2(860, h - CABINET_MARGIN * 2.0)
+	for i: int in range(_reels.size()):
+		var window := (_reels[i] as Control).get_parent() as Control
+		window.position = Vector2(window.position.x, WINDOW_MARGIN)
+		window.size = Vector2(window.size.x, window_h)
+		var reel = _reels[i]
+		reel.size = Vector2(window.size.x, window_h)
+		reel.set_cell_height(window_h / 3.0)
+
+	payline.position = Vector2(140, mid - 2.0)
+	arrow_left.position = Vector2(116, mid - 12.0)
+	arrow_right.position = Vector2(940, mid - 12.0)
+	banner.size = Vector2(1080, h)
+	# The shake tween returns here, and the console moves us before it calls this.
+	_home_position = position
 
 # --- attract mode (spec 16.6 / Q17) -----------------------------------------
 

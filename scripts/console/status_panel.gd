@@ -1,45 +1,23 @@
 extends PanelContainer
-## Resources row + three hero rows (spec 17.2).
+## The console's resource strip (spec 17.2): Sir Fish, the gold, and the party
+## roster (party_bars.gd) filling the room to their right.
+##
+## Per-hero health is stated exactly once, here. It used to be drawn twice - three
+## 70 px rows in this panel AND a bar over every hero's head - which is what this
+## strip exists to fix.
+##
+## The item chips and the slot wins/spins counter were here too, and are gone:
+## items still work and their effects still land, and the run summary still
+## reports the slot's record at the end (spec 18.2) - neither needed a live
+## readout competing with the cabinet.
 
-const ROW_SCENE := preload("res://scenes/console/hero_status_row.tscn")
 const NUMBER_SCENE := preload("res://scenes/overlay/damage_number.tscn")
 
-var director = null               # BattleDirector (untyped: custom API)
-
 @onready var gold_label: Label = $Layout/ResourceRow/GoldLabel
-@onready var inventory_strip = $Layout/ResourceRow/InventoryStrip
-@onready var rows_box: VBoxContainer = $Layout/HeroRows
-
-var _rows: Array = []
-var _party_buff_active: bool = false
 
 func _ready() -> void:
 	EventBus.gold_changed.connect(_on_gold_changed)
-	EventBus.party_damage_buff_started.connect(func(_d: float) -> void:
-		_party_buff_active = true)
-	EventBus.party_damage_buff_ended.connect(func() -> void:
-		_party_buff_active = false)
 	_update_gold()
-	build_rows()
-
-func build_rows() -> void:
-	for child: Node in rows_box.get_children():
-		child.queue_free()
-	_rows.clear()
-	for entry: Dictionary in GameState.hero_runtime:
-		var stats := GameState.get_stats(entry["stats_id"])
-		if stats == null:
-			continue
-		var row = ROW_SCENE.instantiate()
-		rows_box.add_child(row)
-		row.setup(stats)
-		_rows.append(row)
-
-func _process(_delta: float) -> void:
-	if director == null:
-		return
-	for i: int in range(mini(_rows.size(), director.heroes.size())):
-		_rows[i].refresh(director.heroes[i], _party_buff_active)
 
 func _update_gold() -> void:
 	gold_label.text = str(GameState.gold)
