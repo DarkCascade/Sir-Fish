@@ -24,6 +24,16 @@ var _shake_time: float = 0.0
 var _shake_duration: float = 0.0
 var _shake_amount: float = 0.0
 
+## Depth fog is enforced here rather than trusted to the .tscn's inline
+## Environment default, same reason main_layout.gd enforces cam.keep_aspect
+## instead of leaving it authored: the number that matters lives in Tuning,
+## and the scene file's own value is only ever a rough starting point for
+## whoever is eyeballing it in the editor.
+func _ready() -> void:
+	var env := world_environment.environment
+	env.fog_depth_begin = Tuning.FOG_DEPTH_BEGIN
+	env.fog_depth_end = Tuning.FOG_DEPTH_END
+
 func _process(delta: float) -> void:
 	if _shake_time <= 0.0:
 		return

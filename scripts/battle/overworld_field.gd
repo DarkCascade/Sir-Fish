@@ -44,6 +44,7 @@ var _lane: float = Tuning.PARTY_ANCHOR.dot(Tuning.RUN_DIR.cross(Vector3.UP).norm
 func _ready() -> void:
 	_build_ground()
 	_build_scatter()
+	_build_backdrop()
 
 func _process(delta: float) -> void:
 	if is_zero_approx(scroll_speed):
@@ -135,6 +136,16 @@ func _build_scatter() -> void:
 ## One palette entry per distinct source mesh is also where the variety comes
 ## from: the brush tile alone ships twelve different bush spheres and the
 ## ground tile seven different rocks.
+##
+## `material` reads get_surface_override_material(0), which is null for every
+## prop this file uses - none of the source .glbs were ever imported with a
+## per-instance override, they carry their colour as the MESH RESOURCE's own
+## surface material instead (set in Blender, arrives on the mesh, not the
+## node). It is kept as a field anyway rather than dropped, since a future
+## source asset that DOES carry an override should still be picked up here
+## without this function needing to change. _add_group() already guards on
+## it being non-null before using it, and _hazed() (the backdrop's material
+## tint) reads straight off the mesh resource instead for exactly this reason.
 func _palette(scene: PackedScene, prefix: String) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
 	var root := scene.instantiate()
@@ -229,6 +240,91 @@ func _spot(rand: RandomNumberGenerator, clearance: float = -1.0) -> Variant:
 func _place(spot: Vector2, yaw: float, prop_scale: Vector3) -> Transform3D:
 	var origin: Vector3 = _perp * spot.x + Tuning.RUN_DIR * spot.y
 	return Transform3D(Basis(Vector3.UP, yaw).scaled(prop_scale), origin)
+
+# --- background dressing -------------------------------------------------------
+
+## A ring of trees well outside the play area - cheap atmospheric-perspective
+## filler for the gap between the last foreground tree and the sky (see
+## Tuning.FIELD_TREES_BACKDROP's comment for the full reasoning). A full
+## radial ring, not a band ahead along RUN_DIR, so it still frames the shot
+## correctly no matter which way the camera ends up facing.
+##
+## Centred on the CAMERA's ground position, not the world origin - the two
+## are about 24 units apart with BattleCamera at (-14, 9, 17), and a ring
+## centred on the origin let some instances land as little as MIN_RADIUS
+## minus that 24 units from the camera, well inside "near," while pre-tinted
+## as if they were far. Centring on the camera is what makes MIN/MAX_RADIUS
+## actually mean "this far from the thing doing the looking."
+##
+## Deliberately not appended to _groups: this is the one part of the field
+## that never scrolls. See Tuning.FIELD_TREES_BACKDROP for why that is
+## correct rather than an oversight (the camera itself never moves in this
+## scene - the near scatter slides under it instead).
+func _build_backdrop() -> void:
+	var palette := _palette(TREE_PROP, "Env_Tree")
+	if palette.is_empty():
+		return
+
+	var cam := get_parent().get_node_or_null("BattleCamera") as Camera3D
+	var center: Vector3 = Vector3(cam.position.x, 0.0, cam.position.z) if cam != null \
+		else Vector3.ZERO
+
+	var rand := RandomNumberGenerator.new()
+	# A seed distinct from FIELD_SCATTER_SEED, or every backdrop tree would
+	# land at whatever angle the near scatter's first few rolls happened to
+	# produce - correlating two rings that are meant to read as unrelated.
+	rand.seed = Tuning.FIELD_SCATTER_SEED + 1
+	var placements: Array[Transform3D] = []
+	for _i: int in range(Tuning.FIELD_TREES_BACKDROP):
+		var angle := rand.randf_range(0.0, TAU)
+		var radius := rand.randf_range(
+			Tuning.FIELD_BACKDROP_MIN_RADIUS, Tuning.FIELD_BACKDROP_MAX_RADIUS)
+		var origin := center + Vector3(cos(angle), 0.0, sin(angle)) * radius
+		var s: float = 1.0 + rand.randf_range(-Tuning.TREE_SCALE_JITTER, Tuning.TREE_SCALE_JITTER)
+		placements.append(Transform3D(
+			Basis(Vector3.UP, rand.randf_range(0.0, TAU)) \
+				.scaled(Vector3(s, s * rand.randf_range(0.94, 1.10), s)),
+			origin))
+
+	for entry: Dictionary in palette:
+		var xforms: Array = []
+		for p: Transform3D in placements:
+			xforms.append(p * (entry["local"] as Transform3D))
+		if xforms.is_empty():
+			continue
+		var mesh: Mesh = entry["mesh"]
+		var mm := MultiMesh.new()
+		mm.transform_format = MultiMesh.TRANSFORM_3D
+		mm.mesh = mesh
+		mm.instance_count = xforms.size()
+		for i: int in range(xforms.size()):
+			mm.set_instance_transform(i, xforms[i])
+		var mmi := MultiMeshInstance3D.new()
+		mmi.multimesh = mm
+		mmi.material_override = _hazed(mesh.surface_get_material(0))
+		mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		add_child(mmi)
+
+## A duplicate of a tree part's own material, pulled toward the sky/fog colour
+## by Tuning.FIELD_BACKDROP_TINT. Real-time depth fog alone still leaves the
+## NEAREST instances in this ring looking as saturated as a foreground tree -
+## fog reads current camera distance, not "which ring this was planted in" -
+## so this pre-tint is what marks the whole ring as far even for the trees
+## fog has barely touched yet.
+##
+## `mat` comes straight off the mesh RESOURCE (surface_get_material), not off
+## a MeshInstance3D override - env_tree.glb's parts carry their material this
+## way (see _palette()'s own note on why `entry["material"]` is always null
+## for every prop in this file), so this is the one place in the field that
+## reads a material from that side of the API.
+func _hazed(mat: Material) -> Material:
+	if not (mat is BaseMaterial3D):
+		var fallback := StandardMaterial3D.new()
+		fallback.albedo_color = Tuning.C_HORIZON_HAZE
+		return fallback
+	var copy := (mat as BaseMaterial3D).duplicate() as BaseMaterial3D
+	copy.albedo_color = copy.albedo_color.lerp(Tuning.C_HORIZON_HAZE, Tuning.FIELD_BACKDROP_TINT)
+	return copy
 
 func _add_group(entry: Dictionary, xforms: Array, shadows: bool) -> void:
 	var mm := MultiMesh.new()

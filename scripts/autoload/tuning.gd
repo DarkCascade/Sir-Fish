@@ -355,6 +355,55 @@ const TREE_SCALE_JITTER := 0.22           # +/- fraction on each planted tree
 ## something closer to top-down.
 const TREE_CLEAR_EXTRA := 3.0
 
+## [overworld prototype] Depth fog, applied at runtime by battle_world.gd
+## rather than left as the .tscn's inline Environment sub-resource default -
+## same pattern main_layout.gd already uses for cam.keep_aspect, and it means
+## these two numbers live in the one file every other tuned constant does.
+##
+## Pulled in hard for the low chase-cam angle (BattleCamera at roughly
+## position (-14, 9, 17), rotation (-15, -42, 0)). The old values (38 / 96)
+## were sized for a steeply-overhead camera, where "depth" mostly meant
+## distance straight down; looking nearly along the ground instead, the
+## party itself sits at a view-depth of about 20, so fog has to start past
+## that (never fog the party) and reach full well short of the far clip, or
+## the horizon stays hard-edged no matter how much background art sits out
+## there. FIELD_BACKDROP_MIN/MAX_RADIUS below are deliberately chosen to fall
+## inside this range, so the far treeline actually fades rather than either
+## standing out crisp or being fully invisible.
+const FOG_DEPTH_BEGIN := 16.0
+const FOG_DEPTH_END := 55.0
+
+## A second, non-scrolling ring of trees well outside the play area, sparser
+## and colour-shifted toward the fog - cheap atmospheric perspective for the
+## gap between the last foreground tree and the sky that the low chase-cam
+## angle opened up (a steep overhead view never showed enough horizon for
+## this to matter). Placed in a full radial ring around the origin, not just
+## ahead along RUN_DIR, so it still reads correctly if the camera gets
+## rotated again.
+##
+## Deliberately NOT part of the scrolling scatter (OverworldField._groups):
+## the camera itself never moves in this scene (the field slides under it
+## instead - see OverworldField's own header), so a backdrop this far out
+## has no perceptible parallax to sell and tiling logic would be pure
+## overhead for zero visible benefit.
+const FIELD_TREES_BACKDROP := 70
+const FIELD_BACKDROP_MIN_RADIUS := 40.0    # just past the near scatter's own reach
+const FIELD_BACKDROP_MAX_RADIUS := 62.0    # inside FOG_DEPTH_END, so it still fades in rather than never being visible at all
+## How far toward the fog colour a backdrop tree's own material is pre-tinted,
+## on top of whatever real-time depth fog it also picks up at render time -
+## real fog alone (which reads current depth, not placement) still leaves a
+## backdrop tree at the NEAR edge of the ring looking as saturated as a
+## foreground one; this pre-tint is what marks the whole ring as "far" even
+## for the instances fog has barely touched yet.
+const FIELD_BACKDROP_TINT := 0.55
+## Matches the sky/fog colours already authored in battle_world.tscn's
+## ProceduralSkyMaterial.sky_horizon_color and Environment.fog_light_color.
+## Kept as its own constant instead of read live off the WorldEnvironment
+## sibling node, so OverworldField never has to reach outside itself to
+## build a backdrop material - if the sky colour is ever re-authored, update
+## this to match by eye at the same time.
+const C_HORIZON_HAZE := Color(0.729412, 0.858824, 0.921569)
+
 # --- 5.9 Health chunk [v3.5 D6] ---------------------------------------------
 const CHUNK_FLING_X := 45.0               # was an inline +/-90 in floating_health_chunk.gd
 const CHUNK_FLING_Y_MIN := 25.0           # was 50
