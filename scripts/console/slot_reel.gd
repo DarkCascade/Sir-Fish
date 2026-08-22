@@ -41,6 +41,15 @@ func _resize_cells() -> void:
 	for cell: SlotSymbol in _cells:
 		cell.size = Vector2(w, cell_h)
 		cell.pivot_offset = cell.size * 0.5
+		# Same shrink as the cabinet around it (Tuning.SLOT_CABINET_SCALE), and
+		# for the same reason: each glyph was filling its cell edge to edge.
+		# This shrinks around the cell's own centre, so _layout()'s per-cell
+		# `position` (spaced at the full, unscaled cell_h) still stacks the
+		# reel correctly - only the glyph inside each slot gets smaller, with
+		# visible padding above and below it. slot_machine.gd's win pulse
+		# tweens this same property on the payline cell and has to rest here,
+		# not at Vector2.ONE - see the comment at that call site.
+		cell.scale = Vector2.ONE * Tuning.SLOT_CABINET_SCALE
 		cell.queue_redraw()
 
 func _process(delta: float) -> void:

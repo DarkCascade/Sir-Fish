@@ -10,17 +10,6 @@ extends Control
 
 const SHAKE_PIXELS := 4.0
 
-## The cabinet was reading as too dominant against the rest of the console
-## (the strip and the tray are compact; the cabinet filled its whole band edge
-## to edge). Applied as a uniform Control.scale around the band's own centre,
-## so it just adds even padding on all four sides rather than re-deriving
-## every offset in apply_height() and slot_machine.tscn at a second scale.
-##
-## _celebrate()'s win punch also animates `scale` (a 5% pop on a 3-of-a-kind),
-## and its rest pose has to be CONTENT_SCALE now, not Vector2.ONE - tweening
-## back to ONE would permanently undo this shrink after the first such win.
-const CONTENT_SCALE := 0.82
-
 var director = null               # BattleDirector (untyped: custom API)
 
 var _reels: Array = []
@@ -72,7 +61,7 @@ func apply_height(h: float) -> void:
 	arrow_left.position = Vector2(116, mid - 12.0)
 	arrow_right.position = Vector2(940, mid - 12.0)
 	banner.size = Vector2(1080, h)
-	scale = Vector2.ONE * CONTENT_SCALE
+	scale = Vector2.ONE * Tuning.SLOT_CABINET_SCALE
 	# The shake tween returns here, and the console moves us before it calls this.
 	_home_position = position
 
@@ -229,10 +218,16 @@ func _celebrate(symbol: int, count: int) -> void:
 			continue
 		var cell: Variant = reel.payline_cell()
 		cell.pivot_offset = cell.size * 0.5
+		# Rest pose is Tuning.SLOT_CABINET_SCALE, not Vector2.ONE - every cell
+		# is scaled down permanently now (see slot_reel.gd's _resize_cells()),
+		# and tweening back to ONE here would snap just THIS cell back to full
+		# size the first time its symbol wins, leaving it visibly bigger than
+		# its neighbours for good.
+		var cell_rest := Vector2.ONE * Tuning.SLOT_CABINET_SCALE
 		var tw: Tween = cell.create_tween()
-		tw.tween_property(cell, "scale", Vector2(1.30, 1.30), 0.175) \
+		tw.tween_property(cell, "scale", cell_rest * 1.30, 0.175) \
 			.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-		tw.tween_property(cell, "scale", Vector2.ONE, 0.175)
+		tw.tween_property(cell, "scale", cell_rest, 0.175)
 
 	var flash := create_tween().set_loops(2)
 	flash.tween_property(payline, "color", Tuning.C_TEXT, 0.09)
@@ -249,10 +244,11 @@ func _celebrate(symbol: int, count: int) -> void:
 		confetti.restart()
 		confetti.emitting = true
 		pivot_offset = size * 0.5
-		# Rest pose is CONTENT_SCALE, not Vector2.ONE - the cabinet is scaled
-		# down permanently now (see that constant), and tweening back to ONE
-		# here would undo the shrink for good the first time this fires.
-		var rest := Vector2.ONE * CONTENT_SCALE
+		# Rest pose is Tuning.SLOT_CABINET_SCALE, not Vector2.ONE - the cabinet
+		# is scaled down permanently now (see that constant), and tweening
+		# back to ONE here would undo the shrink for good the first time this
+		# fires.
+		var rest := Vector2.ONE * Tuning.SLOT_CABINET_SCALE
 		var punch := create_tween()
 		punch.tween_property(self, "scale", rest * 1.05, 0.125) \
 			.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)

@@ -184,6 +184,26 @@ const SLOT_LIGHTNING_FALLBACK := 12       # used if fewer than 1 hero strike rec
 const SLOT_ATTRACT_SPEED := 0.15          # fraction of spin speed while drifting
 const SLOT_ATTRACT_DIM := Color(0.78, 0.78, 0.82)   # [v2] was Color(0.55, 0.55, 0.62)
 
+## [overworld prototype] The cabinet read as crowded edge to edge, so the
+## whole thing is shrunk around its own centre (slot_machine.gd's
+## apply_height sets Control.scale from this), which pads it off from the
+## rest of the console. That shrink is a single transform on the SlotMachine
+## root, so every child - cabinet, reel windows, glyphs - already gets
+## smaller on screen as a side effect; it does NOT, on its own, add any
+## padding INSIDE a cell around its own glyph, since a glyph's size is drawn
+## as a fixed fraction of its cell (slot_symbol.gd's BOX_FRACTION) and the
+## cell shrinks right along with it. Applying this SAME factor again, inside
+## _draw(), on top of BOX_FRACTION is what gives each glyph breathing room
+## within its own cell rather than filling it corner to corner.
+##
+## Both places that use this also animate the exact property it scales
+## (SlotMachine.scale for a 3-of-a-kind win punch; SlotSymbol.scale for a
+## payline win pulse) and both tween back to a literal Vector2.ONE at rest -
+## which would silently erase this shrink the first time either fires. Their
+## rest values are SLOT_CABINET_SCALE now, not ONE; see the comments at each
+## call site before changing either.
+const SLOT_CABINET_SCALE := 0.82
+
 # --- 5.7 Upgrades [v2] ------------------------------------------------------
 const UPGRADE_MAX_LEVEL := 3
 const UPGRADE_COST_GROWTH := 1.9          # cost(n) = round(base x 1.9^(n-1))
