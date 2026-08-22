@@ -194,7 +194,7 @@ func _celebrate(symbol: int, count: int) -> void:
 	flash.tween_property(payline, "color", Tuning.C_TEXT, 0.09)
 	flash.tween_property(payline, "color", Tuning.C_DANGER, 0.09)
 
-	banner.text = "%s x%d" % [SlotSymbol.label_for(symbol), count]
+	banner.text = SlotSymbol.result_text(symbol, count)
 	banner.modulate.a = 0.0
 	var btw := create_tween()
 	btw.tween_property(banner, "modulate:a", 1.0, 0.12)

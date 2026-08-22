@@ -73,3 +73,22 @@ static func label_for(sym: int) -> String:
 		Tuning.Sym.GOLD: return "GOLD"
 		Tuning.Sym.PLUS: return "HEAL"
 		_: return "BLANK"
+
+static func result_text(sym: int, count: int) -> String:
+	match sym:
+		Tuning.Sym.LIGHTNING:
+			if count >= 3:
+				return "More Lightning"
+			else:
+				return "Lightning"
+		Tuning.Sym.GOLD:
+			if count >= 3:
+				return "More Gold"
+			else:
+				return "Gold"
+		Tuning.Sym.PLUS:
+			if count >= 3:
+				return "Heal All"
+			else:
+				return "Heal One"
+		_: return "BLANK"
