@@ -43,9 +43,13 @@ func _process(delta: float) -> void:
 	if cam == null:
 		return
 	for c: Variant in _bars.keys():
+		if not is_instance_valid(c):
+			_bars.erase(c)
+			continue
 		var combatant: Combatant = c
 		var bars: Variant = _bars[c]
-		if not is_instance_valid(combatant) or not is_instance_valid(bars):
+		if not is_instance_valid(bars):
+			_bars.erase(c)
 			continue
 		var world_pos := combatant.bar_world_position()
 		var vp := cam.unproject_position(world_pos)

@@ -124,6 +124,41 @@ const C_FISH_SCALE := Color("4A9BE8")     # [v2] Sir Fish body
 const C_FISH_FIN := Color("3B6FD4")       # [v2] Sir Fish fins
 const C_ROCK := Color("7D8A6B")           # [v3] layer-4 scatter rocks (spec 23.4)
 
+# --- storm mood (M9) ---------------------------------------------------------
+## The palette above is the fair-weather art direction and stays as authored.
+## The storm is a TRANSFORM of it, not a second copy: `storm_tint()` darkens
+## and pulls a colour toward slate, so every layer keeps its relationship to
+## its neighbours and there is still one source of truth per hue.
+##
+## Only the UNSHADED surfaces are tinted in code (the generated parallax layers
+## run `parallax_layer.gdshader`, which ignores lights entirely, so nothing
+## else can darken them). Everything lit - characters, the modelled ground and
+## brush - goes dark on its own once the key and fill lights drop, which is
+## where the rest of the gloom comes from.
+const STORM_SKY := Color("16203A")        # the lowered background colour
+const STORM_SLATE := Color("5A6E96")      # what every hue is pulled toward
+const STORM_DARKEN := 0.50
+const STORM_TINT_MIX := 0.35
+
+## How bright the sky goes at the peak of a lightning flash. Not white: a
+## blown-out white frame reads as a bug, a cold blue-white reads as weather.
+const STORM_SKY_FLASH := Color("6E8CC4")
+
+# --- lightning (M9) ----------------------------------------------------------
+const LIGHTNING_INTERVAL_MIN := 4.5
+const LIGHTNING_INTERVAL_MAX := 11.0
+## Chance a strike is a double - the second bolt lands 0.12-0.30 s later, in a
+## different part of the sky. Real storms rarely flash exactly once.
+const LIGHTNING_DOUBLE_CHANCE := 0.35
+const LIGHTNING_LIGHT_ENERGY := 3.4       # peak of the DirectionalLight3D pulse
+const LIGHTNING_SCREEN_ALPHA := 0.42      # peak of the full-viewport flash
+## Thunder arrives after the light does. The delay is what sells distance, and
+## the shake is the only "sound" this project has - there are no audio assets.
+const LIGHTNING_THUNDER_DELAY_MIN := 0.35
+const LIGHTNING_THUNDER_DELAY_MAX := 0.85
+const LIGHTNING_SHAKE := 0.055
+const LIGHTNING_SHAKE_TIME := 0.55
+
 # --- 5.8 Parallax [v3] -------------------------------------------------------
 const PARALLAX_TILE_COPIES := 3
 const PARALLAX_TILE_WIDTH_PROC := 36.0    # layers 1-3, generated (spec 7.5)
@@ -168,3 +203,8 @@ const STATUS_PANEL_H := 300
 const SLOT_MACHINE_H := 600
 const PARTY_BUTTON_H := 160
 const UPGRADE_TRAY_H := 212
+
+## Fair-weather palette entry -> its storm equivalent (see the block above).
+func storm_tint(color: Color) -> Color:
+	var dark := color.darkened(STORM_DARKEN)
+	return dark.lerp(STORM_SLATE.darkened(STORM_DARKEN), STORM_TINT_MIX)

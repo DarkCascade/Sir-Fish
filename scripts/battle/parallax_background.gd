@@ -34,6 +34,24 @@ func _process(delta: float) -> void:
 			if tile.position.x <= -w:
 				tile.position.x += w * float(Tuning.PARALLAX_TILE_COPIES)
 
+## Lifts every generated layer toward `Tuning.STORM_SKY_FLASH` by `amount`
+## (0 = storm dark, 1 = full flash). The lightning light cannot do this job:
+## these layers are unshaded, so a DirectionalLight3D pulse leaves them
+## completely untouched while everything around them blows out - which reads
+## as the trees being cut out of the sky. Driven by lightning.gd.
+func set_flash(amount: float) -> void:
+	for layer: Node3D in _layers:
+		if not (String(layer.name) in PROC_LAYERS):
+			continue
+		var base: Color = layer.get_meta("storm_color", Color.BLACK)
+		var lit := base.lerp(Tuning.STORM_SKY_FLASH, clampf(amount, 0.0, 1.0))
+		for tile: Node3D in layer.get_children():
+			for mi: Node in tile.get_children():
+				if mi is MeshInstance3D:
+					var mat := (mi as MeshInstance3D).material_override
+					if mat is ShaderMaterial:
+						(mat as ShaderMaterial).set_shader_parameter("layer_color", lit)
+
 ## Puts every tile back where it started (spec 18.3 step 4). Never rebuilds the
 ## meshes - they are deterministic (spec 7.5.3), so rebuilding on every retry
 ## would be pure waste.
@@ -105,7 +123,15 @@ func _build_proc_layer(layer: Node3D, w: float) -> void:
 			return
 	# No outline next_pass on these layers: an inked far hill fights the
 	# flat-silhouette read (spec 7.5.3).
-	var mat := CelMaterials.flat(color)
+	#
+	# The storm tint is applied HERE rather than by darkening the palette
+	# itself: parallax_layer.gdshader is unshaded, so dropping the key and
+	# fill lights - which is what darkens every lit surface in the scene -
+	# does nothing to these three layers. They would stay in full daylight
+	# green while the characters standing in front of them went to dusk.
+	var storm_color := Tuning.storm_tint(color)
+	layer.set_meta("storm_color", storm_color)
+	var mat := CelMaterials.flat(storm_color)
 	for i: int in range(Tuning.PARALLAX_TILE_COPIES):
 		var tile := Node3D.new()
 		tile.name = "Tile%d" % i
@@ -200,20 +226,9 @@ func _populate_env_tile(layer_name: StringName, tile: Node3D) -> void:
 			scene = BRUSH_TILE_SCENE
 		_:
 			return
+	# The prop keeps the materials its .glb ships. Both layers keep the
+	# engine's default shadow casting: layer 4 sits at character depth and
+	# layer 5 must read as the same world, not a flat-silhouette overlay
+	# (spec 23.4).
 	var model := scene.instantiate()
 	tile.add_child(model)
-	_reassign_cel_materials(model)
-
-## Swaps the imported StandardMaterial3D on each mesh part for the cel +
-## outline pairing, reading the colour the .glb already carries rather than
-## hardcoding it here - the same swap combatant_rig.gd's generic loop does
-## for character models (spec 23.3, 6.3). Both layers keep the engine's
-## default shadow casting: layer 4 sits at character depth and layer 5 must
-## read as the same world, not a flat-silhouette overlay (spec 23.4).
-func _reassign_cel_materials(root: Node) -> void:
-	for mi: MeshInstance3D in CelMaterials._all_mesh_instances(root):
-		var albedo := Color.WHITE
-		var src := mi.get_active_material(0)
-		if src is BaseMaterial3D:
-			albedo = (src as BaseMaterial3D).albedo_color
-		mi.material_override = CelMaterials.cel(albedo)

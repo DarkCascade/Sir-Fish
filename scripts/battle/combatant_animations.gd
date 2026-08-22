@@ -25,6 +25,11 @@ const IMPACT_DELAYS := {
 }
 
 static func build(player: AnimationPlayer, stats: CombatantStats) -> void:
+	# Models that ship their own baked action library (the KayKit warrior)
+	# take it first; the GDScript-authored clips below/next door only address
+	# the in-house rig's bone names. See CombatantBakedAnimations.
+	if CombatantBakedAnimations.build_for(player, stats):
+		return
 	if CombatantSkeletonAnimations.build_for(player, stats):
 		return
 	assert(stats.id == &"shadow_monster",

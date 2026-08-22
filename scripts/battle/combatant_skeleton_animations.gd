@@ -24,8 +24,11 @@ extends RefCounted
 
 const DEG := PI / 180.0
 
+## The warrior is absent on purpose: it now runs on the KayKit knight.glb,
+## whose 41-bone armature shares no bone name with the in-house rig every
+## clip below is keyed against. Its clips come from
+## CombatantBakedAnimations, which CombatantAnimations.build() consults first.
 static var SKELETON_PATH := {
-	&"warrior": "Rig/Model/WarriorRig/Skeleton3D",
 	&"ranger": "Rig/Model/RangerRig/Skeleton3D",
 	&"priest": "Rig/Model/PriestRig/Skeleton3D",
 	&"orc_barbarian": "Rig/Model/OrcRig/Skeleton3D",
@@ -42,13 +45,6 @@ static func build_for(player: AnimationPlayer, stats: CombatantStats) -> bool:
 
 	var lib := AnimationLibrary.new()
 	match stats.id:
-		&"warrior":
-			lib.add_animation(&"idle", _humanoid_idle(skel, skel_str))
-			lib.add_animation(&"run", _humanoid_run(skel, skel_str))
-			lib.add_animation(&"attack", _warrior_attack(skel, skel_str))
-			lib.add_animation(&"special", _warrior_special(skel, skel_str))
-			lib.add_animation(&"hurt", _humanoid_hurt(skel, skel_str))
-			lib.add_animation(&"die", _humanoid_die(skel, skel_str))
 		&"ranger":
 			lib.add_animation(&"idle", _humanoid_idle(skel, skel_str))
 			lib.add_animation(&"run", _humanoid_run(skel, skel_str))
@@ -233,32 +229,6 @@ static func _humanoid_die(skel: Skeleton3D, s: String) -> Animation:
 	])
 	_rot_z(a, skel, s, "Arm.L", [[0.0, 0], [0.80, -40]])
 	_rot_z(a, skel, s, "Arm.R", [[0.0, ARM_R_IDLE], [0.80, -25]])
-	return a
-
-# --- warrior (spec 9.1) ---------------------------------------------------
-
-static func _warrior_attack(skel: Skeleton3D, s: String) -> Animation:
-	var a := _new_anim(0.70, false)
-	_rot_z(a, skel, s, "Arm.R", [
-		[0.0, ARM_R_IDLE], [0.18, -110], [0.34, 55], [0.70, ARM_R_IDLE],
-	])
-	_rot_z(a, skel, s, "Root", [[0.0, 0], [0.18, 8], [0.34, -10], [0.70, 0]])
-	_pos_track(a, skel, s, "Root", [
-		[0.0, Vector3(0, 0, 0)], [0.34, Vector3(0.14, 0, 0)], [0.70, Vector3(0, 0, 0)],
-	])
-	_call(a, 0.30, &"_anim_impact")
-	return a
-
-static func _warrior_special(skel: Skeleton3D, s: String) -> Animation:
-	var a := _new_anim(0.55, false)
-	_rot_z(a, skel, s, "Arm.L", [[0.0, 0], [0.25, 75], [0.45, 75], [0.55, 0]])
-	_pos_track(a, skel, s, "Arm.L", [
-		[0.0, Vector3(0, 0, 0)], [0.25, Vector3(0, 0, 0.20)],
-		[0.45, Vector3(0, 0, 0.20)], [0.55, Vector3(0, 0, 0)],
-	])
-	_rot_y(a, skel, s, "Root", [[0.0, 0], [0.25, -12], [0.45, -12], [0.55, 0]])
-	_call(a, 0.0, &"_anim_special_cast")
-	_call(a, 0.25, &"_anim_impact")
 	return a
 
 # --- ranger (spec 9.2) -----------------------------------------------------

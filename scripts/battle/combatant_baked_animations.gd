@@ -1,0 +1,151 @@
+class_name CombatantBakedAnimations
+extends RefCounted
+## Retargets the animation clips a character's .glb already ships with onto
+## $Visual/AnimationPlayer, under the six names spec 8.3 requires
+## (idle/run/attack/special/hurt/die).
+##
+## This is the path for third-party models that arrive with a baked action
+## library - the KayKit warrior (knight.glb) is the first. It replaces, for
+## those characters only, the GDScript-authored clips in
+## CombatantSkeletonAnimations: those are keyed against the old in-house
+## 17-bone rig (Root / Arm.R / Thigh.L ...) and cannot address a 41-bone
+## KayKit armature (root / upperarm.r / upperleg.l ...) at all. Characters
+## still on the in-house rig keep using that file unchanged - see
+## CombatantAnimations.build() for the dispatch order.
+##
+## Two things have to be fixed up on the way across, and both are the reason
+## this cannot be a plain `player.add_animation_library(src.get_animation_library(""))`:
+##
+## 1. TRACK PATHS. A clip inside the .glb is authored relative to the .glb's
+##    own AnimationPlayer root (paths like "Rig:hips"). Ours lives on Visual,
+##    which is two nodes higher, so every track path is re-rooted through the
+##    live `visual.get_path_to(imported_root)` rather than a hardcoded prefix -
+##    the .glb's internal node names are the importer's business, not ours.
+##
+## 2. LENGTH. Spec 5.2's "real cycle" is attack_cooldown + the action's
+##    animation length, so a clip's duration is a balance number, not an art
+##    one. Each entry below states the length the combat loop was tuned for
+##    and the key times are scaled to hit it, instead of letting KayKit's
+##    authored durations quietly re-tune the fight.
+##
+## Impacts stay on method-call tracks for the reason CombatantAnimations
+## documents: a call track is a position *in* the animation, so it survives
+## speed_scale and can never drift from the visual.
+
+## clip     - the animation name inside the .glb.
+## length   - the retargeted clip's duration in seconds (spec 5.2, above).
+## loop     - LOOP_LINEAR vs LOOP_NONE.
+## impact   - time of the _anim_impact call track, omitted for clips that
+##            resolve nothing.
+## cast     - time of the _anim_special_cast telegraph flash (spec 9.6).
+const CLIPS := {
+	&"warrior": {
+		# Sword-and-board idle; the knight's default Idle already reads as a
+		# guard stance, so no separate 1H idle is needed.
+		&"idle":    { "clip": "Idle", "length": 1.60, "loop": true },
+		&"run":     { "clip": "Running_A", "length": 0.70, "loop": true },
+		# Chop, not Slice_Diagonal/Horizontal: spec 9.1's primary is an
+		# overhead swing (Arm.R -110 -> 55), and Chop is the one 1H clip
+		# whose arc matches it. Impact stays at 0.30 so the damage number,
+		# the slash arc VFX and the hit flash land on the same frame they
+		# did before the model swap.
+		&"attack":  { "clip": "1H_Melee_Attack_Chop", "length": 0.70, "loop": false,
+			"impact": 0.30 },
+		# Defend (spec 9.1) raises the shield and deals no damage, so Block -
+		# not Block_Attack, which swings. The impact call still fires because
+		# Ability._warrior() applies the defend buff from resolve().
+		&"special": { "clip": "Block", "length": 0.55, "loop": false,
+			"impact": 0.25, "cast": 0.0 },
+		&"hurt":    { "clip": "Hit_A", "length": 0.30, "loop": false },
+		# Death_A over Death_B: 0.80s authored, exactly spec 9's die length,
+		# and it settles into a pose the corpse can hold (see
+		# Combatant._on_animation_finished, which leaves DEAD untouched).
+		&"die":     { "clip": "Death_A", "length": 0.80, "loop": false },
+	},
+}
+
+static func has_clips_for(stats: CombatantStats) -> bool:
+	return CLIPS.has(stats.id)
+
+static func build_for(player: AnimationPlayer, stats: CombatantStats) -> bool:
+	if not CLIPS.has(stats.id):
+		return false
+	var visual: Node = player.get_parent()
+	var rig: Node = visual.get_node_or_null(^"Rig")
+	if rig == null:
+		return false
+	var src := _find_player(rig)
+	assert(src != null,
+		"CombatantBakedAnimations: %s has no imported AnimationPlayer under Visual/Rig" % stats.id)
+	if src == null:
+		return false
+	var src_root: Node = src.get_node(src.root_node)
+	var prefix := String(visual.get_path_to(src_root))
+
+	var lib := AnimationLibrary.new()
+	var specs: Dictionary = CLIPS[stats.id]
+	for anim_name: StringName in specs:
+		var spec: Dictionary = specs[anim_name]
+		var source_name: String = spec["clip"]
+		assert(src.has_animation(source_name),
+			"CombatantBakedAnimations: %s has no clip '%s'" % [stats.id, source_name])
+		if not src.has_animation(source_name):
+			continue
+		lib.add_animation(anim_name, _retarget(src.get_animation(source_name), prefix, spec))
+	if player.has_animation_library(&""):
+		player.remove_animation_library(&"")
+	player.add_animation_library(&"", lib)
+	player.speed_scale = 1.0
+	return true
+
+## The imported AnimationPlayer sits inside the .glb instance under
+## Visual/Rig/Model. Found by search rather than by path for the same reason
+## the track prefix is: the node names inside the .glb belong to the importer.
+static func _find_player(node: Node) -> AnimationPlayer:
+	if node is AnimationPlayer:
+		return node as AnimationPlayer
+	for child: Node in node.get_children():
+		var found := _find_player(child)
+		if found != null:
+			return found
+	return null
+
+static func _retarget(source: Animation, prefix: String, spec: Dictionary) -> Animation:
+	var a: Animation = source.duplicate(true)
+	var target_length: float = spec["length"]
+	var factor := 1.0
+	if a.length > 0.0:
+		factor = target_length / a.length
+
+	for t: int in a.get_track_count():
+		a.track_set_path(t, NodePath("%s/%s" % [prefix, a.track_get_path(t)]))
+		if is_equal_approx(factor, 1.0):
+			continue
+		# Key times must be rewritten in the direction that keeps them
+		# monotonic as they move: shrinking, each key lands before where it
+		# was (walk forward); stretching, after (walk backward). Rewriting a
+		# key past its neighbour re-sorts the track and the next index no
+		# longer refers to the key we think it does.
+		var count := a.track_get_key_count(t)
+		if factor < 1.0:
+			for k: int in count:
+				a.track_set_key_time(t, k, a.track_get_key_time(t, k) * factor)
+		else:
+			for k: int in range(count - 1, -1, -1):
+				a.track_set_key_time(t, k, a.track_get_key_time(t, k) * factor)
+
+	a.length = target_length
+	a.loop_mode = Animation.LOOP_LINEAR if spec.get("loop", false) else Animation.LOOP_NONE
+	if spec.has("cast"):
+		_call(a, float(spec["cast"]), &"_anim_special_cast")
+	if spec.has("impact"):
+		_call(a, float(spec["impact"]), &"_anim_impact")
+	return a
+
+## Method-call track on the Combatant node - same convention as
+## CombatantAnimations._call: the AnimationPlayer's root_node is Visual, so
+## ".." is the Combatant.
+static func _call(a: Animation, time: float, method: StringName) -> void:
+	var t := a.add_track(Animation.TYPE_METHOD)
+	a.track_set_path(t, NodePath(".."))
+	a.track_insert_key(t, time, { "method": method, "args": [] })

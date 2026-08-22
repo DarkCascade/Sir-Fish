@@ -48,6 +48,7 @@ func _run(line: String) -> void:
 		"additem": _cmd_additem(args)
 		"equip": _cmd_equip(args)
 		"parallax": _cmd_parallax(args)
+		"lightning": _cmd_lightning()
 		"bone": _cmd_bone(args)
 		"state": _cmd_state()
 		_: _log("unknown command: %s" % verb)
@@ -282,6 +283,16 @@ func _cmd_parallax(args: Array) -> void:
 ## check is the two-minute assertion that would have caught the M8b blocker
 ## on day one. Permanent, not throwaway: needed again for every rigged
 ## character in M8b and M8c.
+## Forces a lightning strike (spec 7.6). The storm fires on a 4.5-11 s timer,
+## which is longer than anyone wants to wait to see whether a bolt still draws.
+func _cmd_lightning() -> void:
+	var node := get_tree().get_first_node_in_group("storm_lightning")
+	if node == null or not node.has_method("strike_now"):
+		_log("lightning -> no storm in this scene")
+		return
+	node.call("strike_now")
+	_log("lightning -> struck")
+
 func _cmd_bone(args: Array) -> void:
 	if args.size() < 2:
 		_log("bone -> needs <combatant_id> <BoneName>")

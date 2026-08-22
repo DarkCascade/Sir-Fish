@@ -1,27 +1,21 @@
 class_name CombatantRig
 extends RefCounted
-## Reassigns materials on a combatant's Blender-imported model under
-## Visual/Rig/Model (spec 8.2b, 20.4/20.5 - M8a-M8c). All six combatants now
-## have a real model, so this file no longer builds anything from Godot
-## primitives; `build()` is a materials-only pass, safe to redo on every
-## setup() call.
+## Per-character material work on a combatant's Blender-imported model under
+## Visual/Rig/Model (spec 8.2b, 20.5 - M8a-M8c). All six combatants have a
+## real model, so this file builds nothing from Godot primitives; `build()`
+## is a materials-only pass, safe to redo on every setup() call.
 ##
-## Idempotency guard on the generic path is load-bearing, not decorative:
-## Combatant.setup() calls _build() unconditionally on every encounter (not
-## just the first), so this runs again on an already-finalized model.
-## Without the guard, the second pass reads mi.get_active_material(0), which
-## by then returns the FIRST pass's own cel ShaderMaterial override rather
-## than the original imported StandardMaterial3D - so the real albedo is
-## gone and every part goes white (spec 8.2b.2, R18).
+## The blanket rule that every imported surface was reassigned a cel +
+## outline material is gone. Imported models now render with the materials
+## their .glb ships. What remains here is per-character work the .glb cannot
+## carry: the two orcs share one asset and are coloured apart at runtime, the
+## priest's orb needs an emissive material the charge animation drives, and
+## the shadow monster's body needs its translucent smoke material.
 
 static func build(rig: Node3D, stats: CombatantStats) -> void:
-	# The shadow monster's body is the one surface that is not cel-shaded at
-	# all: spec 6.2 is explicit that its translucent smoke material has no
-	# inverted-hull next_pass to depth-test against, so the generic
-	# cel-reassignment loop below would be actively wrong for it. This is
-	# the same art-construction exemption category as the priest's orb
-	# branch further down (spec 4.1) - it dispatches and returns instead of
-	# falling through, because nothing about the generic loop applies.
+	# The shadow monster's body needs its translucent smoke material (spec
+	# 8.6), which the .glb does not carry. Same art-construction exemption
+	# category as the priest's orb branch further down (spec 4.1).
 	if stats.id == &"shadow_monster":
 		_finalize_shadow(rig, stats)
 		return
@@ -31,28 +25,18 @@ static func build(rig: Node3D, stats: CombatantStats) -> void:
 	# shoulder pads and speed_scale, none of which the .glb can encode
 	# since it is the SAME .glb for both characters. Colour therefore has
 	# to come from CombatantStats at runtime here, unlike every other
-	# character below, where the generic loop reads the colour the .glb
-	# already carries. Reading albedo from the .glb for orcs would give
-	# the warlord the barbarian's colours.
+	# character, which simply renders the colours its own .glb carries.
+	# Reading albedo from the .glb for orcs would give the warlord the
+	# barbarian's colours.
 	if stats.id == &"orc_barbarian" or stats.id == &"orc_warlord":
 		_finalize_orc(rig, stats)
 		return
 
-	for mi: MeshInstance3D in CelMaterials._all_mesh_instances(rig):
-		var existing := mi.material_override
-		if existing is ShaderMaterial and (existing as ShaderMaterial).shader == CelMaterials.CEL_SHADER:
-			continue
-		var albedo := Color.WHITE
-		var src := mi.get_active_material(0)
-		if src is BaseMaterial3D:
-			albedo = (src as BaseMaterial3D).albedo_color
-		mi.material_override = CelMaterials.cel(albedo)
-
-	# The priest's orb is the one real-model surface that needs emission
-	# (spec 9.3's charge glow, animated 1.5 -> 5.0 by CombatantSkeletonAnimations
-	# via a plain shader-parameter value track, not a bone track). This is a
-	# one-off art-construction detail on the finished model, not a combat
-	# branch, so it is exempted from spec 4.1's standing rule.
+	# The priest's orb needs emission (spec 9.3's charge glow, animated
+	# 1.5 -> 5.0 by CombatantSkeletonAnimations via a plain shader-parameter
+	# value track, not a bone track), which its imported material cannot
+	# carry. A one-off art-construction detail on the finished model, not a
+	# combat branch, so it is exempted from spec 4.1's standing rule.
 	if stats.id == &"priest":
 		var orb := _find_by_name(rig, "P_Orb") as MeshInstance3D
 		if orb != null:
@@ -110,9 +94,8 @@ static func _recolor(rig: Node3D, part_name: String, color: Color) -> void:
 # --- shadow monster ---------------------------------------------------------
 
 ## The real model (spec 20.5 / M8c) has no armature - its body mesh keeps
-## the translucent smoke material instead of the cel + outline pairing (spec
-## 6.2, 8.6), so it is reassigned here rather than by the generic cel loop
-## above, which would be actively wrong for it. The eyes and the smoke-wisp
+## the translucent smoke material (spec 8.6), which its .glb does not carry,
+## so it is assigned here. The eyes and the smoke-wisp
 ## particles have no Blender equivalent - they are added here as plain
 ## child nodes rather than baked into the imported mesh.
 ##

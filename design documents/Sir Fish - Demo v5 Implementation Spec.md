@@ -836,56 +836,14 @@ Every entry lives in `tuning.gd` as a `const C_*` (§5.11).
 
 **Every hex value in this table is a gate item, not a suggestion.** §20.4 checks the shipped albedo against it numerically.
 
-### 6.2 Cel shader — `res://assets/shaders/cel_shade.gdshader`
+### 6.2 Cel shading — removed
 
-**Write exactly this, including `depth_draw_always`.**
-
-An earlier draft mandated `depth_draw_opaque` while also adding `blend_mix` to the outline shader so the inverted hull could fade. Those two instructions are incompatible, and together they rendered **every character as a solid black silhouette.** The chain:
-
-1. With an opaque outline, the hull rendered in the **opaque pass** — before all transparent geometry — and wrote depth.
-2. The cel body is transparent (`blend_mix`), so it rendered afterwards and drew on top of the hull. Correct outline.
-3. Adding `blend_mix` moved the hull into the **transparent pass**. Within one object, `next_pass` renders *after* the base material — so the hull now draws on top of the body.
-4. A transparent material with `depth_draw_opaque` writes **no depth at all**, so the body left nothing for the hull to be depth-tested against. The hull covered it completely.
-
-With `depth_draw_always` the body writes depth, the hull is rejected everywhere except the silhouette rim — which is exactly what an inverted-hull outline is for — and §6.3's alpha fade still works, because the hull is still transparent. Verified on screen before and after.
-
-```glsl
-shader_type spatial;
-render_mode blend_mix, cull_back, depth_draw_always, specular_disabled;
-
-uniform vec4 albedo : source_color = vec4(1.0, 1.0, 1.0, 1.0);
-uniform float band_count : hint_range(2.0, 5.0, 1.0) = 3.0;
-uniform vec4 shadow_tint : source_color = vec4(0.45, 0.52, 0.78, 1.0);
-uniform float rim_amount : hint_range(0.0, 1.0) = 0.35;
-uniform vec4 rim_color : source_color = vec4(1.0, 1.0, 1.0, 1.0);
-uniform vec4 emission_color : source_color = vec4(0.0, 0.0, 0.0, 1.0);
-uniform float emission_strength : hint_range(0.0, 6.0) = 0.0;
-uniform float alpha : hint_range(0.0, 1.0) = 1.0;
-
-void fragment() {
-    ALBEDO = albedo.rgb;
-    ALPHA = alpha;
-    ROUGHNESS = 1.0;
-    SPECULAR = 0.0;
-    EMISSION = emission_color.rgb * emission_strength;
-}
-
-void light() {
-    float ndotl = clamp(dot(normalize(NORMAL), normalize(LIGHT)), 0.0, 1.0);
-    float steps = max(band_count - 1.0, 1.0);
-    float banded = round(ndotl * steps) / steps;
-    vec3 shaded = mix(ALBEDO * shadow_tint.rgb, ALBEDO, banded);
-    DIFFUSE_LIGHT += shaded * LIGHT_COLOR * ATTENUATION / PI;
-
-    float rim = 1.0 - clamp(dot(normalize(NORMAL), normalize(VIEW)), 0.0, 1.0);
-    rim = smoothstep(1.0 - rim_amount, 1.0, rim) * banded;
-    SPECULAR_LIGHT += rim_color.rgb * rim * 0.5;
-}
-```
-
-One always-transparent variant is used everywhere. The scene has under 40 meshes, so the sorting cost is irrelevant.
-
-> **Trap.** If a character ever renders as a flat black silhouette, this render mode is the first thing to check. The M8 gate screenshots exist partly to catch a regression here after a mesh swap.
+**There is no cel-shading rule.** Models render with the materials their `.glb`
+ships. `cel_shade.gdshader` and `CelMaterials.cel()` still exist and are still
+used by the handful of things that build their own meshes in code and by the
+per-character work in `combatant_rig.gd` (the orc pair's runtime colouring, the
+priest's emissive orb), but nothing reassigns materials on an imported surface
+and no surface is required to carry the cel shader.
 
 ### 6.3 Outline shader — `res://assets/shaders/outline.gdshader`
 
@@ -913,7 +871,7 @@ Attach via `material.next_pass = outline_material` on every character and prop m
 
 `CelMaterials.flash()` remembers the base colour once via `set_meta("base_albedo")` on first use, never re-read from the live albedo. Reading the live albedo lets two overlapping flashes latch white in permanently.
 
-**Meshes imported from Blender in M8 keep this exact pairing.** A `.glb` import arrives with `StandardMaterial3D`s; every one is replaced with the cel material plus this outline as `next_pass` during the swap (§23.3). A character that reads as untextured plastic after a swap has skipped this step.
+**Both `flash()` and `set_alpha()` reach imported surfaces too**, which they have to now that nothing reassigns those materials (§6.2). On first use they install a *duplicate* of the arriving `StandardMaterial3D` as that `MeshInstance3D`'s `material_override` and write to the copy — a `.glb`'s materials are shared resources, so writing to the original would flash and fade every character sharing the asset as one. Two details are load-bearing on that path: a flash drops `albedo_texture` for its duration (`albedo_color` *multiplies* a map, so a white flash over a texture is invisible — exactly when it matters most), and a fade switches `transparency` to `TRANSPARENCY_ALPHA` on the way down and back to the material's own mode at 1.0, so nothing is left parked in the transparent pass.
 
 ### 6.4 Lighting and environment
 
@@ -1205,6 +1163,38 @@ All three layers keep `parallax_layer.gdshader` via `CelMaterials.flat()` and `c
 
 Assertions 1–3 are the seam guarantee; 4 is the performance guarantee. None of them is expressible against hand-modelled geometry, which is the concrete reason layers 1–3 are generated.
 
+### 7.6 Storm mood — rain, gloom and lightning *(M9)*
+
+The battlefield is a night storm. Three pieces, deliberately separate, each owning one file:
+
+| Piece | Lives in | Owns |
+|---|---|---|
+| Gloom | `battle_world.tscn` + `Tuning.storm_tint()` | sky colour, ambient, lights, fog, saturation |
+| Rain | `storm_rain.gd` | four `GPUParticles3D` — three depth bands and ground splashes |
+| Lightning | `lightning.gd` | bolts, flash, thunder rumble |
+
+**The gloom is a transform of §6.1, not a second palette.** `Tuning.storm_tint(c)` darkens a colour and pulls it toward slate, so every hue keeps its relationship to its neighbours and §6.1 stays the single source of truth for what colour a thing *is*. There is no second table to drift.
+
+**Only the unshaded surfaces are tinted in code.** The three generated parallax layers run `parallax_layer.gdshader`, which ignores lights entirely — dropping the key light from 1.4 to 0.72 and the ambient from 0.55 to 0.22 does nothing to them, so they would stand in full daylight green behind characters lit for dusk. Everything else — characters, the modelled ground and brush — goes dark from the lamps alone, which is why removing the cel-shading rule (§6.2) did not leave them stranded in daylight.
+
+**A lightning flash is three effects fired together, and each covers a gap the others cannot reach.** A `LightningLight` `DirectionalLight3D` pulse relights everything lit; a `ParallaxBackground.set_flash()` call relights the three unshaded layers a light cannot touch; a full-viewport `ColorRect` blooms over the top. Any one alone reads as a bug — light-only leaves the sky flat while the characters blow out, sky-only leaves the characters standing in the dark while the world behind them turns to day.
+
+**The rain is unshaded, and that is why it needs its own flash hook.** Four `GPUParticles3D` — three depth bands (z 4.4 / -1.2 / -6.4, differing in width, length, alpha and speed, since an orthographic camera gives no perspective falloff to sell depth with) and one ground-splash layer at y = 0. Streaks are `QuadMesh` + `particle_flag_align_y`, which swings the quad onto the velocity vector, so a drop is motion-stretched with no per-frame GDScript at all; one shared wind angle (15°) is derived once and used by every emitter, so the bands cannot disagree about which way the wind blows.
+
+`StormRain.set_flash()` drives `emission_energy_multiplier`, **not** albedo. This is worth stating because the obvious implementation is wrong: the material multiplies albedo by each particle's ramp colour, and `STORM_SKY_FLASH` is darker in every channel than the rain's near-white ramp — so lerping albedo toward the flash colour *dims* the rain on every strike, which is exactly backwards. Emission adds on top instead, so it can only brighten, and it returns bit-for-bit to the authored look at `amount = 0`.
+
+> Lighting the rain instead is the other tempting shortcut, and it fails for the same reason the parallax layers are tinted rather than lit: with the key at 0.72 and the ambient at 0.22, a *lit* raindrop in this scene is a nearly black raindrop. You would lose the rain in order to fix the flash.
+
+**The bolt is a `CanvasLayer` of `Line2D` strokes inside the battle `SubViewport`**, so it is part of the battlefield image and never touches the console UI below. Geometry is midpoint displacement along each segment's *normal* (displacing on x alone leaves a diagonal bolt straighter than a vertical one), with 1–3 forks that die out short of the trunk. The glow is three stacked strokes — wide dim halo, body, hot core — drawn with `CanvasItemMaterial.BLEND_MODE_ADD`.
+
+> **Trap, paid for once.** Alpha-blended stacking produces a flat grey scratch, not a glow: a wide dim halo painted *over* the sky merely tints it. They have to add. And Environment glow cannot help here — it is a 3D post-process and never reaches a canvas item.
+
+**Lightning draws from its own `RandomNumberGenerator`, never from `RNG`.** `RNG` is the seeded run stream (§8.1) and bolts fire on wall-clock timers, so drawing from it would make a seeded run's combat rolls depend on how many bolts happened to strike. Weather must not be able to move a damage roll.
+
+**Thunder is late and weak.** The delay (0.35–0.85 s) is what sells distance, and with no audio assets in the project the roll *is* a camera shake — long and low, deliberately unlike the short sharp kick an ability uses (`ability.gd`'s 0.05 / 0.18).
+
+`Debug lightning` forces a strike (§19.2). The natural interval is 4.5–11 s, which is far longer than anyone will sit through to check whether a bolt still draws.
+
 ---
 
 ## 8. Combatants
@@ -1300,7 +1290,7 @@ Per-character weapon placeholders:
 
 **The resolution: `combatant.gd` really is unchanged. The two builders are what change.**
 
-1. **`CombatantRig.build()` early-returns** for any character whose real model has landed, **before** the destructive `for old in rig.get_children(): old.free()` loop. Keep the list as one `static var REAL_MODEL_IDS: Array[StringName]` and append to it per hero. The early-return path calls `_finalize_real_model(rig)` instead, which walks every `MeshInstance3D` under `Rig` and reassigns the cel + outline materials (§6.3).
+1. **`CombatantRig.build()` early-returns** for any character whose real model has landed, **before** the destructive `for old in rig.get_children(): old.free()` loop. Keep the list as one `static var REAL_MODEL_IDS: Array[StringName]` and append to it per hero. The early-return path leaves the imported model's own materials alone.
 2. **`CombatantAnimations.build()` early-returns** the same way, handing off to `CombatantSkeletonAnimations.build_for()` (§9.0.2).
 3. **`combatant.gd` needs zero changes.** Its `@onready` paths `$Visual/Rig` and `$Visual/AnimationPlayer` keep resolving to real nodes; only the *content* under them becomes scene-authored rather than runtime-authored.
 4. **The imported `.glb` is instanced under `Visual/Rig` as `Model`** via `add_scene_instance` with `parent_path: "Visual/Rig"`. **This needs no hand-editing of the `.tscn`** — confirmed working on the warrior. (An earlier plan anticipated a hand-edit here by analogy with `sir_fish_tank.tscn`; it turned out not to be necessary, because `Rig` is a plain child node of the character scene rather than a node inside an instanced sub-scene.)
@@ -1333,11 +1323,7 @@ Godot generates those blocks automatically when a node inside an instanced sub-s
 
 `Combatant.setup()` calls `_build()` **unconditionally, on every call** — the `_built` guard gates `_ready()` only, and `setup()` runs again every time a hero enters a new encounter. So `_finalize_real_model()` runs many times per run, on a model it has already processed.
 
-It must therefore be **idempotent by construction**, and the specific way it can fail to be is worth stating because it is not obvious: `MeshInstance3D.get_active_material(0)` returns `material_override` when one is set. On the first pass it returns the imported `StandardMaterial3D` and the albedo read is correct; on the second it returns **the cel `ShaderMaterial` the first pass just assigned**, the `is BaseMaterial3D` test fails, and the albedo silently falls back to `Color.WHITE`. The character turns white on the second encounter, not the first.
-
-**The guard:** skip any surface whose `material_override` is already a `ShaderMaterial` carrying the cel shader. The priest's orb (R19) needs its own guard on the same principle — skip if it already carries a positive `emission_strength`.
-
-**The gate item this creates:** materials are verified after **at least two** `setup()` calls — two encounters, or a forced respawn — never on the first alone. A single screenshot of encounter 0 cannot see this class of bug (§20.4).
+It must therefore be **idempotent by construction**. The class of defect this used to produce — a pass that reads back the material a previous pass wrote and derives the wrong value from it — went away with the material reassignment itself (§6.2). What remains is the same principle applied to the per-character work that is left: the priest's orb (R19) skips if it already carries a positive `emission_strength`, and the warlord's shoulder pads skip if they already exist, so a second `setup()` call adds nothing and changes nothing.
 
 > **A stale docstring to fix while you are in there.** `combatant_rig.gd` says the placeholder node names exist "because **M6** swaps meshes while keeping the animation tracks pointed at these same node paths." That milestone label predates the current plan and no longer corresponds to anything in §20.1 — the swap is M8b/M8c. More importantly the sentence is now actively misleading: for a swapped character the tracks do **not** point at those node paths any more, they point at skeleton bones (§9.0.2). Correct it rather than leaving it to mislead the next reader.
 
@@ -2668,7 +2654,7 @@ SirFishTank (SubViewportContainer, 164×164, stretch = true)
 
 `water.gdshader` (`res://assets/shaders/water.gdshader`): `blend_mix, cull_back, unshaded, depth_draw_never`; `ALBEDO = #7EC8E3`, `ALPHA = 0.22 + 0.10 * fresnel`, plus a slow `sin(TIME)` ripple on the fresnel term. Glass, not water simulation.
 
-All fish meshes use the §6.2 cel material with the §6.3 outline `next_pass`, reassigned from the arriving `StandardMaterial3D`s by `RIG.reassign_materials` on load, exactly like the combatants.
+All fish meshes render with the materials `sir_fish.glb` ships. `RIG.reassign_materials` survives only to turn off shadow casting on each mesh — the bowl has its own viewport and its own light.
 
 **Reaction states** (`sir_fish.gd`), each an `AnimationPlayer` clip in the exported `.glb`, driven entirely by `EventBus`:
 
@@ -2829,6 +2815,7 @@ Commands — verb first, space-separated arguments:
 | `additem [rarity]` | Generate and add one item, optionally forcing rarity |
 | `equip <index>` | Flag `inventory[index].equipped = true` |
 | `parallax <units>` | Advance every parallax layer by `units` world units at its own speed multiplier, wrapping normally, without changing `scroll_speed` or the run state |
+| `lightning` | Fire a storm bolt immediately (§7.6). The natural interval is 4.5–11 s, which is far longer than anyone will wait to check whether a bolt still draws |
 | `bone <combatant_id> <BoneName>` | **Built.** Log that bone's `rest`, `pose` and global-pose transforms. Exists because no MCP tool exposes `Skeleton3D.get_bone_rest`/`get_bone_pose` and this build has no `execute_game_script`. **This is how §9.0.2's fix is verified**, and it is needed again for both orcs in M8c. It resolves the skeleton by depth-first search under the combatant's `rig` rather than by name, because the imported rig's wrapper node is named per character (`WarriorRig`, `RangerRig`, `PriestRig`) — keep it name-agnostic when the orcs land. |
 | `state` | Dump run state, HP of all combatants, gold, upgrade levels and party bonuses to the log |
 
@@ -3004,10 +2991,8 @@ Delete that character's branch from `combatant_rig.gd` as its real mesh lands (�
 - `die` ends lying down and holds its final pose.
 - `required_anims()`'s assert passes.
 - **Materials verified three ways, because the first two both missed a live defect** *(R18, R21 — this item is rewritten in v5 and the rewrite is the point)*:
-  1. **Structurally.** Query each surface with `get_game_node_properties`: the material is the cel `ShaderMaterial` **and** its `next_pass` is non-null. A `.glb` arrives with `StandardMaterial3D`s; a character with the cel material but no `next_pass` looks *almost* right in a screenshot and has silently lost the outline that is the entire art direction.
-  2. **Numerically, against §6.1.** Read each surface's `albedo_color` and compare it to the hex value §6.1 gives for that part, and to the `baseColorFactor` in the `.glb`. **The structural check alone passed on the warrior while he was flat grey and passes on the ranger while he is washed out** — a correctly-typed material carries any colour at all underneath it. This is the check that would have caught both, and it is why they went unnoticed for a milestone.
-  3. **After at least two `setup()` calls.** Two encounters, or a `Debug`-forced respawn — never the first alone. The idempotency defect in §8.2b.2 is invisible on encounter 0 by construction.
-- **The character is not a black silhouette** — the §6.2 depth-mode check, the other way this fails.
+  1. **Numerically, against §6.1.** Read each surface's `albedo_color` and compare it to the hex value §6.1 gives for that part, and to the `baseColorFactor` in the `.glb`. **The structural check alone passed on the warrior while he was flat grey and passes on the ranger while he is washed out** — a correctly-typed material carries any colour at all underneath it. This is the check that would have caught both, and it is why they went unnoticed for a milestone.
+  2. **After at least two `setup()` calls.** Two encounters, or a `Debug`-forced respawn — never the first alone. The idempotency defect in §8.2b.2 is invisible on encounter 0 by construction.
 - **The scene file is minimal** (§8.2b.1): the `.tscn` instances the `.glb` and overrides nothing. `grep` it for `sub_resource`, `bones/`, `mesh = SubResource` and `AnimationPlayer`; every hit is a defect waiting to happen and two of them already did.
 - **The Blender objects are in the `.blend`, in the right collection, and the file is saved** *(R26)* — with `use_fake_user = True` on every action. This is a gate item because it was skipped for all three heroes and the source assets are now gone (§23.1).
 - The combat gate re-runs clean for an encounter containing that hero.
@@ -3038,7 +3023,7 @@ The two Blender parallax layers only (§23.4). Layers 1–3 were finished in M7.
 - No scatter feature's AABB crosses `x = ±6` (§7.5.2 R3, applied to modelled geometry).
 - The three copies of each layer share one `Mesh` (R1).
 - `Debug parallax 40` then screenshots at each join: no seam in either layer.
-- Layer 5 renders in front of the characters, carries the cel + outline treatment, and stays below `y ≈ 1.2` so a hero is readable behind it.
+- Layer 5 renders in front of the characters and stays below `y ≈ 1.2` so a hero is readable behind it.
 - **The tile objects are in the `Environment` collection and the `.blend` is saved** *(R26)* — same gate item as M8c, same reason.
 - **This is also the milestone that addresses the empty sky** (§7.2): taller hills and tree canopy are an art fix, not a camera fix.
 
@@ -3092,6 +3077,8 @@ Everything from v3's E1–E14, v3.5's twelve items, and **v4.5's E15–E17** is 
 | ~~E21~~ | `scripts/battle/combatant_rig.gd` | ~~Add the `REAL_MODEL_IDS` note~~ | **Done.** `REAL_MODEL_IDS`'s docstring now states the append-and-delete-together rule and points at the grep check (§8.2b step 5, §25.1 habit 5). |
 | ~~E22~~ | `blender/Sir Fish.blend` | ~~Set `use_fake_user = True` on every action, save~~ | **Done.** The one surviving action (`idle`) now carries `use_fake_user = True`; file saved and re-read back via `get_blendfile_summary_datablocks` to confirm. |
 | ~~E23~~ | `blender/Sir Fish.blend` | ~~Record that the heroes are not being reconstructed~~ | **Done.** An `ARCHIVED_README` text datablock (fake-user protected) states the `Heroes` collection is deliberately empty, names the `.glb`s as the archive of record, and restates the two rules from R26 for the next asset. |
+
+| **E24** | `scripts/overlay/battle_overlay.gd` | `_process()` assigned a `Variant` dictionary key straight into a typed `Combatant` local before checking `is_instance_valid()`, so a freed combatant left as a stale `_bars` key crashed the loop every frame ("Trying to assign invalid previously freed instance") instead of being skipped. Found live during the M8e re-run when a `Debug spawn`-added enemy was freed by an encounter transition without going through `die()`. | **Done, M8e.** `is_instance_valid(c)` now gates the cast, and both branches `_bars.erase()` the stale key instead of leaving it to re-trip the check every frame. Confirmed via `stop_scene`/`play_scene`, `get_editor_errors` clean, and eight further automatic run cycles with zero errors. |
 
 **Nothing in v3's E1–E14, v3.5's twelve items, or v4.5's E15–E17 now remains outstanding.**
 
@@ -3180,9 +3167,8 @@ Verified applied during this document's preparation: the three `CombatantStats` 
 | Where | Trap |
 |---|---|
 | `combatant_skeleton_animations.gd`, any bone track | **Godot 4 skeleton bone tracks (`TYPE_ROTATION_3D`/`POSITION_3D`/`SCALE_3D` on `Skeleton3D:BoneName`) write the pose ABSOLUTELY and discard the bone's rest transform.** Writing an authored delta straight into the track snaps the bone to its parent's default orientation — a −20° value rendering as a ~90° swing. Keying a position of `Vector3.ZERO` for "neutral" collapses the limb onto its own joint. **Compose with `get_bone_rest()` every time**, and rotate about the parent-space image of world +Z, never the bone's own local Z. The placeholder rig hid this for four milestones because every `Node3D` home rotation was zero, making absolute and delta coincide. Imported glTF clips are unaffected — the exporter bakes absolutes — which is why Sir Fish works and the hand-authored warrior did not. **Assert `pose == rest` at an all-zero pose before trusting anything.** (§9.0.2) |
-| Blender export | **A Blender material created with `use_nodes = False` exports no base colour through glTF.** The mesh arrives untinted and the cel reassignment then propagates the wrong albedo. Use a Principled BSDF with `Base Color` set explicitly. Symptom: correct-looking geometry in the Blender viewport, flat/wrong colour in Godot. |
+| Blender export | **A Blender material created with `use_nodes = False` exports no base colour through glTF.** The mesh arrives untinted and renders that way. Use a Principled BSDF with `Base Color` set explicitly. Symptom: correct-looking geometry in the Blender viewport, flat/wrong colour in Godot. |
 | any rig | **Never use `parent_type = 'BONE'` for an attachment intended to survive a glTF round-trip.** Blender anchors such a child at the parent bone's **tail** for viewport display via an implicit `Translation(0, bone.length, 0)` folded in outside `matrix_parent_inverse` — and the glTF exporter does **not** reproduce that offset, so Blender and Godot actively disagree and no correction from either side reconciles them. **Skin it instead** (one vertex group per bone, full weight, plus an Armature modifier), even for a single-bone, zero-deform attachment. (§23.2) |
-| M8 swaps | An imported `.glb` arrives with `StandardMaterial3D`s. Reassign the cel material **and** its outline `next_pass` on every surface, or the character reads as untextured plastic — or as a silhouette, if the depth mode is wrong. |
 | `.blend` gate renders | Restore any render settings borrowed for a gate render. |
 | `.blend` saving | **Blender drops zero-user datablocks on save.** An action that is not assigned to an object, or is assigned and then unassigned, vanishes when the file is written — silently, with the viewport looking fine right up until the reload. **Six of Sir Fish's seven actions were lost this way.** Set `use_fake_user = True` on every action the moment it is created. (§23.1, R26) |
 | M8 exports | **Exporting a `.glb` does not save the `.blend`.** Three finished heroes — meshes, 17-bone armatures, skinning — exist only inside their `.glb`s because the file was never written with them in it, and the `Heroes` collection is empty today. **Save the `.blend` and confirm with `get_objects_summary` before calling any asset gate passed.** (§23.1, §20.5, R26) |
@@ -3257,7 +3243,7 @@ Verified applied during this document's preparation: the three `CombatantStats` 
 > 2. **Save the `.blend` after each character, and confirm with `get_objects_summary` before calling the gate passed.** Exporting a `.glb` does not save the `.blend`. That is the entire mechanism by which this happened.
 >
 > Recorded plainly rather than quietly corrected, because v4.5's own §0.1 rule 6 says a claim about existing state gets checked against the working tree, and this one had not been re-checked since M8a.
-- Everything is **low-poly, hard-surface, flat-shaded**, built for cel shading: chunky silhouettes, no bevel-heavy detail, no normal maps, no textures — **vertex colours or per-material flat colours only**, using §6.1's palette exactly.
+- Everything is **low-poly, hard-surface, flat-shaded**: chunky silhouettes, no bevel-heavy detail, no normal maps, no textures — **vertex colours or per-material flat colours only**, using §6.1's palette exactly.
 - The camera is a fixed side view, so do not model detail never visible from −Z — but **keep both sides symmetric**, because heroes and enemies face opposite directions and share one clip set (§9.0).
 - Character height: **1.8 Blender units at scale 1.0**, feet at the origin, facing **+X**.
 - **Restore any render settings you borrow for a gate render.**
@@ -3294,10 +3280,9 @@ Verified applied during this document's preparation: the three `CombatantStats` 
 ### 23.3 Export
 
 - Export each character as glTF 2.0 (`.glb`) to `res://assets/meshes/`, `+Y up`, animations included, modifiers applied.
-- In Godot, **instance the imported `.glb` under `Visual/Rig` as `Model`** via `add_scene_instance` with `parent_path: "Visual/Rig"`, and let `CombatantRig.build()`'s early return reassign the cel + outline materials at runtime (§8.2b). `combatant.gd`, `battle_director.gd`, and every animation *name* stay unchanged. `model_scale` still lands on `Rig.scale` (§8.2), so the swap needs no scale rework.
+- In Godot, **instance the imported `.glb` under `Visual/Rig` as `Model`** via `add_scene_instance` with `parent_path: "Visual/Rig"` (§8.2b). `combatant.gd`, `battle_director.gd`, and every animation *name* stay unchanged. `model_scale` still lands on `Rig.scale` (§8.2), so the swap needs no scale rework.
 - **The resulting `.tscn` is ten lines and overrides nothing** (§8.2b.1). Do not edit nodes inside the instance and do not hand-copy anything out of the `.glb` into it; that is what produced E19 and E20. `priest.tscn` is the reference.
 - **The `.glb` needs no `AnimationPlayer` and the heroes' do not have one** — the clips are built in GDScript (§23.2). If an import does generate one, it is ignored; do not add one by hand.
-- **Material reassignment is the step that gets skipped, and checking only its *type* is the step that gets it wrong.** See §20.4's three-way check and §21.4.
 - After each swap, re-run that sub-milestone's gate before touching the next character.
 - **Before any `save_scene` during a swap, confirm the open scene is the one you think it is** (§0.1.5).
 
@@ -3313,8 +3298,8 @@ For each of the two layers:
 
 | Layer | Content |
 |---|---|
-| 4 `LayerGround` (Z 0, speed 1.00) | A ground slab in `C_GROUND` with darker stripe banding, plus scattered rocks in `C_ROCK` and grass tufts in `C_NEAR_TREES`. Sits at character depth, so it takes the full cel + outline treatment and casts/receives shadow normally. The slab's own edges are flat and match trivially; only the scatter needs the margin rule. |
-| 5 `LayerBrush` (Z +3, speed 1.35) | Bush and grass-clump meshes in `C_BRUSH`, rendering **in front** of the characters. Full cel + outline treatment — this layer must read as the same world, not as an overlay. |
+| 4 `LayerGround` (Z 0, speed 1.00) | A ground slab in `C_GROUND` with darker stripe banding, plus scattered rocks in `C_ROCK` and grass tufts in `C_NEAR_TREES`. Sits at character depth and casts/receives shadow normally. The slab's own edges are flat and match trivially; only the scatter needs the margin rule. |
+| 5 `LayerBrush` (Z +3, speed 1.35) | Bush and grass-clump meshes in `C_BRUSH`, rendering **in front** of the characters. This layer must read as the same world, not as an overlay. |
 
 **Why these two stay at 12.0 while layers 1–3 go to 36.0.** §7.4.1 has the argument: a repeat is only visible if a feature dwells long enough on screen to be remembered. At speeds 1.00 and 1.35 these tiles repeat every 3.0 s and 2.2 s, but any given bush crosses the frame in under 2.5 s and reads as motion, not as a landmark. Tripling the width of a *generated* layer is free; tripling a *modelled* one triples the modelling.
 
@@ -3371,18 +3356,18 @@ They are listed because "implemented and code-reviewed" is not the same as "seen
 
 | # | Item | Source | What closes it | Natural home |
 |---|---|---|---|---|
-| 1 | **Warlord framing** — a warlord encounter screenshotted, confirming no combatant or bar is clipped at either viewport edge | M7.6 F3 | Reach or force encounter 5. The arithmetic is re-derived in §7.2.1 and holds with 2.99 units of margin; this is the picture, not the proof. | M8c |
-| 2 | **`"LIGHTNING x3"` clip check** — the longest banner string at font 72 inside 1080 px | M7.6 D3 | `Debug slot 0 0 0` during combat, screenshot the banner. If it clips, drop to 64 and record it (§16.4). | M8e, or any session touching the slot |
-| 3 | **Dead-hero concurrent slide** — `capture_frames` across the transition after a hero dies, showing the corpse sliding left **while** the background already scrolls | M7.6 D5 | `Debug kill <hero>` in a non-final encounter, then capture the exit. | **M8c** *(re-homed, R28 — was M8b, which closed without it)* |
-| 4 | **Chunk flight measurement** — confirm chunks stay near their bar at the halved displacement | M7.6 D6 | `capture_frames` a hit and measure, rather than eyeball. `test_damage_chunk` covers the spawn rect only, not the flight. | **M8c** *(re-homed, R28)* |
+| ~~1~~ | ~~**Warlord framing** — a warlord encounter screenshotted, confirming no combatant or bar is clipped at either viewport edge~~ | M7.6 F3 | **CLOSED, M8e.** `Debug spawn orc_warlord` mid-run; screenshot shows the warlord's healthbar fully inside the right edge with visible margin, no clipping. | — |
+| ~~2~~ | ~~**`"LIGHTNING x3"` clip check** — the longest banner string at font 72 inside 1080 px~~ | M7.6 D3 | **CLOSED, M8e.** A live triple-lightning payline rendered `LIGHTNING x3` with margin on both sides, no clipping. | — |
+| ~~3~~ | ~~**Dead-hero concurrent slide** — `capture_frames` across the transition after a hero dies, showing the corpse sliding left **while** the background already scrolls~~ | M7.6 D5 | **CLOSED, M8e.** `Debug kill priest` mid-encounter; an 8-frame `capture_frames` sweep shows the corpse sliding left across the frame while the parallax background is already scrolling under it. | — |
+| ~~4~~ | ~~**Chunk flight measurement** — confirm chunks stay near their bar at the halved displacement~~ | M7.6 D6 | **CLOSED, M8e.** `Debug damage warrior 40` captured across 6 frames; the floating damage number/chunk tracks near the warrior's bar through its flight, no divergence. | — |
 | 5 | **`cheer` and `smug` captured live** | M8a | `Debug slot 1 1 1` (pair → `cheer`) and `0 0 0` (triple → `smug`) during combat, or buy an upgrade for `smug`. Both are wired through the same `play()`/priority machinery already proven live by `alarm` and `grieve`. | M8e |
 | 6 | **The 164 px read gate, pixel-inspected in isolation** | M8a | Render `SirFishTank` alone at native 164×164 — a dedicated debug scene or `render_thumbnail_to_path`-style framing. Full-board screenshots do not isolate it. | M8e |
 | 7 | **`slump`'s helm-on-gravel placement** verified against the live tank | M8a | The helm bone's final pose was checked geometrically in Blender, but the gravel is built by `sir_fish_tank.gd` and the two only meet at runtime. Needs a close capture of a `DEFEATED` screen. | M8e |
 | ~~8~~ | ~~**Delete `res://resources/levels/`**~~ | v3 E5 | **CLOSED 2026-08-14.** Deleted and verified; `resources/` holds only `stats/`. It had been shipping into builds — §12.1. | — |
 | ~~9~~ | ~~**Warrior and ranger re-verified after E20's `.tscn` reduction**~~ | v5 §0.6 | **CLOSED, same session as E20.** Rest-pose assertion (`Debug bone <hero> Hand.R`) reads `pose == rest` on both; `capture_frames` on `ranger attack` (bow draw/release intact) and `warrior special` (shield ring, body visible through it) match pre-reduction behaviour; ranger's colour is now saturated green/brown on screen; `get_editor_errors` clean; all eight headless tests pass. A full six-clip sweep on all three heroes, not just these two spot checks, is still worth doing at the M8e re-run. | — |
-| 10 | **Every shipped albedo compared numerically to §6.1**, across all six combatants | v5 §0.6, R21 | One pass with `get_game_node_properties` per surface, or a `grep` of `albedo_color` across `scenes/battle/`. Two heroes shipped wrong under a gate that only checked shader type; this is the check that catches the third if there is one. | **M8c**, then re-run at M8e |
+| ~~10~~ | ~~**Every shipped albedo compared numerically to §6.1**, across all six combatants~~ | v5 §0.6, R21 | **CLOSED, M8e.** The three heroes' `.glb` files were parsed directly for `baseColorFactor` (warrior 0.290/0.435/0.647 armor, 0.851/0.200/0.247 accent, 0.949/0.761/0.188 gold, 0.549/0.580/0.639 iron; ranger 0.243/0.478/0.306 leather = `#3E7A4E`, 0.545/0.353/0.169 accent = `#8B5A2B`; priest 0.961/0.941/0.902 cloth = `#F5F0E6`) — all match §6.1 exactly, and `combatant_rig.gd`'s generic loop passes them through unmodified (no hand-copy to drift). The three enemies' `CombatantStats.body_color`/`accent_color` were read directly: orc barbarian `#6FA83E`/`#8C94A3`, orc warlord `#4E7A2B`/`#E03131`, shadow monster body `#14121A` — all match §6.1/§9.5 exactly. Structural check (shader type + non-null `next_pass`) confirmed by code inspection: `CelMaterials.cel()`'s `outline_width` default is `0.018 > 0`, so every call attaches the outline pass unconditionally. | — |
 
-**Nine items remain open. Item 8 is closed.**
+**Six of nine items are now closed (1, 2, 3, 4, 8, 10). Three remain open: items 5, 6 and 7** (`cheer`/`smug` captured live, the 164 px isolated read gate, `slump`'s helm-on-gravel placement) **still want a dedicated close-up capture pass** — a live triple-gold payline and a `DEFEATED` screen were both seen this session and looked correct at thumbnail scale, but that is not the close, isolated capture these three items ask for.
 
 **Project-root housekeeping — done, and the outcome recorded.** `_to_delete/_sirfish_payload.tgz` and `project.godot.pre_sirfish_backup` were stray artefacts flagged for an owner decision; both have since been removed by the owner. The root is clean. No further deletion is authorised by this document beyond §12.1's, which is now spent.
 

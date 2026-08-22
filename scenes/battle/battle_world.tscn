@@ -2,19 +2,29 @@
 
 [ext_resource type="PackedScene" path="res://scenes/battle/parallax_background.tscn" id="1_parallax"]
 [ext_resource type="Script" uid="uid://cne4kj8xgfg35" path="res://scripts/battle/battle_world.gd" id="2_world"]
+[ext_resource type="PackedScene" path="res://scenes/battle/storm_rain.tscn" id="3_rain"]
+[ext_resource type="Script" path="res://scripts/battle/lightning.gd" id="4_lightning"]
 
 [sub_resource type="Environment" id="env"]
 background_mode = 1
-background_color = Color(0.494, 0.784, 0.89, 1)
+background_color = Color(0.086275, 0.125490, 0.227451, 1)
 ambient_light_source = 2
-ambient_light_color = Color(0.658824, 0.847059, 0.909804, 1)
-ambient_light_energy = 0.55
+ambient_light_color = Color(0.274510, 0.345098, 0.478431, 1)
+ambient_light_energy = 0.22
+fog_enabled = true
+fog_light_color = Color(0.137255, 0.176471, 0.290196, 1)
+fog_light_energy = 1.0
+fog_sky_affect = 0.0
+fog_mode = 1
+fog_depth_begin = 8.0
+fog_depth_end = 34.0
+fog_depth_curve = 1.2
 glow_enabled = true
-glow_intensity = 0.5
-glow_bloom = 0.15
-glow_hdr_threshold = 1.1
+glow_intensity = 0.85
+glow_bloom = 0.35
+glow_hdr_threshold = 0.85
 adjustment_enabled = true
-adjustment_saturation = 1.15
+adjustment_saturation = 0.72
 
 [node name="BattleWorld" type="Node3D" unique_id=1613809176 groups=["battle_world"]]
 script = ExtResource("2_world")
@@ -24,15 +34,21 @@ environment = SubResource("env")
 
 [node name="KeyLight" type="DirectionalLight3D" parent="." unique_id=345915961]
 transform = Transform3D(0.819152, 0, 0.573576, 0.368688, 0.766044, -0.526541, -0.439385, 0.642788, 0.627507, 0, 6, 0)
-light_color = Color(1, 0.952941, 0.839216, 1)
-light_energy = 1.4
+light_color = Color(0.658824, 0.713726, 0.815686, 1)
+light_energy = 0.72
 shadow_enabled = true
 shadow_bias = 0.03
 
 [node name="FillLight" type="DirectionalLight3D" parent="." unique_id=67591685]
 transform = Transform3D(-0.819152, 0, -0.573576, -0.196175, 0.939693, 0.280166, 0.538986, 0.34202, -0.769751, 0, 6, 0)
-light_color = Color(0.607843, 0.784314, 0.960784, 1)
-light_energy = 0.35
+light_color = Color(0.352941, 0.443137, 0.611765, 1)
+light_energy = 0.22
+
+[node name="LightningLight" type="DirectionalLight3D" parent="."]
+transform = Transform3D(-0.906308, 0, 0.422618, 0.211309, 0.866025, 0.453154, -0.365998, 0.5, -0.784886, 0, 6, 0)
+light_color = Color(0.862745, 0.909804, 1, 1)
+light_energy = 0.0
+shadow_enabled = false
 
 [node name="BattleCamera" type="Camera3D" parent="." unique_id=911126898]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.2, 12)
@@ -42,6 +58,11 @@ size = 5.8
 far = 200.0
 
 [node name="ParallaxBackground" parent="." unique_id=1200247927 instance=ExtResource("1_parallax")]
+
+[node name="StormRain" parent="." instance=ExtResource("3_rain")]
+
+[node name="StormLightning" type="CanvasLayer" parent="." groups=["storm_lightning"]]
+script = ExtResource("4_lightning")
 
 [node name="HeroSlots" type="Node3D" parent="." unique_id=996271290]
 

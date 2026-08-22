@@ -4,38 +4,15 @@ extends RefCounted
 ## The body, helm and seven reaction clips are authored in Blender and swapped
 ## in as res://assets/meshes/sir_fish.glb (see sir_fish_tank.tscn's "Model"
 ## child of SirFish). This file now only does the two things the swap still
-## needs from code: reassigning the cel + outline materials (a .glb always
-## arrives with plain StandardMaterial3Ds, spec 23.3) and building the bubble
+## needs from code: turning off shadow casting on the fish's meshes (it sits
+## in its own viewport with its own light, spec 17.7) and building the bubble
 ## burst particle system, which is gameplay VFX and was never part of the mesh.
+## The fish renders in the colours its own .glb carries.
 
-## Node names, by material group, that the Blender rig exports (spec 23.5).
-const FIN_PARTS := ["SirFish_Tail", "SirFish_FinL", "SirFish_FinR", "SirFish_FinTop"]
-const IRON_PARTS := ["SirFish_Helm", "SirFish_HelmSkirt", "SirFish_HelmBrow"]
-const GOLD_PARTS := ["SirFish_Circlet", "SirFish_Crest"]
-const INK_PARTS := ["SirFish_Visor", "SirFish_EyeL", "SirFish_EyeR"]
-const BODY_PARTS := ["SirFish_Body"]
-
-## Reassigns the cel + outline material to every MeshInstance3D under `model`,
-## by node name, matching the palette the placeholder rig used. Skipping this
-## step leaves the fish reading as untextured plastic (spec 23.3's trap).
+## Turns off shadow casting on every MeshInstance3D under `model`.
 static func reassign_materials(model: Node) -> void:
 	for mi: MeshInstance3D in _all_mesh_instances(model):
-		var color := _color_for(mi.name)
-		mi.material_override = CelMaterials.cel(color, Color.BLACK, 0.0, 0.010)
 		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-
-static func _color_for(node_name: String) -> Color:
-	if node_name in FIN_PARTS:
-		return Tuning.C_FISH_FIN
-	if node_name in IRON_PARTS:
-		return Tuning.C_ORC_IRON
-	if node_name in GOLD_PARTS:
-		return Tuning.C_GOLD
-	if node_name in INK_PARTS:
-		return Tuning.C_INK
-	if node_name in BODY_PARTS:
-		return Tuning.C_FISH_SCALE
-	return Tuning.C_FISH_SCALE
 
 static func _all_mesh_instances(root: Node) -> Array[MeshInstance3D]:
 	var out: Array[MeshInstance3D] = []
