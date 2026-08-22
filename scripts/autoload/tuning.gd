@@ -106,10 +106,20 @@ const PARTY_ROW_DEPTH := 1.8              # front rank to back rank
 const PARTY_ROW_SPREAD := 2.0             # gap between the two back-rank heroes
 
 ## The enemy line forms this far up-run from the party leader, spread across
-## RUN_DIR's perpendicular so all three read as a facing rank. Wide enough to
-## put the two sides in opposite corners of a tall frame; melee closes it by
-## blinking, so the gap costs nothing mechanically.
-const ENEMY_DISTANCE := 9.0
+## RUN_DIR's perpendicular so all three read as a facing rank. Melee closes
+## the gap by blinking, so it costs nothing mechanically - it only has to fit
+## the camera's frame.
+##
+## Coupled to BattleCamera's height and fov in battle_world.tscn (currently
+## 14.0 / 34 degrees, both brought down from 21.6 / 26 for a lower, closer
+## vantage point). Bringing the camera down without also pulling the enemy
+## line in would have clipped the back rank - a lower camera at a fixed tilt
+## has more foreground perspective, which needs EITHER a wider fov or a
+## smaller world extent to fit the same subjects. Re-solve both together -
+## project every combatant's world position through the camera transform into
+## NDC and check the worst-case |x|/|y| stays under about 0.85 - rather than
+## nudging one number and eyeballing the other.
+const ENEMY_DISTANCE := 7.0
 const ENEMY_SPREAD := 1.7                 # gap between adjacent enemies
 
 ## Enemies run in from off-screen past the upper-right corner instead of
