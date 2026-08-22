@@ -19,6 +19,9 @@ const COOLDOWN_START_JITTER := 0.10       # +/-10% (spec 21-D2)
 const HURT_ANIM_TIME := 0.30
 const DEAD_HERO_EXIT_TIME := 1.6          # dead heroes slide off the left edge
 const ENCOUNTER_RESOLVE_PAUSE := 0.8      # beat between "cleared" and travel starting
+## [overworld prototype] How long a shop encounter holds on the building when
+## the UI is hidden and there is no modal to open (RunController._run_shop).
+const SHOP_SKIP_HOLD := 1.8
 const AOE_STAGGER := 0.06                 # [v2] gap between per-target resolutions of any AoE
 const DAMAGE_NUMBER_SPREAD := 46.0        # [v2] px offset per concurrent number (spec 11.4)
 
@@ -27,7 +30,14 @@ const WARRIOR_DEFEND_REDUCTION := 0.50    # incoming damage x (1 - 0.50)
 const WARRIOR_DEFEND_DURATION := 4.0
 const RANGER_BOMB_AOE_MULT := 0.75        # bomb arrow hits every enemy for base_damage x 0.75
 const PRIEST_HEAL_MULT := 1.0             # heal = priest current damage x 1.0
-const PRIEST_DARKEN_ENABLED := true       # spec 9.3 - battlefield darkens under the bolt
+## [overworld prototype] Off. Spec 9.3's darkening pass existed to sell a bolt
+## called down out of the sky - the sky dims, then the bolt lands. The priest's
+## primary is an aimed MagicBolt thrown from its hand now, so there is no sky
+## strike left for the dimming to belong to, and on a bright open field a
+## half-second drop to 55% brightness across the whole frame reads as the game
+## glitching rather than as a telegraph. The warning glow on the target, which
+## is the half of the telegraph that points AT something, still fires.
+const PRIEST_DARKEN_ENABLED := false
 const DAMAGE_VARIANCE := 0.15             # every hit rolls damage x randf_range(0.85, 1.15)
 const SPECIAL_CAST_FLASH_TIME := 0.15     # [v2] universal special-cast telegraph (spec 9.6)
 
@@ -90,7 +100,7 @@ const TELEPORT_IN_TIME := 0.15            # reform at the destination
 const TELEPORT_STRIKE_GAP := 1.35         # how far short of the target it lands
 const TELEPORT_GHOSTS := 5                # afterimages left along the path
 const TELEPORT_GHOST_FADE := 0.28
-const TELEPORT_RETURN_DELAY := 0.20       # beat spent at the target after impact
+const TELEPORT_RETURN_DELAY := 0.14       # beat spent at the target after impact
 
 # --- 5.3e Magic bolt [overworld prototype] ----------------------------------
 ## The priest's primary is an aimed bolt now, not a pillar dropped from the

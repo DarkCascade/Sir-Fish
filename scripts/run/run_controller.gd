@@ -148,10 +148,27 @@ func _run_shop(def: EncounterDef) -> void:
 	building.pop_in()
 
 	await get_tree().create_timer(0.4 + 0.45).timeout
+
+	# [overworld prototype] The shop modal is a UI element AND a blocking one:
+	# the encounter resolves only when its close button is pressed. With the
+	# console hidden for camera framing there is nobody to press it, so the
+	# encounter chain would stall here forever and the "ongoing action" the
+	# overworld is meant to show would stop at the first shop. Hold on the
+	# building for a beat instead and move on.
+	if _ui_hidden():
+		await get_tree().create_timer(Tuning.SHOP_SKIP_HOLD).timeout
+		_encounter_resolved()
+		return
+
 	shop_modal.open(def)
 	# The encounter resolves only when the modal's close button is pressed.
 	await shop_modal.closed
 	_encounter_resolved()
+
+## Whether the run is being played with the UI hidden (main_layout.hide_console).
+func _ui_hidden() -> bool:
+	var main := get_parent()
+	return main != null and bool(main.get("hide_console"))
 
 # --- resolution / exit ------------------------------------------------------
 

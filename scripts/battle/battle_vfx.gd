@@ -284,7 +284,7 @@ static func blink_trail(from: Vector3, to: Vector3, color: Color) -> void:
 	if dist < 0.05:
 		return
 
-	var streak := _quad(Vector2(dist, 0.55), Color(color, 0.8))
+	var streak := _quad(Vector2(dist, 0.32), Color(color, 0.75))
 	(streak.material_override as StandardMaterial3D).blend_mode = BaseMaterial3D.BLEND_MODE_ADD
 	w.add_child(streak)
 	streak.global_position = from.lerp(to, 0.5) + Vector3(0, 0.05, 0)
@@ -295,17 +295,34 @@ static func blink_trail(from: Vector3, to: Vector3, color: Color) -> void:
 		0.8, 0.0, Tuning.TELEPORT_GHOST_FADE)
 	stw.chain().tween_callback(streak.queue_free)
 
+	# The afterimages are tapered COLUMNS, not billboarded quads. A flat quad
+	# seen from a camera 55 degrees above it is a hard-edged rectangle lying at
+	# an angle to the streak, and five of them in a row read as a staircase of
+	# glowing boxes rather than as a figure smearing through space. A column has
+	# real form from any angle, and at roughly a character's width and height it
+	# reads as the shape of the person who just left.
 	for i: int in range(Tuning.TELEPORT_GHOSTS):
 		var t := (float(i) + 1.0) / float(Tuning.TELEPORT_GHOSTS + 1)
-		var ghost := _billboard(Vector2(0.85, 1.7), Color(color, 0.55))
+		var body := CylinderMesh.new()
+		body.top_radius = 0.10
+		body.bottom_radius = 0.26
+		body.height = 1.55
+		body.radial_segments = 8
+		body.rings = 1
+		var ghost := MeshInstance3D.new()
+		ghost.mesh = body
+		var gm := _unshaded(Color(color, 0.5))
+		gm.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+		ghost.material_override = gm
+		ghost.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		w.add_child(ghost)
-		ghost.global_position = from.lerp(to, t) + Vector3(0, 0.95, 0)
+		ghost.global_position = from.lerp(to, t) + Vector3(0, 0.80, 0)
 		# Later ghosts hold slightly longer, so the smear resolves toward the
 		# destination instead of collapsing evenly.
 		var life: float = Tuning.TELEPORT_GHOST_FADE * (0.55 + 0.45 * t)
 		var gt := ghost.create_tween().set_parallel(true)
-		gt.tween_method(func(a: float) -> void: _set_alpha(ghost, color, a), 0.55, 0.0, life)
-		gt.tween_property(ghost, "scale", Vector3(0.5, 1.15, 1.0), life)
+		gt.tween_method(func(a: float) -> void: _set_alpha(ghost, color, a), 0.5, 0.0, life)
+		gt.tween_property(ghost, "scale", Vector3(0.45, 1.2, 0.45), life)
 		gt.chain().tween_callback(ghost.queue_free)
 
 # --- priest / slot lightning ------------------------------------------------

@@ -78,13 +78,29 @@ func _apply_offset() -> void:
 ## It deliberately does NOT scroll: a plane of a single flat colour looks
 ## identical at every offset, so moving it would be work with no pixels to show
 ## for it. All the sense of motion comes from the props sliding across it.
+##
+## The material is a plain OPAQUE StandardMaterial3D, and that is load-bearing -
+## do not "make it consistent" by switching it to CelMaterials.cel(). That
+## shader is `blend_mix, depth_draw_always` (see cel_shade.gdshader's own note
+## on why), so anything using it lands in the TRANSPARENT pass. Transparent
+## objects sort back-to-front by their origin, and this plane's origin sits
+## right in the middle of the fight - so a cel-shaded ground draws after, and
+## on top of, every transparent surface whose origin is further away. The
+## shadow monster's smoke shader is `depth_draw_never`, leaving no depth for
+## the plane to test against, so it was painted over completely: eyes visible,
+## body gone. A one-normal plane gets exactly one flat band out of a cel shader
+## anyway, so this costs nothing visually.
 func _build_ground() -> void:
 	var plane := PlaneMesh.new()
 	plane.size = Vector2(200.0, 200.0)
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Tuning.C_GROUND
+	mat.roughness = 1.0
+	mat.specular_mode = BaseMaterial3D.SPECULAR_DISABLED
 	var mi := MeshInstance3D.new()
 	mi.name = "Ground"
 	mi.mesh = plane
-	mi.material_override = CelMaterials.cel(Tuning.C_GROUND, Color.BLACK, 0.0, 0.0)
+	mi.material_override = mat
 	mi.position = Vector3(0, -0.01, 0)      # just under the props, to stop z-fighting
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(mi)

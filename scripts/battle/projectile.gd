@@ -6,6 +6,17 @@ extends Node3D
 const FLIGHT_TIME := 0.55
 const ARC_HEIGHT := 1.6
 
+## [overworld prototype] The arrow's parts are authored at true scale for a
+## side-on camera that filled a 640 px strip with about 10 world units. The
+## overhead camera sits 26 units back, where a 0.55-long shaft is a couple of
+## pixels and the shot simply cannot be read. This scales the whole projectile
+## up so it stays legible.
+##
+## It deliberately does NOT add a trail to the ordinary arrow: spec 9.6 makes
+## "trail or no trail" the thing that tells a bomb arrow from a plain one in
+## flight, and that distinction is worth more than the extra visibility would be.
+const VIEW_SCALE := 1.8
+
 @export var is_bomb: bool = false
 
 var _t: float = 0.0
@@ -61,6 +72,10 @@ func _process(delta: float) -> void:
 	if step.length_squared() > 0.000001:
 		look_at(pos + step, Vector3.UP)
 		rotate_object_local(Vector3.UP, PI * 0.5)
+		# look_at() builds an ORTHONORMAL basis, which throws VIEW_SCALE away.
+		# Re-applying it here keeps the arrow at a readable size; the scale
+		# setter recomposes the basis around the rotation look_at just set.
+		scale = Vector3.ONE * VIEW_SCALE
 
 	if _t >= 1.0:
 		_flying = false
@@ -122,6 +137,7 @@ func _tree_timer(seconds: float) -> void:
 func _build() -> void:
 	for old: Node in get_children():
 		old.free()
+	scale = Vector3.ONE * VIEW_SCALE
 	# The mesh lies along +X so rotation.z aims it along the flight path.
 	var shaft := CylinderMesh.new()
 	shaft.top_radius = 0.018

@@ -182,12 +182,17 @@ static func _shadow_eye(side: int) -> MeshInstance3D:
 	var e := MeshInstance3D.new()
 	e.name = "Eye%s" % ("L" if side < 0 else "R")
 	e.mesh = eye
-	# Forward is +X (see BattleWorld.yaw_along), so the eyes sit forward on X
-	# and separate across Z. They were authored on the old side-on convention,
+	# Forward is +X (see Tuning.yaw_along), so the eyes sit forward on X and
+	# separate across Z. They were authored on the old side-on convention,
 	# where an enemy only ever turned 180 degrees and a 90-degree error never
 	# showed; under the overhead camera a combatant faces any direction, so a
 	# blob whose eyes point off its own shoulder is immediately visible.
-	e.position = Vector3(0.44, 1.18, 0.16 * float(side))
+	#
+	# y is 0.30, not the authored 1.18: the .glb body only reaches y = 0.58, so
+	# the old height left the eyes hovering in clear air above the blob. This
+	# puts them on its front surface (the body's radius is about 0.58, and
+	# (0.42, 0.30, 0.17) has length 0.55).
+	e.position = Vector3(0.42, 0.30, 0.17 * float(side))
 	e.material_override = CelMaterials.cel(
 		Tuning.C_SHADOW_EYES, Tuning.C_SHADOW_EYES, 3.0, 0.0)
 	e.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
