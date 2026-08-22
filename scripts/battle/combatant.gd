@@ -249,7 +249,7 @@ func begin_action(ability: Ability) -> void:
 	if ability.wants_teleport(self):
 		_blink_strike(ability)
 		return
-	# Ranged and magic attackers never leave the file - they only turn to aim.
+	# Ranged and magic attackers never leave formation - they only turn to aim.
 	# Turning matters: HandAnchor sits at +X, so an unturned caster would fire
 	# its bolt off its own shoulder.
 	if ability.target != null and is_instance_valid(ability.target):
@@ -259,7 +259,7 @@ func begin_action(ability: Ability) -> void:
 ## Blink to the target, swing, then blink home (see BattleVfx.blink_out for
 ## what the effect is doing and why). `state` stays ATTACKING for the whole
 ## round trip, which is what makes the turn queue hold the next combatant
-## until this one is back in the party file - one action at a time, fully
+## until this one is back in formation - one action at a time, fully
 ## resolved, exactly as _advance_turn_queue() already assumed.
 ##
 ## The model is hidden outright rather than alpha-faded: at 0.13 s a fade is

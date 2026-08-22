@@ -28,7 +28,7 @@ func impact_delay(source: Combatant) -> float:
 # --- reach (overworld prototype) ---------------------------------------------
 
 ## Whether this action starts with a blink to the target. Melee only: ranged
-## and magic attackers stay in the party file and send something flying
+## and magic attackers hold formation and send something flying
 ## instead, which is the whole distinction the overhead view needed.
 func wants_teleport(source: Combatant) -> bool:
 	if source.stats.attack_style != CombatantStats.AttackStyle.MELEE:

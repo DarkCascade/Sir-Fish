@@ -73,10 +73,29 @@ const PARTY_SIZE := 3                     # priest, ranger, warrior
 ## third of the screen.
 const RUN_DIR := Vector3(0.42992, 0.0, -0.90283)      # normalized(1, 0, -2.1)
 
-## Where the party LEADER stands - lower-left of frame. The rest of the party
-## trails behind it down -RUN_DIR, single file (they run in a line).
+## Where the party's FRONT rank stands - lower-left of frame. Everyone else is
+## placed relative to it by PARTY_FORMATION.
 const PARTY_ANCHOR := Vector3(-1.6, 0.0, 3.4)
-const PARTY_FILE_SPACING := 1.35          # gap between heroes along the file
+
+## The party formation, in RUN_DIR's own frame rather than world axes:
+##   x = across, in units of PARTY_ROW_SPREAD (+ is the party's right)
+##   y = back,   in units of PARTY_ROW_DEPTH  (+ is further from the enemy)
+## Indexed by hero slot, which is fixed: 0 priest/mage, 1 ranger, 2 warrior.
+##
+## Warrior alone in front, mage and ranger flanking behind him. Authoring it as
+## a table rather than deriving it from a spacing means a new shape is three
+## numbers, not a formula - and because it is expressed in RUN_DIR's frame it
+## rotates with the run axis for free.
+const PARTY_FORMATION := [
+	Vector2(-0.5, 1.0),                   # priest / mage - back rank, left
+	Vector2(0.5, 1.0),                    # ranger        - back rank, right
+	Vector2(0.0, 0.0),                    # warrior       - front rank, on the axis
+]
+## Both are set by silhouette overlap, not by taste: the mage's hat is about
+## 1.2 units across and the warrior's cape about 1.0, so anything under ~2.0
+## between neighbours has them intersecting on screen at this camera angle.
+const PARTY_ROW_DEPTH := 1.8              # front rank to back rank
+const PARTY_ROW_SPREAD := 2.0             # gap between the two back-rank heroes
 
 ## The enemy line forms this far up-run from the party leader, spread across
 ## RUN_DIR's perpendicular so all three read as a facing rank. Wide enough to
@@ -262,7 +281,7 @@ const FIELD_GRASS := 200
 const FIELD_TREES := 36
 
 ## Nothing is scattered within this distance of the run corridor's centre
-## line, so neither the party file nor the enemy rank spawns inside a bush.
+## line, so neither the party formation nor the enemy rank spawns in a bush.
 ## The bald stripe this leaves reads as the path the party is running along.
 const FIELD_CLEAR_RADIUS := 2.2
 

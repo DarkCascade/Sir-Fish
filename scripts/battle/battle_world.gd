@@ -4,7 +4,7 @@ extends Node3D
 ##
 ## [overworld prototype] The battlefield is a plane now, not a line. Every
 ## position below is derived from Tuning.RUN_DIR and Tuning.PARTY_ANCHOR, so
-## the whole composition - party file, enemy rank, entry lane, prop placement -
+## the whole composition - party formation, enemy rank, entry lane, props -
 ## rotates as one if RUN_DIR changes. There is no second place to edit.
 
 @onready var camera: Camera3D = $BattleCamera
@@ -59,12 +59,16 @@ func yaw_along(dir: Vector3) -> float:
 
 # --- slots --------------------------------------------------------------------
 
-## The party runs single file. Index 2 (the warrior) leads, so the melee
-## fighter is nearest the enemies and the priest trails at the back - the same
-## left-to-right ordering the side-on view had, folded onto the run axis.
+## Two ranks: the warrior alone in front, the mage and the ranger behind him.
+## The shape itself is authored in Tuning.PARTY_FORMATION, in RUN_DIR's frame,
+## so it rotates with the run axis and this only has to project it out.
 func hero_slot_position(index: int) -> Vector3:
-	var back := float(Tuning.PARTY_SIZE - 1 - index)
-	return Tuning.PARTY_ANCHOR - Tuning.RUN_DIR * (back * Tuning.PARTY_FILE_SPACING)
+	if index < 0 or index >= Tuning.PARTY_FORMATION.size():
+		return Tuning.PARTY_ANCHOR
+	var slot: Vector2 = Tuning.PARTY_FORMATION[index]
+	return Tuning.PARTY_ANCHOR \
+		+ perp_dir() * (slot.x * Tuning.PARTY_ROW_SPREAD) \
+		- Tuning.RUN_DIR * (slot.y * Tuning.PARTY_ROW_DEPTH)
 
 ## The enemy rank forms up-run from the party leader, spread across the
 ## perpendicular so every enemy is visible rather than hidden behind the one
