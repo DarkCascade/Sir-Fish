@@ -13,7 +13,7 @@ class_name OrnateFrame
 
 @export var border: float = 14.0
 @export var corner_radius: float = 18.0
-@export var diamond_size: float = 22.0
+@export var diamond_size: float = 14.3   # [UI pass] was 22.0, reduced 35%
 ## Leave false on any panel shorter than roughly 4x diamond_size (a title
 ## banner, a price plate) - _diamond()'s clamp pulls the top-mid and
 ## bottom-mid diamonds in from the edge on a short panel, and on one short

@@ -92,7 +92,14 @@ func _spawn_combatant(stats: CombatantStats, pos: Vector3, hp: int) -> Combatant
 
 # --- combat lifecycle -------------------------------------------------------
 
-func start_combat(enemy_stat_ids: Array) -> void:
+## Slot 0 is the boss by convention (see game_state.gd's encounter builders,
+## which always list the boss id first) - scaled up here from a
+## runtime-duplicated CombatantStats, never the shared cached one GameState
+## hands out, so the same id spawned at its normal size elsewhere (e.g. the
+## regular pool encounters) is untouched.
+const BOSS_SCALE_MULT := 1.5
+
+func start_combat(enemy_stat_ids: Array, is_boss: bool = false) -> void:
 	clear_enemies()
 	_resolving = false
 	_turn_queue.clear()
@@ -105,6 +112,9 @@ func start_combat(enemy_stat_ids: Array) -> void:
 		var stats := GameState.get_stats(enemy_stat_ids[i])
 		if stats == null:
 			continue
+		if is_boss and i == 0:
+			stats = stats.duplicate() as CombatantStats
+			stats.model_scale *= BOSS_SCALE_MULT
 		# [overworld prototype] Spec 10.1's fade-in is gone. Enemies now spawn
 		# off-screen past the top-right corner and RUN to their slots, which is
 		# the one entrance that reads correctly on an open field - a fade would

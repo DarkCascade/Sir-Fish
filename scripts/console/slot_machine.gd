@@ -31,7 +31,7 @@ const CABINET_MARGIN := 20.0     # cabinet inset from the band's top and bottom
 ## (console.gd's STRIP_HEIGHT) took ~210px from the slot's own remainder,
 ## shrinking each reel cell from ~133 to ~77px tall against a WIDTH that
 ## never moved. A smaller margin claws some of that back for the window
-## itself, on top of slot_symbol.gd's own BOX_FRACTION reduction.
+## itself, on top of slot_symbol.gd's own box_fraction reduction.
 const WINDOW_MARGIN := 56.0
 
 func _ready() -> void:

@@ -4,9 +4,9 @@
 [ext_resource type="PackedScene" path="res://scenes/console/status_panel.tscn" id="2_status"]
 
 [node name="StatusPanelPreview" type="Control"]
-custom_minimum_size = Vector2(1080, 130)
+custom_minimum_size = Vector2(1080, 320)
 offset_right = 1080.0
-offset_bottom = 130.0
+offset_bottom = 320.0
 script = ExtResource("1_preview")
 
 [node name="Background" type="ColorRect" parent="."]

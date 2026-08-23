@@ -29,8 +29,8 @@ func _ready() -> void:
 		_spawn(RANGER, 80),
 		_spawn(WARRIOR, 60),
 	]
-	# [layout experiment] PartyBars moved out of ResourceRow to its own row.
-	var party_bars := status_panel.get_node("Layout/PartyBars")
+	# [UI pass] PartyBars moved back into ResourceRow as the party-status column.
+	var party_bars := status_panel.get_node("Layout/ResourceRow/PartyBars")
 	party_bars.director = mock
 
 func _spawn(stats: CombatantStats, starting_hp: int) -> Combatant:

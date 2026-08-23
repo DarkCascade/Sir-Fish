@@ -51,19 +51,16 @@ horizontal_alignment = 1
 vertical_alignment = 1
 
 [node name="ResourceRow" type="HBoxContainer" parent="Layout"]
-custom_minimum_size = Vector2(0, 150)
+custom_minimum_size = Vector2(0, 160)
 layout_mode = 2
 theme_override_constants/separation = 12
-
-[node name="SirFishTank" parent="Layout/ResourceRow" instance=ExtResource("4_fish")]
-custom_minimum_size = Vector2(112, 112)
-layout_mode = 2
-size_flags_vertical = 4
 
 [node name="GoldPlate" type="Control" parent="Layout/ResourceRow"]
 custom_minimum_size = Vector2(210, 144)
 layout_mode = 2
+size_flags_horizontal = 3
 size_flags_vertical = 4
+size_flags_stretch_ratio = 2.0
 mouse_filter = 2
 
 [node name="Frame" type="Control" parent="Layout/ResourceRow/GoldPlate"]
@@ -82,67 +79,39 @@ edge_diamonds = false
 [node name="CoinGlyph" type="Control" parent="Layout/ResourceRow/GoldPlate"]
 layout_mode = 0
 offset_left = 16.0
-offset_top = 42.0
-offset_right = 76.0
-offset_bottom = 102.0
+offset_top = 12.0
+offset_right = 136.0
+offset_bottom = 132.0
 mouse_filter = 2
 script = ExtResource("2_coin")
-radius = 26.0
+radius = 52.0
 
 [node name="GoldLabel" type="Label" parent="Layout/ResourceRow/GoldPlate"]
 theme_type_variation = &"DisplayLabel"
 layout_mode = 0
-offset_left = 84.0
-offset_top = 8.0
-offset_right = 196.0
-offset_bottom = 92.0
+anchor_right = 1.0
+offset_left = 144.0
+offset_top = 30.0
+offset_right = -16.0
+offset_bottom = 114.0
 mouse_filter = 2
 theme_override_colors/font_color = Color(0.94902, 0.913725, 0.815686, 1)
 theme_override_font_sizes/font_size = 62
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="GoldCaption" type="Label" parent="Layout/ResourceRow/GoldPlate"]
-theme_type_variation = &"DisplayLabel"
-layout_mode = 0
-offset_left = 16.0
-offset_top = 102.0
-offset_right = 194.0
-offset_bottom = 136.0
-mouse_filter = 2
-theme_override_colors/font_color = Color(0.909804, 0.772549, 0.352941, 1)
-theme_override_font_sizes/font_size = 24
-text = "Gold"
-horizontal_alignment = 1
-vertical_alignment = 1
+[node name="SirFishTank" parent="Layout/ResourceRow" instance=ExtResource("4_fish")]
+custom_minimum_size = Vector2(112, 112)
+layout_mode = 2
+size_flags_horizontal = 6
+size_flags_vertical = 4
+size_flags_stretch_ratio = 1.0
 
-[node name="BonusPlate" type="Control" parent="Layout/ResourceRow"]
-custom_minimum_size = Vector2(300, 144)
+[node name="PartyBars" parent="Layout/ResourceRow" instance=ExtResource("5_party")]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 4
-mouse_filter = 2
-
-[node name="Frame" type="Control" parent="Layout/ResourceRow/BonusPlate"]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-script = ExtResource("6_frame")
-border = 12.0
-corner_radius = 16.0
-edge_diamonds = false
-
-[node name="BonusStrip" parent="Layout/ResourceRow/BonusPlate" instance=ExtResource("7_bonus")]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
+size_flags_stretch_ratio = 2.0
 
 [node name="DepthPlate" type="Control" parent="Layout/ResourceRow"]
 visible = false
@@ -191,5 +160,28 @@ theme_override_font_sizes/font_size = 58
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="PartyBars" parent="Layout" instance=ExtResource("5_party")]
+[node name="BonusRow" type="Control" parent="Layout"]
+custom_minimum_size = Vector2(1080, 90)
 layout_mode = 2
+mouse_filter = 2
+
+[node name="Frame" type="Control" parent="Layout/BonusRow"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("6_frame")
+border = 12.0
+corner_radius = 16.0
+edge_diamonds = false
+
+[node name="BonusStrip" parent="Layout/BonusRow" instance=ExtResource("7_bonus")]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2

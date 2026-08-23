@@ -1,0 +1,42 @@
+[gd_scene format=3 uid="uid://t071mldpo4t8"]
+
+[ext_resource type="PackedScene" path="res://scenes/console/slot_symbol.tscn" id="1_symbol"]
+
+[node name="ReelLayoutPlayground" type="Control" unique_id=1343239190]
+custom_minimum_size = Vector2(240, 720)
+layout_mode = 3
+anchors_preset = 0
+offset_right = 240.0
+offset_bottom = 720.0
+mouse_filter = 2
+
+[node name="Window" type="ColorRect" parent="." unique_id=1884870103]
+layout_mode = 0
+offset_right = 240.0
+offset_bottom = 720.0
+mouse_filter = 2
+color = Color(0.031373, 0.078431, 0.070588, 1)
+
+[node name="CellAbove" parent="." unique_id=1018099280 instance=ExtResource("1_symbol")]
+anchors_preset = 0
+symbol = 0
+
+[node name="CellPayline" parent="." unique_id=717166062 instance=ExtResource("1_symbol")]
+anchors_preset = 0
+offset_top = 240.0
+offset_bottom = 480.0
+symbol = 1
+
+[node name="CellBelow" parent="." unique_id=365437346 instance=ExtResource("1_symbol")]
+anchors_preset = 0
+offset_top = 480.0
+offset_bottom = 720.0
+symbol = 2
+
+[node name="Payline" type="ColorRect" parent="." unique_id=942100977]
+layout_mode = 0
+offset_top = 358.0
+offset_right = 240.0
+offset_bottom = 362.0
+mouse_filter = 2
+color = Color(1.05, 0.82, 0.32, 1)

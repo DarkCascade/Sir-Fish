@@ -104,7 +104,7 @@ func _arrive(def: EncounterDef) -> void:
 	match def.type:
 		EncounterDef.Type.COMBAT:
 			state = RunState.COMBAT
-			director.start_combat(def.enemy_stat_ids)
+			director.start_combat(def.enemy_stat_ids, def.is_boss)
 		EncounterDef.Type.LOOT:
 			state = RunState.LOOT
 			_run_loot(def)

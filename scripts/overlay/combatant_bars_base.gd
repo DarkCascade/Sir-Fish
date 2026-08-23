@@ -58,6 +58,8 @@ func _ready() -> void:
 ## setup()) just updates the existing material instead of stacking new
 ## signal connections.
 func _round(rect: ColorRect, radius: float) -> void:
+	if rect == null:      # hero_bars.gd has no cooldown row - see its _ready()
+		return
 	var mat := rect.material as ShaderMaterial
 	if mat == null:
 		mat = ShaderMaterial.new()

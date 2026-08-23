@@ -1,18 +1,13 @@
+@tool
 extends Control
-## The gold coin (presentation redesign S6.1): a gold disc, a darker inner
-## ring, and the slot's own star mark at the centre - reusing SlotSymbol.STAR
-## rather than a second star shape, since the concept's coin and its star
-## reel symbol read as the same mark on purpose.
+## The gold coin (presentation redesign S6.1). Draws the same coin texture as
+## the slot reel's gold symbol (SlotSymbol.TEX_GOLD), so every "gold" glyph in
+## the UI - status bar, upgrade button price plate, slot reel - reads as the
+## same icon rather than three different drawings of a coin.
 
 @export var radius: float = 18.0
 
 func _draw() -> void:
 	var c := size * 0.5
-	draw_circle(c, radius, Tuning.C_GOLD)
-	draw_arc(c, radius, 0.0, TAU, 32, Tuning.C_GOLD_DARK, radius * 0.16)
-	draw_circle(c, radius * 0.68, Tuning.C_GOLD_DARK)
-	draw_arc(c, radius * 0.68, 0.0, TAU, 32, Tuning.C_GOLD, radius * 0.08)
-	var star := PackedVector2Array()
-	for p: Vector2 in SlotSymbol.STAR:
-		star.append(c + (p - Vector2(0.5, 0.5)) * radius * 1.15)
-	draw_colored_polygon(star, Tuning.C_GOLD_BRIGHT)
+	var box := radius * 2.0
+	draw_texture_rect(SlotSymbol.TEX_GOLD, Rect2(c - Vector2.ONE * box * 0.5, Vector2.ONE * box), false)

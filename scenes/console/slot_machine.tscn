@@ -2,7 +2,7 @@
 
 [ext_resource type="Script" uid="uid://yt0r63qht4yd" path="res://scripts/console/slot_machine.gd" id="1_slot"]
 [ext_resource type="PackedScene" path="res://scenes/console/slot_reel.tscn" id="2_reel"]
-[ext_resource type="Script" path="res://scripts/console/ornate_frame.gd" id="3_frame"]
+[ext_resource type="Script" uid="uid://bwut72okvld1h" path="res://scripts/console/ornate_frame.gd" id="3_frame"]
 
 [sub_resource type="StyleBoxFlat" id="cabinet"]
 bg_color = Color(0.070588, 0.227451, 0.196078, 1)
@@ -47,8 +47,8 @@ offset_bottom = 860.0
 mouse_filter = 2
 theme_override_styles/panel = SubResource("cabinet")
 
-[node name="CabinetJoints" type="Control" parent="." unique_id=3081940552]
-layout_mode = 0
+[node name="CabinetJoints" type="Control" parent="." unique_id=-1213026744]
+anchors_preset = 0
 offset_left = 110.0
 offset_top = 20.0
 offset_right = 970.0
@@ -136,7 +136,7 @@ offset_bottom = 880.0
 theme_type_variation = &"DisplayLabel"
 theme_override_colors/font_color = Color(0.788235, 0.635294, 0.152941, 1)
 theme_override_colors/font_outline_color = Color(0.141176, 0.117647, 0.078431, 1)
-theme_override_constants/outline_size = 14
+theme_override_constants/outline_size = 24
 theme_override_font_sizes/font_size = 72
 horizontal_alignment = 1
 vertical_alignment = 1

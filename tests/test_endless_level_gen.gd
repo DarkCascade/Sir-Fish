@@ -20,7 +20,7 @@ func _ready() -> void:
 		t.check(GameState.get_stats(id) != null, "early pool '%s' resolves to real stats" % id)
 	for id: StringName in GameState.ENDLESS_MID_POOL:
 		t.check(GameState.get_stats(id) != null, "mid pool '%s' resolves to real stats" % id)
-	for id: StringName in GameState.ENDLESS_BOSS_POOL:
+	for id: StringName in GameState.BOSS_POOL:
 		t.check(GameState.get_stats(id) != null, "boss pool '%s' resolves to real stats" % id)
 
 	# Depth 1: only the early pool should ever appear in the three REGULAR
@@ -29,17 +29,21 @@ func _ready() -> void:
 	var depth1 := GameState.level
 	var combat1: EncounterDef = depth1.encounters[0]
 	t.check(combat1.enemy_stat_ids.size() == 2, "depth 1 combat group size is 2")
-	var saw_mid_at_depth1 := false
+	# Checked as "only ever early-pool ids" rather than "never mid/boss pool
+	# ids" - BOSS_POOL is all four skeletons now, which overlaps both the
+	# early pool (skeleton_minion) and the mid pool (the other three), so the
+	# exclusion check would false-positive on a perfectly legal early-pool draw.
+	var only_early_at_depth1 := true
 	for i: int in range(30):
 		GameState.endless_level_number = 1
 		var lvl: LevelDef = GameState.build_level()
 		for enc_index: int in [0, 2, 4]:
 			var enc: EncounterDef = lvl.encounters[enc_index]
 			for id: StringName in enc.enemy_stat_ids:
-				if id in GameState.ENDLESS_MID_POOL or id in GameState.ENDLESS_BOSS_POOL:
-					saw_mid_at_depth1 = true
-	t.check(not saw_mid_at_depth1, "depth 1's regular combat slots never draw the mid/boss pool")
-	t.check(depth1.encounters[5].enemy_stat_ids[0] in GameState.ENDLESS_BOSS_POOL,
+				if id not in GameState.ENDLESS_EARLY_POOL:
+					only_early_at_depth1 = false
+	t.check(only_early_at_depth1, "depth 1's regular combat slots only ever draw the early pool")
+	t.check(depth1.encounters[5].enemy_stat_ids[0] in GameState.BOSS_POOL,
 		"depth 1's boss encounter still leads with a boss-pool id")
 
 	# Depth 5: the mid pool has joined, and the group size has scaled up to
@@ -51,10 +55,10 @@ func _ready() -> void:
 	t.check(combat5.enemy_stat_ids.size() == 3, "depth 5 combat group size scales to 3")
 
 	# Every boss slot (encounter 6) leads with a boss-pool id, same
-	# convention as the fixed level's warlord encounter.
+	# convention as the fixed level's boss encounter.
 	var boss_enc: EncounterDef = depth5.encounters[5]
 	t.check(boss_enc.is_boss, "encounter 6 is flagged as the boss fight")
-	t.check(boss_enc.enemy_stat_ids[0] in GameState.ENDLESS_BOSS_POOL,
+	t.check(boss_enc.enemy_stat_ids[0] in GameState.BOSS_POOL,
 		"boss encounter's first id is from the boss pool")
 
 	t.finish(get_tree(), "test_endless_level_gen")

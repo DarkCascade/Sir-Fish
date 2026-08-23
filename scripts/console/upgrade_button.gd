@@ -12,15 +12,33 @@ const PIP := 20.0
 const PIP_GAP := 10.0
 const ICON_SIZE := 40.0
 const PLATE_HEIGHT := 46.0
+const CARD_WIDTH := 340.0
+
+## Coin + Cost read as one centred unit: the coin sits COIN_GAP left of
+## Cost's own box, and Cost's text is centre-aligned within that box (see
+## upgrade_button.tscn) rather than following the number's actual width, so
+## the pair stays visually centred whether the price is "50" or "999".
+const COIN_SIZE := 28.0
+const COIN_GAP := 6.0
+const COST_BOX_WIDTH := 110.0
+## DisplayLabel's serifed numerals sit visually low within their line box -
+## Godot centres on font ascent/descent, not glyph ink - so both the coin and
+## Cost's text (offset by the same amount in the .tscn) are nudged up this
+## much to actually look centred on the price plate.
+const COST_VERTICAL_NUDGE := 4.0
 
 var id: StringName = &""
 
-var _title: Label
-var _blurb: Label
+## Title/Blurb/Cost/Plate are authored in upgrade_button.tscn - fixed style and
+## position, and (for Cost/Plate) bottom anchors instead of the manual resize
+## math _relayout() used to do. Icon/Pips/Coin stay script-built: each draws
+## itself with a per-id or per-level _draw() callback that the inspector can't
+## express (see _draw_icon/_draw_pips/_draw_coin below).
+@onready var _title: Label = $Title
+@onready var _blurb: Label = $Blurb
+@onready var _cost: Label = $Cost
 var _icon: Control
 var _pips: Control
-var _plate: OrnateFrame
-var _cost: Label
 var _coin: Control
 var _pulse: Tween = null
 
@@ -31,7 +49,6 @@ func setup(upgrade_id: StringName) -> void:
 
 func _ready() -> void:
 	custom_minimum_size = Vector2(340, 236)
-	resized.connect(_relayout)
 	pressed.connect(_on_pressed)
 	EventBus.gold_changed.connect(_on_gold_changed)
 	EventBus.upgrade_purchased.connect(_on_upgrade_purchased)
@@ -65,7 +82,7 @@ func _plate_style(bg: Color, border: Color) -> StyleBoxFlat:
 	return box
 
 func _build() -> void:
-	if _title != null:
+	if _icon != null:
 		return
 	var def: Dictionary = Upgrades.DEFS[id]
 
@@ -76,66 +93,41 @@ func _build() -> void:
 	_icon.draw.connect(_draw_icon)
 	add_child(_icon)
 
-	_title = Label.new()
-	_title.theme_type_variation = &"PlateLabel"        # ink, no outline (S8.2)
-	_title.position = Vector2(64, 14)
-	_title.add_theme_font_size_override("font_size", 28)
 	_title.text = String(def["name"])
-	_title.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(_title)
 
-	_blurb = Label.new()
-	_blurb.position = Vector2(16, 58)
-	_blurb.custom_minimum_size = Vector2(308, 0)
-	_blurb.add_theme_font_size_override("font_size", 22)
 	_blurb.add_theme_color_override("font_color", Color(Tuning.C_INK, 0.78))
 	_blurb.autowrap_mode = TextServer.AUTOWRAP_WORD
-	_blurb.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(_blurb)
 
+	# Pips and coin hang from the bottom, same as Cost/Plate in the .tscn - set
+	# via anchors here (bottom-left corner) rather than positioned by hand, so
+	# the card survives the tray being given a different height without a
+	# _relayout() to re-run the math. Both are centred on the card width.
+	var pips_w := PIP * Tuning.UPGRADE_MAX_LEVEL + PIP_GAP * (Tuning.UPGRADE_MAX_LEVEL - 1)
+	var pips_left := (CARD_WIDTH - pips_w) * 0.5
 	_pips = Control.new()
-	_pips.position = Vector2(16, size.y - 96)
-	_pips.custom_minimum_size = Vector2(
-		PIP * Tuning.UPGRADE_MAX_LEVEL + PIP_GAP * (Tuning.UPGRADE_MAX_LEVEL - 1), PIP)
-	_pips.size = _pips.custom_minimum_size
+	_pips.anchor_top = 1.0
+	_pips.anchor_bottom = 1.0
+	_pips.offset_left = pips_left
+	_pips.offset_top = -96.0
+	_pips.offset_right = pips_left + pips_w
+	_pips.offset_bottom = -96.0 + PIP
 	_pips.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_pips.draw.connect(_draw_pips)
 	add_child(_pips)
 
-	_plate = OrnateFrame.new()
-	_plate.position = Vector2(12, size.y - PLATE_HEIGHT - 10)
-	_plate.size = Vector2(316, PLATE_HEIGHT)
-	_plate.border = 4.0
-	_plate.corner_radius = 10.0
-	_plate.inset_well = true
-	_plate.edge_diamonds = false
-	add_child(_plate)
-	move_child(_plate, 0)   # behind coin/cost, drawn first
-
+	# Coin + Cost's box together are COIN_SIZE + COIN_GAP + COST_BOX_WIDTH wide;
+	# centring that whole span puts the coin this far from the card's left edge.
+	var price_left := (CARD_WIDTH - (COIN_SIZE + COIN_GAP + COST_BOX_WIDTH)) * 0.5
 	_coin = Control.new()
-	_coin.position = Vector2(26, size.y - PLATE_HEIGHT + 3)
-	_coin.size = Vector2(28, 28)
+	_coin.anchor_top = 1.0
+	_coin.anchor_bottom = 1.0
+	_coin.offset_left = price_left
+	_coin.offset_top = -(PLATE_HEIGHT - 3.0) - COST_VERTICAL_NUDGE
+	_coin.offset_right = price_left + COIN_SIZE
+	_coin.offset_bottom = -(PLATE_HEIGHT - 3.0) - COST_VERTICAL_NUDGE + COIN_SIZE
 	_coin.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_coin.draw.connect(_draw_coin)
 	add_child(_coin)
-
-	_cost = Label.new()
-	_cost.theme_type_variation = &"DisplayLabel"
-	_cost.position = Vector2(62, size.y - PLATE_HEIGHT - 2)
-	_cost.add_theme_font_size_override("font_size", 32)
-	_cost.add_theme_color_override("font_color", Tuning.C_TEXT_GOLD)
-	_cost.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(_cost)
-
-## Title/icon/blurb hang from the top, the price plate and pips from the
-## bottom, so the card survives the tray being given a different height.
-func _relayout() -> void:
-	if _pips == null:
-		return
-	_pips.position = Vector2(16, size.y - 96)
-	_plate.position = Vector2(12, size.y - PLATE_HEIGHT - 10)
-	_coin.position = Vector2(26, size.y - PLATE_HEIGHT + 3)
-	_cost.position = Vector2(62, size.y - PLATE_HEIGHT - 2)
 
 ## Diamond pips: filled = arcane core in a gold ring, empty = faint ink
 ## diamond outline. UPGRADE_MAX_LEVEL-driven, never hardcoded (S0.3).
@@ -158,9 +150,7 @@ func _diamond(c: Vector2, r: float) -> PackedVector2Array:
 	])
 
 func _draw_coin() -> void:
-	var c := Vector2(14, 14)
-	_coin.draw_circle(c, 12.0, Tuning.C_GOLD)
-	_coin.draw_arc(c, 12.0, 0.0, TAU, 20, Tuning.C_CONSOLE_INSET, 2.0)
+	_coin.draw_texture_rect(SlotSymbol.TEX_GOLD, Rect2(Vector2.ZERO, _coin.size), false)
 
 ## Per-upgrade medallion, arcane disc with a gold ring. quick_reels gets three
 ## small dots (a reel's blank/blank/blank readout); overcharge and fat_purse
@@ -189,7 +179,7 @@ func _draw_icon() -> void:
 # --- state ------------------------------------------------------------------
 
 func refresh() -> void:
-	if _title == null:
+	if _icon == null:
 		return
 	var def: Dictionary = Upgrades.DEFS[id]
 	_pips.queue_redraw()

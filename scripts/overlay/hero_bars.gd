@@ -1,19 +1,22 @@
 extends CombatantBarsBase
 ## The hero party-bar card (spec 11 / reskin to the fantasy UI kit reference):
 ## gold card frame, class icon tile, and exact HP numbers on a pill bar. Three
-## of these sit side by side in the console's resource strip (party_bars.gd).
+## of these sit stacked vertically in the console's resource strip
+## (party_bars.gd), in the party-status column.
 ##
 ## The layout is authored entirely in hero_bars.tscn now, at whatever HP/class
 ## the scene's dummy node values show - setup() only overwrites data (colors,
 ## text, which glyph) never positions, so this scene can be opened and tuned
 ## directly (see status_panel_preview.tscn) without a battle running.
+##
+## [UI pass] No cooldown row - the console's party status is HP-only, unlike
+## the enemy overlay pair (combatant_bars.gd) which still shows one.
 
 ## [layout experiment] Was 100/168 for the 172-wide card - hero_bars.tscn's
 ## card is 340 wide now (party_bars.gd's own full-width row has the room),
-## and these two must track HealthFill's/CooldownFill's own authored width
-## in the .tscn or the bar visually stops short of (or overflows) its track.
+## and this must track HealthFill's own authored width in the .tscn or the bar
+## visually stops short of (or overflows) its track.
 const HERO_FILL_WIDTH := 230.0
-const HERO_CD_WIDTH := 325.0
 
 ## [presentation redesign S6.3] Past half the chip's own shorter side (32),
 ## same convention as CombatantBarsBase.PILL_RADIUS, so the class-icon tile
@@ -35,15 +38,11 @@ var hp_text: Label
 var buff_shield: Control
 
 func _ready() -> void:
-	cooldown_border = $CooldownBorder
-	cooldown_bg = $CooldownBg
-	cooldown_fill = $CooldownBg/CooldownFill
 	health_border = $HealthBorder
 	health_bg = $HealthBorder/HealthBg
 	health_fill = $HealthBorder/HealthBg/HealthFill
 	super._ready()
 	_fill_width = HERO_FILL_WIDTH
-	_cd_width = HERO_CD_WIDTH
 
 	card = $Card
 	chip_border = $ChipBorder
@@ -83,8 +82,7 @@ func refresh() -> void:
 			tween_health_fraction(fraction, healed)
 			if not healed:
 				flash_background()
-	cooldown_fill.size.x = 0.0 if not alive else _cd_width * combatant.cooldown_fraction()
-	hp_text.text = "DEAD" if not alive else "%d/%d" % [combatant.current_hp, combatant.max_hp]
+	hp_text.text = "DEAD" if not alive else "%d" % [combatant.current_hp]
 	buff_shield.visible = alive and combatant.is_defending()
 
 ## A dead hero's bar stays in the party strip, greyed and reading DEAD, rather
@@ -92,15 +90,9 @@ func refresh() -> void:
 func set_dead() -> void:
 	_dead = true
 	buff_shield.visible = false
-	cooldown_border.visible = false
-	cooldown_bg.visible = false
-	cooldown_fill.visible = false
 	set_health_fraction(0.0)
 	modulate = Color(0.45, 0.45, 0.52)
 
 func set_alive() -> void:
 	_dead = false
-	cooldown_border.visible = true
-	cooldown_bg.visible = true
-	cooldown_fill.visible = true
 	modulate = Color.WHITE

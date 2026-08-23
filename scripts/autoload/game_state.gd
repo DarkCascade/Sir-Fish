@@ -205,8 +205,14 @@ const ENDLESS_EARLY_POOL: Array[StringName] = [&"shadow_monster", &"skeleton_min
 const ENDLESS_MID_POOL: Array[StringName] = [
 	&"orc_barbarian", &"skeleton_warrior", &"skeleton_mage", &"skeleton_rogue",
 ]
-## The one enemy strong enough to anchor encounter 6 alone.
-const ENDLESS_BOSS_POOL: Array[StringName] = [&"orc_warlord"]
+## [UI pass] Was just the orc warlord. Any of the four KayKit skeletons can
+## anchor encounter 6 now - battle_director.start_combat() scales whichever
+## one gets picked up 150% for the boss slot (a runtime-duplicated
+## CombatantStats, never the shared cached one, so the regular-sized version
+## other encounters spawn from ENDLESS_MID_POOL is untouched).
+const BOSS_POOL: Array[StringName] = [
+	&"skeleton_warrior", &"skeleton_mage", &"skeleton_rogue", &"skeleton_minion",
+]
 
 ## Six encounters, same COMBAT/LOOT/COMBAT/SHOP/COMBAT/boss-COMBAT rhythm as
 ## the fixed level (that pacing was already tuned - only which enemies fill
@@ -252,8 +258,8 @@ func _build_endless_level(level_number: int) -> LevelDef:
 	e4.travel_duration = 3.0
 
 	# Boss listed first so it lands at the leftmost enemy slot (spec 7.3),
-	# same convention as the fixed level's warlord encounter.
-	var boss_id: StringName = RNG.pick(ENDLESS_BOSS_POOL)
+	# same convention as the fixed level's boss encounter.
+	var boss_id: StringName = RNG.pick(BOSS_POOL)
 	var e5_ids: Array[StringName] = [boss_id]
 	e5_ids.append_array(_random_enemies(pool, mini(enemy_count, 2)))
 	var e5 := EncounterDef.new()
@@ -303,12 +309,12 @@ func _build_whispering_wood_level() -> LevelDef:
 	e4.enemy_stat_ids = [&"orc_barbarian", &"orc_barbarian", &"shadow_monster"]
 	e4.travel_duration = 3.0
 
-	# Warlord listed first so it lands at the leftmost enemy slot (x = 1.6) and
-	# its 1.70x body stays inside the frame (spec 7.3).
+	# Boss listed first so it lands at the leftmost enemy slot (x = 1.6) and
+	# its scaled-up body stays inside the frame (spec 7.3).
 	var e5 := EncounterDef.new()
 	e5.type = EncounterDef.Type.COMBAT
 	e5.is_boss = true
-	e5.enemy_stat_ids = [&"orc_warlord", &"shadow_monster"]
+	e5.enemy_stat_ids = [RNG.pick(BOSS_POOL), &"shadow_monster"]
 	e5.travel_duration = 4.0
 
 	lvl.encounters = [e0, e1, e2, e3, e4, e5]
