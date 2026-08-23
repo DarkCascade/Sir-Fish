@@ -1,0 +1,13 @@
+[gd_resource type="FontVariation" format=3 load_steps=2]
+
+[ext_resource type="FontFile" path="res://assets/fonts/Crimson-Roman.ttf" id="1_crimson"]
+
+; Crimson Text (1001fonts, SIL Open Font License - see assets/fonts/Crimson-OFL.txt;
+; NOT CC0 despite 1001fonts' listing - OFL still allows bundling/use in a game like
+; every other font here, just can't be resold as a font by itself). Not wired into
+; any theme type yet - this is the regular (Roman) weight as a ready-to-use
+; FontVariation; assets/fonts/ also has Italic, Semibold, SemiboldItalic, Bold and
+; BoldItalic static weights (not variable-axis, so each needs its own base_font
+; rather than a variation_opentype "wght" like Cinzel/EBGaramond).
+[resource]
+base_font = ExtResource("1_crimson")

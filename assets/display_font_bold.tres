@@ -1,0 +1,14 @@
+[gd_resource type="FontVariation" format=3 load_steps=2]
+
+[ext_resource type="FontFile" path="res://assets/fonts/Cinzel-VariableFont.ttf" id="1_cinzel"]
+
+; Combat text (damage_number.tscn) only - same Cinzel and weight as
+; display_font.tres, plus variation_embolden for a heavier stroke that reads
+; better as a floating number than the rest of the console's headings need.
+[resource]
+base_font = ExtResource("1_cinzel")
+variation_opentype = {
+"wght": 900.0
+}
+variation_embolden = 0.9
+spacing_glyph = 6

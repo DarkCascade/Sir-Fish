@@ -9,6 +9,15 @@ const SPIN_SPEED := 26.0      # stops per second while free-spinning
 
 ## Cell height, driven by the cabinet: the reel window shows exactly three cells
 ## whatever height the console band ends up with (see slot_machine.apply_height).
+##
+## slot_symbol.tscn's and this scene's own custom_minimum_size must both stay
+## well below whatever cell_h the console layout can produce - Control.size
+## can never go below custom_minimum_size, so an authored floor here silently
+## overrides set_cell_height() below it: cells POSITION at the small spacing
+## but DRAW centered in the oversized clamped box, which reads as a payline
+## that no longer lines up with the visible symbols. Cost a real bug once
+## (status row growth shrank cell_h well under the old 240 floor) - keep the
+## floor small (40-ish) rather than raising it back to a "nicer" default.
 var cell_h: float = DEFAULT_CELL_H
 
 ## Fractional stop position. The integer part is the strip index sitting on the

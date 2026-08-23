@@ -19,6 +19,7 @@ var _last_hero_hits: Array[int] = []
 var _home_position: Vector2
 
 @onready var cabinet: Panel = $Cabinet
+@onready var cabinet_joints: Control = $CabinetJoints
 @onready var payline: ColorRect = $Payline
 @onready var banner: Label = $Banner
 @onready var arrow_left: ColorRect = $PaylineArrowLeft
@@ -26,7 +27,12 @@ var _home_position: Vector2
 @onready var confetti: GPUParticles2D = $Confetti
 
 const CABINET_MARGIN := 20.0     # cabinet inset from the band's top and bottom
-const WINDOW_MARGIN := 80.0      # reel window inset from the band's top and bottom
+## [presentation redesign] Was 80 - the status row's title/party-bar rows
+## (console.gd's STRIP_HEIGHT) took ~210px from the slot's own remainder,
+## shrinking each reel cell from ~133 to ~77px tall against a WIDTH that
+## never moved. A smaller margin claws some of that back for the window
+## itself, on top of slot_symbol.gd's own box_fraction reduction.
+const WINDOW_MARGIN := 56.0
 
 func _ready() -> void:
 	_home_position = position
@@ -49,6 +55,13 @@ func apply_height(h: float) -> void:
 
 	cabinet.position = Vector2(110, CABINET_MARGIN)
 	cabinet.size = Vector2(860, h - CABINET_MARGIN * 2.0)
+	# [presentation redesign fix] CabinetJoints was added alongside Cabinet but
+	# never resized with it - it stayed at its authored rect (sized for the
+	# slot band's ORIGINAL height) while apply_height() shrank Cabinet to fit
+	# whatever the console layout gives the slot now, so its gold trace and
+	# diamonds hung down past the real cabinet, into the tray below.
+	cabinet_joints.position = cabinet.position
+	cabinet_joints.size = cabinet.size
 	for i: int in range(_reels.size()):
 		var window := (_reels[i] as Control).get_parent() as Control
 		window.position = Vector2(window.position.x, WINDOW_MARGIN)

@@ -7,7 +7,6 @@ extends Control
 ## for a fourth is Upgrades.DEFS plus one more button here (spec 22).
 
 const BUTTON_SCENE := preload("res://scenes/console/upgrade_button.tscn")
-const BONUS_STRIP_SCENE := preload("res://scenes/console/bonus_strip.tscn")
 const NUMBER_SCENE := preload("res://scenes/overlay/damage_number.tscn")
 
 const BUTTON_X: Array[float] = [12.0, 370.0, 728.0]
@@ -18,13 +17,11 @@ const DEFAULT_HEIGHT := 262.0
 
 var _buttons: Array = []
 
+## [presentation redesign] The bonus strip moved to status_panel.tscn's
+## ResourceRow - enlarged, in the space the hidden depth plate freed up -
+## instead of living here in miniature. See bonus_strip.gd's own header for
+## what it shows.
 func _ready() -> void:
-	var strip = BONUS_STRIP_SCENE.instantiate()
-	strip.name = "BonusStrip"
-	strip.position = Vector2.ZERO
-	strip.size = Vector2(1080, 30)
-	add_child(strip)
-
 	for i: int in range(Upgrades.ORDER.size()):
 		var button = BUTTON_SCENE.instantiate()
 		button.name = "UpgradeButton%d" % i

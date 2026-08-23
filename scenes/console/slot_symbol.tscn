@@ -3,7 +3,7 @@
 [ext_resource type="Script" path="res://scripts/console/slot_symbol.gd" id="1_sym"]
 
 [node name="SlotSymbol" type="Control"]
-custom_minimum_size = Vector2(240, 240)
+custom_minimum_size = Vector2(40, 40)
 offset_right = 240.0
 offset_bottom = 240.0
 pivot_offset = Vector2(120, 120)

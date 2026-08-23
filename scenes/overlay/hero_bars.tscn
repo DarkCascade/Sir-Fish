@@ -5,12 +5,14 @@
 [ext_resource type="Script" uid="uid://cwkjko1egguqe" path="res://scripts/console/buff_chip.gd" id="3_chip"]
 
 [node name="CombatantBars" type="Control" unique_id=1093874880]
-custom_minimum_size = Vector2(172, 58)
+custom_minimum_size = Vector2(340, 46)
 layout_mode = 3
 anchors_preset = 0
-offset_right = 172.0
-offset_bottom = 58.0
-pivot_offset = Vector2(86, 29)
+offset_left = 16.0
+offset_top = 8.0
+offset_right = 356.0
+offset_bottom = 54.0
+pivot_offset = Vector2(170, 23)
 mouse_filter = 2
 script = ExtResource("1_bars")
 
@@ -18,85 +20,58 @@ script = ExtResource("1_bars")
 layout_mode = 0
 offset_left = -16.0
 offset_top = -8.0
-offset_right = 184.0
-offset_bottom = 65.0
-
-[node name="CooldownBorder" type="ColorRect" parent="." unique_id=606074632]
-visible = false
-layout_mode = 0
-offset_left = -2.0
-offset_top = -2.0
-offset_right = 174.0
-offset_bottom = 12.0
-mouse_filter = 2
-color = Color(0.058824, 0.054902, 0.078431, 1)
-
-[node name="CooldownBg" type="ColorRect" parent="." unique_id=540728367]
-layout_mode = 0
-offset_left = -7.0
-offset_right = 176.0
-offset_bottom = 10.0
-mouse_filter = 2
-color = Color(0.137255, 0.121569, 0.180392, 1)
-
-[node name="CooldownFill" type="ColorRect" parent="CooldownBg" unique_id=1890563637]
-layout_mode = 0
-offset_left = 2.0
-offset_top = 2.0
-offset_right = 181.0
-offset_bottom = 8.0
-mouse_filter = 2
-color = Color(0.94902, 0.760784, 0.188235, 1)
+offset_right = 352.0
+offset_bottom = 50.0
 
 [node name="HealthBorder" type="ColorRect" parent="." unique_id=689940360]
 layout_mode = 0
 offset_left = 40.0
-offset_top = 16.0
-offset_right = 175.0
-offset_bottom = 54.0
+offset_top = 4.0
+offset_right = 343.0
+offset_bottom = 42.0
 mouse_filter = 2
-color = Color(0.058824, 0.054902, 0.078431, 1)
+color = Color(0.141176, 0.117647, 0.078431, 1)
 
 [node name="HealthBg" type="ColorRect" parent="HealthBorder" unique_id=1381180916]
 layout_mode = 0
 offset_left = 2.0
 offset_top = 2.0
-offset_right = 133.0
+offset_right = 301.0
 offset_bottom = 36.0
 mouse_filter = 2
-color = Color(0.137255, 0.121569, 0.180392, 1)
+color = Color(0.043137, 0.101961, 0.094118, 1)
 
 [node name="HealthFill" type="ColorRect" parent="HealthBorder/HealthBg" unique_id=1621600675]
 layout_mode = 0
 offset_left = 1.0
 offset_top = 2.0
-offset_right = 130.0
+offset_right = 298.0
 offset_bottom = 33.0
 mouse_filter = 2
-color = Color(0.878431, 0.192157, 0.192157, 1)
+color = Color(0.894118, 0.282353, 0.309804, 1)
 
 [node name="HpText" type="Label" parent="HealthBorder/HealthBg/HealthFill" unique_id=982706404]
 layout_mode = 0
 offset_left = 15.0
-offset_top = -3.0
-offset_right = 119.0
-offset_bottom = 33.0
-theme_override_colors/font_color = Color(1, 0.964706, 0.878431, 1)
-theme_override_colors/font_outline_color = Color(0.058824, 0.054902, 0.078431, 1)
+offset_top = -7.0
+offset_right = 287.0
+offset_bottom = 36.0
+theme_override_colors/font_color = Color(0.94902, 0.913725, 0.815686, 1)
+theme_override_colors/font_outline_color = Color(0.141176, 0.117647, 0.078431, 1)
 theme_override_constants/outline_size = 4
-theme_override_font_sizes/font_size = 18
-text = "10/100"
+theme_override_font_sizes/font_size = 32
+text = "10"
 horizontal_alignment = 1
 vertical_alignment = 1
 
 [node name="ChipBorder" type="ColorRect" parent="." unique_id=430546693]
 layout_mode = 0
 offset_left = -5.0
-offset_top = 16.0
+offset_top = 4.0
 offset_right = 33.0
-offset_bottom = 54.0
+offset_bottom = 42.0
 mouse_filter = 2
-color = Color(0.94902, 0.760784, 0.188235, 1)
+color = Color(0.788235, 0.635294, 0.152941, 1)
 
 [node name="Chip" type="ColorRect" parent="ChipBorder" unique_id=2020931198]
 layout_mode = 0
@@ -126,7 +101,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-theme_override_colors/font_color = Color(0.058824, 0.054902, 0.078431, 1)
+theme_override_colors/font_color = Color(0.141176, 0.117647, 0.078431, 1)
 theme_override_font_sizes/font_size = 22
 text = "H"
 horizontal_alignment = 1
@@ -135,9 +110,9 @@ vertical_alignment = 1
 [node name="BuffShield" type="Control" parent="." unique_id=1719420244]
 visible = false
 anchors_preset = 0
-offset_left = 146.0
-offset_top = 20.0
-offset_right = 172.0
-offset_bottom = 46.0
+offset_left = 314.0
+offset_top = 8.0
+offset_right = 340.0
+offset_bottom = 34.0
 mouse_filter = 2
 script = ExtResource("3_chip")

@@ -14,10 +14,13 @@ extends Control
 ## a pillar-1 legibility failure. Order is fixed (numeric glyphs, then the
 ## element chip last) so the strip does not reshuffle as it fills.
 
-const GLYPH := 20.0
-const GAP := 10.0
-const PAD := 18.0
-const FONT_SIZE := 22
+## [presentation redesign] Was 20/10/18/22 when this lived as a thin strip
+## atop the upgrade tray (spec 17.6). One instance now, enlarged, in
+## status_panel.tscn's ResourceRow - the room the hidden depth plate freed.
+const GLYPH := 38.0
+const GAP := 14.0
+const PAD := 26.0
+const FONT_SIZE := 34
 
 ## sword (dmg_flat), chevron (dmg_pct), bolt (slot_bolt), coin (slot_purse),
 ## plus (slot_mend). Order is fixed so the strip does not reshuffle as it fills.

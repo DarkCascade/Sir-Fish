@@ -29,6 +29,7 @@ func _ready() -> void:
 		_spawn(RANGER, 80),
 		_spawn(WARRIOR, 60),
 	]
+	# [UI pass] PartyBars moved back into ResourceRow as the party-status column.
 	var party_bars := status_panel.get_node("Layout/ResourceRow/PartyBars")
 	party_bars.director = mock
 

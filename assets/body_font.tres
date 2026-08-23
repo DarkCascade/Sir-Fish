@@ -1,0 +1,14 @@
+[gd_resource type="FontVariation" format=3 load_steps=2]
+
+[ext_resource type="FontFile" path="res://assets/fonts/EBGaramond-VariableFont.ttf" id="1_garamond"]
+
+; [presentation redesign] EB Garamond (Google Fonts, SIL Open Font License -
+; see assets/fonts/EBGaramond-OFL.txt). Body face for upgrade blurbs, item
+; subtitles and anything below DisplayLabel's engraved-caps size - Cinzel has
+; no true lowercase, so running paragraph text in it is illegible.
+[resource]
+base_font = ExtResource("1_garamond")
+variation_opentype = {
+"wght": 400.0
+}
+spacing_glyph = 1
