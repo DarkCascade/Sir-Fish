@@ -414,7 +414,13 @@ func is_defending() -> bool:
 
 # --- world helpers ----------------------------------------------------------
 
+## While blinked in on a melee strike, the bar stays behind at the home slot
+## instead of following the body into the party's ranks (overworld prototype):
+## bar_anchor.position is a pure +Y offset, unaffected by facing, so adding it
+## to _home_position reproduces where the anchor would sit back home.
 func bar_world_position() -> Vector3:
+	if _blinked:
+		return _home_position + bar_anchor.position
 	return bar_anchor.global_position
 
 func hit_world_position() -> Vector3:
