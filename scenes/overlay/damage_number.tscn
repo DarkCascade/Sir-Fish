@@ -1,9 +1,11 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scripts/overlay/damage_number.gd" id="1_num"]
+[ext_resource type="FontVariation" path="res://assets/display_font_bold.tres" id="2_bold"]
 
 [node name="DamageNumber" type="Label"]
 theme_type_variation = &"DisplayLabel"
+theme_override_fonts/font = ExtResource("2_bold")
 mouse_filter = 2
 horizontal_alignment = 1
 script = ExtResource("1_num")
