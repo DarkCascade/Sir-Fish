@@ -115,11 +115,14 @@ func _cmd_spawn(args: Array) -> void:
 		_log("spawn -> unknown stats id '%s'" % args[0])
 		return
 	var index: int = d.enemies.size()
-	var x: float = d.world.enemy_slot_x(index, maxi(index + 1, Tuning.MAX_ENEMIES))
-	var c: Combatant = d._spawn_combatant(stats, Vector3(x, 0, 0), -1)
+	# [overworld prototype] Slots are points on the ground plane now, not
+	# offsets along one axis, so this takes the whole position.
+	var slot: Vector3 = d.world.enemy_slot_position(index, maxi(index + 1, Tuning.MAX_ENEMIES))
+	var c: Combatant = d._spawn_combatant(stats, slot, -1)
+	c.set_home(slot)
 	d.enemies.append(c)
 	EventBus.combatant_spawned.emit(c)
-	_log("spawn -> %s at x=%.2f" % [args[0], x])
+	_log("spawn -> %s at (%.2f, %.2f)" % [args[0], slot.x, slot.z])
 
 func _cmd_sethp(args: Array) -> void:
 	if args.size() < 2:

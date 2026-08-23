@@ -13,6 +13,14 @@ var hero_runtime: Array = []       # [{stats_id, current_hp, max_hp, alive}]
 var current_encounter_index: int = -1
 var level: LevelDef
 
+## Endless is the default mode (spec: Endless Mode) - a run keeps generating
+## six-encounter levels back to back instead of ending after one fixed level,
+## and only stops on a party wipe (run_controller._next_encounter() is what
+## actually loops back into build_level() when a level runs out). Flipping
+## this to false restores the original single fixed level (Whispering Wood).
+var endless_mode: bool = true
+var endless_level_number: int = 1
+
 var run_stats := {
 	"encounters_cleared": 0,
 	"gold_earned": 0,
@@ -177,8 +185,96 @@ func living_hero_count() -> int:
 
 # --- run lifecycle ----------------------------------------------------------
 
-## The single function a future level generator replaces (spec 12.1 / 22).
+## Dispatches on endless_mode (spec: Endless Mode). This is the seam spec
+## 12.1 / 22 called out for a future level generator - _build_endless_level()
+## is that generator; _build_whispering_wood_level() is the original fixed
+## level, kept for endless_mode = false.
 func build_level() -> LevelDef:
+	if endless_mode:
+		return _build_endless_level(endless_level_number)
+	return _build_whispering_wood_level()
+
+# --- endless mode (spec: Endless Mode) --------------------------------------
+
+## Regular enemies available from the first level. skeleton_minion is the
+## other "weak" combatant alongside shadow_monster - a swarm of either reads
+## as an easy opener.
+const ENDLESS_EARLY_POOL: Array[StringName] = [&"shadow_monster", &"skeleton_minion"]
+## Join the pool once the party has cleared at least one level, so depth 1
+## stays as gentle as the old fixed level's opening fight.
+const ENDLESS_MID_POOL: Array[StringName] = [
+	&"orc_barbarian", &"skeleton_warrior", &"skeleton_mage", &"skeleton_rogue",
+]
+## The one enemy strong enough to anchor encounter 6 alone.
+const ENDLESS_BOSS_POOL: Array[StringName] = [&"orc_warlord"]
+
+## Six encounters, same COMBAT/LOOT/COMBAT/SHOP/COMBAT/boss-COMBAT rhythm as
+## the fixed level (that pacing was already tuned - only which enemies fill
+## the combat slots is generated). Called again every time the party walks
+## off the end of a level (run_controller._next_encounter()), with
+## endless_level_number already incremented, so difficulty is entirely from
+## a wider enemy pool and slightly bigger groups at higher depths - no
+## stat-scaling multiplier, to avoid a second source of truth for combatant
+## power alongside CombatantStats.
+func _build_endless_level(level_number: int) -> LevelDef:
+	var lvl := LevelDef.new()
+	lvl.display_name = "The Endless Wood — Depth %d" % level_number
+
+	var pool: Array[StringName] = ENDLESS_EARLY_POOL.duplicate()
+	if level_number >= 2:
+		pool.append_array(ENDLESS_MID_POOL)
+	@warning_ignore("integer_division")
+	var enemy_count := mini(2 + level_number / 3, 3)
+
+	var e0 := EncounterDef.new()
+	e0.type = EncounterDef.Type.COMBAT
+	e0.enemy_stat_ids = _random_enemies(pool, enemy_count)
+	e0.travel_duration = 2.0
+
+	var e1 := EncounterDef.new()
+	e1.type = EncounterDef.Type.LOOT
+	e1.loot_item_count = Tuning.LOOT_ITEMS_PER_CHEST
+	e1.travel_duration = 3.0
+
+	var e2 := EncounterDef.new()
+	e2.type = EncounterDef.Type.COMBAT
+	e2.enemy_stat_ids = _random_enemies(pool, enemy_count)
+	e2.travel_duration = 3.0
+
+	var e3 := EncounterDef.new()
+	e3.type = EncounterDef.Type.SHOP
+	e3.shop_item_count = Tuning.SHOP_ITEMS_FOR_SALE
+	e3.travel_duration = 3.0
+
+	var e4 := EncounterDef.new()
+	e4.type = EncounterDef.Type.COMBAT
+	e4.enemy_stat_ids = _random_enemies(pool, enemy_count)
+	e4.travel_duration = 3.0
+
+	# Boss listed first so it lands at the leftmost enemy slot (spec 7.3),
+	# same convention as the fixed level's warlord encounter.
+	var boss_id: StringName = RNG.pick(ENDLESS_BOSS_POOL)
+	var e5_ids: Array[StringName] = [boss_id]
+	e5_ids.append_array(_random_enemies(pool, mini(enemy_count, 2)))
+	var e5 := EncounterDef.new()
+	e5.type = EncounterDef.Type.COMBAT
+	e5.is_boss = true
+	e5.enemy_stat_ids = e5_ids
+	e5.travel_duration = 4.0
+
+	lvl.encounters = [e0, e1, e2, e3, e4, e5]
+	return lvl
+
+func _random_enemies(pool: Array[StringName], count: int) -> Array[StringName]:
+	var out: Array[StringName] = []
+	for i: int in range(count):
+		var id: StringName = RNG.pick(pool)
+		out.append(id)
+	return out
+
+# --- fixed level (endless_mode = false) --------------------------------------
+
+func _build_whispering_wood_level() -> LevelDef:
 	var lvl := LevelDef.new()
 	lvl.display_name = "The Whispering Wood"
 
@@ -222,6 +318,7 @@ func reset_run() -> void:
 	gold = Tuning.STARTING_GOLD
 	inventory.clear()
 	current_encounter_index = -1
+	endless_level_number = 1
 	level = build_level()
 
 	hero_runtime.clear()

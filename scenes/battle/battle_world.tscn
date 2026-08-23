@@ -1,82 +1,77 @@
-[gd_scene format=4 uid="uid://hj7ehes107fs"]
+[gd_scene format=3 uid="uid://hj7ehes107fs"]
 
-[ext_resource type="PackedScene" path="res://scenes/battle/parallax_background.tscn" id="1_parallax"]
 [ext_resource type="Script" uid="uid://cne4kj8xgfg35" path="res://scripts/battle/battle_world.gd" id="2_world"]
-[ext_resource type="PackedScene" path="res://scenes/battle/storm_rain.tscn" id="3_rain"]
-[ext_resource type="Script" path="res://scripts/battle/lightning.gd" id="4_lightning"]
+[ext_resource type="Script" uid="uid://bqexsymxmavbn" path="res://scripts/battle/overworld_field.gd" id="3_field"]
+
+[sub_resource type="ProceduralSkyMaterial" id="sky_mat"]
+sky_top_color = Color(0.243137, 0.505882, 0.831373, 1)
+sky_horizon_color = Color(0.729412, 0.858824, 0.921569, 1)
+sky_curve = 0.14
+ground_bottom_color = Color(0.352941, 0.470588, 0.278431, 1)
+ground_horizon_color = Color(0.729412, 0.858824, 0.921569, 1)
+sun_angle_max = 24.0
+sun_curve = 0.12
+
+[sub_resource type="Sky" id="sky"]
+sky_material = SubResource("sky_mat")
 
 [sub_resource type="Environment" id="env"]
-background_mode = 1
-background_color = Color(0.086275, 0.125490, 0.227451, 1)
-ambient_light_source = 2
-ambient_light_color = Color(0.274510, 0.345098, 0.478431, 1)
-ambient_light_energy = 0.22
-fog_enabled = true
-fog_light_color = Color(0.137255, 0.176471, 0.290196, 1)
-fog_light_energy = 1.0
-fog_sky_affect = 0.0
-fog_mode = 1
-fog_depth_begin = 8.0
-fog_depth_end = 34.0
-fog_depth_curve = 1.2
+background_mode = 2
+sky = SubResource("sky")
+ambient_light_source = 3
+ambient_light_energy = 0.85
+tonemap_mode = 2
+tonemap_white = 2.0
 glow_enabled = true
-glow_intensity = 0.85
-glow_bloom = 0.35
-glow_hdr_threshold = 0.85
+glow_intensity = 0.55
+glow_bloom = 0.2
+glow_hdr_threshold = 1.05
+fog_enabled = true
+fog_mode = 1
+fog_light_color = Color(0.729412, 0.858824, 0.921569, 1)
+fog_density = 1.0
+fog_sky_affect = 0.0
+fog_depth_curve = 1.35
+fog_depth_begin = 38.0
+fog_depth_end = 96.0
 adjustment_enabled = true
-adjustment_saturation = 0.72
+adjustment_saturation = 1.08
 
-[node name="BattleWorld" type="Node3D" unique_id=1613809176 groups=["battle_world"]]
+[node name="BattleWorld" type="Node3D" unique_id=2072727756 groups=["battle_world"]]
 script = ExtResource("2_world")
 
-[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1615472504]
+[node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=579600094]
 environment = SubResource("env")
 
-[node name="KeyLight" type="DirectionalLight3D" parent="." unique_id=345915961]
-transform = Transform3D(0.819152, 0, 0.573576, 0.368688, 0.766044, -0.526541, -0.439385, 0.642788, 0.627507, 0, 6, 0)
-light_color = Color(0.658824, 0.713726, 0.815686, 1)
-light_energy = 0.72
+[node name="KeyLight" type="DirectionalLight3D" parent="." unique_id=650292305]
+transform = Transform3D(-0.7623, -0.4657, 0.4496, 0, 0.6946, 0.7194, -0.6473, 0.5484, -0.5295, 0, 12, 0)
+light_color = Color(1, 0.968627, 0.894118, 1)
+light_energy = 1.15
 shadow_enabled = true
-shadow_bias = 0.03
+shadow_bias = 0.04
+shadow_normal_bias = 1.4
+directional_shadow_max_distance = 48.0
 
-[node name="FillLight" type="DirectionalLight3D" parent="." unique_id=67591685]
+[node name="FillLight" type="DirectionalLight3D" parent="." unique_id=887184943]
 transform = Transform3D(-0.819152, 0, -0.573576, -0.196175, 0.939693, 0.280166, 0.538986, 0.34202, -0.769751, 0, 6, 0)
-light_color = Color(0.352941, 0.443137, 0.611765, 1)
-light_energy = 0.22
+light_color = Color(0.588235, 0.709804, 0.847059, 1)
+light_energy = 0.32
 
-[node name="LightningLight" type="DirectionalLight3D" parent="."]
-transform = Transform3D(-0.906308, 0, 0.422618, 0.211309, 0.866025, 0.453154, -0.365998, 0.5, -0.784886, 0, 6, 0)
-light_color = Color(0.862745, 0.909804, 1, 1)
-light_energy = 0.0
-shadow_enabled = false
-
-[node name="BattleCamera" type="Camera3D" parent="." unique_id=911126898]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.2, 12)
-projection = 1
+[node name="BattleCamera" type="Camera3D" parent="." unique_id=1438402991]
+transform = Transform3D(0.7431448, 0.17318371, -0.64633036, 0, 0.9659255, 0.25881895, 0.6691306, -0.19233997, 0.7178225, -14, 9, 17)
+keep_aspect = 0
 current = true
-size = 5.8
-far = 200.0
+fov = 34.0
+near = 0.5
+far = 300.0
 
-[node name="ParallaxBackground" parent="." unique_id=1200247927 instance=ExtResource("1_parallax")]
+[node name="OverworldField" type="Node3D" parent="." unique_id=2019343743]
+script = ExtResource("3_field")
 
-[node name="StormRain" parent="." instance=ExtResource("3_rain")]
+[node name="HeroSlots" type="Node3D" parent="." unique_id=1777742883]
 
-[node name="StormLightning" type="CanvasLayer" parent="." groups=["storm_lightning"]]
-script = ExtResource("4_lightning")
+[node name="EnemyRoot" type="Node3D" parent="." unique_id=639501729]
 
-[node name="HeroSlots" type="Node3D" parent="." unique_id=996271290]
+[node name="PropRoot" type="Node3D" parent="." unique_id=1035734894]
 
-[node name="Slot0" type="Marker3D" parent="HeroSlots" unique_id=2047441285]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.2, 0, 0)
-
-[node name="Slot1" type="Marker3D" parent="HeroSlots" unique_id=278099978]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3, 0, 0)
-
-[node name="Slot2" type="Marker3D" parent="HeroSlots" unique_id=120457826]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.8, 0, 0)
-
-[node name="EnemyRoot" type="Node3D" parent="." unique_id=1694323710]
-
-[node name="PropRoot" type="Node3D" parent="." unique_id=1907003442]
-
-[node name="ProjectileRoot" type="Node3D" parent="." unique_id=895279928]
+[node name="ProjectileRoot" type="Node3D" parent="." unique_id=1777151609]

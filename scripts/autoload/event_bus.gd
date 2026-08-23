@@ -36,6 +36,4 @@ signal party_bonuses_changed(bonuses: Dictionary)   # [v2] spec 13.5
 signal slot_spin_started()
 signal slot_spin_stopped(symbols: Array)       # Array[int] of 3 Tuning.Sym values
 signal slot_payout(kind: String, count: int)   # kind in "lightning"|"gold"|"heal"
-signal party_damage_buff_started(duration: float)
-signal party_damage_buff_ended()
 signal upgrade_purchased(id: StringName, new_level: int)   # [v2] spec 17.6

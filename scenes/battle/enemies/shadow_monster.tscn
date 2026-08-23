@@ -8,3 +8,4 @@
 stats = ExtResource("2_stats")
 
 [node name="Model" parent="Visual/Rig" index="0" instance=ExtResource("3_model")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0.9075)

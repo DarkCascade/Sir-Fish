@@ -1,5 +1,5 @@
 extends Button
-## One purchasable slot upgrade (spec 17.6). 340 x 178.
+## One purchasable slot upgrade (spec 17.6). 340 x 212.
 ##
 ## Re-evaluates on gold_changed and upgrade_purchased, exactly as the shop cards
 ## do - purchases, sales, slot payouts and other upgrades all move gold.
@@ -22,7 +22,8 @@ func setup(upgrade_id: StringName) -> void:
 	refresh()
 
 func _ready() -> void:
-	custom_minimum_size = Vector2(340, 178)
+	custom_minimum_size = Vector2(340, 212)
+	resized.connect(_relayout)
 	pressed.connect(_on_pressed)
 	EventBus.gold_changed.connect(_on_gold_changed)
 	EventBus.upgrade_purchased.connect(_on_upgrade_purchased)
@@ -51,7 +52,7 @@ func _build() -> void:
 	add_child(_blurb)
 
 	_pips = Control.new()
-	_pips.position = Vector2(16, 92)
+	_pips.position = Vector2(16, size.y - 102)
 	_pips.custom_minimum_size = Vector2(
 		PIP * Tuning.UPGRADE_MAX_LEVEL + PIP_GAP * (Tuning.UPGRADE_MAX_LEVEL - 1), PIP)
 	_pips.size = _pips.custom_minimum_size
@@ -60,7 +61,7 @@ func _build() -> void:
 	add_child(_pips)
 
 	_coin = Control.new()
-	_coin.position = Vector2(16, 128)
+	_coin.position = Vector2(16, size.y - 56)
 	_coin.size = Vector2(28, 28)
 	_coin.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_coin.draw.connect(_draw_coin)
@@ -68,11 +69,20 @@ func _build() -> void:
 
 	_cost = Label.new()
 	_cost.theme_type_variation = &"DisplayLabel"
-	_cost.position = Vector2(52, 122)
+	_cost.position = Vector2(52, size.y - 62)
 	_cost.add_theme_font_size_override("font_size", 32)
 	_cost.add_theme_color_override("font_color", Tuning.C_GOLD)
 	_cost.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_cost)
+
+## Title and blurb hang from the top, price and pips from the bottom, so the card
+## survives the tray being given a different height (see upgrade_tray).
+func _relayout() -> void:
+	if _pips == null:
+		return
+	_pips.position = Vector2(16, size.y - 102)
+	_coin.position = Vector2(16, size.y - 56)
+	_cost.position = Vector2(52, size.y - 62)
 
 func _draw_pips() -> void:
 	var level := Upgrades.level(id)

@@ -6,6 +6,17 @@ extends Node3D
 const FLIGHT_TIME := 0.55
 const ARC_HEIGHT := 1.6
 
+## [overworld prototype] The arrow's parts are authored at true scale for a
+## side-on camera that filled a 640 px strip with about 10 world units. The
+## overhead camera sits 26 units back, where a 0.55-long shaft is a couple of
+## pixels and the shot simply cannot be read. This scales the whole projectile
+## up so it stays legible.
+##
+## It deliberately does NOT add a trail to the ordinary arrow: spec 9.6 makes
+## "trail or no trail" the thing that tells a bomb arrow from a plain one in
+## flight, and that distinction is worth more than the extra visibility would be.
+const VIEW_SCALE := 1.8
+
 @export var is_bomb: bool = false
 
 var _t: float = 0.0
@@ -32,7 +43,10 @@ func launch(source: Combatant, target: Combatant, director, bomb: bool) -> void:
 		_damage = maxi(1, int(round(float(source.stats.base_damage)
 			* source.damage_multiplier * Tuning.RANGER_BOMB_AOE_MULT)))
 	_start = source.hand_world_position()
-	_end = target.hit_world_position() if target != null else _start + Vector3(6, 0, 0)
+	# [overworld prototype] The fallback aim is down the run axis, not +X: the
+	# ranger can be facing anywhere on the field now.
+	_end = target.hit_world_position() if target != null \
+		else _start + Tuning.RUN_DIR * 6.0
 	global_position = _start
 	_t = 0.0
 	_flying = true
@@ -41,15 +55,27 @@ func _process(delta: float) -> void:
 	if not _flying:
 		return
 	_t = minf(1.0, _t + delta / FLIGHT_TIME)
-	# Re-read a living target's position so the arrow tracks a moving body.
+	# Re-read a living target's position so the arrow tracks a moving body -
+	# which under the overhead camera it will be, since melee fighters blink.
 	if _target != null and is_instance_valid(_target) and _target.is_alive():
 		_end = _target.hit_world_position()
+	var prev := global_position
 	var pos := _start.lerp(_end, _t) + Vector3(0, ARC_HEIGHT * 4.0 * _t * (1.0 - _t), 0)
 	global_position = pos
 
-	var flat := _end - _start
-	var dy := flat.y + ARC_HEIGHT * 4.0 * (1.0 - 2.0 * _t)
-	rotation.z = atan2(dy, flat.x)
+	# [overworld prototype] The old `rotation.z = atan2(dy, flat.x)` only aimed
+	# the shaft inside the screen plane, which was all a side-on camera could
+	# see. The arrow now flies across a ground plane in any direction, so it is
+	# aimed at its own velocity in full 3D. The mesh is built lying along +X
+	# (see _build), and look_at() points a node's -Z, hence the +X basis fix-up.
+	var step := pos - prev
+	if step.length_squared() > 0.000001:
+		look_at(pos + step, Vector3.UP)
+		rotate_object_local(Vector3.UP, PI * 0.5)
+		# look_at() builds an ORTHONORMAL basis, which throws VIEW_SCALE away.
+		# Re-applying it here keeps the arrow at a readable size; the scale
+		# setter recomposes the basis around the rotation look_at just set.
+		scale = Vector3.ONE * VIEW_SCALE
 
 	if _t >= 1.0:
 		_flying = false
@@ -111,6 +137,7 @@ func _tree_timer(seconds: float) -> void:
 func _build() -> void:
 	for old: Node in get_children():
 		old.free()
+	scale = Vector3.ONE * VIEW_SCALE
 	# The mesh lies along +X so rotation.z aims it along the flight path.
 	var shaft := CylinderMesh.new()
 	shaft.top_radius = 0.018

@@ -51,7 +51,6 @@ func _process(delta: float) -> void:
 
 func _start_run() -> void:
 	GameState.reset_run()
-	console.status_panel.build_rows()
 	director.spawn_party()
 	state = RunState.BOOT
 	_running = true
@@ -61,8 +60,15 @@ func _start_run() -> void:
 func _next_encounter() -> void:
 	GameState.current_encounter_index += 1
 	if GameState.current_encounter_index >= GameState.level.encounters.size():
-		_run_complete()
-		return
+		if not GameState.endless_mode:
+			_run_complete()
+			return
+		# Endless (spec: Endless Mode): the party never "completes" a level,
+		# it just walks into the next one - generate it and keep going. The
+		# run only ends via _game_over() on a wipe.
+		GameState.endless_level_number += 1
+		GameState.level = GameState.build_level()
+		GameState.current_encounter_index = 0
 	var def: EncounterDef = GameState.level.encounters[GameState.current_encounter_index]
 	_travel(def)
 
@@ -122,7 +128,7 @@ func _on_combat_ended(victory: bool) -> void:
 func _run_loot(def: EncounterDef) -> void:
 	var chest = CHEST_SCENE.instantiate()
 	world.prop_root.add_child(chest)
-	chest.position = Vector3(3.2, 0, 0)
+	chest.position = world.prop_position(3.2)
 	_prop = chest
 	chest.pop_in()
 
@@ -144,15 +150,32 @@ func _run_loot(def: EncounterDef) -> void:
 func _run_shop(def: EncounterDef) -> void:
 	var building = SHOP_SCENE.instantiate()
 	world.prop_root.add_child(building)
-	building.position = Vector3(3.4, 0, 0)
+	building.position = world.prop_position(3.4)
 	_prop = building
 	building.pop_in()
 
 	await get_tree().create_timer(0.4 + 0.45).timeout
+
+	# [overworld prototype] The shop modal is a UI element AND a blocking one:
+	# the encounter resolves only when its close button is pressed. With the
+	# console hidden for camera framing there is nobody to press it, so the
+	# encounter chain would stall here forever and the "ongoing action" the
+	# overworld is meant to show would stop at the first shop. Hold on the
+	# building for a beat instead and move on.
+	if _ui_hidden():
+		await get_tree().create_timer(Tuning.SHOP_SKIP_HOLD).timeout
+		_encounter_resolved()
+		return
+
 	shop_modal.open(def)
 	# The encounter resolves only when the modal's close button is pressed.
 	await shop_modal.closed
 	_encounter_resolved()
+
+## Whether the run is being played with the UI hidden (main_layout.hide_console).
+func _ui_hidden() -> bool:
+	var main := get_parent()
+	return main != null and bool(main.get("hide_console"))
 
 # --- resolution / exit ------------------------------------------------------
 
@@ -175,14 +198,19 @@ func _encounter_resolved() -> void:
 ## panel's three rows are index-addressed and freeing the node would shift them.
 ## A dead hero is freed only on Retry (spec 18.3). Conceptually the party leaves
 ## them behind; visually, because the camera is fixed and the world scrolls, the
-## corpse slides left off-screen, which is the correct read.
+## corpse slides off-screen behind the party, which is the correct read.
+##
+## [overworld prototype] "Off-screen behind the party" is back down the run
+## axis now rather than along -X, so the corpse leaves through the bottom-left
+## corner - the direction the field is scrolling anyway.
 func _encounter_exit() -> void:
 	state = RunState.ENCOUNTER_EXIT
 	var dead: Array = director.dead_heroes()
 	for hero: Combatant in dead:
 		if hero.visible:
 			var tw := create_tween()
-			tw.tween_property(hero, "position:x", -7.0, Tuning.DEAD_HERO_EXIT_TIME) \
+			tw.tween_property(hero, "global_position", world.exit_position(),
+				Tuning.DEAD_HERO_EXIT_TIME) \
 				.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
 			tw.tween_callback(func() -> void:
 				if is_instance_valid(hero):
@@ -230,7 +258,6 @@ func _on_retry() -> void:
 	_prop = null
 	overlay.clear_all()
 	console.slot_machine.reset_to_attract()
-	console.party_damage_button.cancel_buff()
 	world.set_scroll_speed(0.0)
 	world.parallax.reset_tiles()
 	await get_tree().process_frame

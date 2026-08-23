@@ -21,7 +21,12 @@ var _home_position: Vector2
 @onready var cabinet: Panel = $Cabinet
 @onready var payline: ColorRect = $Payline
 @onready var banner: Label = $Banner
+@onready var arrow_left: ColorRect = $PaylineArrowLeft
+@onready var arrow_right: ColorRect = $PaylineArrowRight
 @onready var confetti: GPUParticles2D = $Confetti
+
+const CABINET_MARGIN := 20.0     # cabinet inset from the band's top and bottom
+const WINDOW_MARGIN := 80.0      # reel window inset from the band's top and bottom
 
 func _ready() -> void:
 	_home_position = position
@@ -31,6 +36,34 @@ func _ready() -> void:
 	EventBus.combat_started.connect(_on_combat_started)
 	EventBus.combat_ended.connect(_on_combat_ended)
 	EventBus.hero_damage_dealt.connect(_on_hero_damage_dealt)
+
+## Re-lays the cabinet for a band of `h` pixels, so the console can be given more
+## or less room without a second authored slot machine (spec 17.4). The window
+## always shows exactly three cells; everything else is measured from the centre.
+func apply_height(h: float) -> void:
+	custom_minimum_size = Vector2(1080, h)
+	size = Vector2(1080, h)
+	pivot_offset = size * 0.5
+	var mid := h * 0.5
+	var window_h := maxf(h - WINDOW_MARGIN * 2.0, 90.0)
+
+	cabinet.position = Vector2(110, CABINET_MARGIN)
+	cabinet.size = Vector2(860, h - CABINET_MARGIN * 2.0)
+	for i: int in range(_reels.size()):
+		var window := (_reels[i] as Control).get_parent() as Control
+		window.position = Vector2(window.position.x, WINDOW_MARGIN)
+		window.size = Vector2(window.size.x, window_h)
+		var reel = _reels[i]
+		reel.size = Vector2(window.size.x, window_h)
+		reel.set_cell_height(window_h / 3.0)
+
+	payline.position = Vector2(140, mid - 2.0)
+	arrow_left.position = Vector2(116, mid - 12.0)
+	arrow_right.position = Vector2(940, mid - 12.0)
+	banner.size = Vector2(1080, h)
+	scale = Vector2.ONE * Tuning.SLOT_CABINET_SCALE
+	# The shake tween returns here, and the console moves us before it calls this.
+	_home_position = position
 
 # --- attract mode (spec 16.6 / Q17) -----------------------------------------
 
@@ -185,10 +218,16 @@ func _celebrate(symbol: int, count: int) -> void:
 			continue
 		var cell: Variant = reel.payline_cell()
 		cell.pivot_offset = cell.size * 0.5
+		# Rest pose is Tuning.SLOT_CABINET_SCALE, not Vector2.ONE - every cell
+		# is scaled down permanently now (see slot_reel.gd's _resize_cells()),
+		# and tweening back to ONE here would snap just THIS cell back to full
+		# size the first time its symbol wins, leaving it visibly bigger than
+		# its neighbours for good.
+		var cell_rest := Vector2.ONE * Tuning.SLOT_CABINET_SCALE
 		var tw: Tween = cell.create_tween()
-		tw.tween_property(cell, "scale", Vector2(1.30, 1.30), 0.175) \
+		tw.tween_property(cell, "scale", cell_rest * 1.30, 0.175) \
 			.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-		tw.tween_property(cell, "scale", Vector2.ONE, 0.175)
+		tw.tween_property(cell, "scale", cell_rest, 0.175)
 
 	var flash := create_tween().set_loops(2)
 	flash.tween_property(payline, "color", Tuning.C_TEXT, 0.09)
@@ -205,10 +244,15 @@ func _celebrate(symbol: int, count: int) -> void:
 		confetti.restart()
 		confetti.emitting = true
 		pivot_offset = size * 0.5
+		# Rest pose is Tuning.SLOT_CABINET_SCALE, not Vector2.ONE - the cabinet
+		# is scaled down permanently now (see that constant), and tweening
+		# back to ONE here would undo the shrink for good the first time this
+		# fires.
+		var rest := Vector2.ONE * Tuning.SLOT_CABINET_SCALE
 		var punch := create_tween()
-		punch.tween_property(self, "scale", Vector2(1.05, 1.05), 0.125) \
+		punch.tween_property(self, "scale", rest * 1.05, 0.125) \
 			.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-		punch.tween_property(self, "scale", Vector2.ONE, 0.125)
+		punch.tween_property(self, "scale", rest, 0.125)
 
 # --- payouts (spec 16.5) ----------------------------------------------------
 

@@ -40,7 +40,15 @@ func present(victory: bool) -> void:
 		subtitle.text = "Cleared all %d encounters" % GameState.level.encounters.size()
 	else:
 		var shown_index: int = clampi(GameState.current_encounter_index + 1, 1, GameState.level.encounters.size())
-		subtitle.text = "Reached encounter %d of %d" % [shown_index, GameState.level.encounters.size()]
+		if GameState.endless_mode:
+			# "encounter 3 of 6" on its own reads as barely any progress even
+			# after clearing four full levels first - the wipe only ever
+			# happens partway through the CURRENT level, so depth has to be
+			# named too or the four levels before it vanish from the summary.
+			subtitle.text = "Reached Depth %d, encounter %d of %d" % \
+				[GameState.endless_level_number, shown_index, GameState.level.encounters.size()]
+		else:
+			subtitle.text = "Reached encounter %d of %d" % [shown_index, GameState.level.encounters.size()]
 
 	scrim.modulate.a = 0.0
 	var s := create_tween()

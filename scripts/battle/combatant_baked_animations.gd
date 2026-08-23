@@ -5,13 +5,17 @@ extends RefCounted
 ## (idle/run/attack/special/hurt/die).
 ##
 ## This is the path for third-party models that arrive with a baked action
-## library - the KayKit warrior (knight.glb) is the first. It replaces, for
+## library - the KayKit warrior (knight.glb) was the first, joined by the
+## KayKit ranger (rogue.glb) and the KayKit priest (mage.glb). It replaces, for
 ## those characters only, the GDScript-authored clips in
 ## CombatantSkeletonAnimations: those are keyed against the old in-house
 ## 17-bone rig (Root / Arm.R / Thigh.L ...) and cannot address a 41-bone
 ## KayKit armature (root / upperarm.r / upperleg.l ...) at all. Characters
 ## still on the in-house rig keep using that file unchanged - see
-## CombatantAnimations.build() for the dispatch order.
+## CombatantAnimations.build() for the dispatch order. Every KayKit
+## Adventurers character shares one animation library regardless of which
+## variant .glb it ships in, so warrior, ranger and priest all draw clips from
+## the same name pool below even though they are three different files.
 ##
 ## Two things have to be fixed up on the way across, and both are the reason
 ## this cannot be a plain `player.add_animation_library(src.get_animation_library(""))`:
@@ -32,13 +36,55 @@ extends RefCounted
 ## documents: a call track is a position *in* the animation, so it survives
 ## speed_scale and can never drift from the visual.
 
-## clip     - the animation name inside the .glb.
-## length   - the retargeted clip's duration in seconds (spec 5.2, above).
-## loop     - LOOP_LINEAR vs LOOP_NONE.
-## impact   - time of the _anim_impact call track, omitted for clips that
-##            resolve nothing.
-## cast     - time of the _anim_special_cast telegraph flash (spec 9.6).
+## clip      - the animation name inside the .glb.
+## length    - the retargeted clip's duration in seconds (spec 5.2, above).
+## loop      - LOOP_LINEAR vs LOOP_NONE.
+## impact    - time of the _anim_impact call track, omitted for clips that
+##             resolve nothing.
+## cast      - time of the _anim_special_cast telegraph flash (spec 9.6).
+## charge    - time of the _anim_charge telegraph call (priest primary only;
+##             spec 9.3 / Ability.charge() - gated on stats.telegraphs_primary,
+##             which is only ever true for the priest).
+## glow_node - path to a MeshInstance3D, RELATIVE TO THE IMPORTED ROOT (not
+##             just a bare name - the value track needs an exact NodePath, unlike
+##             CombatantRig's name-search lookups), to drive an emission_strength
+##             value track on: 1.5 -> 5.0 -> 1.5 across [0.0, 0.30, impact,
+##             length] (spec 9.3's charge glow). Requires "impact". The
+##             priest's staff is the only user - see
+##             CombatantRig._finalize_priest for the baseline material.
 const CLIPS := {
+	&"priest": {
+		&"idle":    { "clip": "Idle", "length": 1.60, "loop": true },
+		&"run":     { "clip": "Running_A", "length": 0.70, "loop": true },
+		# Spellcast_Shoot's authored 0.93s needs almost no retargeting to reach
+		# either target length, so the cast/release pose survives intact rather
+		# than being visibly sped up or slowed down. Length and impact are the
+		# in-house rig's _priest_cast() numbers unchanged (spec 9.3), so the
+		# real cycle and every VFX/telegraph timing keyed off them are
+		# unaffected by the model swap.
+		&"attack":  { "clip": "Spellcast_Shoot", "length": 0.95, "loop": false,
+			"impact": 0.55, "charge": 0.30, "glow_node": "Rig/Skeleton3D/handslot_r/2H_Staff" },
+		&"special": { "clip": "Spellcast_Shoot", "length": 0.85, "loop": false,
+			"impact": 0.40, "cast": 0.0, "glow_node": "Rig/Skeleton3D/handslot_r/2H_Staff" },
+		&"hurt":    { "clip": "Hit_A", "length": 0.30, "loop": false },
+		&"die":     { "clip": "Death_A", "length": 0.80, "loop": false },
+	},
+	&"ranger": {
+		&"idle":    { "clip": "Idle", "length": 1.60, "loop": true },
+		&"run":     { "clip": "Running_A", "length": 0.70, "loop": true },
+		# Both attack and special use the same draw/release clip (spec 9.2) - the
+		# bomb-arrow telegraph and impact are handled entirely by the
+		# projectile/Ability system, not by which pose plays. Length 0.80,
+		# impact 0.30: identical to the in-house rig's _ranger_shot() this
+		# replaces, so the real cycle (spec 5.2) and every VFX timing keyed off
+		# it are unaffected by the model swap.
+		&"attack":  { "clip": "1H_Ranged_Shoot", "length": 0.80, "loop": false,
+			"impact": 0.30 },
+		&"special": { "clip": "1H_Ranged_Shoot", "length": 0.80, "loop": false,
+			"impact": 0.30, "cast": 0.0 },
+		&"hurt":    { "clip": "Hit_A", "length": 0.30, "loop": false },
+		&"die":     { "clip": "Death_A", "length": 0.80, "loop": false },
+	},
 	&"warrior": {
 		# Sword-and-board idle; the knight's default Idle already reads as a
 		# guard stance, so no separate 1H idle is needed.
@@ -60,6 +106,45 @@ const CLIPS := {
 		# Death_A over Death_B: 0.80s authored, exactly spec 9's die length,
 		# and it settles into a pose the corpse can hold (see
 		# Combatant._on_animation_finished, which leaves DEAD untouched).
+		&"die":     { "clip": "Death_A", "length": 0.80, "loop": false },
+	},
+	# The four KayKit Skeletons (spec: enemy rotation expansion) ship the same
+	# 95-clip library as the Adventurers pack above - same author, same
+	# animation names - but no weapon prop meshes at all (bare bone hands), so
+	# every attack below is one of the Unarmed_* clips instead of a weapon
+	# swing; the mage keeps its casting pose for flavour even though it deals
+	# its damage at melee range like the rest (no ranged-enemy targeting
+	# exists yet, so attack_style stays MELEE for all four).
+	&"skeleton_warrior": {
+		&"idle":    { "clip": "Idle", "length": 1.60, "loop": true },
+		&"run":     { "clip": "Running_A", "length": 0.70, "loop": true },
+		&"attack":  { "clip": "Unarmed_Melee_Attack_Punch_A", "length": 0.70, "loop": false,
+			"impact": 0.30 },
+		&"hurt":    { "clip": "Hit_A", "length": 0.30, "loop": false },
+		&"die":     { "clip": "Death_A", "length": 0.80, "loop": false },
+	},
+	&"skeleton_mage": {
+		&"idle":    { "clip": "Idle", "length": 1.60, "loop": true },
+		&"run":     { "clip": "Running_A", "length": 0.70, "loop": true },
+		&"attack":  { "clip": "Spellcast_Shoot", "length": 0.85, "loop": false,
+			"impact": 0.45 },
+		&"hurt":    { "clip": "Hit_A", "length": 0.30, "loop": false },
+		&"die":     { "clip": "Death_A", "length": 0.80, "loop": false },
+	},
+	&"skeleton_rogue": {
+		&"idle":    { "clip": "Idle", "length": 1.60, "loop": true },
+		&"run":     { "clip": "Running_A", "length": 0.70, "loop": true },
+		&"attack":  { "clip": "Unarmed_Melee_Attack_Kick", "length": 0.60, "loop": false,
+			"impact": 0.24 },
+		&"hurt":    { "clip": "Hit_A", "length": 0.30, "loop": false },
+		&"die":     { "clip": "Death_A", "length": 0.80, "loop": false },
+	},
+	&"skeleton_minion": {
+		&"idle":    { "clip": "Idle", "length": 1.60, "loop": true },
+		&"run":     { "clip": "Running_A", "length": 0.70, "loop": true },
+		&"attack":  { "clip": "Unarmed_Melee_Attack_Kick", "length": 0.55, "loop": false,
+			"impact": 0.20 },
+		&"hurt":    { "clip": "Hit_A", "length": 0.30, "loop": false },
 		&"die":     { "clip": "Death_A", "length": 0.80, "loop": false },
 	},
 }
@@ -138,8 +223,19 @@ static func _retarget(source: Animation, prefix: String, spec: Dictionary) -> An
 	a.loop_mode = Animation.LOOP_LINEAR if spec.get("loop", false) else Animation.LOOP_NONE
 	if spec.has("cast"):
 		_call(a, float(spec["cast"]), &"_anim_special_cast")
+	if spec.has("charge"):
+		_call(a, float(spec["charge"]), &"_anim_charge")
 	if spec.has("impact"):
 		_call(a, float(spec["impact"]), &"_anim_impact")
+	if spec.has("glow_node"):
+		# Same curve the in-house priest clip hardcoded: a resting glow that
+		# charges up through the telegraph and falls back once the beat
+		# resolves (spec 9.3). This is authored fresh, not sourced from the
+		# .glb, so it is built directly in target-time units - nothing here
+		# goes through the length-scaling factor above.
+		_shader_param_track(a,
+			"%s/%s:material_override:shader_parameter/emission_strength" % [prefix, spec["glow_node"]],
+			[[0.0, 1.5], [0.30, 5.0], [float(spec["impact"]), 5.0], [target_length, 1.5]])
 	return a
 
 ## Method-call track on the Combatant node - same convention as
@@ -149,3 +245,13 @@ static func _call(a: Animation, time: float, method: StringName) -> void:
 	var t := a.add_track(Animation.TYPE_METHOD)
 	a.track_set_path(t, NodePath(".."))
 	a.track_insert_key(t, time, { "method": method, "args": [] })
+
+## Same mechanism as CombatantSkeletonAnimations._shader_param_track - an
+## ordinary TYPE_VALUE track, aliased under a clearer name since it targets a
+## shader parameter rather than a bone.
+static func _shader_param_track(a: Animation, path: String, keys: Array) -> void:
+	var t := a.add_track(Animation.TYPE_VALUE)
+	a.track_set_path(t, NodePath(path))
+	a.value_track_set_update_mode(t, Animation.UPDATE_CONTINUOUS)
+	for k: Array in keys:
+		a.track_insert_key(t, k[0], k[1])

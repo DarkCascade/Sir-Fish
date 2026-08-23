@@ -53,7 +53,12 @@ func _process(delta: float) -> void:
 			continue
 		var world_pos := combatant.bar_world_position()
 		var vp := cam.unproject_position(world_pos)
-		bars.position = vp - bars.size * 0.5
+		# Hero bars are wide enough to hang off the viewport when a hero stands
+		# near an edge, and a clipped name chip or a clipped HP number is worse
+		# than a bar that is a few pixels off-centre (pillar 1).
+		bars.position = Vector2(
+			clampf(vp.x - bars.size.x * 0.5, 0.0, maxf(size.x - bars.size.x, 0.0)),
+			vp.y - bars.size.y * 0.5)
 		bars.visible = not cam.is_position_behind(world_pos)
 		bars.refresh()
 
@@ -74,13 +79,16 @@ func screen_position(world_pos: Vector3) -> Vector2:
 
 # --- bars -------------------------------------------------------------------
 
+## Enemies only. A hero's bars live in the console's party strip (party_bars.gd),
+## where three of them sit still and read as a roster; over the battlefield they
+## were a third row of numbers drifting around with the characters.
 func _on_spawned(c: Node) -> void:
 	var combatant := c as Combatant
-	if combatant == null or _bars.has(combatant):
+	if combatant == null or combatant.is_hero or _bars.has(combatant):
 		return
 	var bars = BARS_SCENE.instantiate()
 	bars_layer.add_child(bars)
-	bars.combatant = combatant
+	bars.setup(combatant)
 	bars.set_health_fraction(combatant.hp_fraction())
 	bars.pop_in()
 	_bars[combatant] = bars

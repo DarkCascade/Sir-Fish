@@ -1,13 +1,14 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene load_steps=5 format=3]
 
 [ext_resource type="Script" path="res://scripts/console/status_panel.gd" id="1_status"]
 [ext_resource type="Script" path="res://scripts/console/coin_glyph.gd" id="2_coin"]
-[ext_resource type="PackedScene" path="res://scenes/console/inventory_strip.tscn" id="3_inv"]
+[ext_resource type="PackedScene" path="res://scenes/console/sir_fish_tank.tscn" id="4_fish"]
+[ext_resource type="PackedScene" path="res://scenes/console/party_bars.tscn" id="5_party"]
 
 [node name="StatusPanel" type="PanelContainer"]
-custom_minimum_size = Vector2(1080, 300)
+custom_minimum_size = Vector2(1080, 130)
 offset_right = 1080.0
-offset_bottom = 300.0
+offset_bottom = 130.0
 script = ExtResource("1_status")
 
 [node name="Layout" type="VBoxContainer" parent="."]
@@ -15,9 +16,14 @@ layout_mode = 2
 theme_override_constants/separation = 0
 
 [node name="ResourceRow" type="HBoxContainer" parent="Layout"]
-custom_minimum_size = Vector2(0, 90)
+custom_minimum_size = Vector2(0, 130)
 layout_mode = 2
-theme_override_constants/separation = 16
+theme_override_constants/separation = 12
+
+[node name="SirFishTank" parent="Layout/ResourceRow" instance=ExtResource("4_fish")]
+custom_minimum_size = Vector2(112, 112)
+layout_mode = 2
+size_flags_vertical = 4
 
 [node name="CoinGlyph" type="Control" parent="Layout/ResourceRow"]
 custom_minimum_size = Vector2(44, 44)
@@ -29,7 +35,7 @@ radius = 20.0
 
 [node name="GoldLabel" type="Label" parent="Layout/ResourceRow"]
 theme_type_variation = &"DisplayLabel"
-custom_minimum_size = Vector2(220, 0)
+custom_minimum_size = Vector2(200, 0)
 layout_mode = 2
 size_flags_vertical = 4
 mouse_filter = 2
@@ -37,11 +43,17 @@ theme_override_colors/font_color = Color(0.94902, 0.760784, 0.188235, 1)
 theme_override_font_sizes/font_size = 52
 vertical_alignment = 1
 
-[node name="InventoryStrip" parent="Layout/ResourceRow" instance=ExtResource("3_inv")]
+[node name="DepthLabel" type="Label" parent="Layout/ResourceRow"]
+theme_type_variation = &"DisplayLabel"
+custom_minimum_size = Vector2(130, 0)
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.607843, 0.576471, 0.682353, 1)
+theme_override_font_sizes/font_size = 26
+vertical_alignment = 1
+
+[node name="PartyBars" parent="Layout/ResourceRow" instance=ExtResource("5_party")]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 4
-
-[node name="HeroRows" type="VBoxContainer" parent="Layout"]
-layout_mode = 2
-theme_override_constants/separation = 0
