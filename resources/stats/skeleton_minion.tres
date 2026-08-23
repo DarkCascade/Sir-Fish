@@ -1,0 +1,17 @@
+[gd_resource type="Resource" script_class="CombatantStats" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/combatant_stats.gd" id="1_stats"]
+
+[resource]
+script = ExtResource("1_stats")
+id = &"skeleton_minion"
+display_name = "Skeleton Minion"
+is_hero = false
+max_hp = 28
+base_damage = 6
+attack_cooldown = 1.6
+special_every_n_actions = 0
+model_scale = 0.85
+body_color = Color(0.847059, 0.815686, 0.752941, 1)
+accent_color = Color(0.517647, 0.517647, 0.517647, 1)
+scene_path = "res://scenes/battle/enemies/skeleton_minion.tscn"

@@ -22,6 +22,10 @@ const IMPACT_DELAYS := {
 	&"shadow_monster": { "attack": 0.28, "special": 0.0 },
 	&"orc_barbarian":  { "attack": 0.42, "special": 0.0 },
 	&"orc_warlord":    { "attack": 0.42, "special": 0.0 },
+	&"skeleton_warrior": { "attack": 0.30 },
+	&"skeleton_mage":    { "attack": 0.45 },
+	&"skeleton_rogue":   { "attack": 0.24 },
+	&"skeleton_minion":  { "attack": 0.20 },
 }
 
 static func build(player: AnimationPlayer, stats: CombatantStats) -> void:

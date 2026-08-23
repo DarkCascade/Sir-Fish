@@ -60,8 +60,15 @@ func _start_run() -> void:
 func _next_encounter() -> void:
 	GameState.current_encounter_index += 1
 	if GameState.current_encounter_index >= GameState.level.encounters.size():
-		_run_complete()
-		return
+		if not GameState.endless_mode:
+			_run_complete()
+			return
+		# Endless (spec: Endless Mode): the party never "completes" a level,
+		# it just walks into the next one - generate it and keep going. The
+		# run only ends via _game_over() on a wipe.
+		GameState.endless_level_number += 1
+		GameState.level = GameState.build_level()
+		GameState.current_encounter_index = 0
 	var def: EncounterDef = GameState.level.encounters[GameState.current_encounter_index]
 	_travel(def)
 

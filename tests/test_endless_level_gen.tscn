@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://tests/test_endless_level_gen.gd" id="1_endless"]
+
+[node name="TestEndlessLevelGen" type="Node"]
+script = ExtResource("1_endless")

@@ -14,10 +14,24 @@ extends PanelContainer
 const NUMBER_SCENE := preload("res://scenes/overlay/damage_number.tscn")
 
 @onready var gold_label: Label = $Layout/ResourceRow/GoldLabel
+@onready var depth_label: Label = $Layout/ResourceRow/DepthLabel
 
 func _ready() -> void:
 	EventBus.gold_changed.connect(_on_gold_changed)
+	EventBus.run_started.connect(_update_depth)
+	EventBus.encounter_started.connect(func(_index: int, _def: EncounterDef) -> void: _update_depth())
 	_update_gold()
+	_update_depth()
+
+## Endless-only (spec: Endless Mode) - the fixed level has no "depth" to
+## report, so the label just disappears rather than showing a meaningless
+## "Depth 1" forever. Recomputed on every encounter, not just level
+## transitions - cheap, and it means there's no second place that has to
+## remember when the depth last changed.
+func _update_depth() -> void:
+	depth_label.visible = GameState.endless_mode
+	if GameState.endless_mode:
+		depth_label.text = "DEPTH %d" % GameState.endless_level_number
 
 func _update_gold() -> void:
 	gold_label.text = str(GameState.gold)

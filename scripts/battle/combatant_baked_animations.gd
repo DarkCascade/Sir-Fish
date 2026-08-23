@@ -108,6 +108,45 @@ const CLIPS := {
 		# Combatant._on_animation_finished, which leaves DEAD untouched).
 		&"die":     { "clip": "Death_A", "length": 0.80, "loop": false },
 	},
+	# The four KayKit Skeletons (spec: enemy rotation expansion) ship the same
+	# 95-clip library as the Adventurers pack above - same author, same
+	# animation names - but no weapon prop meshes at all (bare bone hands), so
+	# every attack below is one of the Unarmed_* clips instead of a weapon
+	# swing; the mage keeps its casting pose for flavour even though it deals
+	# its damage at melee range like the rest (no ranged-enemy targeting
+	# exists yet, so attack_style stays MELEE for all four).
+	&"skeleton_warrior": {
+		&"idle":    { "clip": "Idle", "length": 1.60, "loop": true },
+		&"run":     { "clip": "Running_A", "length": 0.70, "loop": true },
+		&"attack":  { "clip": "Unarmed_Melee_Attack_Punch_A", "length": 0.70, "loop": false,
+			"impact": 0.30 },
+		&"hurt":    { "clip": "Hit_A", "length": 0.30, "loop": false },
+		&"die":     { "clip": "Death_A", "length": 0.80, "loop": false },
+	},
+	&"skeleton_mage": {
+		&"idle":    { "clip": "Idle", "length": 1.60, "loop": true },
+		&"run":     { "clip": "Running_A", "length": 0.70, "loop": true },
+		&"attack":  { "clip": "Spellcast_Shoot", "length": 0.85, "loop": false,
+			"impact": 0.45 },
+		&"hurt":    { "clip": "Hit_A", "length": 0.30, "loop": false },
+		&"die":     { "clip": "Death_A", "length": 0.80, "loop": false },
+	},
+	&"skeleton_rogue": {
+		&"idle":    { "clip": "Idle", "length": 1.60, "loop": true },
+		&"run":     { "clip": "Running_A", "length": 0.70, "loop": true },
+		&"attack":  { "clip": "Unarmed_Melee_Attack_Kick", "length": 0.60, "loop": false,
+			"impact": 0.24 },
+		&"hurt":    { "clip": "Hit_A", "length": 0.30, "loop": false },
+		&"die":     { "clip": "Death_A", "length": 0.80, "loop": false },
+	},
+	&"skeleton_minion": {
+		&"idle":    { "clip": "Idle", "length": 1.60, "loop": true },
+		&"run":     { "clip": "Running_A", "length": 0.70, "loop": true },
+		&"attack":  { "clip": "Unarmed_Melee_Attack_Kick", "length": 0.55, "loop": false,
+			"impact": 0.20 },
+		&"hurt":    { "clip": "Hit_A", "length": 0.30, "loop": false },
+		&"die":     { "clip": "Death_A", "length": 0.80, "loop": false },
+	},
 }
 
 static func has_clips_for(stats: CombatantStats) -> bool:
