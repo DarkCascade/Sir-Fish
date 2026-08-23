@@ -1,10 +1,14 @@
-[gd_resource type="FontVariation" format=3]
+[gd_resource type="FontVariation" format=3 load_steps=2]
 
-; Spec 6.5 / Q20. The display face is synthesised from Godot's built-in default
-; font at runtime, so no font file ships and the no-third-party-assets rule
-; (spec 0.1.2) holds. base_font is deliberately left unset: an empty base_font
-; resolves to the theme's default font.
+[ext_resource type="FontFile" path="res://assets/fonts/Baloo2-Variable.ttf" id="1_baloo"]
+
+; Baloo 2 (Google Fonts, SIL Open Font License - see assets/fonts/Baloo2-OFL.txt).
+; The no-third-party-assets rule (spec 0.1.2) was a prototype-only constraint
+; and no longer applies; this replaces the emboldened/skewed default-font
+; synthesis with the variable font's own ExtraBold weight.
 [resource]
-variation_embolden = 0.35
-variation_transform = Transform2D(1.06, 0, 0, 1, 0, 0)
+base_font = ExtResource("1_baloo")
+variation_opentype = {
+"wght": 800.0
+}
 spacing_glyph = 2

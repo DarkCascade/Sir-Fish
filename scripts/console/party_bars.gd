@@ -8,7 +8,7 @@ extends Control
 ## with the characters, overlapped each other when the party bunched up during
 ## travel, and had to be clamped away from the viewport edges.
 
-const BARS_SCENE := preload("res://scenes/overlay/combatant_bars.tscn")
+const BARS_SCENE := preload("res://scenes/overlay/hero_bars.tscn")
 
 var director = null               # BattleDirector (untyped: custom API)
 

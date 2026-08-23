@@ -1,7 +1,6 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene load_steps=2 format=3]
 
 [ext_resource type="Script" path="res://scripts/overlay/combatant_bars.gd" id="1_bars"]
-[ext_resource type="Script" path="res://scripts/console/buff_chip.gd" id="2_chip"]
 
 [node name="CombatantBars" type="Control"]
 custom_minimum_size = Vector2(140, 34)
@@ -61,44 +60,3 @@ offset_right = 138.0
 offset_bottom = 32.0
 mouse_filter = 2
 color = Color(0.878431, 0.192157, 0.192157, 1)
-
-[node name="Chip" type="ColorRect" parent="."]
-visible = false
-layout_mode = 0
-offset_right = 36.0
-offset_bottom = 36.0
-mouse_filter = 2
-color = Color(0.290196, 0.435294, 0.647059, 1)
-
-[node name="ChipLabel" type="Label" parent="Chip"]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-mouse_filter = 2
-theme_override_colors/font_color = Color(0.058824, 0.054902, 0.078431, 1)
-theme_override_font_sizes/font_size = 24
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="HpText" type="Label" parent="."]
-visible = false
-layout_mode = 0
-offset_right = 122.0
-offset_bottom = 36.0
-mouse_filter = 2
-theme_override_colors/font_color = Color(1, 0.964706, 0.878431, 1)
-theme_override_colors/font_outline_color = Color(0.058824, 0.054902, 0.078431, 1)
-theme_override_constants/outline_size = 4
-theme_override_font_sizes/font_size = 20
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="BuffShield" type="Control" parent="."]
-visible = false
-layout_mode = 0
-offset_right = 28.0
-offset_bottom = 28.0
-mouse_filter = 2
-script = ExtResource("2_chip")
-kind = "shield"
