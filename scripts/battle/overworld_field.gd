@@ -22,6 +22,10 @@ extends Node3D
 const BRUSH_TILE := preload("res://assets/meshes/env_brush.glb")
 const GROUND_TILE := preload("res://assets/meshes/env_ground.glb")
 const TREE_PROP := preload("res://assets/meshes/env_tree.glb")
+## [presentation redesign S10.1] Purple crystal clusters - authored in Blender,
+## coloured emissive in code rather than in the .glb (see _crystal_material()),
+## so glow tuning is a Godot-side reload instead of a Blender re-export.
+const CRYSTAL_TILE := preload("res://assets/meshes/env_crystal.glb")
 
 ## Same reasoning as Tuning.PARALLAX_TILE_COPIES: two copies can leave a gap at
 ## the far edge for one frame during a wrap, three never can.
@@ -123,6 +127,8 @@ func _build_scatter() -> void:
 	_scatter(_palette(BRUSH_TILE, "Env_GrassBlade"), Tuning.FIELD_GRASS, rand, 0.7, 1.6, false)
 	_scatter(_palette(GROUND_TILE, "Env_Rock"), Tuning.FIELD_ROCKS, rand, 0.7, 1.9, false)
 	_scatter(_palette(BRUSH_TILE, "Env_Bush"), Tuning.FIELD_BUSHES, rand, 0.8, 1.5, true)
+	_scatter(_palette(CRYSTAL_TILE, "Env_Crystal"), Tuning.FIELD_CRYSTALS, rand,
+		Tuning.CRYSTAL_SCALE_MIN, Tuning.CRYSTAL_SCALE_MAX, true, _crystal_material())
 	# A tree is one prop made of eight meshes, so all eight share a single
 	# transform list - otherwise a trunk would end up under someone else's canopy.
 	_scatter_composite(_palette(TREE_PROP, "Env_Tree"), Tuning.FIELD_TREES, rand)
@@ -177,7 +183,8 @@ func _collect(node: Node, parent_xform: Transform3D, prefix: String,
 ## its own origin, so a bush whose origin is 0.387 up would sink halfway into
 ## the field if the Y were dropped along with the X and Z.
 func _scatter(palette: Array[Dictionary], count: int, rand: RandomNumberGenerator,
-		scale_min: float, scale_max: float, shadows: bool) -> void:
+		scale_min: float, scale_max: float, shadows: bool,
+		override_material: Material = null) -> void:
 	if palette.is_empty():
 		return
 	var buckets: Array[Array] = []
@@ -200,7 +207,7 @@ func _scatter(palette: Array[Dictionary], count: int, rand: RandomNumberGenerato
 			Vector3(flat, tall, flat)) * lifted)
 	for i: int in range(palette.size()):
 		if not buckets[i].is_empty():
-			_add_group(palette[i], buckets[i], shadows)
+			_add_group(palette[i], buckets[i], shadows, override_material)
 
 ## The tree: one shared placement per planted tree, applied to all eight of its
 ## meshes through each mesh's own local transform, so the parts stay assembled.
@@ -326,7 +333,8 @@ func _hazed(mat: Material) -> Material:
 	copy.albedo_color = copy.albedo_color.lerp(Tuning.C_HORIZON_HAZE, Tuning.FIELD_BACKDROP_TINT)
 	return copy
 
-func _add_group(entry: Dictionary, xforms: Array, shadows: bool) -> void:
+func _add_group(entry: Dictionary, xforms: Array, shadows: bool,
+		override_material: Material = null) -> void:
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_3D
 	mm.mesh = entry["mesh"]
@@ -338,7 +346,9 @@ func _add_group(entry: Dictionary, xforms: Array, shadows: bool) -> void:
 	for _i: int in range(FIELD_COPIES):
 		var mmi := MultiMeshInstance3D.new()
 		mmi.multimesh = mm                       # one resource, three instances of it
-		if entry["material"] != null:
+		if override_material != null:
+			mmi.material_override = override_material
+		elif entry["material"] != null:
 			mmi.material_override = entry["material"]
 		mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if shadows \
 			else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -346,3 +356,17 @@ func _add_group(entry: Dictionary, xforms: Array, shadows: bool) -> void:
 		copies.append(mmi)
 	_groups.append({"copies": copies})
 	_apply_offset()
+
+## Emissive override for the crystal clusters. A fresh StandardMaterial3D
+## rather than anything read off the .glb (S10.1's header): the Blender
+## source keeps a plain Principled BSDF with Base Color only, matching every
+## other Env_M_* material (spec 23.1) - emission lives here so tuning the
+## glow is a Tuning.CRYSTAL_EMISSION_ENERGY edit and a reload, not a Blender
+## re-export.
+func _crystal_material() -> StandardMaterial3D:
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Tuning.C_ARCANE_DEEP
+	mat.emission_enabled = true
+	mat.emission = Tuning.C_ARCANE
+	mat.emission_energy_multiplier = Tuning.CRYSTAL_EMISSION_ENERGY
+	return mat

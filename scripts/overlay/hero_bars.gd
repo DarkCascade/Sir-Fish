@@ -8,14 +8,19 @@ extends CombatantBarsBase
 ## text, which glyph) never positions, so this scene can be opened and tuned
 ## directly (see status_panel_preview.tscn) without a battle running.
 
-const HERO_FILL_WIDTH := 100.0
-const HERO_CD_WIDTH := 168.0
+## [layout experiment] Was 100/168 for the 172-wide card - hero_bars.tscn's
+## card is 340 wide now (party_bars.gd's own full-width row has the room),
+## and these two must track HealthFill's/CooldownFill's own authored width
+## in the .tscn or the bar visually stops short of (or overflows) its track.
+const HERO_FILL_WIDTH := 230.0
+const HERO_CD_WIDTH := 325.0
 
-## A radius past half the shorter side reads as a full pill (see
-## CombatantBarsBase.PILL_RADIUS); the chip is a square-ish tile, so it gets
-## an explicit, smaller radius instead. Card is a themed Panel now - its
-## corners come from Panel/styles/panel in theme.tres, not this shader.
-const CHIP_RADIUS := 10.0
+## [presentation redesign S6.3] Past half the chip's own shorter side (32),
+## same convention as CombatantBarsBase.PILL_RADIUS, so the class-icon tile
+## reads as a round medallion instead of a rounded square. Card is a themed
+## Panel now - its corners come from Panel/styles/panel in theme.tres, not
+## this shader.
+const CHIP_RADIUS := 22.0
 
 const KNOWN_ICON_CLASSES := [&"priest", &"ranger", &"warrior"]
 

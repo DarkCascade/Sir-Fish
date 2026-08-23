@@ -34,7 +34,7 @@ theme_override_constants/separation = 4
 [node name="NameLabel" type="Label" parent="Row/Layout/Info" unique_id=1864656627]
 layout_mode = 2
 theme_type_variation = &"DisplayLabel"
-theme_override_colors/font_color = Color(1, 0.964706, 0.878431, 1)
+theme_override_colors/font_color = Color(0.94902, 0.913725, 0.815686, 1)
 theme_override_font_sizes/font_size = 44
 
 [node name="SubtitleLabel" type="Label" parent="Row/Layout/Info" unique_id=337761693]
@@ -66,7 +66,7 @@ radius = 15.0
 [node name="PriceLabel" type="Label" parent="Row/Layout/PriceBox/PriceRow" unique_id=1473001721]
 layout_mode = 2
 theme_type_variation = &"DisplayLabel"
-theme_override_colors/font_color = Color(0.94902, 0.760784, 0.188235, 1)
+theme_override_colors/font_color = Color(0.788235, 0.635294, 0.152941, 1)
 theme_override_font_sizes/font_size = 46
 horizontal_alignment = 2
 

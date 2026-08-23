@@ -9,14 +9,22 @@ extends Control
 ## offsets, so the battle / console split can be moved (see main_layout.gd) without
 ## re-authoring every scene underneath.
 
-const STRIP_HEIGHT := 130.0
+## [presentation redesign S6, then the title-row experiment] Was 130, then
+## 160 for the gold/depth plates' bigger numerals and OrnateFrame chrome; now
+## 300 to also fit the "Bioluminescent Forest" title row and the party bars'
+## own dedicated row below it. Pure 2D: does not touch battle_height or
+## Tuning.RUN_DIR, unlike the full S4 screen-budget resize.
+const STRIP_HEIGHT := 300.0
 const TRAY_HEIGHT := 262.0
 const MIN_SLOT_HEIGHT := 320.0
 
 @onready var status_panel = $StatusPanel
 @onready var slot_machine = $SlotMachine
 @onready var sir_fish_tank = $StatusPanel/Layout/ResourceRow/SirFishTank
-@onready var party_bars = $StatusPanel/Layout/ResourceRow/PartyBars
+## [layout experiment] Moved out of ResourceRow to its own full-width row
+## below the title (status_panel.tscn), so PartyBars is now a direct child
+## of Layout instead of nested under ResourceRow.
+@onready var party_bars = $StatusPanel/Layout/PartyBars
 @onready var upgrade_tray = $UpgradeTray
 
 func apply_height(h: float) -> void:

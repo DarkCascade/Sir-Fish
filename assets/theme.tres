@@ -1,6 +1,7 @@
 [gd_resource type="Theme" format=3 uid="uid://b2apiaquobtkx"]
 
 [ext_resource type="FontVariation" path="res://assets/display_font.tres" id="1_display"]
+[ext_resource type="FontVariation" path="res://assets/body_font.tres" id="2_body"]
 
 [sub_resource type="StyleBoxFlat" id="btn_disabled"]
 content_margin_left = 24.0
@@ -44,7 +45,7 @@ border_width_left = 4
 border_width_top = 4
 border_width_right = 4
 border_width_bottom = 4
-border_color = Color(0.94902, 0.760784, 0.188235, 1)
+border_color = Color(0.788235, 0.635294, 0.152941, 1)
 corner_radius_top_left = 16
 corner_radius_top_right = 16
 corner_radius_bottom_right = 16
@@ -60,7 +61,7 @@ border_width_left = 4
 border_width_top = 4
 border_width_right = 4
 border_width_bottom = 4
-border_color = Color(0.94902, 0.760784, 0.188235, 1)
+border_color = Color(0.788235, 0.635294, 0.152941, 1)
 corner_radius_top_left = 16
 corner_radius_top_right = 16
 corner_radius_bottom_right = 16
@@ -79,32 +80,42 @@ corner_radius_bottom_right = 16
 corner_radius_bottom_left = 16
 
 [sub_resource type="StyleBoxFlat" id="panel"]
-bg_color = Color(0.2, 0.172549, 0.258824, 1)
+bg_color = Color(0.070588, 0.227451, 0.196078, 1)
 border_width_left = 3
 border_width_top = 3
 border_width_right = 3
 border_width_bottom = 3
-border_color = Color(0.290196, 0.258824, 0.376471, 1)
+border_color = Color(0.180392, 0.352941, 0.305882, 1)
 corner_radius_top_left = 20
 corner_radius_top_right = 20
 corner_radius_bottom_right = 20
 corner_radius_bottom_left = 20
 
 [resource]
+default_font = ExtResource("2_body")
 default_font_size = 34
-Button/colors/font_color = Color(1, 0.964706, 0.878431, 1)
+Button/colors/font_color = Color(0.94902, 0.913725, 0.815686, 1)
 Button/colors/font_disabled_color = Color(0.478431, 0.447059, 0.564706, 1)
-Button/colors/font_hover_color = Color(1, 0.964706, 0.878431, 1)
-Button/colors/font_pressed_color = Color(1, 0.964706, 0.878431, 1)
+Button/colors/font_hover_color = Color(0.94902, 0.913725, 0.815686, 1)
+Button/colors/font_pressed_color = Color(0.94902, 0.913725, 0.815686, 1)
 Button/styles/disabled = SubResource("btn_disabled")
 Button/styles/hover = SubResource("btn_hover")
 Button/styles/normal = SubResource("btn_normal")
 Button/styles/pressed = SubResource("btn_pressed")
 DisplayLabel/base_type = &"Label"
-DisplayLabel/colors/font_outline_color = Color(0.058824, 0.054902, 0.078431, 1)
-DisplayLabel/constants/outline_size = 6
+DisplayLabel/colors/font_outline_color = Color(0.141176, 0.117647, 0.078431, 1)
+DisplayLabel/constants/outline_size = 4
 DisplayLabel/fonts/font = ExtResource("1_display")
-Label/colors/font_color = Color(1, 0.964706, 0.878431, 1)
+Label/colors/font_color = Color(0.94902, 0.913725, 0.815686, 1)
 Panel/colors/border = Color(0, 1, 0, 1)
 Panel/styles/panel = SubResource("StyleBoxFlat_iqdca")
 PanelContainer/styles/panel = SubResource("panel")
+
+; [presentation redesign S3.4] Text-on-parchment variation - the upgrade
+; cards (console/upgrade_button.gd) are the only parchment surface in the
+; game, and dark ink on a light card face needs no outline; an outlined
+; DisplayLabel there reads muddy.
+PlateLabel/base_type = &"Label"
+PlateLabel/colors/font_color = Color(0.141176, 0.117647, 0.078431, 1)
+PlateLabel/constants/outline_size = 0
+PlateLabel/fonts/font = ExtResource("1_display")

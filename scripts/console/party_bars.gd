@@ -14,8 +14,14 @@ var director = null               # BattleDirector (untyped: custom API)
 
 var _bars: Array = []
 
+## [presentation redesign] Was 560, then 480 once the gold/depth plates ate
+## into ResourceRow's shared width. Now a full-width row of its own (see
+## status_panel.tscn's PartyBars, moved out of ResourceRow), so this claims
+## the whole 1080 - _layout() below already adapts to whatever width it
+## actually receives, so this only needs to fit the budget, not match a bar
+## count.
 func _ready() -> void:
-	custom_minimum_size = Vector2(560, 58)
+	custom_minimum_size = Vector2(1080, 84)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	resized.connect(_layout)
 

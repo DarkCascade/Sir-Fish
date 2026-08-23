@@ -1,14 +1,15 @@
 [gd_resource type="FontVariation" format=3 load_steps=2]
 
-[ext_resource type="FontFile" path="res://assets/fonts/Baloo2-Variable.ttf" id="1_baloo"]
+[ext_resource type="FontFile" path="res://assets/fonts/Cinzel-VariableFont.ttf" id="1_cinzel"]
 
-; Baloo 2 (Google Fonts, SIL Open Font License - see assets/fonts/Baloo2-OFL.txt).
-; The no-third-party-assets rule (spec 0.1.2) was a prototype-only constraint
-; and no longer applies; this replaces the emboldened/skewed default-font
-; synthesis with the variable font's own ExtraBold weight.
+; [presentation redesign] Cinzel (Google Fonts, SIL Open Font License - see
+; assets/fonts/Cinzel-OFL.txt), replacing Baloo 2 ExtraBold. Cinzel has no
+; lowercase - its "lowercase" glyphs ARE small caps - so every heading string
+; keeps its natural mixed case rather than being upper-cased in script; that
+; mixed case is what produces the two-tier engraved-caps look.
 [resource]
-base_font = ExtResource("1_baloo")
+base_font = ExtResource("1_cinzel")
 variation_opentype = {
-"wght": 800.0
+"wght": 900.0
 }
-spacing_glyph = 2
+spacing_glyph = 6

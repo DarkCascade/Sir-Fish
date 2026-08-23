@@ -22,7 +22,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-color = Color(0.137255, 0.121569, 0.180392, 1)
+color = Color(0.043137, 0.101961, 0.094118, 1)
 
 [node name="StatusPanel" parent="." unique_id=1736511073 instance=ExtResource("2_status")]
 layout_mode = 0

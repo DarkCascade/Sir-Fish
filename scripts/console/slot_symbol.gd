@@ -4,7 +4,11 @@ extends Control
 ## The glyph fills a centred square 80% of the cell's shorter side, so the reels
 ## can be resized without a second set of hand-tuned numbers.
 
-const BOX_FRACTION := 0.8
+## [presentation redesign] Was 0.8 - fine at the reel's original ~133px cell
+## height, crowded at the ~77-92px cells the status-row growth left behind
+## (see slot_machine.gd's WINDOW_MARGIN comment). Lower fraction = more
+## padding around the glyph regardless of how tall the cell ends up being.
+const BOX_FRACTION := 0.66
 
 # PackedVector2Array literals are not constant expressions in GDScript, so the
 # glyph outlines are static vars. They are still shared, never mutated.

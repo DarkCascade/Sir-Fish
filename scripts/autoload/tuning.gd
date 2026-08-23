@@ -221,41 +221,68 @@ const UPGRADE_OVERCHARGE_STEP := 0.25     # +25% lightning damage per level (add
 const UPGRADE_FAT_PURSE_BASE := 50
 const UPGRADE_FAT_PURSE_STEP := 0.40      # +40% gold per level (additive)
 
-# --- 6.1 Palette ------------------------------------------------------------
-const C_SKY := Color("7EC8E3")
-const C_FAR_HILLS := Color("4A9E6F")
-const C_MID_TREES := Color("2E8B57")
-const C_NEAR_TREES := Color("1E6B45")
-const C_GROUND := Color("8FBF4F")
-const C_BRUSH := Color("14532D")
-const C_INK := Color("0F0E14")
-const C_WARRIOR_ARMOR := Color("4A6FA5")
-const C_WARRIOR_ACCENT := Color("D9333F")
-const C_RANGER_LEATHER := Color("3E7A4E")
-const C_RANGER_ACCENT := Color("8B5A2B")
-const C_PRIEST_CLOTH := Color("F5F0E6")
-const C_PRIEST_ACCENT := Color("3B6FD4")
+# --- 6.1 Palette -------------------------------------------------------------
+## [presentation redesign] Bioluminescent night forest. Every value below is a
+## rewrite IN PLACE of the old fair-weather-meadow palette - names are
+## unchanged so every call site still resolves, only the hues moved. See
+## "Sir Fish - Presentation Redesign Spec.md" S2.
+const C_SKY := Color("0E2A33")            # canopy gap, teal-black
+const C_FAR_HILLS := Color("143A38")      # deepest treeline
+const C_MID_TREES := Color("1B4B3A")      # mid canopy
+const C_NEAR_TREES := Color("14231F")     # near trunks, nearly black
+const C_GROUND := Color("3E6B3A")         # lit moss down the path centre
+const C_BRUSH := Color("0F2B22")          # undergrowth
+const C_INK := Color("241E14")            # dark ink/outline - stays dark on purpose,
+										  # reused as text-on-parchment (S8)
+const C_WARRIOR_ARMOR := Color("5878A8")
+const C_WARRIOR_ACCENT := Color("C0333F")
+const C_RANGER_LEATHER := Color("478A5C")
+const C_RANGER_ACCENT := Color("9C6B33")
+const C_PRIEST_CLOTH := Color("6E5AA8")   # was cream F5F0E6 - now the concept's violet robe
+const C_PRIEST_ACCENT := Color("C4B5FD")
 const C_ORC_SKIN := Color("6FA83E")
 const C_ORC_IRON := Color("8C94A3")
 const C_SHADOW_BODY := Color("14121A")
 const C_SHADOW_EYES := Color("FF2D2D")
-const C_GOLD := Color("F2C230")
-const C_DANGER := Color("E03131")
-const C_HEAL := Color("2FBF4F")
-const C_LIGHTNING := Color("3B82F6")
-const C_DEFEND := Color("3B6FD4")
-const C_CONSOLE_BG := Color("231F2E")
-const C_CONSOLE_PANEL := Color("332C42")
-const C_TEXT := Color("FFF6E0")
-const C_TEXT_DIM := Color("9B93AE")
-const C_WOOD := Color("8B5A2B")
-const C_WOOD_DARK := Color("6B4423")
-const C_PANEL_BORDER := Color("4A4260")
-const C_FIRE := Color("FF7A1A")           # [v2] fire-modifier damage numbers
-const C_ICE := Color("5BC8F5")            # [v2] ice-modifier damage numbers
+const C_GOLD := Color("C9A227")           # aged gold, was the brighter F2C230
+const C_DANGER := Color("E4484F")
+const C_HEAL := Color("7CC142")           # green, matches the PLUS slot symbol
+const C_LIGHTNING := Color("A855F7")      # was blue - now the arcane purple
+const C_DEFEND := Color("D9A825")         # was blue - now the shield gold
+const C_CONSOLE_BG := Color("0B1A18")     # behind everything, near-black teal
+const C_CONSOLE_PANEL := Color("123A32")  # panel fill
+const C_TEXT := Color("F2E9D0")           # cream, on dark
+const C_TEXT_DIM := Color("9CAFA4")       # muted sage, on dark
+const C_WOOD := Color("7A4E28")           # slightly darkened for the night mood
+const C_WOOD_DARK := Color("5A3419")
+const C_PANEL_BORDER := Color("2E5A4E")   # inner border, one step off the panel fill
+const C_FIRE := Color("FF7A1A")           # [v2] fire-modifier damage numbers, unchanged
+const C_ICE := Color("5BC8F5")            # [v2] ice-modifier damage numbers, unchanged
 const C_FISH_SCALE := Color("4A9BE8")     # [v2] Sir Fish body
 const C_FISH_FIN := Color("3B6FD4")       # [v2] Sir Fish fins
-const C_ROCK := Color("7D8A6B")           # [v3] layer-4 scatter rocks (spec 23.4)
+const C_ROCK := Color("2A3A44")           # [v3] layer-4 scatter rocks - now blue-slate
+
+# --- 6.1b Arcane accents [presentation redesign] -----------------------------
+## The purple every crystal, rune and slot bolt shares, so the world and the
+## console read as the same magic on purpose.
+const C_ARCANE := Color("8B5CF6")
+const C_ARCANE_BRIGHT := Color("C4B5FD")  # emissive core / glow peak
+const C_ARCANE_DEEP := Color("4C1D95")    # shadowed crystal faces
+const C_PORTAL := Color("7FE3D8")         # the archway light / any "destination" cue
+
+# --- 6.1c Console chrome [presentation redesign] -----------------------------
+const C_CONSOLE_STONE := Color("1E4038")  # raised frame face (ornate_frame.gd)
+const C_CONSOLE_INSET := Color("081412")  # recessed wells (reel windows, price plates)
+const C_GOLD_BRIGHT := Color("E8C55A")    # top bevel highlight / payline glow
+const C_GOLD_DARK := Color("8A6E1C")      # bottom bevel shadow
+const C_VINE := Color("2F6B3E")           # [Pass B] frame overgrowth, unused until S5.4
+const C_FLOWER := Color("A78BFA")         # [Pass B] frame blooms, unused until S5.4
+
+# --- 6.1d Parchment [presentation redesign] -----------------------------------
+## Upgrade cards only (S8) - every other panel is stone, not parchment.
+const C_PARCHMENT := Color("C3BDA8")
+const C_PARCHMENT_SHADE := Color("A49E8A")  # lower half of the card's gradient
+const C_TEXT_GOLD := Color("E8C55A")        # headings and numerals on dark stone
 
 # --- storm mood (M9) ---------------------------------------------------------
 ## The palette above is the fair-weather art direction and stays as authored.
@@ -321,6 +348,15 @@ const FIELD_ROCKS := 70
 const FIELD_TUFTS := 160
 const FIELD_GRASS := 200
 const FIELD_TREES := 52
+## [presentation redesign S10.1] Sparser than the rocks - crystals are meant
+## to read as landmarks the party runs past, not as ground texture.
+const FIELD_CRYSTALS := 90
+const CRYSTAL_SCALE_MIN := 0.75
+const CRYSTAL_SCALE_MAX := 1.6
+## Emission energy on the Godot-side material_override (not baked into the
+## .glb - see overworld_field.gd's _crystal_material()), tuned against
+## glow_hdr_threshold = 0.95 (S9.4) so the clusters actually bloom.
+const CRYSTAL_EMISSION_ENERGY := 2.2
 
 ## Nothing is scattered within this distance of the run corridor's centre
 ## line, so neither the party formation nor the enemy rank spawns in a bush.
@@ -370,8 +406,8 @@ const TREE_CLEAR_EXTRA := 3.0
 ## there. FIELD_BACKDROP_MIN/MAX_RADIUS below are deliberately chosen to fall
 ## inside this range, so the far treeline actually fades rather than either
 ## standing out crisp or being fully invisible.
-const FOG_DEPTH_BEGIN := 16.0
-const FOG_DEPTH_END := 55.0
+const FOG_DEPTH_BEGIN := 11.0        # [presentation redesign] pulled in for the night mood, was 16.0
+const FOG_DEPTH_END := 42.0          # was 55.0
 
 ## A second, non-scrolling ring of trees well outside the play area, sparser
 ## and colour-shifted toward the fog - cheap atmospheric perspective for the
@@ -402,7 +438,7 @@ const FIELD_BACKDROP_TINT := 0.55
 ## sibling node, so OverworldField never has to reach outside itself to
 ## build a backdrop material - if the sky colour is ever re-authored, update
 ## this to match by eye at the same time.
-const C_HORIZON_HAZE := Color(0.729412, 0.858824, 0.921569)
+const C_HORIZON_HAZE := Color(0.101961, 0.290196, 0.290196)  # [presentation redesign] matches the new sky_horizon_color / fog_light_color
 
 # --- 5.9 Health chunk [v3.5 D6] ---------------------------------------------
 const CHUNK_FLING_X := 45.0               # was an inline +/-90 in floating_health_chunk.gd

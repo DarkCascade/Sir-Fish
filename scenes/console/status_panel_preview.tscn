@@ -14,7 +14,7 @@ layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-color = Color(0.137255, 0.121569, 0.180392, 1)
+color = Color(0.043137, 0.101961, 0.094118, 1)
 
 [node name="StatusPanel" parent="." instance=ExtResource("2_status")]
 layout_mode = 0
