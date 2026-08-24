@@ -172,10 +172,14 @@ func _tendril(start: Vector2, outward: float, rand: RandomNumberGenerator) -> vo
 	var dir := Vector2(rand.randf_range(-1.0, 1.0), 0.0).normalized()
 	if is_zero_approx(dir.x):
 		dir = Vector2(1.0, 0.0)
-	var length: float = rand.randf_range(size.x * 0.06, size.x * 0.13)
+	# Clamped rather than a straight fraction of the width: at size.x * 0.10 a
+	# 360-wide status plate grew 36 px stubs while the 1032-wide cabinet grew
+	# 100 px runners, so the two panels did not look like the same forest had
+	# reached them.
+	var length: float = clampf(size.x * 0.11, 48.0, 155.0) * rand.randf_range(0.8, 1.25)
 	var segments := 7
 	var p := start
-	var width: float = minf(border * 0.42, 6.0)
+	var width: float = clampf(border * 0.55, 4.0, 9.0)
 	var swing: float = rand.randf_range(0.35, 0.75)
 	for i: int in range(segments):
 		var f := float(i) / float(segments)
@@ -192,10 +196,10 @@ func _tendril(start: Vector2, outward: float, rand: RandomNumberGenerator) -> vo
 		# a flower at the tip is where the eye lands, so it goes where the vine
 		# is thinnest.
 		if i % 2 == 0 and i < segments - 2:
-			_leaf(next, dir.x, outward * (1.0 if i % 4 == 0 else -1.0), width * 1.9)
+			_leaf(next, dir.x, outward * (1.0 if i % 4 == 0 else -1.0), width * 2.4)
 		p = next
 		width *= 0.86
-	_bloom(p, minf(border * 0.30, 4.6))
+	_bloom(p, clampf(border * 0.42, 4.0, 7.5))
 
 func _leaf(at: Vector2, along: float, side: float, r: float) -> void:
 	var tip := at + Vector2(along * r * 0.9, side * r)

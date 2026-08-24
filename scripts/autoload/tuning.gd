@@ -300,7 +300,11 @@ const C_WARRIOR_ARMOR := Color("5878A8")
 const C_WARRIOR_ACCENT := Color("C0333F")
 const C_RANGER_LEATHER := Color("478A5C")
 const C_RANGER_ACCENT := Color("9C6B33")
-const C_PRIEST_CLOTH := Color("6E5AA8")   # was cream F5F0E6 - now the concept's violet robe
+## [ui-project-longshot] The mage's robe. mage_mage_texture.png's magenta
+## swatch was hue-shifted to THIS hue (255 degrees), so the model and every
+## VFX that reads this constant finally agree - before, the constant said
+## violet while the texture drew a magenta that fought the whole blue palette.
+const C_PRIEST_CLOTH := Color("6E5AA8")
 const C_PRIEST_ACCENT := Color("C4B5FD")
 const C_ORC_SKIN := Color("6FA83E")
 const C_ORC_IRON := Color("8C94A3")
@@ -367,8 +371,11 @@ const C_GEM_BRIGHT := Color("9FB8FF")        # their lit facet
 ## Upgrade cards only (S8) - every other panel is stone, not parchment.
 ## Pulled slightly cooler and lighter to match the concept's pale carved-stone
 ## cards, which read as chiselled tablets rather than paper.
-const C_PARCHMENT := Color("CFC9B4")
-const C_PARCHMENT_SHADE := Color("ABA491")  # lower half of the card's gradient
+## Cooler and greyer than a true parchment: on the board these cards are pale
+## carved STONE, and a warm cream card against a cold blue console reads as
+## paper pinned to the cabinet rather than as part of it.
+const C_PARCHMENT := Color("C7C4B5")
+const C_PARCHMENT_SHADE := Color("A4A294")  # lower half of the card's gradient
 const C_TEXT_GOLD := Color("F0D588")        # headings and numerals on dark stone
 
 # --- storm mood (M9) ---------------------------------------------------------

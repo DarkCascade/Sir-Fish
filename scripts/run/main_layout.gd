@@ -28,6 +28,7 @@ const SCREEN := Vector2(1080, 1920)
 const DIVIDER_HEIGHT := 5.0
 
 @onready var battle_view: SubViewportContainer = $BattleView
+@onready var vignette: ColorRect = $Vignette
 @onready var overlay = $BattleOverlay
 @onready var divider: ColorRect = $ConsoleDivider
 @onready var console = $Console
@@ -43,6 +44,22 @@ func apply_split(h: float) -> void:
 	# assigning battle_viewport.size directly is refused by the engine.
 	battle_view.position = Vector2.ZERO
 	battle_view.size = Vector2(SCREEN.x, battle_height)
+
+	# [ui-project-longshot] The vignette covers exactly the battle view and sits
+	# UNDER the overlay in draw order, so damage numbers and health bars stay at
+	# full brightness while the world behind them falls away at the edges.
+	#
+	# Its `aspect` is pushed from here rather than left at the .tscn's authored
+	# value because it depends on the split: the shader's falloff field is
+	# square in UV, which on a rect this wide would darken the top and bottom
+	# edges harder than the left and right - the opposite of what the board
+	# does. Squashing the field by the rect's own ratio evens the corners up.
+	vignette.position = Vector2.ZERO
+	vignette.size = Vector2(SCREEN.x, battle_height)
+	var vignette_mat := vignette.material as ShaderMaterial
+	if vignette_mat != null:
+		vignette_mat.set_shader_parameter("aspect",
+			Vector2(1.0, battle_height / SCREEN.x))
 
 	# unproject_position() maps into the overlay 1:1 only while the two are the
 	# same size at the same position (spec 3.3), so the overlay follows exactly
