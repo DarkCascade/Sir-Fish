@@ -2,11 +2,11 @@ extends Node
 ## Itemizer — the only place items are created (spec 13).
 
 const WEAPON_TYPES := {
-	&"axe":    { "base_value": 20, "nouns": ["Axe", "Hatchet", "Cleaver", "Chopper"] },
-	&"sword":  { "base_value": 22, "nouns": ["Sword", "Blade", "Saber", "Longsword"] },
-	&"bow":    { "base_value": 20, "nouns": ["Bow", "Longbow", "Shortbow", "Recurve"] },
-	&"dagger": { "base_value": 18, "nouns": ["Dagger", "Knife", "Dirk", "Shiv"] },
-	&"staff":  { "base_value": 25, "nouns": ["Staff", "Rod", "Cane", "Scepter"] },
+	&"axe":    { "base_value": 20, "classes": [&"warrior"], "nouns": ["Axe", "Hatchet", "Cleaver", "Chopper"] },
+	&"sword":  { "base_value": 22, "classes": [&"warrior"], "nouns": ["Sword", "Blade", "Saber", "Longsword"] },
+	&"bow":    { "base_value": 20, "classes": [&"ranger"],  "nouns": ["Bow", "Longbow", "Shortbow", "Recurve"] },
+	&"dagger": { "base_value": 18, "classes": [&"ranger"],  "nouns": ["Dagger", "Knife", "Dirk", "Shiv"] },
+	&"staff":  { "base_value": 25, "classes": [&"priest"],  "nouns": ["Staff", "Rod", "Cane", "Scepter"] },
 }
 
 const ADJECTIVES := [
@@ -57,11 +57,15 @@ func generate_item() -> Item:
 ## should go through generate_item() and take the weighted roll.
 func generate_item_with_rarity(rarity_index: int) -> Item:
 	rarity_index = clampi(rarity_index, 0, 3)
-	var item := Item.new()
-	item.kind = Item.Kind.WEAPON      # the only kind generated in the demo (spec 13.7)
-
 	var types: Array = WEAPON_TYPES.keys()
 	var wtype: StringName = types[RNG.randi_range(0, types.size() - 1)]
+	return _generate_typed(wtype, rarity_index)
+
+## The whole of the old generate_item_with_rarity() body from `item.weapon_type`
+## onward, with the type handed in. Nothing else moves.
+func _generate_typed(wtype: StringName, rarity_index: int) -> Item:
+	var item := Item.new()
+	item.kind = Item.Kind.WEAPON      # the only kind generated in the demo (spec 13.7)
 	item.weapon_type = wtype
 
 	item.rarity = rarity_index as Item.Rarity
@@ -99,6 +103,39 @@ func generate_item_with_rarity(rarity_index: int) -> Item:
 		RARITY_VALUE_MULT[rarity_index][0], RARITY_VALUE_MULT[rarity_index][1])
 	item.value = int(round(float(base_value) * rarity_mult * (1.0 + mod_sum)))
 	return item
+
+# --- class-first generation (enemy drops) -----------------------------------
+
+## Every weapon type `hero_class` can wield.
+func weapon_types_for(hero_class: StringName) -> Array[StringName]:
+	var out: Array[StringName] = []
+	for wtype: StringName in WEAPON_TYPES:
+		if (WEAPON_TYPES[wtype]["classes"] as Array).has(hero_class):
+			out.append(wtype)
+	return out
+
+## The classes a drop can be aimed at, in PARTY_ORDER. Derived from the weapon
+## table rather than listed, so a class with no wieldable type is excluded
+## automatically instead of silently receiving items it cannot use.
+func droppable_classes() -> Array[StringName]:
+	var out: Array[StringName] = []
+	for id: StringName in GameState.PARTY_ORDER:
+		if not weapon_types_for(id).is_empty():
+			out.append(id)
+	return out
+
+## One item aimed at `hero_class`. Rarity is the normal §13.2 weighted roll
+## raised to `rarity_floor`; the weapon type is drawn only from that class's
+## types. THE ONLY generator that picks a class first - see §0.3.
+func generate_drop(hero_class: StringName, rarity_floor: int = 0) -> Item:
+	var rarity: int = maxi(RNG.weighted_index(RARITY_WEIGHTS), clampi(rarity_floor, 0, 3))
+	var types := weapon_types_for(hero_class)
+	if types.is_empty():
+		# Unreachable while droppable_classes() gates the caller, but a drop is
+		# better than a crash if a future class joins PARTY_ORDER before it has
+		# a weapon.
+		return generate_item_with_rarity(rarity)
+	return _generate_typed(types[RNG.randi_range(0, types.size() - 1)], rarity)
 
 # --- shop stock (spec 13.6 / Q14) -------------------------------------------
 

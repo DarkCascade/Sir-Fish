@@ -118,9 +118,11 @@ func _on_combat_ended(victory: bool) -> void:
 	if state != RunState.COMBAT:
 		return
 	if not victory:
+		director.pending_drops.clear()      # a wipe carries nothing home (§5)
 		_game_over()
 		return
 	director.begin_corpse_cleanup()
+	await _award_drops()
 	_encounter_resolved()
 
 # --- LOOT (spec 14.2) -------------------------------------------------------
@@ -144,6 +146,30 @@ func _run_loot(def: EncounterDef) -> void:
 		await get_tree().create_timer(0.25).timeout
 
 	_encounter_resolved()
+
+# --- DROPS (§5) -------------------------------------------------------------
+
+## Mirrors _run_loot()'s presentation deliberately: a drop and a chest item are
+## the same item from the same generator, so they should read as the same
+## event. Labels pop at the recorded corpse positions rather than at a prop -
+## the field is not scrolling yet (travel only restarts in _encounter_exit()),
+## so those positions are still where the bodies fell.
+##
+## No _ui_hidden() branch, unlike _run_shop(): nothing here blocks on a button,
+## so with the overlay hidden the items are still added and only the labels go
+## unseen, which is the correct degradation.
+func _award_drops() -> void:
+	for entry: Dictionary in director.pending_drops:
+		var item: Item = entry["item"]
+		GameState.add_item(item)
+		GameState.run_stats["items_found"] = int(GameState.run_stats["items_found"]) + 1
+		GameState.run_stats["items_dropped"] = int(GameState.run_stats["items_dropped"]) + 1
+		overlay.spawn_world_label(
+			(entry["position"] as Vector3) + Vector3(0, Tuning.DROP_LABEL_LIFT, 0),
+			"%s (%s)" % [item.display_name, item.class_label()],
+			item.rarity_color(), Tuning.DROP_LABEL_FONT_SIZE)
+		await get_tree().create_timer(Tuning.DROP_LABEL_STAGGER).timeout
+	director.pending_drops.clear()
 
 # --- SHOP (spec 14.3) -------------------------------------------------------
 

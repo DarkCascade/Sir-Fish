@@ -11,6 +11,18 @@ var enemies: Array[Combatant] = []
 var _active: bool = false
 var _resolving: bool = false
 
+## [drops] Items banked from enemies killed in the current fight, as
+## {item: Item, position: Vector3}. See §5's note on why the roll and the award
+## happen at different times.
+var pending_drops: Array[Dictionary] = []
+
+## [drops] Whether the fight in progress is the level's boss (§4.2). Set by
+## start_combat() from the encounter def rather than inferred from the enemy's
+## stats, for the same reason special_targets_opponent is a data flag: the
+## warlord is the boss because the ENCOUNTER says so, and a future level that
+## fields two warlords mid-level must not hand out two boss drops.
+var _boss_fight: bool = false
+
 ## Dev-only combat-mode toggle (not exposed to the player in any way). True:
 ## combatants request a turn on cooldown expiry and the director dispatches
 ## them one at a time via _turn_queue, below. False: a combatant acts the
@@ -40,6 +52,7 @@ func _ready() -> void:
 
 func _on_combatant_died(c) -> void:
 	if _active and c is Combatant and enemies.has(c):
+		_roll_drop(c)
 		_pending_corpse_fades += 1
 		var gen: int = int(c.get_meta("corpse_gen", 0)) + 1
 		c.set_meta("corpse_gen", gen)
@@ -48,6 +61,24 @@ func _on_combatant_died(c) -> void:
 func _on_party_bonuses_changed(_bonuses: Dictionary) -> void:
 	for h: Combatant in living_heroes():
 		h.apply_party_bonuses()
+
+# --- drops (§5) ---------------------------------------------------------------
+
+func _roll_drop(c: Combatant) -> void:
+	var stats := c.stats
+	if stats == null or stats.is_hero or stats.drop_chance <= 0.0:
+		return
+	if RNG.randf() > stats.drop_chance:
+		return
+	var hero_class: StringName = GameState.next_drop_class(
+		_boss_fight and Tuning.DROP_BOSS_TARGETS_HUNGRIEST)
+	if hero_class == &"":
+		return
+	var item := Itemizer.generate_drop(hero_class, stats.drop_rarity_floor)
+	GameState.record_drop(hero_class)
+	# The position is captured now: begin_corpse_cleanup() starts the moment the
+	# fight ends, and the award pass runs after it.
+	pending_drops.append({ "item": item, "position": c.hit_world_position() })
 
 # --- party ------------------------------------------------------------------
 
@@ -79,6 +110,7 @@ func clear_enemies() -> void:
 		if is_instance_valid(c):
 			c.queue_free()
 	enemies.clear()
+	pending_drops.clear()
 
 func _spawn_combatant(stats: CombatantStats, pos: Vector3, hp: int) -> Combatant:
 	var packed: PackedScene = load(stats.scene_path)
@@ -104,6 +136,7 @@ func start_combat(enemy_stat_ids: Array, is_boss: bool = false) -> void:
 	_resolving = false
 	_turn_queue.clear()
 	_acting = null
+	_boss_fight = is_boss
 	# Step 1 of spec 10.1: every hero picks up the current item bonuses first.
 	for h: Combatant in living_heroes():
 		h.apply_party_bonuses()
@@ -115,6 +148,13 @@ func start_combat(enemy_stat_ids: Array, is_boss: bool = false) -> void:
 		if is_boss and i == 0:
 			stats = stats.duplicate() as CombatantStats
 			stats.model_scale *= BOSS_SCALE_MULT
+			# [drops] "Boss: always drops, never Common" (§6) applies to whichever
+			# combatant the encounter scales up into the boss slot, not to a
+			# specific resource - BOSS_POOL (game_state.gd) picks from the four
+			# regular skeletons now, not a single dedicated boss id, so this can't
+			# be authored on one .tres the way the other rows are.
+			stats.drop_chance = 1.0
+			stats.drop_rarity_floor = maxi(stats.drop_rarity_floor, 1)
 		# [overworld prototype] Spec 10.1's fade-in is gone. Enemies now spawn
 		# off-screen past the top-right corner and RUN to their slots, which is
 		# the one entrance that reads correctly on an open field - a fade would

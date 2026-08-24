@@ -157,6 +157,29 @@ const SHOP_SELL_RATE := 0.5               # sell price = round(value x 0.5)
 const LOOT_ITEMS_PER_CHEST := 2
 const SHOP_ITEMS_FOR_SALE := 3
 
+# --- enemy drops --------------------------------------------------------------
+## How strongly a class that is behind on drops is favoured by the next roll:
+##   weight = 1 + DROP_CATCHUP * (leader_count - this_count)
+## 0.0 makes drops uniform across classes and coverage a pure coin flip; higher
+## converges coverage faster at the cost of feeling scripted. 2.5 means a class
+## two drops behind is 6x as likely as the leader. Raised from 1.5 (spec §10 D9):
+## at 1.5, simulated coverage landed at 92.2% against the required 95%.
+const DROP_CATCHUP := 2.5
+
+## A boss drop skips the weighted roll and goes to the hungriest class outright
+## (§4.2). This is what turns §10's coverage gate from "usually" into "almost
+## always". Set false to make bosses roll like anything else.
+const DROP_BOSS_TARGETS_HUNGRIEST := true
+
+## Seconds between drop labels when several land at once. Matches the chest
+## cadence in _run_loot() so a drop reads as the same event as chest loot.
+const DROP_LABEL_STAGGER := 0.25
+## Height above the recorded corpse position that a drop label pops at.
+const DROP_LABEL_LIFT := 1.2
+## Smaller than spawn_world_label()'s 40 default: a drop label carries the item
+## name AND the class, so it is roughly twice as wide as a chest label.
+const DROP_LABEL_FONT_SIZE := 34
+
 # --- 5.5 Slot machine -------------------------------------------------------
 enum Sym { LIGHTNING, GOLD, PLUS, BLANK }
 

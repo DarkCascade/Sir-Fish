@@ -46,6 +46,7 @@ func _run(line: String) -> void:
 		"gold": _cmd_gold(args)
 		"upgrade": _cmd_upgrade(args)
 		"additem": _cmd_additem(args)
+		"drops": _cmd_drops(args)
 		"equip": _cmd_equip(args)
 		"parallax": _cmd_parallax(args)
 		"lightning": _cmd_lightning()
@@ -236,10 +237,28 @@ func _cmd_additem(args: Array) -> void:
 	var item: Item
 	if args.is_empty():
 		item = Itemizer.generate_item()
+	elif args.size() >= 2:
+		# additem <rarity> <class> forces a specific class's drop, e.g.
+		# "additem magic ranger" -> Itemizer.generate_drop(&"ranger", 2).
+		item = Itemizer.generate_drop(StringName(String(args[1])), _parse_rarity(String(args[0])))
 	else:
 		item = Itemizer.generate_item_with_rarity(_parse_rarity(String(args[0])))
 	GameState.add_item(item)
 	_log("additem -> %s (%s), value %d" % [item.display_name, item.subtitle(), item.value])
+
+func _cmd_drops(args: Array) -> void:
+	if not args.is_empty() and String(args[0]) == "clear":
+		GameState.drops_by_class.clear()
+		_log("drops -> cleared")
+		return
+	var bits: PackedStringArray = []
+	for c: StringName in Itemizer.droppable_classes():
+		bits.append("%s %d" % [String(c), GameState.drop_count(c)])
+	var d = _director()
+	_log("drops -> %s | banked %d | next %s" % [
+		", ".join(bits),
+		d.pending_drops.size() if d != null else 0,
+		String(GameState.next_drop_class())])
 
 func _parse_rarity(token: String) -> int:
 	match token.to_lower():
@@ -251,15 +270,24 @@ func _parse_rarity(token: String) -> int:
 
 func _cmd_equip(args: Array) -> void:
 	if args.is_empty():
-		_log("equip -> needs <index>")
+		_log("equip -> needs <index> [class]")
 		return
 	var index := int(String(args[0]))
 	if index < 0 or index >= GameState.inventory.size():
 		_log("equip -> index %d out of range" % index)
 		return
-	GameState.inventory[index].equipped = true
-	EventBus.party_bonuses_changed.emit(GameState.party_bonuses())
-	_log("equip -> '%s' flagged equipped" % GameState.inventory[index].display_name)
+	var item: Item = GameState.inventory[index]
+	var hero_class: StringName
+	if args.size() >= 2:
+		hero_class = StringName(String(args[1]))
+	else:
+		var classes := item.usable_by()
+		if classes.is_empty():
+			_log("equip -> '%s' has no eligible class" % item.display_name)
+			return
+		hero_class = classes[0]
+	GameState.equip_item(item, hero_class)
+	_log("equip -> '%s' equipped by %s" % [item.display_name, hero_class])
 
 ## [v3] Advances every parallax layer by <units> world units at its own speed
 ## multiplier, wrapping normally, without touching scroll_speed or the run
@@ -351,7 +379,15 @@ func _cmd_state() -> void:
 	var levels: Array[String] = []
 	for id: StringName in Upgrades.DEFS.keys():
 		levels.append("%s=%d" % [id, Upgrades.level(id)])
-	_log("state -> run=%s encounter=%d gold=%d | %s | upgrades %s | bonuses %s" % [
+	var drop_bits: Array[String] = []
+	for c: StringName in Itemizer.droppable_classes():
+		drop_bits.append("%s=%d" % [c, GameState.drop_count(c)])
+	var equip_bits: Array[String] = []
+	for c: StringName in Itemizer.droppable_classes():
+		var equipped := GameState.equipped_item(c)
+		equip_bits.append("%s=%s" % [c, equipped.display_name if equipped != null else "none"])
+	_log("state -> run=%s encounter=%d gold=%d | %s | upgrades %s | drops %s | equipped %s | bonuses %s" % [
 		run_state, GameState.current_encounter_index, GameState.gold,
-		", ".join(hp_bits), ", ".join(levels), str(GameState.party_bonuses()),
+		", ".join(hp_bits), ", ".join(levels), ", ".join(drop_bits), ", ".join(equip_bits),
+		str(GameState.party_bonuses()),
 	])

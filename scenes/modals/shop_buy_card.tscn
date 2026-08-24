@@ -50,12 +50,19 @@ custom_minimum_size = Vector2(220, 0)
 layout_mode = 2
 alignment = 1
 
-[node name="PriceRow" type="HBoxContainer" parent="Row/Layout/PriceBox" unique_id=1076484790]
+[node name="BuyButton" type="Button" parent="Row/Layout/PriceBox" unique_id=98947513]
+custom_minimum_size = Vector2(200, 80)
 layout_mode = 2
-theme_override_constants/separation = 8
-alignment = 2
 
-[node name="CoinGlyph" type="Control" parent="Row/Layout/PriceBox/PriceRow" unique_id=940027668]
+[node name="Content" type="HBoxContainer" parent="Row/Layout/PriceBox/BuyButton" unique_id=1076484790]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+theme_override_constants/separation = 8
+alignment = 1
+
+[node name="CoinGlyph" type="Control" parent="Row/Layout/PriceBox/BuyButton/Content" unique_id=940027668]
 custom_minimum_size = Vector2(34, 34)
 layout_mode = 2
 size_flags_vertical = 4
@@ -63,7 +70,7 @@ mouse_filter = 2
 script = ExtResource("2_kylpl")
 radius = 15.0
 
-[node name="PriceLabel" type="Label" parent="Row/Layout/PriceBox/PriceRow" unique_id=1473001721]
+[node name="PriceLabel" type="Label" parent="Row/Layout/PriceBox/BuyButton/Content" unique_id=1473001721]
 layout_mode = 2
 theme_type_variation = &"DisplayLabel"
 theme_override_colors/font_color = Color(0.788235, 0.635294, 0.152941, 1)
