@@ -105,8 +105,19 @@ layout_mode = 2
 size_flags_vertical = 3
 current_tab = 0
 
+; [mobile-scroll] scroll_deadzone was 0, the engine default, meaning any single
+; pixel of finger travel counted as a scroll and no imperfect tap had any margin
+; at all. 24 px is roughly Android's own touch slop at this viewport scale, and
+; it is the number that decides where "tap" ends and "drag" begins - crossing it
+; is also what makes the ScrollContainer cancel a child button's press, so a
+; flick that started on Sell no longer sells (see shop_sell_row.tscn).
+; horizontal_scroll_mode is off because the lists only ever scroll vertically;
+; left as AUTO, a diagonal flick drifted the list sideways whenever the vertical
+; scrollbar's arrival pushed content below the 880 px card width.
 [node name="Buy" type="ScrollContainer" parent="Panel/Layout/Tabs" unique_id=1735448592]
 layout_mode = 2
+horizontal_scroll_mode = 0
+scroll_deadzone = 24
 metadata/_tab_index = 0
 
 [node name="BuyList" type="VBoxContainer" parent="Panel/Layout/Tabs/Buy" unique_id=941998829]
@@ -126,6 +137,8 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+horizontal_scroll_mode = 0
+scroll_deadzone = 24
 
 [node name="SellList" type="VBoxContainer" parent="Panel/Layout/Tabs/Sell/Scroll" unique_id=627807647]
 layout_mode = 2

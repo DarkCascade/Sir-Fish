@@ -7,6 +7,7 @@
 custom_minimum_size = Vector2(880, 180)
 offset_right = 880.0
 offset_bottom = 180.0
+mouse_filter = 1
 script = ExtResource("1_row")
 
 [node name="Row" type="HBoxContainer" parent="." unique_id=1508353889]
@@ -51,21 +52,34 @@ theme_override_constants/separation = 12
 ; NOT expanding, unlike its two neighbours: Equip and Sell carry variable text
 ; ("Sell for 148"), so they get the slack and Compare keeps just enough for its
 ; own word.
+;
+; [mobile-scroll] All three carry mouse_filter = 1 (PASS) rather than Button's
+; default STOP. STOP swallows the InputEventScreenTouch before the enclosing
+; ScrollContainer sees it, so on a touchscreen a drag beginning on a button
+; neither scrolled the list nor got cancelled - it just fired on release, and
+; Sell is the one action in this modal that cannot be undone. PASS lets the
+; gesture reach the ScrollContainer, which cancels the press once the drag
+; passes scroll_deadzone. Verified with tests/_scratch_shop_touch.tscn: a 60 px
+; drag inside SellButton used to sell the item and scroll nothing; it now
+; scrolls and sells nothing, while a still tap still sells.
 [node name="CompareButton" type="Button" parent="Row/Layout/Actions" unique_id=1806415333]
 custom_minimum_size = Vector2(190, 0)
 layout_mode = 2
+mouse_filter = 1
 theme_type_variation = &"SecondaryButton"
 text = "Compare"
 
 [node name="EquipButton" type="Button" parent="Row/Layout/Actions" unique_id=240048961]
 layout_mode = 2
 size_flags_horizontal = 3
+mouse_filter = 1
 theme_override_font_sizes/font_size = 32
 text = "Equip"
 
 [node name="SellButton" type="Button" parent="Row/Layout/Actions" unique_id=1120782536]
 layout_mode = 2
 size_flags_horizontal = 3
+mouse_filter = 1
 theme_override_font_sizes/font_size = 32
 text = "Sell"
 
