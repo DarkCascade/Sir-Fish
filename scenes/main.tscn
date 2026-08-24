@@ -19,7 +19,7 @@ grow_vertical = 2
 mouse_filter = 2
 theme = ExtResource("1_theme")
 script = ExtResource("8_layout")
-battle_height = 960.0
+battle_height = 764.0
 hide_console = false
 hide_overlay = false
 
@@ -43,11 +43,11 @@ anchors_preset = 0
 
 [node name="ConsoleDivider" type="ColorRect" parent="." unique_id=1112842998]
 layout_mode = 0
-offset_top = 640.0
+offset_top = 764.0
 offset_right = 1080.0
-offset_bottom = 648.0
+offset_bottom = 769.0
 mouse_filter = 2
-color = Color(0.94902, 0.760784, 0.188235, 1)
+color = Color(0.027, 0.09, 0.106, 1)
 
 [node name="Console" parent="." unique_id=1670680176 instance=ExtResource("4_console")]
 layout_mode = 0

@@ -3,14 +3,15 @@ extends Control
 ## 1920 px belong to the battle view, with the console taking the rest.
 ##
 ## A dev-only export, like BattleDirector.turn_based_combat - there is no
-## player-facing control for it. 640 is the shipped 33/66 split; 960 is the
-## 50/50 experiment.
+## player-facing control for it. 640 was the old 33/66 split and 960 the 50/50
+## experiment; 764 is the concept board's own division, measured off it (the
+## world occupies almost exactly the top 40% there, not a third).
 ##
 ## [overworld prototype] `hide_console` overrides the split entirely and gives
 ## the battle view the whole 1080 x 1920, so the overhead camera can be framed
 ## against nothing but the field. Turn it off to get the console back - the
 ## split maths below is untouched and still runs.
-@export var battle_height: float = 640.0
+@export var battle_height: float = 764.0
 
 ## First-draft framing aids. The slot machine, status panel and upgrade tray
 ## are the console; the bars, damage numbers and status icons are the overlay.
@@ -19,7 +20,12 @@ extends Control
 @export var hide_overlay: bool = true
 
 const SCREEN := Vector2(1080, 1920)
-const DIVIDER_HEIGHT := 8.0
+## [ui-project-longshot] Was an 8 px solid gold bar. On the concept board there
+## is no rule between the world and the console at all - the carved frame's own
+## top edge IS the boundary, with the world sitting behind it. This is now just
+## a thin dark gutter, so the console reads as being in FRONT of the forest
+## rather than stacked below it.
+const DIVIDER_HEIGHT := 5.0
 
 @onready var battle_view: SubViewportContainer = $BattleView
 @onready var overlay = $BattleOverlay

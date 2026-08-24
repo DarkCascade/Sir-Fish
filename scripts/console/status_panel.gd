@@ -21,24 +21,34 @@ const NUMBER_SCENE := preload("res://scenes/overlay/damage_number.tscn")
 @onready var gold_label: Label = $Layout/ResourceRow/GoldPlate/GoldLabel
 @onready var depth_caption: Label = $Layout/ResourceRow/DepthPlate/DepthCaption
 @onready var depth_numeral: Label = $Layout/ResourceRow/DepthPlate/DepthNumeral
+@onready var bonus_row: Control = $Layout/BonusRow
+@onready var bonus_strip = $Layout/BonusRow/BonusStrip   # BonusStrip (untyped: custom API)
 
 func _ready() -> void:
 	EventBus.gold_changed.connect(_on_gold_changed)
 	EventBus.run_started.connect(_update_depth)
+	EventBus.run_started.connect(_update_bonus_row)
+	EventBus.party_bonuses_changed.connect(func(_b: Dictionary) -> void: _update_bonus_row())
 	EventBus.encounter_started.connect(func(_index: int, _def: EncounterDef) -> void: _update_depth())
 	_update_gold()
 	_update_depth()
+	_update_bonus_row()
 
-## [layout experiment] Depth is hidden unconditionally for now - was
-## `plate.visible = GameState.endless_mode`. The title row's "Bioluminescent
-## Forest" is standing in for that readout. Restore the endless_mode line to
-## bring it back; depth_numeral's text is still kept current underneath so
-## nothing has to be re-derived if it does.
+## [ui-project-longshot] Depth is back, and it is what stands in the middle of
+## the strip - the concept board reads GOLD / DEPTH / party, with no title
+## band and no fish tank between them. Outside endless mode there is no depth
+## to report, so the plate hides and the two survivors take the room.
 func _update_depth() -> void:
 	var plate := depth_caption.get_parent() as Control
-	plate.visible = false
+	plate.visible = GameState.endless_mode
 	if GameState.endless_mode:
 		depth_numeral.text = str(GameState.endless_level_number)
+
+## The bonus row appears only when the party actually has bonuses. See
+## BonusStrip.has_bonuses() for why the empty state is not shown here.
+func _update_bonus_row() -> void:
+	bonus_strip.refresh()
+	bonus_row.visible = bonus_strip.has_bonuses()
 
 func _update_gold() -> void:
 	gold_label.text = str(GameState.gold)

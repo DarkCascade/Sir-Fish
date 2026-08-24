@@ -18,21 +18,25 @@ var _should_spin: bool = false      # combat is active
 var _last_hero_hits: Array[int] = []
 var _home_position: Vector2
 
-@onready var cabinet: Panel = $Cabinet
-@onready var cabinet_joints: Control = $CabinetJoints
-@onready var payline: ColorRect = $Payline
+@onready var cabinet: OrnateFrame = $Cabinet
+@onready var payline: Payline = $Payline
+@onready var reel_grid: ReelGrid = $ReelGrid
 @onready var banner: Label = $Banner
-@onready var arrow_left: ColorRect = $PaylineArrowLeft
-@onready var arrow_right: ColorRect = $PaylineArrowRight
 @onready var confetti: GPUParticles2D = $Confetti
 
-const CABINET_MARGIN := 20.0     # cabinet inset from the band's top and bottom
-## [presentation redesign] Was 80 - the status row's title/party-bar rows
-## (console.gd's STRIP_HEIGHT) took ~210px from the slot's own remainder,
-## shrinking each reel cell from ~133 to ~77px tall against a WIDTH that
-## never moved. A smaller margin claws some of that back for the window
-## itself, on top of slot_symbol.gd's own box_fraction reduction.
-const WINDOW_MARGIN := 56.0
+## [ui-project-longshot] The cabinet was 860 wide inside a 1080 band, floating
+## with 110 px of dead console either side. On the concept board it is
+## near-full-bleed - the cabinet IS the console at this height - so these are
+## measured off the board rather than inherited.
+const CABINET_MARGIN := 12.0     # cabinet inset from the band's top and bottom
+const CABINET_INSET := 24.0      # and from its left and right
+## Where the reel window sits inside the cabinet. Must clear OrnateFrame's own
+## `border` on the Cabinet node (34) or the window laps over the carved bevel.
+const WINDOW_INSET := 58.0
+const WINDOW_MARGIN := 48.0
+## The payline's own control is taller than the line it draws, so its glow and
+## sparkles have room; the line itself is drawn down its centre.
+const PAYLINE_BAND := 60.0
 
 func _ready() -> void:
 	_home_position = position
@@ -52,27 +56,31 @@ func apply_height(h: float) -> void:
 	pivot_offset = size * 0.5
 	var mid := h * 0.5
 	var window_h := maxf(h - WINDOW_MARGIN * 2.0, 90.0)
+	var window_w := 1080.0 - WINDOW_INSET * 2.0
 
-	cabinet.position = Vector2(110, CABINET_MARGIN)
-	cabinet.size = Vector2(860, h - CABINET_MARGIN * 2.0)
-	# [presentation redesign fix] CabinetJoints was added alongside Cabinet but
-	# never resized with it - it stayed at its authored rect (sized for the
-	# slot band's ORIGINAL height) while apply_height() shrank Cabinet to fit
-	# whatever the console layout gives the slot now, so its gold trace and
-	# diamonds hung down past the real cabinet, into the tray below.
-	cabinet_joints.position = cabinet.position
-	cabinet_joints.size = cabinet.size
+	cabinet.position = Vector2(CABINET_INSET, CABINET_MARGIN)
+	cabinet.size = Vector2(1080.0 - CABINET_INSET * 2.0, h - CABINET_MARGIN * 2.0)
+
+	# The three windows now abut rather than floating apart - the cells are
+	# separated by ReelGrid's gold cames laid OVER them, not by gaps between
+	# them (see reel_grid.gd). Their edges therefore have to land exactly on
+	# the same thirds the lattice draws, so the widths are derived here rather
+	# than left at whatever the .tscn was authored with.
 	for i: int in range(_reels.size()):
 		var window := (_reels[i] as Control).get_parent() as Control
-		window.position = Vector2(window.position.x, WINDOW_MARGIN)
-		window.size = Vector2(window.size.x, window_h)
+		var x0 := WINDOW_INSET + window_w * float(i) / 3.0
+		var x1 := WINDOW_INSET + window_w * float(i + 1) / 3.0
+		window.position = Vector2(x0, WINDOW_MARGIN)
+		window.size = Vector2(x1 - x0, window_h)
 		var reel = _reels[i]
-		reel.size = Vector2(window.size.x, window_h)
+		reel.size = window.size
 		reel.set_cell_height(window_h / 3.0)
 
-	payline.position = Vector2(140, mid - 2.0)
-	arrow_left.position = Vector2(116, mid - 12.0)
-	arrow_right.position = Vector2(940, mid - 12.0)
+	reel_grid.position = Vector2(WINDOW_INSET, WINDOW_MARGIN)
+	reel_grid.size = Vector2(window_w, window_h)
+
+	payline.position = Vector2(WINDOW_INSET, mid - PAYLINE_BAND * 0.5)
+	payline.size = Vector2(window_w, PAYLINE_BAND)
 	banner.size = Vector2(1080, h)
 	scale = Vector2.ONE * Tuning.SLOT_CABINET_SCALE
 	# The shake tween returns here, and the console moves us before it calls this.
@@ -98,7 +106,7 @@ func _on_combat_ended(_victory: bool) -> void:
 func _enter_attract(instant: bool = false) -> void:
 	for reel: Variant in _reels:
 		reel.start_drift()
-	payline.color = Color("5C5470")           # unlit
+	payline.glow_color = Tuning.C_GOLD_DARK   # unlit
 	if instant:
 		modulate = Tuning.SLOT_ATTRACT_DIM
 		return
@@ -108,7 +116,7 @@ func _enter_attract(instant: bool = false) -> void:
 func _leave_attract() -> void:
 	for reel: Variant in _reels:
 		reel.stop_drift()
-	payline.color = Tuning.C_DANGER           # lit
+	payline.glow_color = Tuning.C_GOLD_BRIGHT  # lit
 	var tw := create_tween()
 	tw.tween_property(self, "modulate", Color.WHITE, 0.2)
 
@@ -243,8 +251,8 @@ func _celebrate(symbol: int, count: int) -> void:
 		tw.tween_property(cell, "scale", cell_rest, 0.175)
 
 	var flash := create_tween().set_loops(2)
-	flash.tween_property(payline, "color", Tuning.C_TEXT, 0.09)
-	flash.tween_property(payline, "color", Tuning.C_DANGER, 0.09)
+	flash.tween_property(payline, "glow_color", Color.WHITE, 0.09)
+	flash.tween_property(payline, "glow_color", Tuning.C_GOLD_BRIGHT, 0.09)
 
 	banner.text = SlotSymbol.result_text(symbol, count)
 	banner.modulate.a = 0.0

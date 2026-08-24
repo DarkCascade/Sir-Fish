@@ -106,7 +106,11 @@ const PARTY_FORMATION := [
 ## and low, at roughly rotation (-15, -42, 0)): a wide, loose formation is
 ## what reads as a party crossing open ground from that angle, where the old
 ## overhead framing could get away with a tighter huddle.
-const PARTY_ROW_DEPTH := 2.4               # front rank to back rank
+## [ui-project-longshot] Halved from 2.4. On the concept board the three heroes
+## read as a LINE abreast with the knight only slightly ahead - at 2.4, under
+## the new camera's wider field, the front-rank warrior sat visibly deeper than
+## his flankers and grouped with the enemies instead of with his own party.
+const PARTY_ROW_DEPTH := 1.2               # front rank to back rank
 const PARTY_ROW_SPREAD := 4.4              # gap between the two back-rank heroes
 
 ## The enemy line forms this far up-run from the party leader, spread across
@@ -114,15 +118,31 @@ const PARTY_ROW_SPREAD := 4.4              # gap between the two back-rank heroe
 ## the gap by blinking, so it costs nothing mechanically - it only has to fit
 ## the camera's frame.
 ##
-## Coupled to BattleCamera's height and fov in battle_world.tscn (currently
-## 14.0 / 34 degrees, both brought down from 21.6 / 26 for a lower, closer
-## vantage point). Bringing the camera down without also pulling the enemy
-## line in would have clipped the back rank - a lower camera at a fixed tilt
-## has more foreground perspective, which needs EITHER a wider fov or a
-## smaller world extent to fit the same subjects. Re-solve both together -
-## project every combatant's world position through the camera transform into
-## NDC and check the worst-case |x|/|y| stays under about 0.85 - rather than
-## nudging one number and eyeballing the other.
+## Coupled to BattleCamera's height and fov in battle_world.tscn.
+##
+## [ui-project-longshot] Both moved again, and this time they were SOLVED from
+## the concept board rather than nudged. Measuring off the board: the horizon
+## sits ~10% down its world panel and the party's feet ~93% down, which fixes
+## the angle between them; the party stands ~31% of the panel tall, which fixes
+## its distance. Those two constraints give a camera 6.0 units up and ~15.0
+## horizontal units back from PARTY_ANCHOR, at a 30-degree VERTICAL field -
+## which at the shipped 1080 x 764 viewport (KEEP_WIDTH) is fov 41.5.
+##
+## 15.0, not the 12.9 the board's own measurement gives directly, and the
+## difference is PARTY_ROW_DEPTH: the anchor is the FRONT rank, and the two
+## back-rank heroes stand 2.4 units NEARER the camera than it does. Solving for
+## the anchor puts their feet below the bottom of the frame - which is exactly
+## the failure the first attempt at this shipped. Solve for the NEAREST hero.
+##
+## The other trap, if any of this is re-solved: the camera was previously HIGHER
+## (9.0) and looking down harder, and lowering it is what let the archway stay
+## on screen. A 24-degree vertical field cannot hold both the party at the
+## bottom and something at horizon level near the top - raise the camera again
+## and the arch leaves the frame before the party is comfortably in it.
+## Re-solve all three together - project every combatant's world position
+## through the camera transform into NDC and check the worst-case |x|/|y|
+## stays under about 0.85 - rather than nudging one number and eyeballing the
+## rest.
 const ENEMY_DISTANCE := 7.0
 const ENEMY_SPREAD := 1.7                 # gap between adjacent enemies
 
@@ -234,7 +254,18 @@ const SLOT_ATTRACT_DIM := Color(0.78, 0.78, 0.82)   # [v2] was Color(0.55, 0.55,
 const SLOT_CABINET_SCALE := 1.0
 
 # --- 5.7 Upgrades [v2] ------------------------------------------------------
-const UPGRADE_MAX_LEVEL := 3
+## [ui-project-longshot] Raised from 3 to 4 because the concept board's cards
+## carry FOUR level pips, and the pip row is drawn from this constant rather
+## than hardcoded (upgrade_button.gd's _draw_pips), so the art and the rule are
+## the same number by construction.
+##
+## This is the one change in the art pass that moves BALANCE and not just
+## pixels, and it is worth stating plainly: a fourth level costs
+## base x 1.9^3 = 6.9x the first, and every upgrade's ceiling effect rises one
+## step (Quick Reels to 0.86^4, Overcharge to +100%, Fat Purse to +160%).
+## Drop it back to 3 and the cards draw three pips again with nothing else to
+## undo.
+const UPGRADE_MAX_LEVEL := 4
 const UPGRADE_COST_GROWTH := 1.9          # cost(n) = round(base x 1.9^(n-1))
 
 const UPGRADE_QUICK_REELS_BASE := 60
@@ -320,7 +351,10 @@ const C_ARCANE_VIOLET := Color("8B5CF6")
 const C_CONSOLE_STONE := Color("3A4A3C")     # raised frame face (ornate_frame.gd)
 const C_CONSOLE_STONE_LIT := Color("5E7057")  # top-lit carved edge
 const C_CONSOLE_STONE_DARK := Color("1E2A22") # underside of a carved edge
-const C_CONSOLE_INSET := Color("06181A")     # recessed wells (reel windows, price plates)
+## Recessed wells (reel windows, price plates). Dark GREEN-black, not blue-
+## black: on the board the glass behind the reels still carries the forest's
+## green, and a neutral near-black well reads as a hole punched in the cabinet.
+const C_CONSOLE_INSET := Color("0B1E1C")
 const C_GOLD_BRIGHT := Color("F5DFA0")       # top bevel highlight / payline glow
 const C_GOLD_DARK := Color("7A5A18")         # bottom bevel shadow
 const C_VINE := Color("3D7A45")              # frame overgrowth

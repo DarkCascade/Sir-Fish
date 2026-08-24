@@ -71,10 +71,10 @@ light_energy = 0.7
 shadow_enabled = false
 
 [node name="BattleCamera" type="Camera3D" parent="." unique_id=1438402991]
-transform = Transform3D(0.7431448, 0.17318371, -0.64633036, 0, 0.9659255, 0.25881895, 0.6691306, -0.19233997, 0.7178225, -14, 9, 17)
+transform = Transform3D(0.74314, 0.13912, -0.65451, 0, 0.97815, 0.20791, 0.66913, -0.15450, 0.72691, -11.77, 6, 14.43)
 keep_aspect = 0
 current = true
-fov = 34.0
+fov = 41.5
 near = 0.5
 far = 300.0
 

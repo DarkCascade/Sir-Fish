@@ -12,29 +12,61 @@ extends CombatantBarsBase
 ## [UI pass] No cooldown row - the console's party status is HP-only, unlike
 ## the enemy overlay pair (combatant_bars.gd) which still shows one.
 
-## [layout experiment] Was 100/168 for the 172-wide card - hero_bars.tscn's
-## card is 340 wide now (party_bars.gd's own full-width row has the room),
-## and this must track HealthFill's own authored width in the .tscn or the bar
+## Must track HealthFill's own authored width in hero_bars.tscn, or the bar
 ## visually stops short of (or overflows) its track.
-const HERO_FILL_WIDTH := 230.0
+##
+## [ui-project-longshot] The row is measured off the concept board rather than
+## eyeballed: a 60 px medallion, an 8 px gap and a 362 px track, in a 62-tall
+## row with 8 between rows - which is what makes three of them fill the
+## strip's right-hand third exactly. Inside the track each layer insets the one
+## above it by a few px, so the bar reads as a WELL with a fill sitting in it:
+##
+##     HealthBorder  362 x 50   ink outline
+##       HealthBg    356 x 44   the empty track
+##         HealthFill 352 x 40  the coloured fill   <- this constant
+##           Gloss             top strip, white at low alpha
+##
+## HpText is a child of HealthBg, NOT of HealthFill, and that is the one thing
+## here that is easy to get wrong: parented to the fill it slides left with the
+## damage and eventually clips off the bar entirely - exactly when the player
+## most wants to read it.
+const HERO_FILL_WIDTH := 352.0
 
-## [presentation redesign S6.3] Past half the chip's own shorter side (32),
-## same convention as CombatantBarsBase.PILL_RADIUS, so the class-icon tile
-## reads as a round medallion instead of a rounded square. Card is a themed
-## Panel now - its corners come from Panel/styles/panel in theme.tres, not
-## this shader.
-const CHIP_RADIUS := 22.0
+## [presentation redesign S6.3] Past half the chip's own shorter side, same
+## convention as CombatantBarsBase.PILL_RADIUS, so the class-icon tile reads as
+## a round medallion instead of a rounded square.
+const CHIP_RADIUS := 26.0
 
 const KNOWN_ICON_CLASSES := [&"priest", &"ranger", &"warrior"]
 
+## [ui-project-longshot] The concept board's three stat bars run green, blue,
+## gold from top to bottom - and its numbers (102/120, 80/80, 70/70) are this
+## party's own max HP, so the board is showing exactly these three heroes.
+##
+## Its glyphs (heart / bolt / shield) do not map to any class, so those are
+## left as the existing class icons: the bolt in particular already means
+## "lightning payout" on the reels, and borrowing it for the ranger would have
+## the same glyph mean two things one panel apart. The colour rhythm is what
+## carries the board's look, and it happens to land on the semantically right
+## hero at every position anyway - the priest heals (green), the warrior
+## guards (gold).
+##
+## Falls back to the hero's own accent_color for any class not listed, so a
+## fourth hero is a resource edit and not a code change.
+const CLASS_BAR_COLORS := {
+	&"priest": Tuning.C_HEAL,
+	&"ranger": Tuning.C_LIGHTNING,
+	&"warrior": Tuning.C_DEFEND,
+}
+
 var _dead: bool = false
 
-var card: Panel
 var chip_border: ColorRect
 var chip: ColorRect
 var chip_glyph: ClassIconGlyph
 var chip_label: Label
 var hp_text: Label
+var gloss: ColorRect
 var buff_shield: Control
 
 func _ready() -> void:
@@ -44,22 +76,31 @@ func _ready() -> void:
 	super._ready()
 	_fill_width = HERO_FILL_WIDTH
 
-	card = $Card
 	chip_border = $ChipBorder
 	chip = $ChipBorder/Chip
 	chip_glyph = $ChipBorder/Chip/ChipGlyph
 	chip_label = $ChipBorder/Chip/ChipLabel
-	hp_text = $HealthBorder/HealthBg/HealthFill/HpText
+	hp_text = $HealthBorder/HealthBg/HpText
+	gloss = $HealthBorder/HealthBg/HealthFill/Gloss
 	buff_shield = $BuffShield
 	_round(chip_border, CHIP_RADIUS + 2.0)
 	_round(chip, CHIP_RADIUS)
+	# The gloss is what turns a flat coloured rectangle into the board's
+	# glassy gem bar. Rounded on the same pill radius as the fill it sits in,
+	# or its square ends poke out through the fill's curved caps.
+	_round(gloss, PILL_RADIUS)
 
 ## Called by party_bars.gd the moment a hero's bars are spawned.
 func setup(c: Combatant) -> void:
 	combatant = c
 	var stats := c.stats if c != null else null
 	if stats != null:
-		chip.color = stats.accent_color
+		# The medallion and the bar carry the SAME colour, so the icon reads as
+		# the label for its own bar rather than as a second piece of colour
+		# information competing with it.
+		base_fill_color = CLASS_BAR_COLORS.get(stats.id, stats.accent_color)
+		chip.color = base_fill_color
+		health_fill.color = base_fill_color
 		var has_glyph: bool = stats.id in KNOWN_ICON_CLASSES
 		chip_glyph.set_kind(stats.id if has_glyph else &"")
 		chip_label.text = stats.display_name.substr(0, 1).to_upper()
@@ -82,7 +123,11 @@ func refresh() -> void:
 			tween_health_fraction(fraction, healed)
 			if not healed:
 				flash_background()
-	hp_text.text = "DEAD" if not alive else "%d" % [combatant.current_hp]
+	# "current / max", as the board reads them. The maximum is the half that
+	# makes a bar's fill mean anything - 102 alone says nothing about whether
+	# this hero is in trouble.
+	hp_text.text = "DEAD" if not alive \
+		else "%d / %d" % [combatant.current_hp, combatant.max_hp]
 	buff_shield.visible = alive and combatant.is_defending()
 
 ## A dead hero's bar stays in the party strip, greyed and reading DEAD, rather
