@@ -1,4 +1,4 @@
-[gd_scene load_steps=6 format=3]
+[gd_scene load_steps=7 format=3]
 
 [ext_resource type="Script" path="res://scripts/console/status_panel.gd" id="1_status"]
 [ext_resource type="Script" path="res://scripts/console/coin_glyph.gd" id="2_coin"]
@@ -6,10 +6,29 @@
 [ext_resource type="Script" path="res://scripts/console/ornate_frame.gd" id="6_frame"]
 [ext_resource type="PackedScene" path="res://scenes/console/bonus_strip.tscn" id="7_bonus"]
 
+; [ui-project-longshot] The strip carries its OWN panel style rather than the
+; theme's PanelContainer one. That style is the modals' recessed glass and
+; gained 20 px content margins in this pass; inheriting it would inset Layout
+; by 40 px vertically, which is more than the 36 px of slack the 244-tall strip
+; has over its 208-tall resource row - the party bars would clip.
+;
+; It is also simply a different object: this is the console's stone band, in
+; front of the world, not a modal panel floating over it.
+[sub_resource type="StyleBoxFlat" id="strip"]
+content_margin_left = 8.0
+content_margin_top = 8.0
+content_margin_right = 8.0
+content_margin_bottom = 8.0
+bg_color = Color(0.062745, 0.180392, 0.168627, 1)
+border_width_top = 3
+border_width_bottom = 3
+border_color = Color(0.478431, 0.352941, 0.094118, 1)
+
 [node name="StatusPanel" type="PanelContainer"]
 custom_minimum_size = Vector2(1080, 244)
 offset_right = 1080.0
 offset_bottom = 244.0
+theme_override_styles/panel = SubResource("strip")
 script = ExtResource("1_status")
 
 [node name="Layout" type="VBoxContainer" parent="."]
