@@ -11,7 +11,7 @@ const COMPARE_FLYOUT_SCENE := preload("res://scenes/modals/compare_flyout.tscn")
 
 var _encounter: EncounterDef = null
 var _cards: Array = []
-var _compare_flyout = null   # ItemCompareFlyout (untyped: custom API)
+var _compare_flyout = null   # CompareFlyout (untyped: custom API)
 
 @onready var scrim: ColorRect = $Scrim
 @onready var panel: PanelContainer = $Panel
@@ -48,6 +48,9 @@ func open(encounter: EncounterDef) -> void:
 	# so this modal (and every child - scrim, panel, price pulse, X button)
 	# keeps processing while everything under Console/BattleView freezes.
 	get_tree().paused = true
+	# ...and a paused world has no reason to keep being redrawn behind the
+	# scrim. See MainLayout.set_world_rendering().
+	_set_world_rendering(false)
 
 	scrim.modulate.a = 0.0
 	var s := create_tween()
@@ -65,6 +68,7 @@ func close() -> void:
 	# [v3.5 D1] Unpause before anything else, on every exit path, so a modal
 	# torn down unexpectedly can never strand the tree paused.
 	get_tree().paused = false
+	_set_world_rendering(true)
 	var tw := create_tween().set_parallel(true)
 	tw.tween_property(panel, "scale", Vector2(0.9, 0.9), 0.2)
 	tw.tween_property(panel, "modulate:a", 0.0, 0.2)
@@ -72,6 +76,14 @@ func close() -> void:
 	tw.chain().tween_callback(func() -> void:
 		hide()
 		closed.emit())
+
+## `owner` rather than a node path: this modal is instanced in main.tscn, so its
+## owner IS MainLayout, and nothing here has to know where in that scene it
+## sits. Guarded because the shop is also opened standalone by the tests, where
+## there is no MainLayout above it.
+func _set_world_rendering(enabled: bool) -> void:
+	if owner != null and owner.has_method("set_world_rendering"):
+		owner.call("set_world_rendering", enabled)
 
 ## Optional desktop nicety; the red X remains the only required path (spec 15.4).
 func _unhandled_input(event: InputEvent) -> void:

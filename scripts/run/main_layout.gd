@@ -28,6 +28,7 @@ const SCREEN := Vector2(1080, 1920)
 const DIVIDER_HEIGHT := 5.0
 
 @onready var battle_view: SubViewportContainer = $BattleView
+@onready var battle_viewport: SubViewport = $BattleView/BattleViewport
 @onready var vignette: ColorRect = $Vignette
 @onready var overlay = $BattleOverlay
 @onready var divider: ColorRect = $ConsoleDivider
@@ -35,6 +36,26 @@ const DIVIDER_HEIGHT := 5.0
 
 func _ready() -> void:
 	apply_split(SCREEN.y if hide_console else battle_height)
+
+## [ui-project-longshot / perf] Stops the battle SubViewport re-rendering while
+## something else has the game paused - ShopModal is the only such thing today
+## (see its open()/close()).
+##
+## The world under an open shop is frozen: the tree is paused, so nothing in it
+## moves, and every frame the viewport draws is pixel-identical to the last one.
+## It was drawing them anyway - a full 1080 x 764 pass with three directional
+## lights, a shadow map, MSAA and the glow chain, sixty times a second, behind
+## an opaque scrim, for as long as the player stood in the shop reading item
+## stats. That is the most expensive screen in the game and the one where the
+## player spends the longest, which is a large part of why the shop in
+## particular felt hitchy on a phone.
+##
+## UPDATE_DISABLED keeps the last rendered texture, so the frozen world stays on
+## screen exactly as it was - this makes the viewport stop repainting, not
+## disappear.
+func set_world_rendering(enabled: bool) -> void:
+	battle_viewport.render_target_update_mode = SubViewport.UPDATE_WHEN_VISIBLE \
+		if enabled else SubViewport.UPDATE_DISABLED
 
 func apply_split(h: float) -> void:
 	var full: bool = hide_console
