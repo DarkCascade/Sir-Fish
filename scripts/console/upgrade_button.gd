@@ -8,19 +8,37 @@ extends Button
 ## in the console. Local StyleBoxFlat overrides here so ONLY these three cards
 ## go parchment; every other Button in the game keeps the global blue theme.
 
-const PIP := 20.0
-const PIP_GAP := 10.0
-const ICON_SIZE := 40.0
-const PLATE_HEIGHT := 46.0
+## [ui-project-longshot] Measured off the concept board, which gives the cards
+## roughly a third of the console's height instead of the sixth they had. The
+## card was 178 tall with a 52 px title overflowing its own box; it is 326 now
+## and everything on it has room to sit where the board puts it: medallion and
+## title on one line at the top, blurb under them, pips floating in the middle,
+## price plate pinned to the bottom.
+const PIP := 22.0
+const PIP_GAP := 14.0
+const ICON_SIZE := 50.0
+const PLATE_HEIGHT := 52.0
 const CARD_WIDTH := 340.0
+## How far the pip row floats above the price plate. The board leaves a clear
+## band of empty stone between the blurb and the pips - the card is not full,
+## and that emptiness is what makes it read as a carved tablet rather than a
+## tooltip.
+const PIP_BASELINE := -108.0
+
+## Title auto-fit range - see _fit_title(). MAX is the size the board's titles
+## read at; MIN is the floor past which a name would be smaller than its own
+## blurb, at which point the card is wrong in some other way.
+const TITLE_FONT_MAX := 42
+const TITLE_FONT_MIN := 26
+const TITLE_RIGHT_MARGIN := 16.0
 
 ## Coin + Cost read as one centred unit: the coin sits COIN_GAP left of
 ## Cost's own box, and Cost's text is centre-aligned within that box (see
 ## upgrade_button.tscn) rather than following the number's actual width, so
 ## the pair stays visually centred whether the price is "50" or "999".
-const COIN_SIZE := 28.0
-const COIN_GAP := 6.0
-const COST_BOX_WIDTH := 110.0
+const COIN_SIZE := 34.0
+const COIN_GAP := 8.0
+const COST_BOX_WIDTH := 120.0
 ## DisplayLabel's serifed numerals sit visually low within their line box -
 ## Godot centres on font ascent/descent, not glyph ink - so both the coin and
 ## Cost's text (offset by the same amount in the .tscn) are nudged up this
@@ -48,7 +66,7 @@ func setup(upgrade_id: StringName) -> void:
 	refresh()
 
 func _ready() -> void:
-	custom_minimum_size = Vector2(340, 236)
+	custom_minimum_size = Vector2(CARD_WIDTH, 326)
 	pressed.connect(_on_pressed)
 	EventBus.gold_changed.connect(_on_gold_changed)
 	EventBus.upgrade_purchased.connect(_on_upgrade_purchased)
@@ -87,13 +105,14 @@ func _build() -> void:
 	var def: Dictionary = Upgrades.DEFS[id]
 
 	_icon = Control.new()
-	_icon.position = Vector2(14, 12)
+	_icon.position = Vector2(18, 18)
 	_icon.size = Vector2(ICON_SIZE, ICON_SIZE)
 	_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_icon.draw.connect(_draw_icon)
 	add_child(_icon)
 
 	_title.text = String(def["name"])
+	_fit_title()
 
 	_blurb.add_theme_color_override("font_color", Color(Tuning.C_INK, 0.78))
 	_blurb.autowrap_mode = TextServer.AUTOWRAP_WORD
@@ -108,9 +127,9 @@ func _build() -> void:
 	_pips.anchor_top = 1.0
 	_pips.anchor_bottom = 1.0
 	_pips.offset_left = pips_left
-	_pips.offset_top = -96.0
+	_pips.offset_top = PIP_BASELINE
 	_pips.offset_right = pips_left + pips_w
-	_pips.offset_bottom = -96.0 + PIP
+	_pips.offset_bottom = PIP_BASELINE + PIP
 	_pips.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_pips.draw.connect(_draw_pips)
 	add_child(_pips)
@@ -129,20 +148,58 @@ func _build() -> void:
 	_coin.draw.connect(_draw_coin)
 	add_child(_coin)
 
-## Diamond pips: filled = arcane core in a gold ring, empty = faint ink
-## diamond outline. UPGRADE_MAX_LEVEL-driven, never hardcoded (S0.3).
+## Shrinks the title's font until the name fits on ONE line in the box the
+## .tscn gives it.
+##
+## The board puts every card's title on a single line beside its medallion, and
+## the three names are very different lengths ("Fat Purse" against "Quick
+## Reels"): at any single authored size either the short names look undersized
+## or the long ones wrap and clip. Godot's Label has no auto-shrink, so this
+## measures and steps down - three or four iterations at most, once per card at
+## build time.
+## The width is derived from the CARD, never read off the label.
+##
+## _title.size.x is not the label's box - a non-wrapping Label reports a
+## minimum size of its own rendered text, and Control clamps size up to that,
+## so a label whose text overflows reports the OVERFLOWING width. Measuring
+## against it asks "does this text fit inside itself", which is always yes, and
+## the first version of this function shrank nothing for exactly that reason.
+func _fit_title() -> void:
+	var available := CARD_WIDTH - _title.position.x - TITLE_RIGHT_MARGIN
+	var font := _title.get_theme_font("font")
+	var px := TITLE_FONT_MAX
+	while px > TITLE_FONT_MIN:
+		if font.get_string_size(_title.text, HORIZONTAL_ALIGNMENT_LEFT, -1, px).x <= available:
+			break
+		px -= 2
+	_title.add_theme_font_size_override("font_size", px)
+
+## Diamond pips. UPGRADE_MAX_LEVEL-driven, never hardcoded (S0.3).
+##
+## [ui-project-longshot] Both states are now SOLID, which is the board's
+## reading: a spent level is a blue gem set in the stone, an unspent one is the
+## empty grey socket it will go into. The old empty state was a hairline
+## outline, which at this size read as absence rather than as a slot - the
+## player could not see at a glance how many levels were left, only how many
+## were taken.
 func _draw_pips() -> void:
 	var level := Upgrades.level(id)
 	for i: int in range(Tuning.UPGRADE_MAX_LEVEL):
 		var cx := float(i) * (PIP + PIP_GAP) + PIP * 0.5
 		var c := Vector2(cx, PIP * 0.5)
 		if i < level:
-			_pips.draw_colored_polygon(_diamond(c, PIP * 0.5), Tuning.C_GOLD)
-			_pips.draw_colored_polygon(_diamond(c, PIP * 0.32), Tuning.C_ARCANE)
+			_pips.draw_colored_polygon(_diamond(c, PIP * 0.5), Tuning.C_GOLD_DARK)
+			_pips.draw_colored_polygon(_diamond(c, PIP * 0.38), Tuning.C_GEM)
+			# The lit upper facet, matching OrnateFrame's gems and its bevels -
+			# everything in this console is lit from above.
+			var r := PIP * 0.38
+			_pips.draw_colored_polygon(PackedVector2Array([
+				c + Vector2(0, -r), c + Vector2(r * 0.55, -r * 0.42), c,
+				c + Vector2(-r * 0.55, -r * 0.42),
+			]), Tuning.C_GEM_BRIGHT)
 		else:
-			var pts := _diamond(c, PIP * 0.5)
-			pts.append(pts[0])
-			_pips.draw_polyline(pts, Color(Tuning.C_INK, 0.35), 2.0)
+			_pips.draw_colored_polygon(_diamond(c, PIP * 0.5), Color(Tuning.C_INK, 0.22))
+			_pips.draw_colored_polygon(_diamond(c, PIP * 0.36), Color(Tuning.C_INK, 0.13))
 
 func _diamond(c: Vector2, r: float) -> PackedVector2Array:
 	return PackedVector2Array([
@@ -158,8 +215,12 @@ func _draw_coin() -> void:
 ## card is describing.
 func _draw_icon() -> void:
 	var c := ICON_SIZE * 0.5 * Vector2.ONE
-	_icon.draw_circle(c, ICON_SIZE * 0.5, Tuning.C_ARCANE_DEEP)
-	_icon.draw_arc(c, ICON_SIZE * 0.5, 0.0, TAU, 24, Tuning.C_GOLD, 2.5)
+	# A struck medallion, not a flat disc: gold rim, dark field, and a highlight
+	# arc across the top-left of the rim so it sits proud of the card face.
+	_icon.draw_circle(c, ICON_SIZE * 0.5, Tuning.C_GOLD_DARK)
+	_icon.draw_circle(c, ICON_SIZE * 0.42, Tuning.C_ARCANE_DEEP)
+	_icon.draw_arc(c, ICON_SIZE * 0.46, 0.0, TAU, 28, Tuning.C_GOLD, 3.0)
+	_icon.draw_arc(c, ICON_SIZE * 0.46, PI * 0.85, PI * 1.75, 16, Tuning.C_GOLD_BRIGHT, 3.0)
 	match id:
 		&"overcharge":
 			var poly := PackedVector2Array()

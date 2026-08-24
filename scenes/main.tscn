@@ -8,6 +8,16 @@
 [ext_resource type="PackedScene" path="res://scenes/modals/run_summary.tscn" id="6_summary"]
 [ext_resource type="Script" uid="uid://c3xbq35shguud" path="res://scripts/run/run_controller.gd" id="7_run"]
 [ext_resource type="Script" uid="uid://dvddxwaocx4rn" path="res://scripts/run/main_layout.gd" id="8_layout"]
+[ext_resource type="Shader" path="res://assets/shaders/vignette.gdshader" id="9_vignette"]
+
+[sub_resource type="ShaderMaterial" id="vignette_mat"]
+shader = ExtResource("9_vignette")
+shader_parameter/tint = Color(0.02, 0.05, 0.11, 1)
+shader_parameter/inner = 0.58
+shader_parameter/outer = 1.18
+shader_parameter/strength = 0.5
+shader_parameter/top_bias = 0.08
+shader_parameter/aspect = Vector2(1, 0.55)
 
 [node name="Main" type="Control" unique_id=508576918]
 layout_mode = 3
@@ -19,7 +29,7 @@ grow_vertical = 2
 mouse_filter = 2
 theme = ExtResource("1_theme")
 script = ExtResource("8_layout")
-battle_height = 960.0
+battle_height = 764.0
 hide_console = false
 hide_overlay = false
 
@@ -37,17 +47,25 @@ render_target_update_mode = 4
 
 [node name="BattleWorld" parent="BattleView/BattleViewport" unique_id=1107194419 instance=ExtResource("2_world")]
 
+[node name="Vignette" type="ColorRect" parent="." unique_id=32027014]
+material = SubResource("vignette_mat")
+layout_mode = 0
+offset_right = 1080.0
+offset_bottom = 764.0
+mouse_filter = 2
+color = Color(1, 1, 1, 1)
+
 [node name="BattleOverlay" parent="." unique_id=32027013 instance=ExtResource("3_overlay")]
 layout_mode = 0
 anchors_preset = 0
 
 [node name="ConsoleDivider" type="ColorRect" parent="." unique_id=1112842998]
 layout_mode = 0
-offset_top = 640.0
+offset_top = 764.0
 offset_right = 1080.0
-offset_bottom = 648.0
+offset_bottom = 769.0
 mouse_filter = 2
-color = Color(0.94902, 0.760784, 0.188235, 1)
+color = Color(0.027, 0.09, 0.106, 1)
 
 [node name="Console" parent="." unique_id=1670680176 instance=ExtResource("4_console")]
 layout_mode = 0

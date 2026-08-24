@@ -55,6 +55,15 @@ func refresh() -> void:
 	_bonuses = GameState.party_bonuses()
 	queue_redraw()
 
+## [ui-project-longshot] Whether this strip has anything to say. status_panel
+## uses it to hide the whole bonus row rather than let it sit there reading
+## "No party bonuses" - the concept board has no such row, and a permanently
+## visible empty strip is the loudest thing on screen that carries no
+## information. The shop's copy of this strip keeps the empty-state text,
+## where the player has gone looking for it on purpose.
+func has_bonuses() -> bool:
+	return not _visible_entries().is_empty()
+
 # --- drawing ----------------------------------------------------------------
 
 func _draw() -> void:

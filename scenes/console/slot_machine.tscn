@@ -3,18 +3,8 @@
 [ext_resource type="Script" uid="uid://yt0r63qht4yd" path="res://scripts/console/slot_machine.gd" id="1_slot"]
 [ext_resource type="PackedScene" path="res://scenes/console/slot_reel.tscn" id="2_reel"]
 [ext_resource type="Script" uid="uid://bwut72okvld1h" path="res://scripts/console/ornate_frame.gd" id="3_frame"]
-
-[sub_resource type="StyleBoxFlat" id="cabinet"]
-bg_color = Color(0.070588, 0.227451, 0.196078, 1)
-border_width_left = 6
-border_width_top = 6
-border_width_right = 6
-border_width_bottom = 6
-border_color = Color(0.788235, 0.635294, 0.152941, 1)
-corner_radius_top_left = 28
-corner_radius_top_right = 28
-corner_radius_bottom_right = 28
-corner_radius_bottom_left = 28
+[ext_resource type="Script" path="res://scripts/console/reel_grid.gd" id="4_grid"]
+[ext_resource type="Script" path="res://scripts/console/payline.gd" id="5_payline"]
 
 [sub_resource type="ParticleProcessMaterial" id="confetti_mat"]
 emission_shape = 3
@@ -26,48 +16,43 @@ initial_velocity_max = 620.0
 gravity = Vector3(0, 900, 0)
 scale_min = 0.6
 scale_max = 1.4
-color = Color(0.788235, 0.635294, 0.152941, 1)
+color = Color(0.960784, 0.874509, 0.627451, 1)
 
 [node name="SlotMachine" type="Control" unique_id=806678853]
-custom_minimum_size = Vector2(1080, 880)
+custom_minimum_size = Vector2(1080, 460)
 layout_mode = 3
 anchors_preset = 0
 offset_right = 1080.0
-offset_bottom = 880.0
-pivot_offset = Vector2(540, 440)
+offset_bottom = 460.0
+pivot_offset = Vector2(540, 230)
 mouse_filter = 2
 script = ExtResource("1_slot")
 
-[node name="Cabinet" type="Panel" parent="." unique_id=637650508]
+[node name="Cabinet" type="Control" parent="." unique_id=637650508]
 layout_mode = 0
-offset_left = 110.0
-offset_top = 20.0
-offset_right = 970.0
-offset_bottom = 860.0
-mouse_filter = 2
-theme_override_styles/panel = SubResource("cabinet")
-
-[node name="CabinetJoints" type="Control" parent="." unique_id=-1213026744]
-anchors_preset = 0
-offset_left = 110.0
-offset_top = 20.0
-offset_right = 970.0
-offset_bottom = 860.0
+offset_left = 24.0
+offset_top = 12.0
+offset_right = 1056.0
+offset_bottom = 448.0
 mouse_filter = 2
 script = ExtResource("3_frame")
-corner_radius = 28.0
+border = 34.0
+corner_radius = 30.0
 diamond_size = 26.0
-draw_fill = false
+inset_well = true
+vines = true
+vine_count = 3
+vine_seed = 23
 
 [node name="ReelWindow0" type="ColorRect" parent="." unique_id=674027282]
 clip_contents = true
 layout_mode = 0
-offset_left = 160.0
-offset_top = 80.0
-offset_right = 400.0
-offset_bottom = 800.0
+offset_left = 58.0
+offset_top = 48.0
+offset_right = 379.0
+offset_bottom = 412.0
 mouse_filter = 2
-color = Color(0.031373, 0.078431, 0.070588, 1)
+color = Color(0.043137, 0.117647, 0.109804, 1)
 
 [node name="Reel" parent="ReelWindow0" unique_id=601092897 instance=ExtResource("2_reel")]
 anchors_preset = 0
@@ -75,12 +60,12 @@ anchors_preset = 0
 [node name="ReelWindow1" type="ColorRect" parent="." unique_id=907213563]
 clip_contents = true
 layout_mode = 0
-offset_left = 420.0
-offset_top = 80.0
-offset_right = 660.0
-offset_bottom = 800.0
+offset_left = 379.0
+offset_top = 48.0
+offset_right = 701.0
+offset_bottom = 412.0
 mouse_filter = 2
-color = Color(0.031373, 0.078431, 0.070588, 1)
+color = Color(0.043137, 0.117647, 0.109804, 1)
 
 [node name="Reel" parent="ReelWindow1" unique_id=1657117379 instance=ExtResource("2_reel")]
 anchors_preset = 0
@@ -88,61 +73,48 @@ anchors_preset = 0
 [node name="ReelWindow2" type="ColorRect" parent="." unique_id=1514290024]
 clip_contents = true
 layout_mode = 0
-offset_left = 680.0
-offset_top = 80.0
-offset_right = 920.0
-offset_bottom = 800.0
+offset_left = 701.0
+offset_top = 48.0
+offset_right = 1022.0
+offset_bottom = 412.0
 mouse_filter = 2
-color = Color(0.031373, 0.078431, 0.070588, 1)
+color = Color(0.043137, 0.117647, 0.109804, 1)
 
 [node name="Reel" parent="ReelWindow2" unique_id=297440533 instance=ExtResource("2_reel")]
 anchors_preset = 0
 
-[node name="Payline" type="ColorRect" parent="." unique_id=1951106064]
+[node name="ReelGrid" type="Control" parent="." unique_id=674027283]
 layout_mode = 0
-offset_left = 140.0
-offset_top = 438.0
-offset_right = 940.0
-offset_bottom = 442.0
+offset_left = 58.0
+offset_top = 48.0
+offset_right = 1022.0
+offset_bottom = 412.0
 mouse_filter = 2
-color = Color(1.05, 0.82, 0.32, 1)
+script = ExtResource("4_grid")
 
-[node name="PaylineArrowLeft" type="ColorRect" parent="." unique_id=2077087270]
+[node name="Payline" type="Control" parent="." unique_id=1951106064]
 layout_mode = 0
-offset_left = 116.0
-offset_top = 428.0
-offset_right = 140.0
-offset_bottom = 452.0
-rotation = 0.785398
-pivot_offset = Vector2(12, 12)
+offset_left = 58.0
+offset_top = 200.0
+offset_right = 1022.0
+offset_bottom = 260.0
 mouse_filter = 2
-color = Color(1.05, 0.82, 0.32, 1)
-
-[node name="PaylineArrowRight" type="ColorRect" parent="." unique_id=462468818]
-layout_mode = 0
-offset_left = 940.0
-offset_top = 428.0
-offset_right = 964.0
-offset_bottom = 452.0
-rotation = 0.785398
-pivot_offset = Vector2(12, 12)
-mouse_filter = 2
-color = Color(1.05, 0.82, 0.32, 1)
+script = ExtResource("5_payline")
 
 [node name="Banner" type="Label" parent="." unique_id=325995368]
 layout_mode = 0
 offset_right = 1080.0
-offset_bottom = 880.0
+offset_bottom = 460.0
 theme_type_variation = &"DisplayLabel"
-theme_override_colors/font_color = Color(0.788235, 0.635294, 0.152941, 1)
-theme_override_colors/font_outline_color = Color(0.141176, 0.117647, 0.078431, 1)
+theme_override_colors/font_color = Color(0.960784, 0.874509, 0.627451, 1)
+theme_override_colors/font_outline_color = Color(0.019608, 0.054902, 0.062745, 1)
 theme_override_constants/outline_size = 24
 theme_override_font_sizes/font_size = 72
 horizontal_alignment = 1
 vertical_alignment = 1
 
 [node name="Confetti" type="GPUParticles2D" parent="." unique_id=70700889]
-position = Vector2(540, 40)
+position = Vector2(540, 30)
 emitting = false
 amount = 40
 lifetime = 1.4

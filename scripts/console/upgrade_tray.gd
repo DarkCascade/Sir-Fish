@@ -9,11 +9,14 @@ extends Control
 const BUTTON_SCENE := preload("res://scenes/console/upgrade_button.tscn")
 const NUMBER_SCENE := preload("res://scenes/overlay/damage_number.tscn")
 
-const BUTTON_X: Array[float] = [12.0, 370.0, 728.0]
-const BUTTON_Y := 42.0
+## [ui-project-longshot] Three 340-wide cards with 16 between them and 14 either
+## side is exactly 1080 - the board's cards run edge to edge with only a hair
+## of console showing between, not the 12/358 grid that left a visible gutter.
+const BUTTON_X: Array[float] = [14.0, 370.0, 726.0]
+const BUTTON_Y := 24.0
 const BUTTON_WIDTH := 340.0
 const BUTTON_BOTTOM_MARGIN := 8.0
-const DEFAULT_HEIGHT := 262.0
+const DEFAULT_HEIGHT := 358.0
 
 var _buttons: Array = []
 

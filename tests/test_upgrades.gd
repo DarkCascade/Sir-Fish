@@ -3,9 +3,16 @@ extends Node
 ##
 ##     godot --headless --path "C:/Projects/Godot/Sir Fish" res://tests/test_upgrades.tscn
 ##
-## Asserts the cost curve against spec 17.6's table exactly, is_maxed at level 3,
-## the payout maths at every level combination, and that reset() clears
+## Asserts the cost curve against spec 17.6's table exactly, is_maxed at the
+## ceiling, the payout maths at every level combination, and that reset() clears
 ## everything. Also asserts the thing upgrades must NEVER do: touch the strip.
+##
+## [ui-project-longshot] The tables below are per-level and UPGRADE_MAX_LEVEL
+## moved from 3 to 4, so they grew a column. The loop already read the constant
+## while the tables did not, which meant raising it walked off the end of the
+## array and took the whole test down after three passing lines - so the sizes
+## are now asserted up front, and a future change to the ceiling fails as a
+## readable check rather than as an index crash.
 
 const TestSupport := preload("res://tests/test_support.gd")
 
@@ -15,12 +22,15 @@ func _ready() -> void:
 
 	# --- cost curve: spec 17.6's table, to the gold ---
 	var expected := {
-		&"quick_reels": [60, 114, 217],
-		&"overcharge": [70, 133, 253],
-		&"fat_purse": [50, 95, 181],
+		&"quick_reels": [60, 114, 217, 412],
+		&"overcharge": [70, 133, 253, 480],
+		&"fat_purse": [50, 95, 181, 343],
 	}
 	for id: StringName in expected.keys():
 		var costs: Array = expected[id]
+		t.check(costs.size() == Tuning.UPGRADE_MAX_LEVEL,
+			"%s's cost table covers all %d levels (has %d)"
+				% [id, Tuning.UPGRADE_MAX_LEVEL, costs.size()])
 		Upgrades.levels[id] = 0
 		for level: int in range(Tuning.UPGRADE_MAX_LEVEL):
 			Upgrades.levels[id] = level
@@ -32,18 +42,20 @@ func _ready() -> void:
 		t.check(Upgrades.cost(id) == -1, "%s costs -1 once maxed" % id)
 	Upgrades.reset()
 
-	# Maxing everything costs 1,173 gold (spec 17.6).
+	# Maxing everything costs 2,408 gold (was 1,173 over three levels).
 	var total := 0
 	for id: StringName in expected.keys():
 		for c: int in (expected[id] as Array):
 			total += c
-	t.check(total == 1173, "maxing all three upgrades costs 1,173 gold (got %d)" % total)
+	t.check(total == 2408, "maxing all three upgrades costs 2,408 gold (got %d)" % total)
 
-	# --- payout multipliers at every level ---
-	var quick_expected := [1.00, 0.86, 0.7396, 0.636056]
-	var over_expected := [1.00, 1.25, 1.50, 1.75]
-	var purse_expected := [1.00, 1.40, 1.80, 2.20]
-	for level: int in range(4):
+	# --- payout multipliers at every level, level 0 through the ceiling ---
+	var quick_expected := [1.00, 0.86, 0.7396, 0.636056, 0.54700816]
+	var over_expected := [1.00, 1.25, 1.50, 1.75, 2.00]
+	var purse_expected := [1.00, 1.40, 1.80, 2.20, 2.60]
+	t.check(quick_expected.size() == Tuning.UPGRADE_MAX_LEVEL + 1,
+		"the multiplier tables cover level 0 through %d" % Tuning.UPGRADE_MAX_LEVEL)
+	for level: int in range(Tuning.UPGRADE_MAX_LEVEL + 1):
 		Upgrades.levels[&"quick_reels"] = level
 		Upgrades.levels[&"overcharge"] = level
 		Upgrades.levels[&"fat_purse"] = level
@@ -83,7 +95,11 @@ func _ready() -> void:
 	t.check(int(GameState.run_stats["gold_spent"]) >= 60, "gold_spent tracked the purchase")
 	t.check(int(GameState.run_stats["upgrades_bought"]) == 1, "upgrades_bought incremented")
 
-	Upgrades.levels[&"overcharge"] = 3
+	# The ceiling, not a literal 3 - at UPGRADE_MAX_LEVEL 4 a level-3 upgrade is
+	# still buyable, so this would have passed only because the gold above was
+	# already spent, testing nothing.
+	Upgrades.levels[&"overcharge"] = Tuning.UPGRADE_MAX_LEVEL
+	GameState.gold = 9999
 	t.check(not Upgrades.buy(&"overcharge"), "buy() refuses a maxed upgrade")
 
 	# --- reset() clears everything (spec 17.6: upgrades are run-scoped) ---

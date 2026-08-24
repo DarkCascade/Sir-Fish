@@ -11,7 +11,9 @@ extends Control
 
 const BARS_SCENE := preload("res://scenes/overlay/hero_bars.tscn")
 
-## Gap between stacked hero bars.
+## Gap between stacked hero bars. Three 62-tall rows with this between them is
+## 202 px, which is what fills the status strip's right-hand third - see
+## hero_bars.gd's HERO_FILL_WIDTH comment for the rest of that measurement.
 const GAP := 8.0
 
 var director = null               # BattleDirector (untyped: custom API)
@@ -22,7 +24,7 @@ var _bars: Array = []
 ## between them (see _layout()), centred in whatever width the resource
 ## strip's 40% party-status cell actually gives this column.
 func _ready() -> void:
-	custom_minimum_size = Vector2(340, 154)
+	custom_minimum_size = Vector2(430, 202)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	resized.connect(_layout)
 

@@ -2,58 +2,60 @@
 
 [ext_resource type="Script" uid="uid://b30ynhb180jue" path="res://scripts/console/upgrade_button.gd" id="1_upg"]
 [ext_resource type="Script" uid="uid://bwut72okvld1h" path="res://scripts/console/ornate_frame.gd" id="2_lbqxq"]
-[ext_resource type="FontFile" uid="uid://bv5mowftmyw06" path="res://assets/fonts/Crimson-Bold.ttf" id="3_wi4oe"]
+[ext_resource type="FontVariation" path="res://assets/display_font.tres" id="3_wi4oe"]
 
 [node name="UpgradeButton" type="Button" unique_id=1285504092]
-custom_minimum_size = Vector2(340, 178)
+custom_minimum_size = Vector2(340, 326)
 offset_right = 340.0
-offset_bottom = 178.0
+offset_bottom = 326.0
 script = ExtResource("1_upg")
 
 [node name="Plate" type="Control" parent="." unique_id=460139962]
 anchors_preset = 0
 anchor_top = 1.0
 anchor_bottom = 1.0
-offset_left = 12.0
-offset_top = -56.0
-offset_right = 328.0
-offset_bottom = -10.0
+offset_left = 10.0
+offset_top = -64.0
+offset_right = 330.0
+offset_bottom = -12.0
 mouse_filter = 2
 script = ExtResource("2_lbqxq")
-border = 4.0
+border = 5.0
 corner_radius = 10.0
 edge_diamonds = false
 inset_well = true
 
 [node name="Title" type="Label" parent="." unique_id=2045995304]
 layout_mode = 0
-offset_left = 64.0
-offset_top = 10.0
-offset_right = 325.0
-offset_bottom = 95.0
+offset_left = 76.0
+offset_top = 12.0
+offset_right = 326.0
+offset_bottom = 74.0
 theme_type_variation = &"PlateLabel"
 theme_override_fonts/font = ExtResource("3_wi4oe")
-theme_override_font_sizes/font_size = 52
+theme_override_font_sizes/font_size = 40
 text = "Overcharge"
+vertical_alignment = 1
 
 [node name="Blurb" type="Label" parent="." unique_id=1948107817]
 custom_minimum_size = Vector2(308, 0)
 layout_mode = 0
 offset_left = 16.0
-offset_top = 63.0
+offset_top = 84.0
 offset_right = 324.0
-offset_bottom = 106.0
-theme_override_font_sizes/font_size = 34
-text = "reels spin 40% faster"
+offset_bottom = 172.0
+theme_override_font_sizes/font_size = 32
+text = "Lightning pays +25%."
+autowrap_mode = 2
 
 [node name="Cost" type="Label" parent="." unique_id=495026777]
 layout_mode = 0
 anchor_top = 1.0
 anchor_bottom = 1.0
-offset_left = 132.0
-offset_top = -52.0
-offset_right = 242.0
-offset_bottom = -52.0
+offset_left = 130.0
+offset_top = -58.0
+offset_right = 250.0
+offset_bottom = -58.0
 theme_type_variation = &"DisplayLabel"
-theme_override_font_sizes/font_size = 32
+theme_override_font_sizes/font_size = 36
 horizontal_alignment = 1

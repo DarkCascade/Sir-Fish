@@ -22,10 +22,15 @@ extends Node3D
 const BRUSH_TILE := preload("res://assets/meshes/env_brush.glb")
 const GROUND_TILE := preload("res://assets/meshes/env_ground.glb")
 const TREE_PROP := preload("res://assets/meshes/env_tree.glb")
-## [presentation redesign S10.1] Purple crystal clusters - authored in Blender,
+## [presentation redesign S10.1] Crystal clusters - authored in Blender,
 ## coloured emissive in code rather than in the .glb (see _crystal_material()),
 ## so glow tuning is a Godot-side reload instead of a Blender re-export.
 const CRYSTAL_TILE := preload("res://assets/meshes/env_crystal.glb")
+## [ui-project-longshot] The rune archway on the horizon. Two mesh prefixes:
+## Env_ArchStone* takes a hazed stone material, Env_ArchGlow* an unshaded
+## emissive one, so the ring recedes into the fog while the light in it does
+## not. See _build_archway().
+const ARCH_PROP := preload("res://assets/meshes/env_arch.glb")
 
 ## Same reasoning as Tuning.PARALLAX_TILE_COPIES: two copies can leave a gap at
 ## the far edge for one frame during a wrap, three never can.
@@ -47,8 +52,11 @@ var _lane: float = Tuning.PARTY_ANCHOR.dot(Tuning.RUN_DIR.cross(Vector3.UP).norm
 
 func _ready() -> void:
 	_build_ground()
+	_build_path()
 	_build_scatter()
 	_build_backdrop()
+	_build_archway()
+	_build_motes()
 
 func _process(delta: float) -> void:
 	if is_zero_approx(scroll_speed):
@@ -115,6 +123,37 @@ func _build_ground() -> void:
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(mi)
 
+## [ui-project-longshot] The lit path the party runs down. FIELD_CLEAR_RADIUS
+## already keeps this corridor free of props (that is what it is for) - until
+## now the result was a bald stripe of the same green as everywhere else,
+## which read as a gap in the scatter rather than as a road. This paints it.
+##
+## Like the ground plane it does NOT scroll, and for the same reason: a strip
+## of one flat colour looks identical at every offset. The flagstones laid on
+## it in _build_scatter() are what actually carry the motion.
+##
+## Deliberately a hair narrower than FIELD_CLEAR_RADIUS * 2 so the undergrowth
+## crowds over the path's edge - a road whose edge exactly meets the treeline
+## in a ruler-straight line reads as level geometry, not as a worn trail.
+func _build_path() -> void:
+	var plane := PlaneMesh.new()
+	plane.size = Vector2(Tuning.PATH_WIDTH, Tuning.FIELD_ALONG * float(FIELD_COPIES) * 1.6)
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Tuning.PATH_COLOR
+	mat.roughness = 1.0
+	mat.specular_mode = BaseMaterial3D.SPECULAR_DISABLED
+	var mi := MeshInstance3D.new()
+	mi.name = "Path"
+	mi.mesh = plane
+	mi.material_override = mat
+	# PlaneMesh spans its X by size.x, so rotating X onto the across-axis puts
+	# its length onto the run axis - the same yaw convention every prop uses.
+	mi.transform = Transform3D(
+		Basis(Vector3.UP, Tuning.yaw_along(_perp)),
+		_perp * _lane + Vector3(0.0, 0.005, 0.0))
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(mi)
+
 # --- scatter ------------------------------------------------------------------
 
 func _build_scatter() -> void:
@@ -132,6 +171,9 @@ func _build_scatter() -> void:
 	# A tree is one prop made of eight meshes, so all eight share a single
 	# transform list - otherwise a trunk would end up under someone else's canopy.
 	_scatter_composite(_palette(TREE_PROP, "Env_Tree"), Tuning.FIELD_TREES, rand)
+	# Flagstones go last and INSIDE the corridor - the one thing in the field
+	# that ignores FIELD_CLEAR_RADIUS instead of respecting it.
+	_scatter_flagstones(_palette(GROUND_TILE, "Env_Rock"), rand)
 
 ## Every MeshInstance3D under `scene` whose node name starts with `prefix`, as
 ## {mesh, material, local}. `local` is the mesh's transform relative to the
@@ -230,7 +272,201 @@ func _scatter_composite(palette: Array[Dictionary], count: int,
 		for p: Transform3D in placements:
 			xforms.append(p * (entry["local"] as Transform3D))
 		if not xforms.is_empty():
-			_add_group(entry, xforms, true)
+			_add_group(entry, xforms, true, _shaded(entry["mesh"]))
+
+## [ui-project-longshot] Rocks squashed nearly flat and laid ON the path, the
+## only scatter in this file that places props INSIDE the clear corridor
+## rather than outside it. They are what makes the path read as travelling:
+## the strip itself never moves (see _build_path), so without something on it
+## the party would be running on a static ribbon.
+##
+## The Y scale is the whole trick - the same Env_Rock meshes the field already
+## scatters as boulders, flattened to a tenth of their height, read as set
+## paving. Their transforms still go through _place() and so still wrap and
+## scroll with everything else in _groups.
+func _scatter_flagstones(palette: Array[Dictionary], rand: RandomNumberGenerator) -> void:
+	if palette.is_empty():
+		return
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Tuning.PATH_STONE_COLOR
+	mat.roughness = 1.0
+	mat.specular_mode = BaseMaterial3D.SPECULAR_DISABLED
+
+	var buckets: Array[Array] = []
+	for _i: int in range(palette.size()):
+		buckets.append([])
+	for _i: int in range(Tuning.FIELD_FLAGSTONES):
+		# Kept off the very edge of the path, so a stone never juts out from
+		# under the undergrowth that overhangs it.
+		var across: float = _lane + rand.randf_range(
+			-Tuning.PATH_WIDTH * 0.40, Tuning.PATH_WIDTH * 0.40)
+		var along: float = rand.randf_range(0.0, Tuning.FIELD_ALONG)
+		var pick: int = rand.randi_range(0, palette.size() - 1)
+		var flat: float = rand.randf_range(0.55, 1.15)
+		buckets[pick].append(_place(Vector2(across, along), rand.randf_range(0.0, TAU),
+			Vector3(flat, 0.10, flat * rand.randf_range(0.8, 1.25))))
+	for i: int in range(palette.size()):
+		if not buckets[i].is_empty():
+			_add_group(palette[i], buckets[i], false, mat)
+
+# --- the archway ---------------------------------------------------------------
+
+## [ui-project-longshot] The rune arch on the horizon: the frame's focal point
+## and the thing the endless run is nominally running toward.
+##
+## Fixed in world space and NOT added to _groups, exactly like _build_backdrop's
+## treering. The camera never moves in this scene - the near scatter slides
+## under it instead - so a landmark pinned up-run stays put on the horizon
+## while everything closer streams past it, which is what reads as "still far
+## away". Scrolling it would have the party reach and pass through the arch
+## every few seconds, which is a different game than this one.
+##
+## Two prefixes, two materials. Env_ArchStone* is hazed toward the fog like a
+## backdrop tree so the masonry sits at its distance; Env_ArchGlow* is
+## unshaded emissive so the light in the opening punches through that same fog
+## instead of being swallowed by it. That contrast between a receding ring and
+## a light that refuses to recede is the entire effect.
+func _build_archway() -> void:
+	var origin: Vector3 = Tuning.PARTY_ANCHOR + Tuning.RUN_DIR * Tuning.ARCH_DISTANCE
+	# Local +X carries the arch's span, so aiming it down the across-axis puts
+	# the opening square to the run corridor (see _place's yaw convention).
+	var xform := Transform3D(
+		Basis(Vector3.UP, Tuning.yaw_along(_perp)).scaled(Vector3.ONE * Tuning.ARCH_SCALE),
+		origin)
+
+	var root := Node3D.new()
+	root.name = "Archway"
+	root.transform = xform
+	add_child(root)
+
+	var stone := _archway_stone_material()
+	for entry: Dictionary in _palette(ARCH_PROP, "Env_Arch"):
+		var mesh: Mesh = entry["mesh"]
+		var mi := MeshInstance3D.new()
+		mi.mesh = mesh
+		mi.transform = entry["local"]
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		mi.material_override = stone
+		root.add_child(mi)
+
+	# The glow parts are collected separately rather than filtered out of the
+	# loop above, because _palette() matches on a name PREFIX and "Env_Arch"
+	# is a prefix of both - so the pass above has already added them with the
+	# stone material, and this pass overwrites those overrides in place.
+	var veil := _archway_glow_material()
+	for entry: Dictionary in _palette(ARCH_PROP, "Env_ArchGlow"):
+		for child: Node in root.get_children():
+			var mi := child as MeshInstance3D
+			if mi != null and mi.mesh == entry["mesh"]:
+				mi.material_override = veil
+
+	# Without this the arch is a bright cut-out with no effect on anything
+	# around it. The omni is what puts its light on the ground and the nearest
+	# trunks, which is what seats it in the world.
+	var lamp := OmniLight3D.new()
+	lamp.name = "ArchLight"
+	lamp.light_color = Tuning.C_PORTAL
+	lamp.light_energy = Tuning.ARCH_LIGHT_ENERGY
+	lamp.omni_range = Tuning.ARCH_LIGHT_RANGE
+	lamp.shadow_enabled = false
+	lamp.position = origin + Vector3(0.0, 3.0, 0.0)
+	add_child(lamp)
+
+## The masonry: a flat DARK silhouette, not a hazed distant object.
+##
+## The obvious treatment - run it through _hazed() like a backdrop tree - was
+## the first attempt and it erased the arch completely: the ring sits ~80 units
+## out, past everything the fog ramp has to give, so pulling it toward the haze
+## as well left stone the exact colour of the sky behind it.
+##
+## The concept solves this the way a painter would, and so does this: the ring
+## is the DARKEST thing on the horizon and the opening the brightest, and the
+## silhouette between them is what the eye reads. So the stone opts out of fog
+## in the same breath the veil does, and is unshaded at a value below the
+## treeline rather than lit.
+func _archway_stone_material() -> StandardMaterial3D:
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.albedo_color = Tuning.C_NEAR_TREES.lerp(
+		Tuning.C_HORIZON_HAZE, Tuning.ARCH_STONE_TINT * 0.35)
+	mat.disable_fog = true
+	return mat
+
+## Unshaded and emissive, so no light in the scene - and no amount of fog -
+## can change what the opening looks like. `disable_fog` is the load-bearing
+## line: the arch sits past FOG_DEPTH_END, so without it the veil is fogged to
+## the horizon colour and the focal point of the whole frame disappears.
+func _archway_glow_material() -> StandardMaterial3D:
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.albedo_color = Tuning.C_PORTAL
+	mat.emission_enabled = true
+	mat.emission = Tuning.C_PORTAL
+	mat.emission_energy_multiplier = Tuning.ARCH_GLOW_ENERGY
+	mat.disable_fog = true
+	return mat
+
+# --- the air -------------------------------------------------------------------
+
+## [ui-project-longshot] Drifting spores. The concept's air is full of them,
+## and they are the cheapest depth cue available: motes crossing in front of
+## and behind the party are what stop the middle distance reading as a flat
+## painted backdrop.
+##
+## Parented to the field but never scrolled - the emission box is centred on
+## the play area and the particles have their own upward drift, so scrolling
+## them as well would double the motion.
+func _build_motes() -> void:
+	var mat := StandardMaterial3D.new()
+	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
+	mat.billboard_mode = BaseMaterial3D.BILLBOARD_ENABLED
+	mat.albedo_color = Tuning.C_ARCANE_BRIGHT
+	mat.emission_enabled = true
+	mat.emission = Tuning.C_ARCANE_BRIGHT
+	mat.emission_energy_multiplier = 2.5
+	mat.disable_fog = true
+	mat.vertex_color_use_as_albedo = true
+
+	var quad := QuadMesh.new()
+	quad.size = Vector2(Tuning.MOTE_SIZE, Tuning.MOTE_SIZE)
+	quad.material = mat
+
+	var proc := ParticleProcessMaterial.new()
+	proc.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_BOX
+	proc.emission_box_extents = Tuning.MOTE_BOX * 0.5
+	proc.direction = Vector3(0.0, 1.0, 0.0)
+	proc.spread = 35.0
+	proc.gravity = Vector3.ZERO
+	proc.initial_velocity_min = Tuning.MOTE_DRIFT * 0.35
+	proc.initial_velocity_max = Tuning.MOTE_DRIFT
+	proc.scale_min = 0.45
+	proc.scale_max = 1.6
+	# Fading both ends means no mote ever pops into or out of existence, which
+	# is what would otherwise give the loop away on a long lifetime.
+	var ramp := Gradient.new()
+	ramp.set_offset(0, 0.0)
+	ramp.set_color(0, Color(1, 1, 1, 0))
+	ramp.set_offset(1, 1.0)
+	ramp.set_color(1, Color(1, 1, 1, 0))
+	ramp.add_point(0.25, Color(1, 1, 1, 1))
+	ramp.add_point(0.70, Color(1, 1, 1, 1))
+	var ramp_tex := GradientTexture1D.new()
+	ramp_tex.gradient = ramp
+	proc.color_ramp = ramp_tex
+
+	var motes := GPUParticles3D.new()
+	motes.name = "Motes"
+	motes.amount = Tuning.MOTE_COUNT
+	motes.lifetime = 9.0
+	motes.preprocess = 9.0            # start mid-loop, not with an empty sky
+	motes.draw_pass_1 = quad
+	motes.process_material = proc
+	motes.visibility_aabb = AABB(-Tuning.MOTE_BOX * 0.5, Tuning.MOTE_BOX)
+	motes.position = Tuning.PARTY_ANCHOR + Tuning.RUN_DIR * (Tuning.MOTE_BOX.z * 0.25) \
+		+ Vector3(0.0, Tuning.MOTE_BOX.y * 0.35, 0.0)
+	add_child(motes)
 
 ## A point on the field rectangle in RUN_DIR's frame, or null if every attempt
 ## landed inside the corridor the fight happens in.
@@ -324,6 +560,22 @@ func _build_backdrop() -> void:
 ## way (see _palette()'s own note on why `entry["material"]` is always null
 ## for every prop in this file), so this is the one place in the field that
 ## reads a material from that side of the API.
+## [ui-project-longshot] A tree part's own material, pulled toward the near-
+## black treeline colour by Tuning.TREE_TINT. The counterpart to _hazed(): that
+## one pushes the FAR ring toward the sky so it recedes, this one pushes the
+## NEAR trees away from it so they read as a dark mass.
+##
+## Reads off the mesh resource for the same reason _hazed() does - env_tree.glb
+## carries its colour on the mesh's surface material, not as a node override
+## (see _palette()'s note).
+func _shaded(mesh: Mesh) -> Material:
+	var mat := mesh.surface_get_material(0)
+	if not (mat is BaseMaterial3D):
+		return null
+	var copy := (mat as BaseMaterial3D).duplicate() as BaseMaterial3D
+	copy.albedo_color = copy.albedo_color.lerp(Tuning.C_NEAR_TREES, Tuning.TREE_TINT)
+	return copy
+
 func _hazed(mat: Material) -> Material:
 	if not (mat is BaseMaterial3D):
 		var fallback := StandardMaterial3D.new()
@@ -363,10 +615,27 @@ func _add_group(entry: Dictionary, xforms: Array, shadows: bool,
 ## other Env_M_* material (spec 23.1) - emission lives here so tuning the
 ## glow is a Tuning.CRYSTAL_EMISSION_ENERGY edit and a reload, not a Blender
 ## re-export.
+##
+## [ui-project-longshot] Emission alone is not a gemstone. A uniform emissive
+## fill lights every facet to the same value, so a cut crystal renders as a
+## flat pale silhouette - which is exactly what the first pass produced. Three
+## things are added here, and all three are needed:
+##
+##   - a DARK albedo, so unlit faces stay deep blue and the facets separate
+##   - a low emission, enough to sit above the fog but not to flatten the form
+##   - rim + specular, which is what actually draws the cut edges: the three
+##     directional lights catch different facets of every cluster, and that
+##     scatter of individual bright faces is what the eye reads as "crystal"
 func _crystal_material() -> StandardMaterial3D:
 	var mat := StandardMaterial3D.new()
 	mat.albedo_color = Tuning.C_ARCANE_DEEP
 	mat.emission_enabled = true
 	mat.emission = Tuning.C_ARCANE
 	mat.emission_energy_multiplier = Tuning.CRYSTAL_EMISSION_ENERGY
+	mat.roughness = 0.18
+	mat.metallic = 0.25
+	mat.metallic_specular = 0.85
+	mat.rim_enabled = true
+	mat.rim = Tuning.CRYSTAL_RIM
+	mat.rim_tint = 0.9
 	return mat

@@ -18,6 +18,14 @@ const PILL_RADIUS := 999.0
 
 var combatant: Combatant = null
 
+## [ui-project-longshot] What colour this bar's fill returns to. Was implicit
+## (every bar was C_DANGER red, so the heal flash could hardcode its way back),
+## and that stopped being true the moment the party bars took a colour per
+## hero: a healed priest flashed green and then settled to red. Subclasses that
+## want a coloured bar set this in setup() alongside health_fill.color; the
+## default keeps every existing red bar exactly as it was.
+var base_fill_color: Color = Tuning.C_DANGER
+
 ## Set by each subclass's setup() to its own fixed layout width - there is no
 ## runtime layout math left to derive it from. Both are read only by
 ## subclasses, which the analyzer can't see from here.
@@ -93,7 +101,7 @@ func tween_health_fraction(fraction: float, heal_flash: bool = true) -> void:
 		return
 	var flash := create_tween()
 	flash.tween_property(health_fill, "color", Tuning.C_HEAL, 0.15)
-	flash.tween_property(health_fill, "color", Tuning.C_DANGER, 0.15)
+	flash.tween_property(health_fill, "color", base_fill_color, 0.15)
 
 func flash_background() -> void:
 	var tw := create_tween()

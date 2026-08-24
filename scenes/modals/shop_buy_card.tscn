@@ -73,7 +73,7 @@ radius = 15.0
 [node name="PriceLabel" type="Label" parent="Row/Layout/PriceBox/BuyButton/Content" unique_id=1473001721]
 layout_mode = 2
 theme_type_variation = &"DisplayLabel"
-theme_override_colors/font_color = Color(0.788235, 0.635294, 0.152941, 1)
+theme_override_colors/font_color = Color(0.941176, 0.835294, 0.533333, 1)
 theme_override_font_sizes/font_size = 46
 horizontal_alignment = 2
 
