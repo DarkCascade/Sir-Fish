@@ -30,7 +30,7 @@ const CRYSTAL_TILE := preload("res://assets/meshes/env_crystal.glb")
 ## Env_ArchStone* takes a hazed stone material, Env_ArchGlow* an unshaded
 ## emissive one, so the ring recedes into the fog while the light in it does
 ## not. See _build_archway().
-const ARCH_PROP := preload("res://assets/meshes/env_arch.glb")
+#const ARCH_PROP := preload("res://assets/meshes/env_arch.glb")
 
 ## Same reasoning as Tuning.PARALLAX_TILE_COPIES: two copies can leave a gap at
 ## the far edge for one frame during a wrap, three never can.
@@ -340,25 +340,25 @@ func _build_archway() -> void:
 	add_child(root)
 
 	var stone := _archway_stone_material()
-	for entry: Dictionary in _palette(ARCH_PROP, "Env_Arch"):
-		var mesh: Mesh = entry["mesh"]
-		var mi := MeshInstance3D.new()
-		mi.mesh = mesh
-		mi.transform = entry["local"]
-		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		mi.material_override = stone
-		root.add_child(mi)
+	#for entry: Dictionary in _palette(ARCH_PROP, "Env_Arch"):
+		#var mesh: Mesh = entry["mesh"]
+		#var mi := MeshInstance3D.new()
+		#mi.mesh = mesh
+		#mi.transform = entry["local"]
+		#mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		#mi.material_override = stone
+		#root.add_child(mi)
 
 	# The glow parts are collected separately rather than filtered out of the
 	# loop above, because _palette() matches on a name PREFIX and "Env_Arch"
 	# is a prefix of both - so the pass above has already added them with the
 	# stone material, and this pass overwrites those overrides in place.
-	var veil := _archway_glow_material()
-	for entry: Dictionary in _palette(ARCH_PROP, "Env_ArchGlow"):
-		for child: Node in root.get_children():
-			var mi := child as MeshInstance3D
-			if mi != null and mi.mesh == entry["mesh"]:
-				mi.material_override = veil
+	#var veil := _archway_glow_material()
+	#for entry: Dictionary in _palette(ARCH_PROP, "Env_ArchGlow"):
+		#for child: Node in root.get_children():
+			#var mi := child as MeshInstance3D
+			#if mi != null and mi.mesh == entry["mesh"]:
+				#mi.material_override = veil
 
 	# Without this the arch is a bright cut-out with no effect on anything
 	# around it. The omni is what puts its light on the ground and the nearest

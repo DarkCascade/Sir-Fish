@@ -1,19 +1,12 @@
-[gd_scene load_steps=7 format=3]
+[gd_scene format=3 uid="uid://bfc4cto1qm00f"]
 
-[ext_resource type="Script" path="res://scripts/console/status_panel.gd" id="1_status"]
-[ext_resource type="Script" path="res://scripts/console/coin_glyph.gd" id="2_coin"]
+[ext_resource type="Script" uid="uid://c86f7q5i4k3v8" path="res://scripts/console/status_panel.gd" id="1_status"]
+[ext_resource type="Script" uid="uid://0h1qqxld8x2i" path="res://scripts/console/coin_glyph.gd" id="2_coin"]
+[ext_resource type="PackedScene" uid="uid://46oh8n83yecw" path="res://scenes/console/sir_fish_tank.tscn" id="4_pxtvr"]
 [ext_resource type="PackedScene" path="res://scenes/console/party_bars.tscn" id="5_party"]
-[ext_resource type="Script" path="res://scripts/console/ornate_frame.gd" id="6_frame"]
+[ext_resource type="Script" uid="uid://bwut72okvld1h" path="res://scripts/console/ornate_frame.gd" id="6_frame"]
 [ext_resource type="PackedScene" path="res://scenes/console/bonus_strip.tscn" id="7_bonus"]
 
-; [ui-project-longshot] The strip carries its OWN panel style rather than the
-; theme's PanelContainer one. That style is the modals' recessed glass and
-; gained 20 px content margins in this pass; inheriting it would inset Layout
-; by 40 px vertically, which is more than the 36 px of slack the 244-tall strip
-; has over its 208-tall resource row - the party bars would clip.
-;
-; It is also simply a different object: this is the console's stone band, in
-; front of the world, not a modal panel floating over it.
 [sub_resource type="StyleBoxFlat" id="strip"]
 content_margin_left = 8.0
 content_margin_top = 8.0
@@ -24,23 +17,23 @@ border_width_top = 3
 border_width_bottom = 3
 border_color = Color(0.478431, 0.352941, 0.094118, 1)
 
-[node name="StatusPanel" type="PanelContainer"]
+[node name="StatusPanel" type="PanelContainer" unique_id=540885332]
 custom_minimum_size = Vector2(1080, 244)
 offset_right = 1080.0
 offset_bottom = 244.0
 theme_override_styles/panel = SubResource("strip")
 script = ExtResource("1_status")
 
-[node name="Layout" type="VBoxContainer" parent="."]
+[node name="Layout" type="VBoxContainer" parent="." unique_id=1244590132]
 layout_mode = 2
 theme_override_constants/separation = 6
 
-[node name="ResourceRow" type="HBoxContainer" parent="Layout"]
+[node name="ResourceRow" type="HBoxContainer" parent="Layout" unique_id=731022617]
 custom_minimum_size = Vector2(0, 208)
 layout_mode = 2
 theme_override_constants/separation = 10
 
-[node name="GoldPlate" type="Control" parent="Layout/ResourceRow"]
+[node name="GoldPlate" type="Control" parent="Layout/ResourceRow" unique_id=1133905286]
 custom_minimum_size = Vector2(360, 200)
 layout_mode = 2
 size_flags_horizontal = 3
@@ -48,11 +41,11 @@ size_flags_vertical = 4
 size_flags_stretch_ratio = 3.4
 mouse_filter = 2
 
-[node name="Frame" type="Control" parent="Layout/ResourceRow/GoldPlate"]
+[node name="Frame" type="Control" parent="Layout/ResourceRow/GoldPlate" unique_id=1120065477]
 layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
+anchor_right = 0.785
 anchor_bottom = 1.0
+offset_right = 0.85998535
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
@@ -64,31 +57,32 @@ vines = true
 vine_count = 2
 vine_seed = 3
 
-[node name="CoinGlyph" type="Control" parent="Layout/ResourceRow/GoldPlate"]
+[node name="CoinGlyph" type="Control" parent="Layout/ResourceRow/GoldPlate" unique_id=1203509217]
 layout_mode = 1
 anchors_preset = 4
 anchor_top = 0.5
 anchor_bottom = 0.5
 offset_left = 26.0
-offset_top = -58.0
+offset_top = -47.0
 offset_right = 142.0
-offset_bottom = 58.0
+offset_bottom = 69.0
 grow_vertical = 2
+scale = Vector2(0.75, 0.75)
 mouse_filter = 2
 script = ExtResource("2_coin")
 radius = 52.0
 
-[node name="GoldLabel" type="Label" parent="Layout/ResourceRow/GoldPlate"]
-theme_type_variation = &"DisplayLabel"
+[node name="GoldLabel" type="Label" parent="Layout/ResourceRow/GoldPlate" unique_id=2144862967]
 layout_mode = 1
-anchors_preset = 10
-anchor_right = 1.0
-offset_left = 150.0
-offset_top = 34.0
-offset_right = -22.0
-offset_bottom = 130.0
+anchors_preset = -1
+anchor_left = 0.21000001
+anchor_right = 0.785
+offset_left = 0.15999603
+offset_top = 47.0
+offset_right = -0.14001465
+offset_bottom = 154.0
 grow_horizontal = 2
-mouse_filter = 2
+theme_type_variation = &"DisplayLabel"
 theme_override_colors/font_color = Color(1, 0.988235, 0.945098, 1)
 theme_override_constants/outline_size = 8
 theme_override_font_sizes/font_size = 78
@@ -96,98 +90,23 @@ text = "1275"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="GoldCaption" type="Label" parent="Layout/ResourceRow/GoldPlate"]
-theme_type_variation = &"DisplayLabel"
-layout_mode = 1
-anchors_preset = 10
-anchor_right = 1.0
-offset_left = 150.0
-offset_top = 128.0
-offset_right = -22.0
-offset_bottom = 168.0
-grow_horizontal = 2
-mouse_filter = 2
-theme_override_colors/font_color = Color(0.941176, 0.788235, 0.415686, 1)
-theme_override_constants/outline_size = 5
-theme_override_font_sizes/font_size = 30
-text = "GOLD"
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="DepthPlate" type="Control" parent="Layout/ResourceRow"]
-custom_minimum_size = Vector2(214, 200)
+[node name="SirFishTank" parent="Layout/ResourceRow" unique_id=1752976824 instance=ExtResource("4_pxtvr")]
 layout_mode = 2
-size_flags_horizontal = 3
-size_flags_vertical = 4
-size_flags_stretch_ratio = 2.0
-mouse_filter = 2
 
-[node name="Frame" type="Control" parent="Layout/ResourceRow/DepthPlate"]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-script = ExtResource("6_frame")
-border = 16.0
-corner_radius = 20.0
-edge_diamonds = false
-vines = true
-vine_count = 1
-vine_seed = 11
-
-[node name="DepthCaption" type="Label" parent="Layout/ResourceRow/DepthPlate"]
-theme_type_variation = &"DisplayLabel"
-layout_mode = 1
-anchors_preset = 10
-anchor_right = 1.0
-offset_left = 18.0
-offset_top = 34.0
-offset_right = -18.0
-offset_bottom = 80.0
-grow_horizontal = 2
-mouse_filter = 2
-theme_override_colors/font_color = Color(1, 0.988235, 0.945098, 1)
-theme_override_constants/outline_size = 6
-theme_override_font_sizes/font_size = 40
-text = "DEPTH"
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="DepthNumeral" type="Label" parent="Layout/ResourceRow/DepthPlate"]
-theme_type_variation = &"DisplayLabel"
-layout_mode = 1
-anchors_preset = 10
-anchor_right = 1.0
-offset_left = 18.0
-offset_top = 78.0
-offset_right = -18.0
-offset_bottom = 172.0
-grow_horizontal = 2
-mouse_filter = 2
-theme_override_colors/font_color = Color(1, 0.988235, 0.945098, 1)
-theme_override_constants/outline_size = 8
-theme_override_font_sizes/font_size = 76
-text = "12"
-horizontal_alignment = 1
-vertical_alignment = 1
-
-[node name="PartyBars" parent="Layout/ResourceRow" instance=ExtResource("5_party")]
+[node name="PartyBars" parent="Layout/ResourceRow" unique_id=1217092268 instance=ExtResource("5_party")]
 custom_minimum_size = Vector2(430, 200)
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 4
 size_flags_stretch_ratio = 4.0
 
-[node name="BonusRow" type="Control" parent="Layout"]
+[node name="BonusRow" type="Control" parent="Layout" unique_id=1141155526]
 visible = false
 custom_minimum_size = Vector2(1080, 78)
 layout_mode = 2
 mouse_filter = 2
 
-[node name="Frame" type="Control" parent="Layout/BonusRow"]
+[node name="Frame" type="Control" parent="Layout/BonusRow" unique_id=674434216]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -200,10 +119,12 @@ border = 12.0
 corner_radius = 16.0
 edge_diamonds = false
 
-[node name="BonusStrip" parent="Layout/BonusRow" instance=ExtResource("7_bonus")]
+[node name="BonusStrip" parent="Layout/BonusRow" unique_id=218275764 instance=ExtResource("7_bonus")]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
+offset_right = 0.0
+offset_bottom = 0.0
 grow_horizontal = 2
 grow_vertical = 2

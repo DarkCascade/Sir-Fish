@@ -24,9 +24,7 @@ tonemap_mode = 2
 tonemap_white = 2.2
 glow_enabled = true
 glow_intensity = 0.7
-glow_strength = 1.0
 glow_bloom = 0.12
-glow_blend_mode = 1
 glow_hdr_threshold = 1.15
 fog_enabled = true
 fog_mode = 1
@@ -37,8 +35,8 @@ fog_depth_curve = 1.35
 fog_depth_begin = 9.0
 fog_depth_end = 84.0
 adjustment_enabled = true
-adjustment_saturation = 1.3
 adjustment_contrast = 1.08
+adjustment_saturation = 1.3
 
 [node name="BattleWorld" type="Node3D" unique_id=2072727756 groups=["battle_world"]]
 script = ExtResource("2_world")
@@ -61,17 +59,11 @@ light_color = Color(0.267, 0.478, 0.902, 1)
 light_energy = 0.62
 
 [node name="RimLight" type="DirectionalLight3D" parent="." unique_id=2091847733]
-## [presentation redesign S9.1] Backlight from the up-run side, opposite the
-## camera, aimed roughly along -RUN_DIR so the party's silhouette separates
-## from the dark canopy instead of vanishing into it. Approximate aim, tuned
-## by eye - adjust rotation_degrees in the inspector if the party goes flat.
-rotation_degrees = Vector3(-25, 137, 0)
 light_color = Color(0.545, 0.933, 1, 1)
 light_energy = 0.7
-shadow_enabled = false
 
 [node name="BattleCamera" type="Camera3D" parent="." unique_id=1438402991]
-transform = Transform3D(0.74314, 0.13912, -0.65451, 0, 0.97815, 0.20791, 0.66913, -0.15450, 0.72691, -11.77, 6, 14.43)
+transform = Transform3D(0.74314, 0.13912, -0.65451, 0, 0.97815, 0.20791, 0.66913, -0.1545, 0.72691, -11.77, 6, 14.43)
 keep_aspect = 0
 current = true
 fov = 41.5
