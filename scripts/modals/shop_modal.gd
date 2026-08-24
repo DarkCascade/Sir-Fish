@@ -7,9 +7,11 @@ const BUY_CARD := preload("res://scenes/modals/shop_buy_card.tscn")
 const SELL_ROW := preload("res://scenes/modals/shop_sell_row.tscn")
 const NUMBER_SCENE := preload("res://scenes/overlay/damage_number.tscn")
 const BONUS_STRIP_SCENE := preload("res://scenes/console/bonus_strip.tscn")
+const COMPARE_FLYOUT_SCENE := preload("res://scenes/modals/compare_flyout.tscn")
 
 var _encounter: EncounterDef = null
 var _cards: Array = []
+var _compare_flyout = null   # ItemCompareFlyout (untyped: custom API)
 
 @onready var scrim: ColorRect = $Scrim
 @onready var panel: PanelContainer = $Panel
@@ -23,6 +25,8 @@ var _cards: Array = []
 func _ready() -> void:
 	close_button.pressed.connect(close)
 	_add_bonus_strip()
+	_compare_flyout = COMPARE_FLYOUT_SCENE.instantiate()
+	add_child(_compare_flyout)
 	EventBus.gold_changed.connect(_on_gold_changed)
 	hide()
 
@@ -98,9 +102,13 @@ func _build_buy() -> void:
 		buy_list.add_child(card)
 		card.setup(item)
 		card.purchased.connect(_on_purchased)
+		card.compare_requested.connect(_on_compare_requested)
 		_cards.append(card)
 	await get_tree().process_frame
 	_refresh_cards()
+
+func _on_compare_requested(item: Item) -> void:
+	_compare_flyout.show_for(item)
 
 func _refresh_cards() -> void:
 	for card: Variant in _cards:
@@ -114,21 +122,32 @@ func _on_purchased(item: Item, _card: Control) -> void:
 
 # --- sell -------------------------------------------------------------------
 
+## [equip] Lists the whole inventory now, not just GameState.sellable_items() -
+## equipping and comparing both need equipped items to show up here too, and
+## every item is sellable (selling an equipped item just drops it out of
+## inventory, which is what unequips it; see GameState.party_bonuses()).
 func _build_sell() -> void:
 	for child: Node in sell_list.get_children():
 		child.queue_free()
-	var items := GameState.sellable_items()
+	var items := GameState.inventory
 	sell_empty.visible = items.is_empty()
 	for item: Item in items:
 		var row = SELL_ROW.instantiate()
 		sell_list.add_child(row)
 		row.setup(item)
 		row.sold.connect(_on_sold)
+		row.compare_requested.connect(_on_compare_requested)
+		row.equip_changed.connect(_on_equip_changed)
 
 func _on_sold(item: Item, _row: Control) -> void:
 	_float_gold(item.sell_price())
 	# Selling changes the party bonuses AND every card's affordability.
 	_refresh_cards()
+
+## An equip/unequip may have unequipped a DIFFERENT row's item for the same
+## hero, so the whole tab is rebuilt rather than patching one row.
+func _on_equip_changed() -> void:
+	_build_sell()
 
 # --- gold -------------------------------------------------------------------
 

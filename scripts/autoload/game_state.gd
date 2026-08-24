@@ -31,9 +31,20 @@ var run_stats := {
 	"slot_wins": 0,
 	"items_found": 0,
 	"items_sold": 0,
+	"items_dropped": 0,       # [drops] drop-only subset of items_found, for the summary
 	"upgrades_bought": 0,     # [v2]
 	"run_time": 0.0,
 }
+
+## [drops] Drops received per hero class this run. Cleared by reset_run().
+##
+## The goal is COVERAGE, not fairness. A run where the priest never sees a
+## staff is a run where a third of the party is inert once equipping exists, so
+## a class that is behind is weighted up until it catches up. The weighting is
+## soft - it changes the odds, it does not rotate a queue - because a guaranteed
+## round robin is readable by the player within two levels and stops being a
+## drop at all.
+var drops_by_class: Dictionary = {}      # StringName -> int
 
 var _stats_cache: Dictionary = {}   # StringName -> CombatantStats
 
@@ -85,6 +96,7 @@ func add_item(item: Item) -> void:
 	if item == null:
 		return
 	inventory.append(item)
+	_maybe_auto_equip(item)
 	EventBus.item_added.emit(item)
 	EventBus.party_bonuses_changed.emit(party_bonuses())
 
@@ -96,24 +108,53 @@ func remove_item(item: Item) -> void:
 	EventBus.item_removed.emit(item)
 	EventBus.party_bonuses_changed.emit(party_bonuses())
 
-func sellable_items() -> Array[Item]:
-	# The filter is real even though nothing is ever equipped in the demo -
-	# it is the seam for future equipment (spec 13.6 / 21-A6).
-	var out: Array[Item] = []
+# --- equipping ----------------------------------------------------------
+
+## The item a hero currently has equipped, or null. One item per hero
+## (equip_item() enforces it), so the first match in inventory is the only one.
+func equipped_item(hero_class: StringName) -> Item:
 	for i: Item in inventory:
-		if not i.equipped:
-			out.append(i)
-	return out
+		if i.equipped_by == hero_class:
+			return i
+	return null
+
+## Equips item for hero_class, replacing whatever that hero already had
+## equipped - "one item per hero" (§ equip request 1). Does not require
+## hero_class to be in item.usable_by(): the UI only ever offers eligible
+## classes, and the Debug harness wants the freedom to force odd states.
+func equip_item(item: Item, hero_class: StringName) -> void:
+	if item == null or hero_class == &"":
+		return
+	var previous := equipped_item(hero_class)
+	if previous != null:
+		previous.equipped_by = &""
+	item.equipped_by = hero_class
+	EventBus.party_bonuses_changed.emit(party_bonuses())
+
+func unequip_item(item: Item) -> void:
+	if item == null or item.equipped_by == &"":
+		return
+	item.equipped_by = &""
+	EventBus.party_bonuses_changed.emit(party_bonuses())
+
+## Fills an EMPTY slot only - never swaps out an existing equip (§ equip
+## request 2). Picks the first of the item's eligible classes with nothing
+## equipped; in practice every generated weapon has exactly one eligible
+## class today, so there is no real ambiguity to resolve.
+func _maybe_auto_equip(item: Item) -> void:
+	for hero_class: StringName in item.usable_by():
+		if equipped_item(hero_class) == null:
+			item.equipped_by = hero_class
+			return
 
 # --- party bonuses (spec 13.5) ---------------------------------------------
 
-## Every item in the inventory contributes its modifiers to a party-wide pool.
-## Items are never equipped in the demo (spec 21-A6); carrying loot makes the
-## party stronger and selling it makes them poorer, which is the loop.
+## Only EQUIPPED items contribute (one per hero, GameState.equip_item()) - an
+## item sitting unequipped in inventory is inert. Carrying loot only makes the
+## party stronger once it is actually worn; selling an equipped item empties
+## that hero's slot the moment it leaves the inventory.
 ##
-## Recomputed on demand and re-emitted on every inventory change. The aggregate
-## is a straight sum, which is correct at the demo's <=5-item inventory; a build
-## with a large inventory needs diminishing returns (spec 22).
+## Recomputed on demand and re-emitted on every inventory/equip change.
 func party_bonuses() -> Dictionary:
 	var out := {
 		"dmg_flat": 0,
@@ -127,6 +168,8 @@ func party_bonuses() -> Dictionary:
 	# resistances are the obvious next step (spec 22).
 	var elements := { &"fire": 0, &"ice": 0, &"light": 0 }
 	for item: Item in inventory:
+		if item.equipped_by == &"":
+			continue
 		for mod: Dictionary in item.modifiers:
 			var id: StringName = mod["id"]
 			var roll: int = int(mod.get("roll", 0))
@@ -167,6 +210,40 @@ func element_color() -> Color:
 		&"ice": return Tuning.C_ICE
 		&"light": return Tuning.C_LIGHTNING
 	return Tuning.C_DANGER
+
+# --- enemy drops (§4) --------------------------------------------------------
+
+func drop_count(hero_class: StringName) -> int:
+	return int(drops_by_class.get(hero_class, 0))
+
+func record_drop(hero_class: StringName) -> void:
+	drops_by_class[hero_class] = drop_count(hero_class) + 1
+
+## The class the next drop is aimed at, or &"" when there are none to aim at.
+## `force_hungriest` skips the roll entirely - the §4.2 boss guarantee.
+func next_drop_class(force_hungriest: bool = false) -> StringName:
+	var classes: Array[StringName] = Itemizer.droppable_classes()
+	if classes.is_empty():
+		return &""
+	if force_hungriest:
+		# Ties break in PARTY_ORDER rather than by dictionary iteration order:
+		# the boss drop is the one drop a player will remember, so which class
+		# it favours must not depend on insertion order.
+		var best: StringName = classes[0]
+		for c: StringName in classes:
+			if drop_count(c) < drop_count(best):
+				best = c
+		return best
+	var leader: int = 0
+	for c: StringName in classes:
+		leader = maxi(leader, drop_count(c))
+	var weights: Array[int] = []
+	for c: StringName in classes:
+		# x100 because weighted_index takes integers and DROP_CATCHUP is
+		# fractional. Only the ratios matter, not the scale.
+		weights.append(int(round(100.0 * (1.0 + Tuning.DROP_CATCHUP
+			* float(leader - drop_count(c))))))
+	return classes[RNG.weighted_index(weights)]
 
 # --- heroes -----------------------------------------------------------------
 
@@ -340,6 +417,8 @@ func reset_run() -> void:
 		})
 
 	Upgrades.reset()
+
+	drops_by_class.clear()
 
 	for key: String in run_stats.keys():
 		if key == "run_time":

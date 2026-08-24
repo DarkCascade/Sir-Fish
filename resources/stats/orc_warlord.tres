@@ -1,17 +1,17 @@
-[gd_resource type="Resource" script_class="CombatantStats" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="CombatantStats" format=3 uid="uid://b1odb5jnkye8s"]
 
-[ext_resource type="Script" path="res://scripts/data/combatant_stats.gd" id="1_stats"]
+[ext_resource type="Script" uid="uid://j4id3pdqg34k" path="res://scripts/data/combatant_stats.gd" id="1_stats"]
 
 [resource]
 script = ExtResource("1_stats")
 id = &"orc_warlord"
 display_name = "Orc Warlord"
-is_hero = false
 max_hp = 280
 base_damage = 22
 attack_cooldown = 2.0
-special_every_n_actions = 0
 model_scale = 1.7
 body_color = Color(0.305882, 0.478431, 0.168627, 1)
 accent_color = Color(0.878431, 0.192157, 0.192157, 1)
 scene_path = "res://scenes/battle/enemies/orc_warlord.tscn"
+drop_chance = 1.0
+drop_rarity_floor = 1

@@ -74,12 +74,19 @@ func _ready() -> void:
 	# GameState.party_bonuses()'s dictionary insertion order (spec 17.6). Hand-
 	# build a tied inventory and confirm the winner is fire; restore the real
 	# inventory after so this test cannot leak state into anything else.
+	#
+	# [equip] party_bonuses() only sums EQUIPPED items now, one per hero - the
+	# two probe items must be equipped by two different heroes (fire and ice
+	# can never tie on the SAME hero, since only one item can be equipped
+	# there) for both to actually contribute.
 	var saved_inventory := GameState.inventory
 	var fire_item := Item.new()
+	fire_item.equipped_by = &"warrior"
 	fire_item.modifiers = [
 		{ "id": &"elem_fire", "label": "+5 Fire Damage", "roll": 5, "value_mult": 0.5 },
 	]
 	var ice_item := Item.new()
+	ice_item.equipped_by = &"ranger"
 	ice_item.modifiers = [
 		{ "id": &"elem_ice", "label": "+5 Ice Damage", "roll": 5, "value_mult": 0.5 },
 	]

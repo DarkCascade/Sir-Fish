@@ -43,12 +43,23 @@ layout_mode = 2
 theme_override_colors/font_color = Color(0.611765, 0.686275, 0.643137, 1)
 theme_override_font_sizes/font_size = 26
 
-[node name="SellButton" type="Button" parent="Row/Layout" unique_id=1120782536]
+[node name="Actions" type="HBoxContainer" parent="Row/Layout" unique_id=1676757750]
 layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="EquipButton" type="Button" parent="Row/Layout/Actions" unique_id=240048961]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 32
+text = "Equip"
+
+[node name="SellButton" type="Button" parent="Row/Layout/Actions" unique_id=1120782536]
+layout_mode = 2
+size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 32
 text = "Sell"
 
-[node name="Content" type="HBoxContainer" parent="Row/Layout/SellButton" unique_id=1603621531]
+[node name="Content" type="HBoxContainer" parent="Row/Layout/Actions/SellButton" unique_id=1603621531]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -59,7 +70,7 @@ mouse_filter = 2
 theme_override_constants/separation = 8
 alignment = 1
 
-[node name="CoinGlyph" type="Control" parent="Row/Layout/SellButton/Content" unique_id=1569846682]
+[node name="CoinGlyph" type="Control" parent="Row/Layout/Actions/SellButton/Content" unique_id=1569846682]
 custom_minimum_size = Vector2(30, 30)
 layout_mode = 2
 size_flags_vertical = 4
@@ -67,7 +78,7 @@ mouse_filter = 2
 script = ExtResource("2_3r0x6")
 radius = 13.0
 
-[node name="AmountLabel" type="Label" parent="Row/Layout/SellButton/Content" unique_id=1812893640]
+[node name="AmountLabel" type="Label" parent="Row/Layout/Actions/SellButton/Content" unique_id=1812893640]
 layout_mode = 2
 theme_override_font_sizes/font_size = 32
 vertical_alignment = 1

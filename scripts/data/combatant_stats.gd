@@ -43,6 +43,20 @@ enum AttackStyle { MELEE, RANGED, MAGIC }
 @export var accent_color: Color = Color.WHITE
 @export var scene_path: String = ""
 
+## [drops] Probability this combatant leaves an item when it dies. Rolled once,
+## at death, and banked until the fight is won (§5) - a party that wipes carries
+## nothing home. Heroes leave it at 0.0. The field lives on the shared stats
+## resource rather than an enemies-only one because there is only one stats
+## resource, and an is_hero guard at the roll site is cheaper than a second
+## class.
+@export_range(0.0, 1.0, 0.01) var drop_chance: float = 0.0
+
+## [drops] Lowest rarity this combatant's drop may roll, as an Item.Rarity
+## index. The normal weighted roll (§13.2) is taken first and then RAISED to
+## this floor, so a floor of 1 does not flatten the curve above it - it only
+## removes Commons. Only the boss sets it.
+@export_range(0, 3, 1) var drop_rarity_floor: int = 0
+
 ## The exact set of animation names this character must expose (spec 8.3 / Q5).
 ##
 ## Derived from data rather than authored, so there is no second source of truth
