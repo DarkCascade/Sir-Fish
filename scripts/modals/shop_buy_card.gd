@@ -10,6 +10,12 @@ extends PanelContainer
 ## tap target that nothing on the card advertises is not a feature the player
 ## can find, and it cost real code to defend: the body tap had to be told apart
 ## from a mouse-wheel notch and from a touch drag that was really a list scroll.
+##
+## [mobile-scroll] The card root and both buttons are mouse_filter = PASS so a
+## touch drag reaches the enclosing ScrollContainer instead of being swallowed -
+## see shop_sell_row.gd's header for the full reasoning. Three cards at 260 px
+## do not overflow the ~955 px tab body, so the Buy tab does not actually scroll
+## today; this is here so it behaves the moment SHOP_ITEMS_FOR_SALE grows.
 
 signal purchased(item: Item, card: Control)
 signal compare_requested(item: Item)

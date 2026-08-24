@@ -5,6 +5,14 @@ extends PanelContainer
 ## [ui-project-longshot] Compare is the third button in the Actions row rather
 ## than a tap on the row body - see the header comment in shop_buy_card.gd for
 ## why the invisible body tap went.
+##
+## [mobile-scroll] The row root and all three buttons are mouse_filter = PASS,
+## not the STOP those node types default to. A STOP control swallows the
+## InputEventScreenTouch before the Sell tab's ScrollContainer ever sees it,
+## which on a touchscreen meant the whole list was unscrollable AND a drag that
+## began on a button fired it on release. Sell is the only irreversible action
+## in the shop, so that combination was the worst one available. Do not set
+## these back to STOP without re-running tests/_scratch_shop_touch.tscn.
 
 signal sold(item: Item, row: Control)
 signal compare_requested(item: Item)

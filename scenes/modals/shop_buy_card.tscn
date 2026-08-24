@@ -7,6 +7,7 @@
 custom_minimum_size = Vector2(880, 260)
 offset_right = 880.0
 offset_bottom = 260.0
+mouse_filter = 1
 script = ExtResource("1_card")
 
 [node name="Row" type="HBoxContainer" parent="." unique_id=1269767436]
@@ -54,6 +55,7 @@ alignment = 1
 [node name="BuyButton" type="Button" parent="Row/Layout/PriceBox" unique_id=98947513]
 custom_minimum_size = Vector2(200, 80)
 layout_mode = 2
+mouse_filter = 1
 
 [node name="Content" type="HBoxContainer" parent="Row/Layout/PriceBox/BuyButton" unique_id=1076484790]
 layout_mode = 0
@@ -86,6 +88,7 @@ horizontal_alignment = 2
 [node name="CompareButton" type="Button" parent="Row/Layout/PriceBox" unique_id=1806415332]
 custom_minimum_size = Vector2(200, 0)
 layout_mode = 2
+mouse_filter = 1
 theme_type_variation = &"SecondaryButton"
 text = "Compare"
 
