@@ -56,6 +56,7 @@ theme_override_constants/separation = 12
 [node name="Header" type="HBoxContainer" parent="Panel/Layout" unique_id=187187251]
 custom_minimum_size = Vector2(0, 80)
 layout_mode = 2
+theme_override_constants/separation = 20
 
 [node name="Title" type="Label" parent="Panel/Layout/Header" unique_id=1970117224]
 layout_mode = 2

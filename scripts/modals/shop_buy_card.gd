@@ -1,10 +1,15 @@
 extends PanelContainer
 ## One item for sale (spec 15.2). 880 x 260.
 ##
-## [equip] Buying used to be "tap anywhere on the card"; that tap now opens the
-## compare flyout instead, and the coin/price plate is its own Button (see
-## shop_buy_card.tscn's BuyButton) so purchasing is a separate, deliberate hit
-## target from comparing.
+## [equip] Buying used to be "tap anywhere on the card"; the coin/price plate is
+## its own Button (see shop_buy_card.tscn's BuyButton) so purchasing is a
+## deliberate hit target.
+##
+## [ui-project-longshot] Comparing used to be the other half of that split - a
+## tap on the card body outside BuyButton. It is CompareButton now. A whole-card
+## tap target that nothing on the card advertises is not a feature the player
+## can find, and it cost real code to defend: the body tap had to be told apart
+## from a mouse-wheel notch and from a touch drag that was really a list scroll.
 
 signal purchased(item: Item, card: Control)
 signal compare_requested(item: Item)
@@ -17,6 +22,7 @@ var sold: bool = false
 @onready var subtitle_label: Label = $Row/Layout/Info/SubtitleLabel
 @onready var modifiers_box: VBoxContainer = $Row/Layout/Info/Modifiers
 @onready var buy_button: Button = $Row/Layout/PriceBox/BuyButton
+@onready var compare_button: Button = $Row/Layout/PriceBox/CompareButton
 @onready var price_label: Label = $Row/Layout/PriceBox/BuyButton/Content/PriceLabel
 
 var _pulse: Tween = null
@@ -36,9 +42,8 @@ func setup(i: Item) -> void:
 		line.add_theme_color_override("font_color", Tuning.C_TEXT_DIM)
 		modifiers_box.add_child(line)
 	price_label.text = str(i.buy_price())
-	mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND   # compare is always tappable
 	buy_button.pressed.connect(_on_buy_pressed)
-	gui_input.connect(_on_gui_input)
+	compare_button.pressed.connect(func() -> void: compare_requested.emit(item))
 
 ## Re-run whenever gold changes: on purchase, on sale, on slot gold payouts
 ## (spec 15.2).
@@ -60,23 +65,6 @@ func refresh_affordability() -> void:
 		_pulse.kill()
 		_pulse = null
 		price_label.scale = Vector2.ONE
-
-## The card body (everything outside BuyButton) opens the compare flyout - a
-## Button's own input consumes its clicks before they reach here, so this
-## never fires for a tap on BuyButton itself.
-func _on_gui_input(event: InputEvent) -> void:
-	if sold:
-		return
-	# Excludes mouse-wheel scroll, which Godot also delivers as an
-	# InputEventMouseButton press (on the wheel-up/down "buttons") - without
-	# the button_index check, scrolling the shop list fired a compare_requested
-	# on every notch.
-	var tapped := (event is InputEventMouseButton and (event as InputEventMouseButton).pressed \
-			and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT) \
-		or (event is InputEventScreenTouch and (event as InputEventScreenTouch).pressed)
-	if not tapped:
-		return
-	compare_requested.emit(item)
 
 func _on_buy_pressed() -> void:
 	if sold or GameState.gold < item.buy_price():

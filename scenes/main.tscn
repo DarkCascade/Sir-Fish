@@ -8,7 +8,7 @@
 [ext_resource type="PackedScene" path="res://scenes/modals/run_summary.tscn" id="6_summary"]
 [ext_resource type="Script" uid="uid://c3xbq35shguud" path="res://scripts/run/run_controller.gd" id="7_run"]
 [ext_resource type="Script" uid="uid://dvddxwaocx4rn" path="res://scripts/run/main_layout.gd" id="8_layout"]
-[ext_resource type="Shader" path="res://assets/shaders/vignette.gdshader" id="9_vignette"]
+[ext_resource type="Shader" uid="uid://cj1ouykw11gwc" path="res://assets/shaders/vignette.gdshader" id="9_vignette"]
 
 [sub_resource type="ShaderMaterial" id="vignette_mat"]
 shader = ExtResource("9_vignette")
@@ -29,7 +29,6 @@ grow_vertical = 2
 mouse_filter = 2
 theme = ExtResource("1_theme")
 script = ExtResource("8_layout")
-battle_height = 764.0
 hide_console = false
 hide_overlay = false
 
@@ -43,7 +42,6 @@ stretch = true
 [node name="BattleViewport" type="SubViewport" parent="BattleView" unique_id=2034243892]
 handle_input_locally = false
 size = Vector2i(1080, 640)
-render_target_update_mode = 4
 
 [node name="BattleWorld" parent="BattleView/BattleViewport" unique_id=1107194419 instance=ExtResource("2_world")]
 
@@ -53,7 +51,6 @@ layout_mode = 0
 offset_right = 1080.0
 offset_bottom = 764.0
 mouse_filter = 2
-color = Color(1, 1, 1, 1)
 
 [node name="BattleOverlay" parent="." unique_id=32027013 instance=ExtResource("3_overlay")]
 layout_mode = 0

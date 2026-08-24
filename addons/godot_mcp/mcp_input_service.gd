@@ -11,6 +11,9 @@ var _sequence_frames_waited: int = 0
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	# See the same guard in mcp_screenshot_service.gd - dev-only polling that
+	# was shipping in the exported build. Re-apply after a plugin update.
+	set_process(OS.has_feature("editor"))
 
 
 func _process(_delta: float) -> void:
