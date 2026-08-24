@@ -48,6 +48,7 @@ theme_override_constants/separation = 2
 [node name="PriceBox" type="VBoxContainer" parent="Row/Layout" unique_id=1641175052]
 custom_minimum_size = Vector2(220, 0)
 layout_mode = 2
+theme_override_constants/separation = 12
 alignment = 1
 
 [node name="BuyButton" type="Button" parent="Row/Layout/PriceBox" unique_id=98947513]
@@ -76,6 +77,17 @@ theme_type_variation = &"DisplayLabel"
 theme_override_colors/font_color = Color(0.941176, 0.835294, 0.533333, 1)
 theme_override_font_sizes/font_size = 46
 horizontal_alignment = 2
+
+; [ui-project-longshot] Comparing used to be "tap the card body", which was
+; invisible - nothing on the card said the gesture existed, and the same tap
+; that opened it also had to be told apart from a scroll. It is a button now,
+; under the price plate, in the SecondaryButton variation so it stays clearly
+; the lesser of the two things this card offers.
+[node name="CompareButton" type="Button" parent="Row/Layout/PriceBox" unique_id=1806415332]
+custom_minimum_size = Vector2(200, 0)
+layout_mode = 2
+theme_type_variation = &"SecondaryButton"
+text = "Compare"
 
 [node name="RightMargin" type="Control" parent="Row/Layout" unique_id=1267415596]
 custom_minimum_size = Vector2(18, 0)

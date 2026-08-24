@@ -1,8 +1,10 @@
 extends PanelContainer
 ## One inventory item with equip/sell actions underneath it (spec 15.3).
-## 880 x 180. [equip] Tapping the row body opens the compare flyout;
-## EquipButton and SellButton are separate hit targets that consume their own
-## clicks first, same pattern as shop_buy_card's BuyButton.
+## 880 x 180.
+##
+## [ui-project-longshot] Compare is the third button in the Actions row rather
+## than a tap on the row body - see the header comment in shop_buy_card.gd for
+## why the invisible body tap went.
 
 signal sold(item: Item, row: Control)
 signal compare_requested(item: Item)
@@ -18,6 +20,7 @@ var _hero_class: StringName = &""
 @onready var name_label: Label = $Row/Layout/Info/NameLabel
 @onready var subtitle_label: Label = $Row/Layout/Info/SubtitleLabel
 @onready var mods_label: Label = $Row/Layout/Info/ModsLabel
+@onready var compare_button: Button = $Row/Layout/Actions/CompareButton
 @onready var equip_button: Button = $Row/Layout/Actions/EquipButton
 @onready var sell_button: Button = $Row/Layout/Actions/SellButton
 @onready var sell_amount_label: Label = $Row/Layout/Actions/SellButton/Content/AmountLabel
@@ -43,8 +46,7 @@ func setup(i: Item) -> void:
 		equip_button.pressed.connect(_on_equip_pressed)
 	_refresh_equip_state()
 
-	mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND   # compare is always tappable
-	gui_input.connect(_on_gui_input)
+	compare_button.pressed.connect(func() -> void: compare_requested.emit(item))
 
 func _refresh_equip_state() -> void:
 	if _hero_class == &"":
@@ -58,23 +60,10 @@ func _on_equip_pressed() -> void:
 		GameState.equip_item(item, _hero_class)
 	equip_changed.emit()
 
-## The row body (everything outside EquipButton/SellButton) opens the compare
-## flyout - both buttons consume their own clicks before they reach here.
-func _on_gui_input(event: InputEvent) -> void:
-	# Excludes mouse-wheel scroll, which Godot also delivers as an
-	# InputEventMouseButton press (on the wheel-up/down "buttons") - without
-	# the button_index check, scrolling the sell list fired a compare_requested
-	# on every notch.
-	var tapped := (event is InputEventMouseButton and (event as InputEventMouseButton).pressed \
-			and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT) \
-		or (event is InputEventScreenTouch and (event as InputEventScreenTouch).pressed)
-	if not tapped:
-		return
-	compare_requested.emit(item)
-
 func _on_sell() -> void:
 	sell_button.disabled = true
 	equip_button.disabled = true
+	compare_button.disabled = true
 	GameState.add_gold(item.sell_price())
 	GameState.remove_item(item)
 	GameState.run_stats["items_sold"] = int(GameState.run_stats["items_sold"]) + 1

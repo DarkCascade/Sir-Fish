@@ -47,6 +47,16 @@ theme_override_font_sizes/font_size = 26
 layout_mode = 2
 theme_override_constants/separation = 12
 
+; [ui-project-longshot] See shop_buy_card.tscn's CompareButton. Fixed width and
+; NOT expanding, unlike its two neighbours: Equip and Sell carry variable text
+; ("Sell for 148"), so they get the slack and Compare keeps just enough for its
+; own word.
+[node name="CompareButton" type="Button" parent="Row/Layout/Actions" unique_id=1806415333]
+custom_minimum_size = Vector2(190, 0)
+layout_mode = 2
+theme_type_variation = &"SecondaryButton"
+text = "Compare"
+
 [node name="EquipButton" type="Button" parent="Row/Layout/Actions" unique_id=240048961]
 layout_mode = 2
 size_flags_horizontal = 3
