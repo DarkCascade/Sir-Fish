@@ -247,16 +247,22 @@ const UPGRADE_FAT_PURSE_BASE := 50
 const UPGRADE_FAT_PURSE_STEP := 0.40      # +40% gold per level (additive)
 
 # --- 6.1 Palette -------------------------------------------------------------
-## [presentation redesign] Bioluminescent night forest. Every value below is a
-## rewrite IN PLACE of the old fair-weather-meadow palette - names are
-## unchanged so every call site still resolves, only the hues moved. See
-## "Sir Fish - Presentation Redesign Spec.md" S2.
-const C_SKY := Color("0E2A33")            # canopy gap, teal-black
-const C_FAR_HILLS := Color("143A38")      # deepest treeline
-const C_MID_TREES := Color("1B4B3A")      # mid canopy
-const C_NEAR_TREES := Color("14231F")     # near trunks, nearly black
-const C_GROUND := Color("3E6B3A")         # lit moss down the path centre
-const C_BRUSH := Color("0F2B22")          # undergrowth
+## [ui-project-longshot] Bioluminescent night forest, retargeted to the new art
+## director's concept board. The previous pass was teal-GREEN lit by violet;
+## the concept is teal-BLUE lit by cyan, with green surviving only as the moss
+## underfoot and the heal glyph. Every value below is a rewrite IN PLACE -
+## names are unchanged so every call site still resolves, only the hues moved.
+##
+## The single organising rule, and the reason the concept reads as one image:
+## COOL BLUE IS THE LIGHT, GREEN IS THE GROUND, GOLD IS THE UI. Nothing that
+## belongs to the world may be gold, and nothing that belongs to the frame may
+## be cyan, or the two halves of the screen stop separating.
+const C_SKY := Color("0B2C4E")            # canopy gap, deep night blue
+const C_FAR_HILLS := Color("0E3A52")      # deepest treeline, blue-drowned
+const C_MID_TREES := Color("14584E")      # mid canopy, teal
+const C_NEAR_TREES := Color("0A1C24")     # near trunks, nearly black blue
+const C_GROUND := Color("2F6B44")         # lit moss down the path centre
+const C_BRUSH := Color("0C2A2C")          # undergrowth
 const C_INK := Color("241E14")            # dark ink/outline - stays dark on purpose,
 										  # reused as text-on-parchment (S8)
 const C_WARRIOR_ARMOR := Color("5878A8")
@@ -269,15 +275,19 @@ const C_ORC_SKIN := Color("6FA83E")
 const C_ORC_IRON := Color("8C94A3")
 const C_SHADOW_BODY := Color("14121A")
 const C_SHADOW_EYES := Color("FF2D2D")
-const C_GOLD := Color("C9A227")           # aged gold, was the brighter F2C230
+const C_GOLD := Color("D4A843")           # the frame's trim gold, one step brighter
 const C_DANGER := Color("E4484F")
-const C_HEAL := Color("7CC142")           # green, matches the PLUS slot symbol
-const C_LIGHTNING := Color("A855F7")      # was blue - now the arcane purple
+const C_HEAL := Color("55C94A")           # green, matches the PLUS slot symbol
+## [ui-project-longshot] Back to blue. The concept's bolt glyph and its HP-bar
+## sibling are an electric blue-white, not violet - violet is demoted to the
+## frame's flowers (C_FLOWER) and a few background spikes, which is the only
+## place the concept still uses it.
+const C_LIGHTNING := Color("4C86F0")
 const C_DEFEND := Color("D9A825")         # was blue - now the shield gold
-const C_CONSOLE_BG := Color("0B1A18")     # behind everything, near-black teal
-const C_CONSOLE_PANEL := Color("123A32")  # panel fill
-const C_TEXT := Color("F2E9D0")           # cream, on dark
-const C_TEXT_DIM := Color("9CAFA4")       # muted sage, on dark
+const C_CONSOLE_BG := Color("07171B")     # behind everything, near-black blue
+const C_CONSOLE_PANEL := Color("0D2A2A")  # panel fill, the dark glass of a reel well
+const C_TEXT := Color("F5F1E4")           # near-white, on dark
+const C_TEXT_DIM := Color("9CB0AC")       # muted sage, on dark
 const C_WOOD := Color("7A4E28")           # slightly darkened for the night mood
 const C_WOOD_DARK := Color("5A3419")
 const C_PANEL_BORDER := Color("2E5A4E")   # inner border, one step off the panel fill
@@ -287,27 +297,45 @@ const C_FISH_SCALE := Color("4A9BE8")     # [v2] Sir Fish body
 const C_FISH_FIN := Color("3B6FD4")       # [v2] Sir Fish fins
 const C_ROCK := Color("2A3A44")           # [v3] layer-4 scatter rocks - now blue-slate
 
-# --- 6.1b Arcane accents [presentation redesign] -----------------------------
-## The purple every crystal, rune and slot bolt shares, so the world and the
-## console read as the same magic on purpose.
-const C_ARCANE := Color("8B5CF6")
-const C_ARCANE_BRIGHT := Color("C4B5FD")  # emissive core / glow peak
-const C_ARCANE_DEEP := Color("4C1D95")    # shadowed crystal faces
-const C_PORTAL := Color("7FE3D8")         # the archway light / any "destination" cue
+# --- 6.1b Arcane accents [ui-project-longshot] -------------------------------
+## The blue every crystal, rune and slot bolt shares, so the world and the
+## console read as the same magic on purpose. Retargeted from violet: in the
+## concept the crystals lighting the forest are unmistakably SAPPHIRE, and the
+## light they throw is what tints the whole frame.
+const C_ARCANE := Color("3FA9E8")         # crystal body / bolt glyph
+const C_ARCANE_BRIGHT := Color("BFEEFF")  # emissive core / glow peak, near-white cyan
+const C_ARCANE_DEEP := Color("14417F")    # shadowed crystal faces
+const C_PORTAL := Color("9FF2FF")         # the archway light / any "destination" cue
 
-# --- 6.1c Console chrome [presentation redesign] -----------------------------
-const C_CONSOLE_STONE := Color("1E4038")  # raised frame face (ornate_frame.gd)
-const C_CONSOLE_INSET := Color("081412")  # recessed wells (reel windows, price plates)
-const C_GOLD_BRIGHT := Color("E8C55A")    # top bevel highlight / payline glow
-const C_GOLD_DARK := Color("8A6E1C")      # bottom bevel shadow
-const C_VINE := Color("2F6B3E")           # [Pass B] frame overgrowth, unused until S5.4
-const C_FLOWER := Color("A78BFA")         # [Pass B] frame blooms, unused until S5.4
+## The violet that used to be the arcane hue, kept as a SECONDARY only: the
+## slim background spikes and the frame's blooms. It must never out-bloom
+## C_ARCANE or the concept's blue-dominant read collapses.
+const C_ARCANE_VIOLET := Color("8B5CF6")
+
+# --- 6.1c Console chrome [ui-project-longshot] -------------------------------
+## The concept's frame is CARVED MOSSY STONE with gold trim, not the flat
+## green panel this was. Stone reads warm-grey-green against the cold world
+## behind it, which is most of what makes the console sit in front rather than
+## blend into the forest.
+const C_CONSOLE_STONE := Color("3A4A3C")     # raised frame face (ornate_frame.gd)
+const C_CONSOLE_STONE_LIT := Color("5E7057")  # top-lit carved edge
+const C_CONSOLE_STONE_DARK := Color("1E2A22") # underside of a carved edge
+const C_CONSOLE_INSET := Color("06181A")     # recessed wells (reel windows, price plates)
+const C_GOLD_BRIGHT := Color("F5DFA0")       # top bevel highlight / payline glow
+const C_GOLD_DARK := Color("7A5A18")         # bottom bevel shadow
+const C_VINE := Color("3D7A45")              # frame overgrowth
+const C_VINE_DARK := Color("1F4526")         # its shadowed side
+const C_FLOWER := Color("A78BFA")            # frame blooms, the violet's home
+const C_GEM := Color("4A6FD4")               # the blue diamond inlays at frame joints
+const C_GEM_BRIGHT := Color("9FB8FF")        # their lit facet
 
 # --- 6.1d Parchment [presentation redesign] -----------------------------------
 ## Upgrade cards only (S8) - every other panel is stone, not parchment.
-const C_PARCHMENT := Color("C3BDA8")
-const C_PARCHMENT_SHADE := Color("A49E8A")  # lower half of the card's gradient
-const C_TEXT_GOLD := Color("E8C55A")        # headings and numerals on dark stone
+## Pulled slightly cooler and lighter to match the concept's pale carved-stone
+## cards, which read as chiselled tablets rather than paper.
+const C_PARCHMENT := Color("CFC9B4")
+const C_PARCHMENT_SHADE := Color("ABA491")  # lower half of the card's gradient
+const C_TEXT_GOLD := Color("F0D588")        # headings and numerals on dark stone
 
 # --- storm mood (M9) ---------------------------------------------------------
 ## The palette above is the fair-weather art direction and stays as authored.
@@ -368,20 +396,84 @@ const FIELD_SCATTER_SEED := 20260822      # fixed: the field is identical every 
 
 ## Counts are per whole field, not per square unit - the field's size is
 ## fixed, so these ARE the density.
-const FIELD_BUSHES := 90
-const FIELD_ROCKS := 70
-const FIELD_TUFTS := 160
-const FIELD_GRASS := 200
-const FIELD_TREES := 52
-## [presentation redesign S10.1] Sparser than the rocks - crystals are meant
-## to read as landmarks the party runs past, not as ground texture.
-const FIELD_CRYSTALS := 90
-const CRYSTAL_SCALE_MIN := 0.75
-const CRYSTAL_SCALE_MAX := 1.6
+##
+## [ui-project-longshot] Roughly doubled across the board. The concept's forest
+## is CROWDED - there is no bare ground anywhere outside the path, and the
+## treeline is a solid mass rather than a scattering of individuals. The old
+## counts left the frame reading as an empty lawn with props on it, which is
+## the single largest difference between the old render and the board.
+const FIELD_BUSHES := 220
+const FIELD_ROCKS := 130
+const FIELD_TUFTS := 340
+const FIELD_GRASS := 520
+const FIELD_TREES := 104
+## [ui-project-longshot] No longer "sparser than the rocks". In the concept
+## crystals are the light source of the whole scene and they are everywhere -
+## a bed of small ones underfoot with a few large landmarks standing out of it.
+## That spread is what CRYSTAL_SCALE_MIN/MAX's much wider range buys.
+const FIELD_CRYSTALS := 170
+## The gem meshes in env_crystal.glb are already 1-2 units across on their
+## own, so this multiplies an already-sizeable cluster - a max much past 1.5
+## puts crystals taller than the 2.3-unit knight all over the field, and the
+## party stops being the biggest thing in its own frame.
+const CRYSTAL_SCALE_MIN := 0.45
+const CRYSTAL_SCALE_MAX := 1.5
+## Strength of the fresnel rim on a crystal facet - see _crystal_material().
+const CRYSTAL_RIM := 0.75
 ## Emission energy on the Godot-side material_override (not baked into the
 ## .glb - see overworld_field.gd's _crystal_material()), tuned against
-## glow_hdr_threshold = 0.95 (S9.4) so the clusters actually bloom.
-const CRYSTAL_EMISSION_ENERGY := 2.2
+## glow_hdr_threshold so the clusters bloom at their tips WITHOUT clipping to
+## white. A crystal that blows out stops being a blue gem and becomes a hole
+## in the frame - the concept's crystals hold their hue all the way into the
+## highlight, which means staying under the tonemapper's shoulder, not over it.
+const CRYSTAL_EMISSION_ENERGY := 1.15
+
+## [ui-project-longshot] How far a tree's own leaf/bark colour is pulled toward
+## C_NEAR_TREES before it is ever lit. The concept's forest is a DARK mass
+## pierced by bright crystals - the contrast between the two is what makes the
+## crystals read as the light source. Left at the .glb's authored green, the
+## canopy lights up to the same value as the crystals and the whole frame
+## flattens into one bright mint field.
+const TREE_TINT := 0.62
+
+# --- 5.8c The path and the archway [ui-project-longshot] --------------------
+## Two features the concept has and the old field did not, and between them
+## most of what gives that frame its depth: a lit path running away from the
+## camera, and something glowing at the end of it to run TOWARD.
+
+## The path is the corridor FIELD_CLEAR_RADIUS already keeps bare - this only
+## paints it. Slightly narrower than the clear radius so the undergrowth's
+## edge overhangs the stone rather than stopping in a ruler-straight line.
+const PATH_WIDTH := 3.9
+const PATH_COLOR := Color("4E7A56")       # lit moss between the flags
+const PATH_STONE_COLOR := Color("6E8A76")  # the flagstones themselves
+const FIELD_FLAGSTONES := 120             # scattered ALONG the corridor, not outside it
+
+## The archway stands at a FIXED distance up-run and never scrolls, exactly as
+## the backdrop treering does: the camera never moves in this scene, so a
+## landmark pinned in world space reads as an unreachable destination on the
+## horizon - which is what the concept's arch is - while everything nearer
+## slides past it. Making it scroll would have the party arrive at it every
+## twelve seconds and then run through it, which is a different game.
+const ARCH_DISTANCE := 62.0               # up-run from PARTY_ANCHOR
+const ARCH_SCALE := 1.05                  # env_arch.glb is authored ~8.8 units tall
+const ARCH_STONE_TINT := 0.55             # how far the stone is pulled to haze, like the backdrop
+## The veil's emission. Deliberately just over 1.0 rather than far over it:
+## the arch has to be the BRIGHTEST thing in frame, but a value that clips to
+## white erases the archway's silhouette along with everything behind it, and
+## the shape is half of why it reads as a destination.
+const ARCH_GLOW_ENERGY := 1.6
+## An omni at the arch's mouth, so the light it throws lands on the ground in
+## front of it instead of the arch reading as a decal pasted on the treeline.
+const ARCH_LIGHT_ENERGY := 9.0
+const ARCH_LIGHT_RANGE := 40.0
+
+## Drifting spores/fireflies. The concept's air is full of them and they cost
+## almost nothing - one GPUParticles3D box around the play area.
+const MOTE_COUNT := 260
+const MOTE_BOX := Vector3(46.0, 11.0, 46.0)
+const MOTE_DRIFT := 0.55                  # units/sec upward
+const MOTE_SIZE := 0.075
 
 ## Nothing is scattered within this distance of the run corridor's centre
 ## line, so neither the party formation nor the enemy rank spawns in a bush.
@@ -431,8 +523,15 @@ const TREE_CLEAR_EXTRA := 3.0
 ## there. FIELD_BACKDROP_MIN/MAX_RADIUS below are deliberately chosen to fall
 ## inside this range, so the far treeline actually fades rather than either
 ## standing out crisp or being fully invisible.
-const FOG_DEPTH_BEGIN := 11.0        # [presentation redesign] pulled in for the night mood, was 16.0
-const FOG_DEPTH_END := 42.0          # was 55.0
+## [ui-project-longshot] Pushed back out to 84. The concept's depth comes from
+## seeing FOUR distinct distance bands - near crystals, the party, the mid
+## treeline, the arch - each a step paler and bluer than the last. A fog that
+## reaches full opacity at 42 collapses the last two of those into one flat
+## wall of haze, so there was nowhere for the archway to stand. Begin is
+## pulled in rather than out to keep the same number of bands in front of the
+## party as behind it.
+const FOG_DEPTH_BEGIN := 9.0
+const FOG_DEPTH_END := 84.0
 
 ## A second, non-scrolling ring of trees well outside the play area, sparser
 ## and colour-shifted toward the fog - cheap atmospheric perspective for the
@@ -447,9 +546,14 @@ const FOG_DEPTH_END := 42.0          # was 55.0
 ## instead - see OverworldField's own header), so a backdrop this far out
 ## has no perceptible parallax to sell and tiling logic would be pure
 ## overhead for zero visible benefit.
-const FIELD_TREES_BACKDROP := 70
-const FIELD_BACKDROP_MIN_RADIUS := 40.0    # just past the near scatter's own reach
-const FIELD_BACKDROP_MAX_RADIUS := 62.0    # inside FOG_DEPTH_END, so it still fades in rather than never being visible at all
+## [ui-project-longshot] Tripled, and the ring pushed both nearer and much
+## further: the concept's treeline is a solid dark mass that closes the frame
+## on three sides, and 70 trees spread over a 22-unit band read as a picket
+## fence with sky between the posts. The wider band is also what gives the
+## archway trees both in FRONT of and BEHIND it to sit between.
+const FIELD_TREES_BACKDROP := 210
+const FIELD_BACKDROP_MIN_RADIUS := 34.0    # just past the near scatter's own reach
+const FIELD_BACKDROP_MAX_RADIUS := 88.0    # inside FOG_DEPTH_END, so it still fades in rather than never being visible at all
 ## How far toward the fog colour a backdrop tree's own material is pre-tinted,
 ## on top of whatever real-time depth fog it also picks up at render time -
 ## real fog alone (which reads current depth, not placement) still leaves a
@@ -463,7 +567,7 @@ const FIELD_BACKDROP_TINT := 0.55
 ## sibling node, so OverworldField never has to reach outside itself to
 ## build a backdrop material - if the sky colour is ever re-authored, update
 ## this to match by eye at the same time.
-const C_HORIZON_HAZE := Color(0.101961, 0.290196, 0.290196)  # [presentation redesign] matches the new sky_horizon_color / fog_light_color
+const C_HORIZON_HAZE := Color(0.114, 0.365, 0.494)  # [ui-project-longshot] matches the new sky_horizon_color / fog_light_color
 
 # --- 5.9 Health chunk [v3.5 D6] ---------------------------------------------
 const CHUNK_FLING_X := 45.0               # was an inline +/-90 in floating_health_chunk.gd
