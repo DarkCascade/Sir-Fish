@@ -1,34 +1,19 @@
 [gd_resource type="Theme" format=3 uid="uid://b2apiaquobtkx"]
 
-; [ui-project-longshot] Retargeted to the concept board.
-;
-; Every modal in the game (shop, run summary, compare flyout) draws its chrome
-; from here rather than from OrnateFrame, so this file is the one place that
-; brings them onto the board's language - and the reason the modals could be
-; fixed without touching any of their scenes. The console's own panels are
-; OrnateFrame-drawn and deliberately do NOT read these styles; see
-; scripts/console/ornate_frame.gd.
-;
-; The buttons were a blue-and-gold set left from the old fair-weather palette,
-; which put a saturated cornflower rectangle in the middle of every shop row.
-; They are dark carved green with gold trim now - the same two materials the
-; console is made of, so a shop panel reads as the same object as the cabinet
-; behind it.
-
 [ext_resource type="FontVariation" path="res://assets/display_font.tres" id="1_display"]
 [ext_resource type="FontVariation" path="res://assets/body_font.tres" id="2_body"]
 
-[sub_resource type="StyleBoxFlat" id="btn_normal"]
+[sub_resource type="StyleBoxFlat" id="btn_disabled"]
 content_margin_left = 24.0
 content_margin_top = 18.0
 content_margin_right = 24.0
 content_margin_bottom = 18.0
-bg_color = Color(0.062745, 0.180392, 0.168627, 1)
+bg_color = Color(0.101961, 0.137255, 0.129412, 1)
 border_width_left = 3
 border_width_top = 3
 border_width_right = 3
 border_width_bottom = 3
-border_color = Color(0.831373, 0.658824, 0.262745, 1)
+border_color = Color(0.278431, 0.290196, 0.258824, 1)
 corner_radius_top_left = 14
 corner_radius_top_right = 14
 corner_radius_bottom_right = 14
@@ -50,6 +35,22 @@ corner_radius_top_right = 14
 corner_radius_bottom_right = 14
 corner_radius_bottom_left = 14
 
+[sub_resource type="StyleBoxFlat" id="btn_normal"]
+content_margin_left = 24.0
+content_margin_top = 18.0
+content_margin_right = 24.0
+content_margin_bottom = 18.0
+bg_color = Color(0.062745, 0.180392, 0.168627, 1)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0.831373, 0.658824, 0.262745, 1)
+corner_radius_top_left = 14
+corner_radius_top_right = 14
+corner_radius_bottom_right = 14
+corner_radius_bottom_left = 14
+
 [sub_resource type="StyleBoxFlat" id="btn_pressed"]
 content_margin_left = 24.0
 content_margin_top = 18.0
@@ -66,44 +67,33 @@ corner_radius_top_right = 14
 corner_radius_bottom_right = 14
 corner_radius_bottom_left = 14
 
-[sub_resource type="StyleBoxFlat" id="btn_disabled"]
-content_margin_left = 24.0
-content_margin_top = 18.0
-content_margin_right = 24.0
-content_margin_bottom = 18.0
-bg_color = Color(0.101961, 0.137255, 0.129412, 1)
+[sub_resource type="StyleBoxFlat" id="stone_panel"]
+bg_color = Color(0.227451, 0.290196, 0.235294, 1)
 border_width_left = 3
 border_width_top = 3
 border_width_right = 3
 border_width_bottom = 3
-border_color = Color(0.278431, 0.290196, 0.258824, 1)
-corner_radius_top_left = 14
-corner_radius_top_right = 14
-corner_radius_bottom_right = 14
-corner_radius_bottom_left = 14
+border_color = Color(0.831373, 0.658824, 0.262745, 1)
+corner_radius_top_left = 20
+corner_radius_top_right = 20
+corner_radius_bottom_right = 20
+corner_radius_bottom_left = 20
 
-; [ui-project-longshot] Secondary action. The shop's Compare button sits beside
-; Buy on every card and beside Equip/Sell on every row, and on the full Button
-; style it carried exactly as much weight as the action it sits next to - three
-; identical gold-trimmed plates per row, with nothing saying which one is the
-; point of the row. Same two materials, one step back: the trim drops to the
-; dark gold the unselected tab uses and the fill sits at the panel's own colour,
-; so it reads as a control rather than as an offer.
-[sub_resource type="StyleBoxFlat" id="btn2_normal"]
-content_margin_left = 16.0
-content_margin_top = 12.0
-content_margin_right = 16.0
-content_margin_bottom = 12.0
-bg_color = Color(0.027451, 0.098039, 0.094118, 1)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.478431, 0.352941, 0.094118, 1)
-corner_radius_top_left = 12
-corner_radius_top_right = 12
-corner_radius_bottom_right = 12
-corner_radius_bottom_left = 12
+[sub_resource type="StyleBoxFlat" id="panel"]
+content_margin_left = 20.0
+content_margin_top = 20.0
+content_margin_right = 20.0
+content_margin_bottom = 20.0
+bg_color = Color(0.043137, 0.129412, 0.121569, 1)
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
+border_color = Color(0.831373, 0.658824, 0.262745, 1)
+corner_radius_top_left = 22
+corner_radius_top_right = 22
+corner_radius_bottom_right = 22
+corner_radius_bottom_left = 22
 
 [sub_resource type="StyleBoxFlat" id="btn2_hover"]
 content_margin_left = 16.0
@@ -116,6 +106,22 @@ border_width_top = 2
 border_width_right = 2
 border_width_bottom = 2
 border_color = Color(0.831373, 0.658824, 0.262745, 1)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+
+[sub_resource type="StyleBoxFlat" id="btn2_normal"]
+content_margin_left = 16.0
+content_margin_top = 12.0
+content_margin_right = 16.0
+content_margin_bottom = 12.0
+bg_color = Color(0.027451, 0.098039, 0.094118, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.478431, 0.352941, 0.094118, 1)
 corner_radius_top_left = 12
 corner_radius_top_right = 12
 corner_radius_bottom_right = 12
@@ -137,43 +143,8 @@ corner_radius_top_right = 12
 corner_radius_bottom_right = 12
 corner_radius_bottom_left = 12
 
-; A raised stone face, for anything that sits IN FRONT of the world.
-[sub_resource type="StyleBoxFlat" id="stone_panel"]
-bg_color = Color(0.227451, 0.290196, 0.235294, 1)
-border_width_left = 3
-border_width_top = 3
-border_width_right = 3
-border_width_bottom = 3
-border_color = Color(0.831373, 0.658824, 0.262745, 1)
-corner_radius_top_left = 20
-corner_radius_top_right = 20
-corner_radius_bottom_right = 20
-corner_radius_bottom_left = 20
+[sub_resource type="StyleBoxEmpty" id="tab_panel"]
 
-; The recessed green glass a modal's contents sit on. Padded, because a
-; PanelContainer is what every modal wraps its layout in and the old style had
-; no content margins at all - text ran to the panel's own border.
-[sub_resource type="StyleBoxFlat" id="panel"]
-content_margin_left = 20.0
-content_margin_top = 20.0
-content_margin_right = 20.0
-content_margin_bottom = 20.0
-bg_color = Color(0.043137, 0.129412, 0.121569, 1)
-border_width_left = 4
-border_width_top = 4
-border_width_right = 4
-border_width_bottom = 4
-border_color = Color(0.831373, 0.658824, 0.262745, 1)
-corner_radius_top_left = 22
-corner_radius_top_right = 22
-corner_radius_bottom_right = 22
-corner_radius_bottom_left = 22
-
-; The shop's Buy/Sell tabs. Godot's defaults are a white-on-black chip pair
-; that survived every previous art pass because nothing else in the game uses
-; a TabContainer - against a gold-trimmed stone panel they were the last piece
-; of untouched engine chrome on screen. Selected reads as a lit stone tab
-; continuous with the panel below it; unselected sits back and dim.
 [sub_resource type="StyleBoxFlat" id="tab_selected"]
 content_margin_left = 26.0
 content_margin_top = 12.0
@@ -200,11 +171,6 @@ border_color = Color(0.278431, 0.211765, 0.078431, 1)
 corner_radius_top_left = 12
 corner_radius_top_right = 12
 
-; The content area behind the tabs. Empty on purpose - the modal's own
-; PanelContainer already paints the glass, and a second filled panel inside it
-; draws a visible box around the item list.
-[sub_resource type="StyleBoxEmpty" id="tab_panel"]
-
 [resource]
 default_font = ExtResource("2_body")
 default_font_size = 34
@@ -223,30 +189,23 @@ DisplayLabel/fonts/font = ExtResource("1_display")
 Label/colors/font_color = Color(0.960784, 0.945098, 0.894118, 1)
 Panel/styles/panel = SubResource("stone_panel")
 PanelContainer/styles/panel = SubResource("panel")
-TabContainer/colors/font_selected_color = Color(0.960784, 0.874509, 0.627451, 1)
-TabContainer/colors/font_unselected_color = Color(0.478431, 0.501961, 0.470588, 1)
-TabContainer/colors/font_hovered_color = Color(1, 0.988235, 0.945098, 1)
-TabContainer/font_sizes/font_size = 32
-TabContainer/styles/panel = SubResource("tab_panel")
-TabContainer/styles/tabbar_background = SubResource("tab_panel")
-TabContainer/styles/tab_selected = SubResource("tab_selected")
-TabContainer/styles/tab_unselected = SubResource("tab_unselected")
-TabContainer/styles/tab_hovered = SubResource("tab_selected")
-
-; [presentation redesign S3.4] Text-on-parchment variation - the upgrade
-; cards (console/upgrade_button.gd) are the only parchment surface in the
-; game, and dark ink on a light card face needs no outline; an outlined
-; DisplayLabel there reads muddy.
 PlateLabel/base_type = &"Label"
 PlateLabel/colors/font_color = Color(0.141176, 0.117647, 0.078431, 1)
 PlateLabel/constants/outline_size = 0
-
-; See the btn2_* styleboxes above.
 SecondaryButton/base_type = &"Button"
-SecondaryButton/colors/font_color = Color(0.611765, 0.690196, 0.674510, 1)
+SecondaryButton/colors/font_color = Color(0.611765, 0.690196, 0.67451, 1)
 SecondaryButton/colors/font_hover_color = Color(0.960784, 0.874509, 0.627451, 1)
 SecondaryButton/colors/font_pressed_color = Color(0.831373, 0.658824, 0.262745, 1)
 SecondaryButton/font_sizes/font_size = 28
-SecondaryButton/styles/normal = SubResource("btn2_normal")
 SecondaryButton/styles/hover = SubResource("btn2_hover")
+SecondaryButton/styles/normal = SubResource("btn2_normal")
 SecondaryButton/styles/pressed = SubResource("btn2_pressed")
+TabContainer/colors/font_hovered_color = Color(1, 0.988235, 0.945098, 1)
+TabContainer/colors/font_selected_color = Color(0.960784, 0.874509, 0.627451, 1)
+TabContainer/colors/font_unselected_color = Color(0.478431, 0.501961, 0.470588, 1)
+TabContainer/font_sizes/font_size = 32
+TabContainer/styles/panel = SubResource("tab_panel")
+TabContainer/styles/tab_hovered = SubResource("tab_selected")
+TabContainer/styles/tab_selected = SubResource("tab_selected")
+TabContainer/styles/tab_unselected = SubResource("tab_unselected")
+TabContainer/styles/tabbar_background = SubResource("tab_panel")

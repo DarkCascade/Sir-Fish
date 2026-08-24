@@ -279,8 +279,13 @@ func build_level() -> LevelDef:
 const ENDLESS_EARLY_POOL: Array[StringName] = [&"shadow_monster", &"skeleton_minion"]
 ## Join the pool once the party has cleared at least one level, so depth 1
 ## stays as gentle as the old fixed level's opening fight.
+##
+## The orc barbarian is out of the rotation: it is the last in-house model,
+## built from separate primitive blocks (O_Head, O_ArmL, O_Torso...), and
+## next to the KayKit skeletons it reads as a stick figure. The stats, scene
+## and rig branches all stay - nothing spawns it, so nothing renders it.
 const ENDLESS_MID_POOL: Array[StringName] = [
-	&"orc_barbarian", &"skeleton_warrior", &"skeleton_mage", &"skeleton_rogue",
+	&"skeleton_warrior", &"skeleton_mage", &"skeleton_rogue",
 ]
 ## [UI pass] Was just the orc warlord. Any of the four KayKit skeletons can
 ## anchor encounter 6 now - battle_director.start_combat() scales whichever
@@ -373,7 +378,9 @@ func _build_whispering_wood_level() -> LevelDef:
 
 	var e2 := EncounterDef.new()
 	e2.type = EncounterDef.Type.COMBAT
-	e2.enemy_stat_ids = [&"shadow_monster", &"shadow_monster", &"orc_barbarian"]
+	# skeleton_warrior fills the heavy slot the orc barbarian used to hold
+	# (see ENDLESS_MID_POOL) - closest melee bruiser in the roster.
+	e2.enemy_stat_ids = [&"shadow_monster", &"shadow_monster", &"skeleton_warrior"]
 	e2.travel_duration = 3.0
 
 	var e3 := EncounterDef.new()
@@ -383,7 +390,7 @@ func _build_whispering_wood_level() -> LevelDef:
 
 	var e4 := EncounterDef.new()
 	e4.type = EncounterDef.Type.COMBAT
-	e4.enemy_stat_ids = [&"orc_barbarian", &"orc_barbarian", &"shadow_monster"]
+	e4.enemy_stat_ids = [&"skeleton_warrior", &"skeleton_warrior", &"shadow_monster"]
 	e4.travel_duration = 3.0
 
 	# Boss listed first so it lands at the leftmost enemy slot (x = 1.6) and
