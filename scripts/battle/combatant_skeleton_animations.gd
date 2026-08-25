@@ -24,7 +24,7 @@ extends RefCounted
 
 const DEG := PI / 180.0
 
-## The warrior, the ranger and the priest are all absent on purpose: they now
+## The warrior, the ranger and the mage are all absent on purpose: they now
 ## run on KayKit models (knight.glb, rogue.glb, mage.glb) whose 41-bone
 ## armature shares no bone name with the in-house rig every clip below is
 ## keyed against. Their clips come from CombatantBakedAnimations, which
@@ -152,7 +152,7 @@ static func _pos_track(a: Animation, skel: Skeleton3D, skel_str: String, bone: S
 		var delta: Vector3 = k[1]
 		a.position_track_insert_key(t, time, _bone_pos_key(skel, idx, delta))
 
-## A plain property VALUE track (not a bone track), for the priest's orb
+## A plain property VALUE track (not a bone track), for the mage's orb
 ## emission_strength (spec 9.3). Not subject to spec 9.0.2's absolute-pose
 ## trap - shader parameters are ordinary property assignment, not a bone pose,
 ## so no rest composition applies here.

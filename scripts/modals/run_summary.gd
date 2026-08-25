@@ -1,9 +1,14 @@
 extends Control
 ## Defeat / victory screen with the full run stats and a Retry (spec 18).
+##
+## [move-elements-to-editor] The whole screen is authored in run_summary.tscn -
+## Sir Fish at the top (he is the first thing the player sees on this screen,
+## spec 18.2) and one named row per statistic, each carrying its caption and a
+## plausible dummy number. This script writes numbers into the rows it
+## recognises, by node NAME, and leaves everything else alone: reordering,
+## restyling or deleting a row is editor work and needs no change here.
 
 signal retry_pressed()
-
-const FISH_TANK_SCENE := preload("res://scenes/console/sir_fish_tank.tscn")
 
 @onready var scrim: ColorRect = $Scrim
 @onready var panel: PanelContainer = $Panel
@@ -13,22 +18,10 @@ const FISH_TANK_SCENE := preload("res://scenes/console/sir_fish_tank.tscn")
 @onready var retry_button: Button = $Panel/Layout/RetryButton
 
 func _ready() -> void:
-	_add_fish_tank()
 	retry_button.pressed.connect(func() -> void:
 		hide()
 		retry_pressed.emit())
 	hide()
-
-## Sir Fish at 2x scale at the top of the panel, already holding slump or
-## triumph. He is the first thing the player sees on this screen (spec 18.2).
-func _add_fish_tank() -> void:
-	var layout := $Panel/Layout as VBoxContainer
-	var tank = FISH_TANK_SCENE.instantiate()
-	tank.name = "SummaryFish"
-	tank.custom_minimum_size = Vector2(328, 328)
-	tank.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	layout.add_child(tank)
-	layout.move_child(tank, 0)
 
 func present(victory: bool) -> void:
 	show()
@@ -62,52 +55,36 @@ func present(victory: bool) -> void:
 
 	_build_stats()
 
+## Fills in the authored rows and plays them in one at a time.
+##
+## The slot-win PERCENTAGE is deliberately absent (spec 18.2 / 17.8 / Q24). At
+## the ~20 spins of a short run, one sigma is about 11 points, so a perfectly
+## healthy machine can print "33%" - and a player reading that concludes it is
+## rigged against them. The raw count goes here; the live counter lives in the
+## console; the 50% check lives in test_slot_odds, where the sample makes it mean
+## something.
 func _build_stats() -> void:
-	for child: Node in stat_rows.get_children():
-		child.queue_free()
 	var stats: Dictionary = GameState.run_stats
-	var spins := int(stats["slot_spins"])
-	var wins := int(stats["slot_wins"])
+	var values := {
+		&"EncountersCleared": str(int(stats["encounters_cleared"])),
+		&"RunTime": _format_time(float(stats["run_time"])),
+		&"GoldEarned": str(int(stats["gold_earned"])),
+		&"GoldSpent": str(int(stats["gold_spent"])),
+		&"GoldOnHand": str(GameState.gold),
+		&"DamageDealt": str(int(stats["damage_dealt"])),
+		&"DamageTaken": str(int(stats["damage_taken"])),
+		&"SlotSpins": str(int(stats["slot_spins"])),
+		&"SlotWins": str(int(stats["slot_wins"])),
+		&"UpgradesBought": str(int(stats["upgrades_bought"])),
+		&"ItemsFound": str(int(stats["items_found"])),
+		&"ItemsSold": str(int(stats["items_sold"])),
+	}
 
-	# The slot-win PERCENTAGE is deliberately absent (spec 18.2 / 17.8 / Q24). At
-	# the ~20 spins of a short run, one sigma is about 11 points, so a perfectly
-	# healthy machine can print "33%" - and a player reading that concludes it is
-	# rigged against them. The raw count goes here; the live counter lives in the
-	# console; the 50% check lives in test_slot_odds, where the sample makes it mean
-	# something.
-	var rows: Array = [
-		["Encounters cleared", str(int(stats["encounters_cleared"]))],
-		["Run time", _format_time(float(stats["run_time"]))],
-		["Gold earned", str(int(stats["gold_earned"]))],
-		["Gold spent", str(int(stats["gold_spent"]))],
-		["Gold on hand", str(GameState.gold)],
-		["Damage dealt", str(int(stats["damage_dealt"]))],
-		["Damage taken", str(int(stats["damage_taken"]))],
-		["Slot spins", str(spins)],
-		["Slot wins", str(wins)],
-		["Upgrades bought", str(int(stats["upgrades_bought"]))],
-		["Items found", str(int(stats["items_found"]))],
-		["Items sold", str(int(stats["items_sold"]))],
-	]
-
-	for i: int in range(rows.size()):
-		var row := HBoxContainer.new()
-		row.custom_minimum_size = Vector2(0, 54)
-		stat_rows.add_child(row)
-
-		var label := Label.new()
-		label.text = String(rows[i][0])
-		label.add_theme_font_size_override("font_size", 38)
-		label.add_theme_color_override("font_color", Tuning.C_TEXT_DIM)
-		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		row.add_child(label)
-
-		var value := Label.new()
-		value.text = String(rows[i][1])
-		value.add_theme_font_size_override("font_size", 38)
-		value.add_theme_color_override("font_color", Tuning.C_TEXT)
-		value.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-		row.add_child(value)
+	var i := 0
+	for row: Control in stat_rows.get_children():
+		var value_label := row.get_node_or_null("Value") as Label
+		if value_label != null and values.has(row.name):
+			value_label.text = String(values[row.name])
 
 		# Reveal one at a time, 0.08s apart, sliding in from the left.
 		row.modulate.a = 0.0
@@ -116,6 +93,7 @@ func _build_stats() -> void:
 		tw.tween_property(row, "modulate:a", 1.0, 0.2).set_delay(0.08 * float(i))
 		tw.tween_property(row, "position:x", 0.0, 0.25).set_delay(0.08 * float(i)) \
 			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+		i += 1
 
 static func _format_time(seconds: float) -> String:
 	var total := int(round(seconds))

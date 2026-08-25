@@ -15,28 +15,21 @@ extends PanelContainer
 ## (GoldPlate/DepthPlate) rather than bare labels sitting directly in
 ## ResourceRow, and depth is two labels (caption + numeral) instead of one
 ## string, so the two can carry different font sizes.
+##
+## [screen-corner variant] The bonus row moved out of this panel entirely -
+## it now lives in scenes/overlay/bonus_panel.gd, docked to the top-right of
+## the screen instead of the console. See that file for the bonus display.
 
 const NUMBER_SCENE := preload("res://scenes/overlay/damage_number.tscn")
 
 @onready var gold_label: Label = $Layout/ResourceRow/GoldPlate/GoldLabel
-@onready var bonus_row: Control = $Layout/BonusRow
-@onready var bonus_strip = $Layout/BonusRow/BonusStrip   # BonusStrip (untyped: custom API)
 
 func _ready() -> void:
 	EventBus.gold_changed.connect(_on_gold_changed)
 	#EventBus.run_started.connect(_update_depth)
-	EventBus.run_started.connect(_update_bonus_row)
-	EventBus.party_bonuses_changed.connect(func(_b: Dictionary) -> void: _update_bonus_row())
 	#EventBus.encounter_started.connect(func(_index: int, _def: EncounterDef) -> void: _update_depth())
 	_update_gold()
 	#_update_depth()
-	_update_bonus_row()
-
-## The bonus row appears only when the party actually has bonuses. See
-## BonusStrip.has_bonuses() for why the empty state is not shown here.
-func _update_bonus_row() -> void:
-	bonus_strip.refresh()
-	bonus_row.visible = bonus_strip.has_bonuses()
 
 func _update_gold() -> void:
 	gold_label.text = str(GameState.gold)

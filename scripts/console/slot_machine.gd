@@ -21,6 +21,7 @@ var _home_position: Vector2
 @onready var cabinet: OrnateFrame = $Cabinet
 @onready var payline: Payline = $Payline
 @onready var reel_grid: ReelGrid = $ReelGrid
+@onready var result_frame: ResultFrame = $ResultFrame
 @onready var banner: Label = $Banner
 @onready var confetti: GPUParticles2D = $Confetti
 
@@ -42,6 +43,7 @@ func _ready() -> void:
 	_home_position = position
 	_reels = [$ReelWindow0/Reel, $ReelWindow1/Reel, $ReelWindow2/Reel]
 	banner.modulate.a = 0.0
+	result_frame.modulate.a = 0.0
 	_enter_attract(true)
 	EventBus.combat_started.connect(_on_combat_started)
 	EventBus.combat_ended.connect(_on_combat_ended)
@@ -81,6 +83,13 @@ func apply_height(h: float) -> void:
 
 	payline.position = Vector2(WINDOW_INSET, mid - PAYLINE_BAND * 0.5)
 	payline.size = Vector2(window_w, PAYLINE_BAND)
+	# Exactly the reel window's middle row - the same span reel_grid.gd used to
+	# rule off with its two horizontal dividers (see that file and
+	# result_frame.gd) - so the result banner's frame lines up with the row the
+	# payline actually reads.
+	var row_h := window_h / 3.0
+	result_frame.position = Vector2(WINDOW_INSET, mid - row_h * 0.5)
+	result_frame.size = Vector2(window_w, row_h)
 	banner.size = Vector2(1080, h)
 	scale = Vector2.ONE * Tuning.SLOT_CABINET_SCALE
 	# The shake tween returns here, and the console moves us before it calls this.
@@ -261,6 +270,15 @@ func _celebrate(symbol: int, count: int) -> void:
 	btw.tween_interval(1.0)
 	btw.tween_property(banner, "modulate:a", 0.0, 0.25)
 
+	# The frame and its blackout fade in lockstep with the banner text it
+	# surrounds - two independent tweens rather than one shared tween because
+	# the frame has no text to swap in, just an alpha to match.
+	result_frame.modulate.a = 0.0
+	var ftw := create_tween()
+	ftw.tween_property(result_frame, "modulate:a", 1.0, 0.12)
+	ftw.tween_interval(1.0)
+	ftw.tween_property(result_frame, "modulate:a", 0.0, 0.25)
+
 	if count >= 3:
 		confetti.restart()
 		confetti.emitting = true
@@ -309,7 +327,7 @@ func _pay_lightning(count: int) -> void:
 	for enemy: Combatant in targets:
 		if not is_instance_valid(enemy) or not enemy.is_alive():
 			continue
-		# The priest's bolt builder, reused - but WITHOUT the darkening pass. The
+		# The mage's bolt builder, reused - but WITHOUT the darkening pass. The
 		# slot fires far too often to darken the screen for (spec 16.5).
 		BattleVfx.lightning_bolt(director, enemy, Tuning.C_LIGHTNING)
 		var rolled := maxi(1, int(round(float(base) * RNG.randf_range(

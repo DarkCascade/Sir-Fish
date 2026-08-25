@@ -36,7 +36,7 @@ window/handheld/orientation=1
 
 [editor_plugins]
 
-enabled=PackedStringArray("res://addons/godot_mcp/plugin.cfg")
+enabled=PackedStringArray("res://addons/ai_dev_station/plugin.cfg", "res://addons/godot_mcp/plugin.cfg", "res://addons/script-ide/plugin.cfg")
 
 [gui]
 

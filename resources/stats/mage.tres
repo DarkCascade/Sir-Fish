@@ -4,8 +4,8 @@
 
 [resource]
 script = ExtResource("1_stats")
-id = &"priest"
-display_name = "Priest"
+id = &"mage"
+display_name = "Mage"
 is_hero = true
 max_hp = 70
 attack_cooldown = 2.0
@@ -17,4 +17,4 @@ attack_style = 2
 model_scale = 0.95
 body_color = Color(0.431373, 0.352941, 0.658824, 1)
 accent_color = Color(0.768627, 0.709804, 0.992157, 1)
-scene_path = "res://scenes/battle/heroes/priest.tscn"
+scene_path = "res://scenes/battle/heroes/mage.tscn"

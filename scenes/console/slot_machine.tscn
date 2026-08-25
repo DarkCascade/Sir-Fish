@@ -3,8 +3,9 @@
 [ext_resource type="Script" uid="uid://yt0r63qht4yd" path="res://scripts/console/slot_machine.gd" id="1_slot"]
 [ext_resource type="PackedScene" path="res://scenes/console/slot_reel.tscn" id="2_reel"]
 [ext_resource type="Script" uid="uid://bwut72okvld1h" path="res://scripts/console/ornate_frame.gd" id="3_frame"]
-[ext_resource type="Script" path="res://scripts/console/reel_grid.gd" id="4_grid"]
-[ext_resource type="Script" path="res://scripts/console/payline.gd" id="5_payline"]
+[ext_resource type="Script" uid="uid://uniyv7k1qggt" path="res://scripts/console/reel_grid.gd" id="4_grid"]
+[ext_resource type="Script" uid="uid://d24qset1vjr63" path="res://scripts/console/payline.gd" id="5_payline"]
+[ext_resource type="Script" uid="uid://ck1fxe3flnu8s" path="res://scripts/console/result_frame.gd" id="6_result"]
 
 [sub_resource type="ParticleProcessMaterial" id="confetti_mat"]
 emission_shape = 3
@@ -29,7 +30,7 @@ mouse_filter = 2
 script = ExtResource("1_slot")
 
 [node name="Cabinet" type="Control" parent="." unique_id=637650508]
-layout_mode = 0
+anchors_preset = 0
 offset_left = 24.0
 offset_top = 12.0
 offset_right = 1056.0
@@ -41,7 +42,6 @@ corner_radius = 30.0
 diamond_size = 26.0
 inset_well = true
 vines = true
-vine_count = 3
 vine_seed = 23
 
 [node name="ReelWindow0" type="ColorRect" parent="." unique_id=674027282]
@@ -84,7 +84,7 @@ color = Color(0.043137, 0.117647, 0.109804, 1)
 anchors_preset = 0
 
 [node name="ReelGrid" type="Control" parent="." unique_id=674027283]
-layout_mode = 0
+anchors_preset = 0
 offset_left = 58.0
 offset_top = 48.0
 offset_right = 1022.0
@@ -93,13 +93,21 @@ mouse_filter = 2
 script = ExtResource("4_grid")
 
 [node name="Payline" type="Control" parent="." unique_id=1951106064]
-layout_mode = 0
+anchors_preset = 0
 offset_left = 58.0
 offset_top = 200.0
 offset_right = 1022.0
 offset_bottom = 260.0
 mouse_filter = 2
 script = ExtResource("5_payline")
+
+[node name="ResultFrame" type="Control" parent="." unique_id=325995369]
+modulate = Color(1, 1, 1, 0)
+anchors_preset = 0
+offset_right = 1080.0
+offset_bottom = 460.0
+mouse_filter = 2
+script = ExtResource("6_result")
 
 [node name="Banner" type="Label" parent="." unique_id=325995368]
 layout_mode = 0

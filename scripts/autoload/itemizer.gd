@@ -6,7 +6,7 @@ const WEAPON_TYPES := {
 	&"sword":  { "base_value": 22, "classes": [&"warrior"], "nouns": ["Sword", "Blade", "Saber", "Longsword"] },
 	&"bow":    { "base_value": 20, "classes": [&"ranger"],  "nouns": ["Bow", "Longbow", "Shortbow", "Recurve"] },
 	&"dagger": { "base_value": 18, "classes": [&"ranger"],  "nouns": ["Dagger", "Knife", "Dirk", "Shiv"] },
-	&"staff":  { "base_value": 25, "classes": [&"priest"],  "nouns": ["Staff", "Rod", "Cane", "Scepter"] },
+	&"staff":  { "base_value": 25, "classes": [&"mage"],    "nouns": ["Staff", "Rod", "Cane", "Scepter"] },
 }
 
 const ADJECTIVES := [

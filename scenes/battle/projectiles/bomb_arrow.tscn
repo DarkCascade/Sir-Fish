@@ -1,7 +1,147 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene format=3]
 
-[ext_resource type="Script" path="res://scripts/battle/projectile.gd" id="1_proj"]
+[ext_resource type="PackedScene" path="res://scenes/battle/projectiles/arrow.tscn" id="1_arrow"]
+[ext_resource type="Shader" path="res://assets/shaders/cel_shade.gdshader" id="2_cel"]
+[ext_resource type="Shader" path="res://assets/shaders/outline.gdshader" id="3_outline"]
 
-[node name="BombArrow" type="Node3D"]
-script = ExtResource("1_proj")
+; Inherits arrow.tscn (shaft / fletching / tip) and adds the bomb's own parts,
+; so a change to the arrow itself lands on both projectiles. Everything here is
+; inspector-editable: the powder bag, the fuse and its spark, the fuse light,
+; and the trail.
+;
+; Spec 9.6: the plain arrow deliberately has NO trail - "trail or no trail" is
+; what tells the two apart in flight, which is the whole point of the telegraph.
+; Do not add one to arrow.tscn.
+
+[sub_resource type="ShaderMaterial" id="outline_mat"]
+shader = ExtResource("3_outline")
+shader_parameter/outline_color = Color(0.141176, 0.117647, 0.078431, 1)
+shader_parameter/outline_width = 0.01
+shader_parameter/alpha = 1.0
+
+[sub_resource type="ShaderMaterial" id="bag_mat"]
+next_pass = SubResource("outline_mat")
+shader = ExtResource("2_cel")
+shader_parameter/albedo = Color(0.352941, 0.203922, 0.098039, 1)
+shader_parameter/band_count = 3.0
+shader_parameter/shadow_tint = Color(0.45, 0.52, 0.78, 1)
+shader_parameter/rim_amount = 0.35
+shader_parameter/rim_color = Color(1, 1, 1, 1)
+shader_parameter/emission_color = Color(0, 0, 0, 1)
+shader_parameter/emission_strength = 0.0
+shader_parameter/alpha = 1.0
+
+[sub_resource type="ShaderMaterial" id="fuse_mat"]
+next_pass = SubResource("outline_mat")
+shader = ExtResource("2_cel")
+shader_parameter/albedo = Color(0.431373, 0.352941, 0.658824, 1)
+shader_parameter/band_count = 3.0
+shader_parameter/shadow_tint = Color(0.45, 0.52, 0.78, 1)
+shader_parameter/rim_amount = 0.35
+shader_parameter/rim_color = Color(1, 1, 1, 1)
+shader_parameter/emission_color = Color(0, 0, 0, 1)
+shader_parameter/emission_strength = 0.0
+shader_parameter/alpha = 1.0
+
+[sub_resource type="SphereMesh" id="bag_mesh"]
+radius = 0.14
+height = 0.28
+radial_segments = 10
+rings = 6
+
+[sub_resource type="CylinderMesh" id="fuse_mesh"]
+top_radius = 0.012
+bottom_radius = 0.012
+height = 0.14
+radial_segments = 5
+
+[sub_resource type="StandardMaterial3D" id="particle_mat"]
+transparency = 1
+shading_mode = 0
+vertex_color_use_as_albedo = true
+
+[sub_resource type="BoxMesh" id="spark_mesh"]
+size = Vector3(0.04, 0.04, 0.04)
+
+[sub_resource type="Gradient" id="spark_grad"]
+colors = PackedColorArray(0.831373, 0.658824, 0.262745, 1, 0.894118, 0.282353, 0.309804, 0)
+
+[sub_resource type="GradientTexture1D" id="spark_ramp"]
+gradient = SubResource("spark_grad")
+
+[sub_resource type="ParticleProcessMaterial" id="spark_proc"]
+emission_shape = 0
+direction = Vector3(0, 1, 0)
+spread = 45.0
+initial_velocity_min = 0.3
+initial_velocity_max = 0.8
+gravity = Vector3(0, -0.5, 0)
+scale_min = 0.4
+scale_max = 0.8
+color_ramp = SubResource("spark_ramp")
+
+[sub_resource type="BoxMesh" id="trail_mesh"]
+size = Vector3(0.06, 0.06, 0.06)
+
+[sub_resource type="Gradient" id="trail_grad"]
+offsets = PackedFloat32Array(0, 0.5, 1)
+colors = PackedColorArray(0.894118, 0.282353, 0.309804, 1, 0.831373, 0.658824, 0.262745, 1, 0.831373, 0.658824, 0.262745, 0)
+
+[sub_resource type="GradientTexture1D" id="trail_ramp"]
+gradient = SubResource("trail_grad")
+
+[sub_resource type="Curve" id="trail_curve"]
+_data = [Vector2(0, 1), 0.0, 0.0, 0, 0, Vector2(1, 0), 0.0, 0.0, 0, 0]
+point_count = 2
+
+[sub_resource type="CurveTexture" id="trail_scale"]
+curve = SubResource("trail_curve")
+
+[sub_resource type="ParticleProcessMaterial" id="trail_proc"]
+emission_shape = 0
+direction = Vector3(0, 1, 0)
+spread = 25.0
+initial_velocity_min = 0.05
+initial_velocity_max = 0.25
+gravity = Vector3(0, -0.6, 0)
+scale_min = 1.0
+scale_max = 1.0
+scale_curve = SubResource("trail_scale")
+color_ramp = SubResource("trail_ramp")
+
+[node name="BombArrow" instance=ExtResource("1_arrow")]
 is_bomb = true
+
+[node name="Bag" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.18, 0, 0)
+cast_shadow = 0
+mesh = SubResource("bag_mesh")
+material_override = SubResource("bag_mat")
+
+[node name="Fuse" type="MeshInstance3D" parent="."]
+transform = Transform3D(0.819152, -0.573576, 0, 0.573576, 0.819152, 0, 0, 0, 1, 0.22, 0.16, 0)
+cast_shadow = 0
+mesh = SubResource("fuse_mesh")
+material_override = SubResource("fuse_mat")
+
+[node name="FuseSpark" type="GPUParticles3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.26, 0.23, 0)
+material_override = SubResource("particle_mat")
+amount = 12
+lifetime = 0.25
+process_material = SubResource("spark_proc")
+draw_pass_1 = SubResource("spark_mesh")
+
+[node name="BombTrail" type="GPUParticles3D" parent="."]
+material_override = SubResource("particle_mat")
+amount = 40
+lifetime = 0.45
+local_coords = false
+process_material = SubResource("trail_proc")
+draw_pass_1 = SubResource("trail_mesh")
+
+[node name="FuseLight" type="OmniLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.26, 0.23, 0)
+light_color = Color(0.831373, 0.658824, 0.262745, 1)
+light_energy = 1.5
+omni_range = 1.2

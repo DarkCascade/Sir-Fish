@@ -10,15 +10,15 @@ extends RefCounted
 ## their .glb ships. What remains here is per-character work the .glb cannot
 ## carry: the two orcs share one asset and are coloured apart at runtime, the
 ## shadow monster's body needs its translucent smoke material, and both
-## KayKit heroes (the ranger's rogue, the priest's mage) ship every prop
-## variant switched on at once and need the surplus turned off - the priest's
+## KayKit heroes (the ranger's rogue, the mage's own kit) ship every prop
+## variant switched on at once and need the surplus turned off - the mage's
 ## also needs an emissive material its charge animation drives, since there is
 ## no separate orb submesh to carry it.
 
 static func build(rig: Node3D, stats: CombatantStats) -> void:
 	# The shadow monster's body needs its translucent smoke material (spec
 	# 8.6), which the .glb does not carry. Same art-construction exemption
-	# category as the priest's staff-glow branch below (spec 4.1).
+	# category as the mage's staff-glow branch below (spec 4.1).
 	if stats.id == &"shadow_monster":
 		_finalize_shadow(rig, stats)
 		return
@@ -27,8 +27,8 @@ static func build(rig: Node3D, stats: CombatantStats) -> void:
 		_finalize_ranger(rig)
 		return
 
-	if stats.id == &"priest":
-		_finalize_priest(rig)
+	if stats.id == &"mage":
+		_finalize_mage(rig)
 		return
 
 	# The orc pair shares one mesh, one armature and one action set (spec
@@ -43,9 +43,9 @@ static func build(rig: Node3D, stats: CombatantStats) -> void:
 		_finalize_orc(rig, stats)
 		return
 
-# --- priest -------------------------------------------------------------
+# --- mage -----------------------------------------------------------------
 
-## The KayKit mage asset (see priest.tscn) ships a one-handed wand alongside
+## The KayKit mage asset (see mage.tscn) ships a one-handed wand alongside
 ## the two-handed staff, and a closed spellbook alongside an open one, all
 ## visible="true" at export - same trim as the ranger's rogue (see
 ## _finalize_ranger). The staff is the natural read for "swings the staff up
@@ -59,7 +59,7 @@ static func build(rig: Node3D, stats: CombatantStats) -> void:
 ## the baseline material once - same idempotency guard as the orc branch:
 ## checking the existing material rather than reading state back off a track
 ## the FIRST setup() call already wrote.
-static func _finalize_priest(rig: Node3D) -> void:
+static func _finalize_mage(rig: Node3D) -> void:
 	for part_name: String in ["1H_Wand", "Spellbook_open"]:
 		var mi := _find_by_name(rig, part_name) as MeshInstance3D
 		if mi != null:
@@ -71,7 +71,7 @@ static func _finalize_priest(rig: Node3D) -> void:
 		if not (existing is ShaderMaterial
 				and (existing as ShaderMaterial).get_shader_parameter("emission_strength") != null
 				and (existing as ShaderMaterial).get_shader_parameter("emission_strength") > 0.0):
-			staff.material_override = CelMaterials.cel(Tuning.C_PRIEST_ACCENT, Tuning.C_PRIEST_ACCENT, 1.5)
+			staff.material_override = CelMaterials.cel(Tuning.C_MAGE_ACCENT, Tuning.C_MAGE_ACCENT, 1.5)
 
 # --- ranger -------------------------------------------------------------
 

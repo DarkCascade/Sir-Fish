@@ -2,9 +2,10 @@ extends Control
 ## The party's aggregate item bonuses, drawn procedurally (spec 17.6).
 ##
 ## This is the ONLY place a player can see what their inventory is doing, so it
-## appears both in the console's upgrade tray and in the shop modal (spec 15.1).
-## In the shop it is what makes selling a real decision instead of free money: the
-## player can see exactly what leaves the party with the item.
+## appears both in the screen-corner overlay (bonus_panel.gd) and in the shop
+## modal (spec 15.1). In the shop it is what makes selling a real decision
+## instead of free money: the player can see exactly what leaves the party
+## with the item.
 ##
 ## Six entries (spec 17.6, V9): five numeric-bonus glyphs, each omitted when its
 ## value is zero, plus a sixth "element chip" shown only when the party carries
@@ -15,8 +16,10 @@ extends Control
 ## element chip last) so the strip does not reshuffle as it fills.
 
 ## [presentation redesign] Was 20/10/18/22 when this lived as a thin strip
-## atop the upgrade tray (spec 17.6). One instance now, enlarged, in
-## status_panel.tscn's ResourceRow - the room the hidden depth plate freed.
+## atop the upgrade tray (spec 17.6), then lived enlarged in status_panel's
+## BonusRow. [screen-corner variant] Moved again, out of the console
+## entirely, into a top-right screen overlay (bonus_panel.gd) - see `vertical`
+## below for the layout that move needed.
 const GLYPH := 38.0
 const GAP := 14.0
 const PAD := 26.0
@@ -38,6 +41,12 @@ static var CHEVRON := PackedVector2Array([
 	Vector2(0.50, 0.32), Vector2(0.28, 0.52), Vector2(0.08, 0.52),
 ])
 
+## [screen-corner variant] When true, entries stack top-to-bottom (glyph then
+## text, left-aligned) instead of the default centred horizontal row. Used by
+## the top-right screen overlay so the panel can sit in a narrow corner
+## instead of spanning the console's full width.
+@export var vertical: bool = false
+
 var _bonuses: Dictionary = {}
 
 func _ready() -> void:
@@ -53,14 +62,19 @@ func _on_bonuses_changed(_new_bonuses: Dictionary) -> void:
 
 func refresh() -> void:
 	_bonuses = GameState.party_bonuses()
+	if vertical:
+		var rows := _visible_entries().size()
+		custom_minimum_size = Vector2(custom_minimum_size.x, _vertical_row_h() * maxf(rows, 1) + PAD)
+		size = custom_minimum_size
 	queue_redraw()
 
-## [ui-project-longshot] Whether this strip has anything to say. status_panel
-## uses it to hide the whole bonus row rather than let it sit there reading
-## "No party bonuses" - the concept board has no such row, and a permanently
-## visible empty strip is the loudest thing on screen that carries no
-## information. The shop's copy of this strip keeps the empty-state text,
-## where the player has gone looking for it on purpose.
+## [ui-project-longshot] Whether this strip has anything to say. The
+## screen-corner panel (bonus_panel.gd) uses it to hide itself entirely
+## rather than sit there reading "No party bonuses" - the concept board has
+## no such element, and a permanently visible empty panel is the loudest
+## thing on screen that carries no information. The shop's copy of this
+## strip keeps the empty-state text, where the player has gone looking for
+## it on purpose.
 func has_bonuses() -> bool:
 	return not _visible_entries().is_empty()
 
@@ -70,11 +84,20 @@ func _draw() -> void:
 	var font := get_theme_default_font()
 	var entries := _visible_entries()
 	if entries.is_empty():
+		# The screen-corner variant is hidden outright by its owner
+		# (has_bonuses()) rather than shown empty, same reasoning as
+		# BonusRow below - see has_bonuses() doc.
+		if vertical:
+			return
 		var empty := "No party bonuses"
 		var w := font.get_string_size(empty, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE).x
 		font.draw_string(get_canvas_item(),
 			Vector2((size.x - w) * 0.5, size.y * 0.5 + FONT_SIZE * 0.35),
 			empty, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE, Color("7A7290"))
+		return
+
+	if vertical:
+		_draw_vertical(entries, font)
 		return
 
 	# Measure first so the whole strip can be centred.
@@ -95,6 +118,25 @@ func _draw() -> void:
 		font.draw_string(get_canvas_item(), Vector2(x, mid + FONT_SIZE * 0.35),
 			text, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE, color)
 		x += font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE).x + PAD
+
+func _vertical_row_h() -> float:
+	return maxf(GLYPH, FONT_SIZE) + GAP
+
+## One glyph + text pair per row, left-aligned and stacked top-to-bottom, for
+## the top-right screen overlay (a narrow column has no room for the
+## horizontal strip's centred layout).
+func _draw_vertical(entries: Array[Dictionary], font: Font) -> void:
+	var row_h := _vertical_row_h()
+	var x := PAD * 0.5
+	var y := PAD * 0.5
+	for e: Dictionary in entries:
+		var color: Color = e.get("color", Tuning.C_TEXT_DIM)
+		_draw_glyph(String(e["id"]), Vector2(x, y), color)
+		var text: String = e["text"]
+		font.draw_string(get_canvas_item(),
+			Vector2(x + GLYPH + GAP * 0.5, y + GLYPH * 0.5 + FONT_SIZE * 0.35),
+			text, HORIZONTAL_ALIGNMENT_LEFT, -1, FONT_SIZE, color)
+		y += row_h
 
 func _visible_entries() -> Array[Dictionary]:
 	var out: Array[Dictionary] = []

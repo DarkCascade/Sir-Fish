@@ -3,55 +3,58 @@ extends Control
 ## and out - out-of-combat time is when the player spends, which is half of why
 ## the slot's attract mode (16.6) exists.
 ##
+## [move-elements-to-editor] The cards are authored instances in
+## upgrade_tray.tscn, not spawned here: their X positions, their top margin and
+## their width are all editor work now. This script only pairs each card with an
+## entry in Upgrades.ORDER (in child order) and re-heights them when the console
+## hands the tray a new height.
+##
 ## Three upgrades at three levels is a vertical slice, not the system. The seam
-## for a fourth is Upgrades.DEFS plus one more button here (spec 22).
+## for a fourth is Upgrades.DEFS plus one more card duplicated in the .tscn
+## (spec 22).
 
-const BUTTON_SCENE := preload("res://scenes/console/upgrade_button.tscn")
 const NUMBER_SCENE := preload("res://scenes/overlay/damage_number.tscn")
 
-## [ui-project-longshot] Three 340-wide cards with 16 between them and 14 either
-## side is exactly 1080 - the board's cards run edge to edge with only a hair
-## of console showing between, not the 12/358 grid that left a visible gutter.
-const BUTTON_X: Array[float] = [14.0, 370.0, 726.0]
-const BUTTON_Y := 24.0
-const BUTTON_WIDTH := 340.0
+## How much shorter than the tray a card is: the authored top margin plus a
+## matching hair of room under the price plate. Read off the first card rather
+## than hardcoded, so nudging the cards down in the editor keeps working.
 const BUTTON_BOTTOM_MARGIN := 8.0
-const DEFAULT_HEIGHT := 358.0
 
-var _buttons: Array = []
+var _buttons: Array[Control] = []
 
-## [presentation redesign] The bonus strip moved to status_panel.tscn's
-## ResourceRow - enlarged, in the space the hidden depth plate freed up -
-## instead of living here in miniature. See bonus_strip.gd's own header for
-## what it shows.
+## [presentation redesign] The bonus strip moved out of here, through
+## status_panel.tscn, to a top-right screen overlay (bonus_panel.gd). See
+## bonus_strip.gd's own header for what it shows.
 func _ready() -> void:
-	for i: int in range(Upgrades.ORDER.size()):
-		var button = BUTTON_SCENE.instantiate()
-		button.name = "UpgradeButton%d" % i
-		add_child(button)
-		button.position = Vector2(BUTTON_X[i], BUTTON_Y)
-		button.size = Vector2(BUTTON_WIDTH, DEFAULT_HEIGHT - BUTTON_Y - BUTTON_BOTTOM_MARGIN)
-		button.setup(Upgrades.ORDER[i])
-		_buttons.append(button)
+	for child: Node in get_children():
+		if child is Control:
+			_buttons.append(child as Control)
+	for i: int in range(mini(_buttons.size(), Upgrades.ORDER.size())):
+		_buttons[i].setup(Upgrades.ORDER[i])
+	# More cards authored than upgrades defined: hide the spares rather than
+	# leave a blank parchment tablet sitting in the tray.
+	for i: int in range(Upgrades.ORDER.size(), _buttons.size()):
+		_buttons[i].hide()
 
 	EventBus.upgrade_purchased.connect(_on_upgrade_purchased)
 
-## Called by the console once it knows how much room the tray gets.
+## Called by the console once it knows how much room the tray gets. Only the
+## HEIGHT is imposed - each card keeps the x/width/top it was authored with.
 func apply_height(h: float) -> void:
-	custom_minimum_size = Vector2(1080, h)
-	size = Vector2(1080, h)
+	custom_minimum_size = Vector2(custom_minimum_size.x, h)
+	size = Vector2(size.x, h)
 	for button: Control in _buttons:
-		button.size = Vector2(BUTTON_WIDTH, h - BUTTON_Y - BUTTON_BOTTOM_MARGIN)
+		button.size = Vector2(button.size.x, h - button.position.y - BUTTON_BOTTOM_MARGIN)
 
-## Floats a -N from the button that was just bought, mirroring the shop's
+## Floats a -N from the card that was just bought, mirroring the shop's
 ## feedback (spec 17.6).
 func _on_upgrade_purchased(id: StringName, _level: int) -> void:
 	var index := Upgrades.ORDER.find(id)
-	if index < 0:
+	if index < 0 or index >= _buttons.size():
 		return
 	var label = NUMBER_SCENE.instantiate()
 	add_child(label)
-	label.position = Vector2(BUTTON_X[index] + 40.0, size.y * 0.5)
+	label.position = Vector2(_buttons[index].position.x + 40.0, size.y * 0.5)
 	# The level has already advanced, so the price paid was the previous cost.
 	var paid := int(round(float(Upgrades.DEFS[id]["base"])
 		* pow(Tuning.UPGRADE_COST_GROWTH, float(Upgrades.level(id) - 1))))

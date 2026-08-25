@@ -2,6 +2,15 @@
 
 [ext_resource type="Script" uid="uid://51k4gi4hxnsl" path="res://scripts/modals/shop_modal.gd" id="1_shop"]
 [ext_resource type="Script" uid="uid://0h1qqxld8x2i" path="res://scripts/console/coin_glyph.gd" id="2_sufjm"]
+[ext_resource type="PackedScene" path="res://scenes/console/bonus_strip.tscn" id="3_bonus"]
+[ext_resource type="PackedScene" path="res://scenes/modals/compare_flyout.tscn" id="4_compare"]
+
+; [move-elements-to-editor] BonusStrip and CompareFlyout were both instanced in
+; _ready() - the strip with a move_child(1) to slide it under the header, the
+; flyout appended last so unhandled input reaches it before this modal does.
+; Both are authored children now, in exactly those positions, so their order and
+; the strip's size are visible and editable here instead of being asserted in
+; code.
 
 ; [ui-project-longshot] Was a flat scarlet square. Nothing else on the board is
 ; scarlet, and a saturated red block in the header pulled harder than the shop's
@@ -100,6 +109,10 @@ theme_override_styles/pressed = SubResource("close_style")
 theme_override_styles/hover = SubResource("close_style")
 text = "X"
 
+[node name="BonusStrip" parent="Panel/Layout" instance=ExtResource("3_bonus")]
+custom_minimum_size = Vector2(880, 34)
+layout_mode = 2
+
 [node name="Tabs" type="TabContainer" parent="Panel/Layout" unique_id=1772781655]
 layout_mode = 2
 size_flags_vertical = 3
@@ -157,3 +170,8 @@ theme_override_font_sizes/font_size = 36
 text = "Nothing to sell."
 horizontal_alignment = 1
 vertical_alignment = 1
+
+; Last child on purpose: _unhandled_input runs bottom-up through the tree, so
+; Escape closes the comparison before it closes the shop underneath it (see
+; compare_flyout.gd).
+[node name="CompareFlyout" parent="." instance=ExtResource("4_compare")]

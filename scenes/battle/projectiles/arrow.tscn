@@ -1,7 +1,95 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene format=3]
 
 [ext_resource type="Script" path="res://scripts/battle/projectile.gd" id="1_proj"]
+[ext_resource type="Shader" path="res://assets/shaders/cel_shade.gdshader" id="2_cel"]
+[ext_resource type="Shader" path="res://assets/shaders/outline.gdshader" id="3_outline"]
+
+; The arrow's three parts are authored here rather than built in _ready(), so
+; the shaft, fletching and tip can be re-proportioned and recoloured in the
+; inspector. bomb_arrow.tscn INHERITS this scene and adds the bag, fuse, spark,
+; trail and fuse light on top - edit the shaft here and both arrows follow.
+;
+; The mesh lies along +X so projectile.gd's rotation.z aims it along the flight
+; path; the root's 1.8 scale is the overhead camera's legibility scale (it was
+; VIEW_SCALE in code). Materials are the cel + ink-outline pair CelMaterials.cel
+; builds, at the 0.010 outline width projectiles use.
+
+[sub_resource type="ShaderMaterial" id="outline_mat"]
+shader = ExtResource("3_outline")
+shader_parameter/outline_color = Color(0.141176, 0.117647, 0.078431, 1)
+shader_parameter/outline_width = 0.01
+shader_parameter/alpha = 1.0
+
+[sub_resource type="ShaderMaterial" id="wood_mat"]
+next_pass = SubResource("outline_mat")
+shader = ExtResource("2_cel")
+shader_parameter/albedo = Color(0.478431, 0.305882, 0.156863, 1)
+shader_parameter/band_count = 3.0
+shader_parameter/shadow_tint = Color(0.45, 0.52, 0.78, 1)
+shader_parameter/rim_amount = 0.35
+shader_parameter/rim_color = Color(1, 1, 1, 1)
+shader_parameter/emission_color = Color(0, 0, 0, 1)
+shader_parameter/emission_strength = 0.0
+shader_parameter/alpha = 1.0
+
+[sub_resource type="ShaderMaterial" id="cloth_mat"]
+next_pass = SubResource("outline_mat")
+shader = ExtResource("2_cel")
+shader_parameter/albedo = Color(0.431373, 0.352941, 0.658824, 1)
+shader_parameter/band_count = 3.0
+shader_parameter/shadow_tint = Color(0.45, 0.52, 0.78, 1)
+shader_parameter/rim_amount = 0.35
+shader_parameter/rim_color = Color(1, 1, 1, 1)
+shader_parameter/emission_color = Color(0, 0, 0, 1)
+shader_parameter/emission_strength = 0.0
+shader_parameter/alpha = 1.0
+
+[sub_resource type="ShaderMaterial" id="iron_mat"]
+next_pass = SubResource("outline_mat")
+shader = ExtResource("2_cel")
+shader_parameter/albedo = Color(0.54902, 0.580392, 0.639216, 1)
+shader_parameter/band_count = 3.0
+shader_parameter/shadow_tint = Color(0.45, 0.52, 0.78, 1)
+shader_parameter/rim_amount = 0.35
+shader_parameter/rim_color = Color(1, 1, 1, 1)
+shader_parameter/emission_color = Color(0, 0, 0, 1)
+shader_parameter/emission_strength = 0.0
+shader_parameter/alpha = 1.0
+
+[sub_resource type="CylinderMesh" id="shaft_mesh"]
+top_radius = 0.018
+bottom_radius = 0.018
+height = 0.55
+radial_segments = 6
+
+[sub_resource type="BoxMesh" id="fletch_mesh"]
+size = Vector3(0.06, 0.1, 0.02)
+
+[sub_resource type="CylinderMesh" id="tip_mesh"]
+top_radius = 0.0
+bottom_radius = 0.035
+height = 0.12
+radial_segments = 6
 
 [node name="Arrow" type="Node3D"]
+transform = Transform3D(1.8, 0, 0, 0, 1.8, 0, 0, 0, 1.8, 0, 0, 0)
 script = ExtResource("1_proj")
 is_bomb = false
+
+[node name="Shaft" type="MeshInstance3D" parent="."]
+transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0)
+cast_shadow = 0
+mesh = SubResource("shaft_mesh")
+material_override = SubResource("wood_mat")
+
+[node name="Fletch" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.24, 0, 0)
+cast_shadow = 0
+mesh = SubResource("fletch_mesh")
+material_override = SubResource("cloth_mat")
+
+[node name="Tip" type="MeshInstance3D" parent="."]
+transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, 0.32, 0, 0)
+cast_shadow = 0
+mesh = SubResource("tip_mesh")
+material_override = SubResource("iron_mat")

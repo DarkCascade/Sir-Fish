@@ -36,13 +36,17 @@ var state: StringName = &"idle"
 
 var _anim: AnimationPlayer
 var _alarm_ready_at: float = 0.0
-var _bubbles: GPUParticles3D
+
+## [move-elements-to-editor] The bubble burst is an authored GPUParticles3D in
+## sir_fish_tank.tscn (it was assembled by sir_fish_rig.build_bubbles()), so its
+## count, colour ramp and drift are inspector work.
+@onready var _bubbles: GPUParticles3D = $Bubbles
 
 ## [M8a] The modelled, rigged fish - res://assets/meshes/sir_fish.glb, swapped
 ## in as a child of this node (sir_fish_tank.tscn). Its AnimationPlayer
 ## carries the seven clips authored in Blender (spec 23.5); this script only
-## reassigns materials and adds the bubble burst, neither of which survives
-## the glTF round-trip.
+## turns off shadow casting on its meshes, which does not survive the glTF
+## round-trip.
 const MODEL_PATH := "Model"
 
 func _ready() -> void:
@@ -50,8 +54,6 @@ func _ready() -> void:
 	RIG.reassign_materials(model)
 	_anim = model.get_node("AnimationPlayer") as AnimationPlayer
 	_anim.animation_finished.connect(_on_animation_finished)
-	_bubbles = RIG.build_bubbles()
-	add_child(_bubbles)
 
 	EventBus.slot_payout.connect(_on_slot_payout)
 	EventBus.upgrade_purchased.connect(_on_upgrade_purchased)

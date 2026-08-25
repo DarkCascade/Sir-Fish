@@ -12,7 +12,7 @@ signal died(c: Combatant)
 const SPECIAL_FLASH_COLORS := {
 	&"warrior": Tuning.C_DEFEND,   # defend blue
 	&"ranger": Tuning.C_GOLD,      # bomb-arrow gold
-	&"priest": Tuning.C_HEAL,      # heal green
+	&"mage": Tuning.C_HEAL,        # heal green
 }
 
 @export var stats: CombatantStats
@@ -50,6 +50,13 @@ var _home_position: Vector3 = Vector3.ZERO
 ## True between the outbound blink and the return one, so death and the
 ## animation-finished handler both know there is a trip to unwind.
 var _blinked: bool = false
+## Count of in-flight projectiles/bolts currently targeting this combatant
+## (spec: a combatant must not start its own attack - especially a teleport
+## strike - while an attack already aimed at it hasn't landed yet, since the
+## projectile tracks its target's live position and would otherwise chase it
+## into the enemy rank). Melee needs no such tracking: it resolves within the
+## attacker's own turn, which the turn queue already serialises.
+var incoming_attacks: int = 0
 
 @onready var visual: Node3D = $Visual
 @onready var rig: Node3D = $Visual/Rig
@@ -84,6 +91,7 @@ func setup(s: CombatantStats, starting_hp: int = -1) -> void:
 	apply_party_bonuses()
 	_home_position = global_position
 	_blinked = false
+	incoming_attacks = 0
 	visual.visible = true
 	# [overworld prototype] Facing is a direction on the ground plane now, not
 	# a choice between two. Heroes face up the run axis, enemies back down it,
@@ -137,6 +145,19 @@ func cooldown_fraction() -> float:
 	if state == State.ATTACKING:
 		return 0.0
 	return clampf(cooldown_remaining / maxf(stats.attack_cooldown, 0.0001), 0.0, 1.0)
+
+## True while a projectile/bolt is still travelling toward this combatant.
+## BattleDirector holds this combatant's own turn until it clears (see
+## _advance_turn_queue / request_turn), which can mean the incoming hit kills
+## it before it ever gets to act.
+func is_expecting_attack() -> bool:
+	return incoming_attacks > 0
+
+func begin_incoming_attack() -> void:
+	incoming_attacks += 1
+
+func end_incoming_attack() -> void:
+	incoming_attacks = maxi(0, incoming_attacks - 1)
 
 # --- per-frame --------------------------------------------------------------
 
@@ -222,7 +243,7 @@ func _anim_impact() -> void:
 	if pending != null:
 		pending.resolve(self)
 
-## Priest only - the charge/telegraph beat before the bolt lands.
+## Mage only - the charge/telegraph beat before the bolt lands.
 func _anim_charge() -> void:
 	if pending != null:
 		pending.charge(self)

@@ -4,8 +4,8 @@ extends Node
 
 const STATS_DIR := "res://resources/stats/"
 
-## Party order is fixed left-to-right: Priest, Ranger, Warrior (spec 7.1).
-const PARTY_ORDER: Array[StringName] = [&"priest", &"ranger", &"warrior"]
+## Party order is fixed left-to-right: Mage, Ranger, Warrior (spec 7.1).
+const PARTY_ORDER: Array[StringName] = [&"mage", &"ranger", &"warrior"]
 
 var gold: int = 0
 var inventory: Array[Item] = []
@@ -38,7 +38,7 @@ var run_stats := {
 
 ## [drops] Drops received per hero class this run. Cleared by reset_run().
 ##
-## The goal is COVERAGE, not fairness. A run where the priest never sees a
+## The goal is COVERAGE, not fairness. A run where the mage never sees a
 ## staff is a run where a third of the party is inert once equipping exists, so
 ## a class that is behind is weighted up until it catches up. The weighting is
 ## soft - it changes the odds, it does not rotate a queue - because a guaranteed

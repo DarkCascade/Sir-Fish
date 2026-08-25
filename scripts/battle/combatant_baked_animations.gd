@@ -6,7 +6,7 @@ extends RefCounted
 ##
 ## This is the path for third-party models that arrive with a baked action
 ## library - the KayKit warrior (knight.glb) was the first, joined by the
-## KayKit ranger (rogue.glb) and the KayKit priest (mage.glb). It replaces, for
+## KayKit ranger (rogue.glb) and the KayKit mage (mage.glb). It replaces, for
 ## those characters only, the GDScript-authored clips in
 ## CombatantSkeletonAnimations: those are keyed against the old in-house
 ## 17-bone rig (Root / Arm.R / Thigh.L ...) and cannot address a 41-bone
@@ -14,7 +14,7 @@ extends RefCounted
 ## still on the in-house rig keep using that file unchanged - see
 ## CombatantAnimations.build() for the dispatch order. Every KayKit
 ## Adventurers character shares one animation library regardless of which
-## variant .glb it ships in, so warrior, ranger and priest all draw clips from
+## variant .glb it ships in, so warrior, ranger and mage all draw clips from
 ## the same name pool below even though they are three different files.
 ##
 ## Two things have to be fixed up on the way across, and both are the reason
@@ -42,24 +42,24 @@ extends RefCounted
 ## impact    - time of the _anim_impact call track, omitted for clips that
 ##             resolve nothing.
 ## cast      - time of the _anim_special_cast telegraph flash (spec 9.6).
-## charge    - time of the _anim_charge telegraph call (priest primary only;
+## charge    - time of the _anim_charge telegraph call (mage primary only;
 ##             spec 9.3 / Ability.charge() - gated on stats.telegraphs_primary,
-##             which is only ever true for the priest).
+##             which is only ever true for the mage).
 ## glow_node - path to a MeshInstance3D, RELATIVE TO THE IMPORTED ROOT (not
 ##             just a bare name - the value track needs an exact NodePath, unlike
 ##             CombatantRig's name-search lookups), to drive an emission_strength
 ##             value track on: 1.5 -> 5.0 -> 1.5 across [0.0, 0.30, impact,
 ##             length] (spec 9.3's charge glow). Requires "impact". The
-##             priest's staff is the only user - see
-##             CombatantRig._finalize_priest for the baseline material.
+##             mage's staff is the only user - see
+##             CombatantRig._finalize_mage for the baseline material.
 const CLIPS := {
-	&"priest": {
+	&"mage": {
 		&"idle":    { "clip": "Idle", "length": 1.60, "loop": true },
 		&"run":     { "clip": "Running_A", "length": 0.70, "loop": true },
 		# Spellcast_Shoot's authored 0.93s needs almost no retargeting to reach
 		# either target length, so the cast/release pose survives intact rather
 		# than being visibly sped up or slowed down. Length and impact are the
-		# in-house rig's _priest_cast() numbers unchanged (spec 9.3), so the
+		# in-house rig's _mage_cast() numbers unchanged (spec 9.3), so the
 		# real cycle and every VFX/telegraph timing keyed off them are
 		# unaffected by the model swap.
 		&"attack":  { "clip": "Spellcast_Shoot", "length": 0.95, "loop": false,
@@ -228,7 +228,7 @@ static func _retarget(source: Animation, prefix: String, spec: Dictionary) -> An
 	if spec.has("impact"):
 		_call(a, float(spec["impact"]), &"_anim_impact")
 	if spec.has("glow_node"):
-		# Same curve the in-house priest clip hardcoded: a resting glow that
+		# Same curve the in-house mage clip hardcoded: a resting glow that
 		# charges up through the telegraph and falls back once the beat
 		# resolves (spec 9.3). This is authored fresh, not sourced from the
 		# .glb, so it is built directly in target-time units - nothing here

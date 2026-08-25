@@ -39,7 +39,7 @@ func _ready() -> void:
 	var cases: Array = [
 		["280hp warlord hit for 22", 280, 280, 22],
 		["40hp shadow monster hit for 14", 40, 40, 14],
-		["70hp priest at 35 hit for 10", 70, 35, 10],
+		["70hp mage at 35 hit for 10", 70, 35, 10],
 		["120hp warrior hit for exactly lethal", 120, 120, 120],
 		["80hp ranger overkilled", 80, 12, 50],
 	]

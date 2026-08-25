@@ -1,7 +1,7 @@
 class_name ClassIconGlyph
 extends Control
 ## Class glyph drawn over a hero's icon tile in the party bars (reskin to
-## match the referenced fantasy UI kit): a cross for the priest, a bow for
+## match the referenced fantasy UI kit): a cross for the mage, a bow for
 ## the ranger, a shield for the warrior. Procedurally drawn - no image files,
 ## same approach as status_icon.gd and slot_symbol.gd.
 
@@ -25,7 +25,7 @@ const OUTLINE_WIDTH_FRACTION := 0.08
 
 func _draw() -> void:
 	match kind:
-		&"priest":
+		&"mage":
 			_draw_polygon(SlotSymbol.PLUS, 0.62)
 		&"ranger":
 			_draw_bow()
@@ -48,12 +48,12 @@ func _draw_bow() -> void:
 	var c := size * 0.5
 	var box := minf(size.x, size.y)
 	var radius := box * 0.38
-	var start := deg_to_rad(110.0)
-	var end := deg_to_rad(250.0)
+	var start := deg_to_rad(-70.0)
+	var end := deg_to_rad(70.0)
 	var top := c + Vector2(cos(start), sin(start)) * radius
 	var bottom := c + Vector2(cos(end), sin(end)) * radius
-	var tip := c + Vector2(box * 0.42, 0.0)
-	var nock := c - Vector2(box * 0.30, 0.0)
+	var tip := c - Vector2(box * 0.42, 0.0)
+	var nock := c + Vector2(box * 0.30, 0.0)
 	var wide := box * 0.13
 	var thin := box * 0.07
 
@@ -65,7 +65,7 @@ func _draw_bow() -> void:
 	draw_line(nock, tip, Tuning.C_TEXT, thin, true)
 
 	var head := PackedVector2Array([
-		tip, tip + Vector2(-box * 0.16, -box * 0.12), tip + Vector2(-box * 0.16, box * 0.12),
+		tip, tip + Vector2(box * 0.16, -box * 0.12), tip + Vector2(box * 0.16, box * 0.12),
 	])
 	draw_colored_polygon(head, Tuning.C_TEXT)
 	draw_polyline(_closed(head), Tuning.C_INK, box * OUTLINE_WIDTH_FRACTION, true)

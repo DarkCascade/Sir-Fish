@@ -5,7 +5,6 @@
 [ext_resource type="PackedScene" uid="uid://46oh8n83yecw" path="res://scenes/console/sir_fish_tank.tscn" id="4_pxtvr"]
 [ext_resource type="PackedScene" path="res://scenes/console/party_bars.tscn" id="5_party"]
 [ext_resource type="Script" uid="uid://bwut72okvld1h" path="res://scripts/console/ornate_frame.gd" id="6_frame"]
-[ext_resource type="PackedScene" path="res://scenes/console/bonus_strip.tscn" id="7_bonus"]
 
 [sub_resource type="StyleBoxFlat" id="strip"]
 content_margin_left = 8.0
@@ -31,7 +30,10 @@ theme_override_constants/separation = 6
 [node name="ResourceRow" type="HBoxContainer" parent="Layout" unique_id=731022617]
 custom_minimum_size = Vector2(0, 208)
 layout_mode = 2
-theme_override_constants/separation = 10
+theme_override_constants/separation = 20
+
+[node name="LeftPadding" type="Control" parent="Layout/ResourceRow" unique_id=1377178741]
+layout_mode = 2
 
 [node name="GoldPlate" type="Control" parent="Layout/ResourceRow" unique_id=1133905286]
 custom_minimum_size = Vector2(360, 200)
@@ -99,32 +101,3 @@ layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 4
 size_flags_stretch_ratio = 4.0
-
-[node name="BonusRow" type="Control" parent="Layout" unique_id=1141155526]
-visible = false
-custom_minimum_size = Vector2(1080, 78)
-layout_mode = 2
-mouse_filter = 2
-
-[node name="Frame" type="Control" parent="Layout/BonusRow" unique_id=674434216]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-script = ExtResource("6_frame")
-border = 12.0
-corner_radius = 16.0
-edge_diamonds = false
-
-[node name="BonusStrip" parent="Layout/BonusRow" unique_id=218275764 instance=ExtResource("7_bonus")]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-offset_right = 0.0
-offset_bottom = 0.0
-grow_horizontal = 2
-grow_vertical = 2

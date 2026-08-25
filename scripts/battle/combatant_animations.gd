@@ -18,7 +18,7 @@ const DEG := PI / 180.0
 const IMPACT_DELAYS := {
 	&"warrior":        { "attack": 0.30, "special": 0.25 },
 	&"ranger":         { "attack": 0.30, "special": 0.30 },
-	&"priest":         { "attack": 0.55, "special": 0.40 },
+	&"mage":           { "attack": 0.55, "special": 0.40 },
 	&"shadow_monster": { "attack": 0.28, "special": 0.0 },
 	&"orc_barbarian":  { "attack": 0.42, "special": 0.0 },
 	&"orc_warlord":    { "attack": 0.42, "special": 0.0 },
@@ -139,7 +139,7 @@ static func _shadow_swipe() -> Animation:
 	# nesting the source .glb's own root object one level under the
 	# synthetic scene root that becomes "Model" on instancing - the same
 	# shape CombatantSkeletonAnimations.SKELETON_PATH relies on for every
-	# hero (e.g. "Rig/Model/PriestRig/Skeleton3D").
+	# hero (e.g. "Rig/Model/MageRig/Skeleton3D").
 	_track(a, "Rig/Model/ShadowRig/ShadowBody:blend_shapes/Lunge", [
 		[0.0, 0.0], [0.20, 1.0], [0.36, 0.0],
 	])
