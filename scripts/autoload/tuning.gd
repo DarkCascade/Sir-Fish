@@ -29,15 +29,15 @@ const DAMAGE_NUMBER_SPREAD := 46.0        # [v2] px offset per concurrent number
 const WARRIOR_DEFEND_REDUCTION := 0.50    # incoming damage x (1 - 0.50)
 const WARRIOR_DEFEND_DURATION := 4.0
 const RANGER_BOMB_AOE_MULT := 0.75        # bomb arrow hits every enemy for base_damage x 0.75
-const PRIEST_HEAL_MULT := 1.0             # heal = priest current damage x 1.0
+const MAGE_HEAL_MULT := 1.0               # heal = mage current damage x 1.0
 ## [overworld prototype] Off. Spec 9.3's darkening pass existed to sell a bolt
-## called down out of the sky - the sky dims, then the bolt lands. The priest's
+## called down out of the sky - the sky dims, then the bolt lands. The mage's
 ## primary is an aimed MagicBolt thrown from its hand now, so there is no sky
 ## strike left for the dimming to belong to, and on a bright open field a
 ## half-second drop to 55% brightness across the whole frame reads as the game
 ## glitching rather than as a telegraph. The warning glow on the target, which
 ## is the half of the telegraph that points AT something, still fires.
-const PRIEST_DARKEN_ENABLED := false
+const MAGE_DARKEN_ENABLED := false
 const DAMAGE_VARIANCE := 0.15             # every hit rolls damage x randf_range(0.85, 1.15)
 const SPECIAL_CAST_FLASH_TIME := 0.15     # [v2] universal special-cast telegraph (spec 9.6)
 
@@ -49,7 +49,7 @@ const SPECIAL_CAST_FLASH_TIME := 0.15     # [v2] universal special-cast telegrap
 ## KEEP_WIDTH, so framing is set by where the camera stands, and there is no
 ## squeeze left to tune. Composition now lives in 5.3c below.
 const MAX_ENEMIES := 3
-const PARTY_SIZE := 3                     # priest, ranger, warrior
+const PARTY_SIZE := 3                     # mage, ranger, warrior
 
 # --- 5.3c Overworld field [overworld prototype] -----------------------------
 ## The battle is laid out on the XZ ground plane under an overhead camera, not
@@ -88,14 +88,14 @@ const PARTY_ANCHOR := Vector3(-1.6, 0.0, 3.4)
 ## The party formation, in RUN_DIR's own frame rather than world axes:
 ##   x = across, in units of PARTY_ROW_SPREAD (+ is the party's right)
 ##   y = back,   in units of PARTY_ROW_DEPTH  (+ is further from the enemy)
-## Indexed by hero slot, which is fixed: 0 priest/mage, 1 ranger, 2 warrior.
+## Indexed by hero slot, which is fixed: 0 mage, 1 ranger, 2 warrior.
 ##
 ## Warrior alone in front, mage and ranger flanking behind him. Authoring it as
 ## a table rather than deriving it from a spacing means a new shape is three
 ## numbers, not a formula - and because it is expressed in RUN_DIR's frame it
 ## rotates with the run axis for free.
 const PARTY_FORMATION := [
-	Vector2(-0.5, 1.0),                   # priest / mage - back rank, left
+	Vector2(-0.5, 1.0),                   # mage - back rank, left
 	Vector2(0.5, 1.0),                    # ranger        - back rank, right
 	Vector2(0.0, 0.0),                    # warrior       - front rank, on the axis
 ]
@@ -164,7 +164,7 @@ const TELEPORT_GHOST_FADE := 0.28
 const TELEPORT_RETURN_DELAY := 0.14       # beat spent at the target after impact
 
 # --- 5.3e Magic bolt [overworld prototype] ----------------------------------
-## The priest's primary is an aimed bolt now, not a pillar dropped from the
+## The mage's primary is an aimed bolt now, not a pillar dropped from the
 ## sky. The sky-drop version survives only as the slot machine's payout, which
 ## is a called-down strike and reads correctly as one.
 const MAGIC_BOLT_SPEED := 12.0            # world units/sec
@@ -304,8 +304,8 @@ const C_RANGER_ACCENT := Color("9C6B33")
 ## swatch was hue-shifted to THIS hue (255 degrees), so the model and every
 ## VFX that reads this constant finally agree - before, the constant said
 ## violet while the texture drew a magenta that fought the whole blue palette.
-const C_PRIEST_CLOTH := Color("6E5AA8")
-const C_PRIEST_ACCENT := Color("C4B5FD")
+const C_MAGE_CLOTH := Color("6E5AA8")
+const C_MAGE_ACCENT := Color("C4B5FD")
 const C_ORC_SKIN := Color("6FA83E")
 const C_ORC_IRON := Color("8C94A3")
 const C_SHADOW_BODY := Color("14121A")

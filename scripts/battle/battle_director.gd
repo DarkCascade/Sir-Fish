@@ -28,7 +28,7 @@ var _boss_fight: bool = false
 ## them one at a time via _turn_queue, below. False: a combatant acts the
 ## instant its cooldown expires, same as before turn-based combat existed -
 ## multiple combatants can act simultaneously.
-@export var turn_based_combat: bool = true
+@export var turn_based_combat: bool = false
 
 ## Turn-based combat. Combatants no longer act the instant their cooldown
 ## expires - they request a turn, the director queues requests in the order
@@ -82,7 +82,7 @@ func _roll_drop(c: Combatant) -> void:
 
 # --- party ------------------------------------------------------------------
 
-## Spawns the three heroes into their fixed slots: Priest, Ranger, Warrior,
+## Spawns the three heroes into their fixed slots: Mage, Ranger, Warrior,
 ## left to right (spec 7.1). Called once per run.
 func spawn_party() -> void:
 	clear_party()
@@ -248,6 +248,13 @@ func _process(delta: float) -> void:
 ## turn-based combat existed.
 func request_turn(c: Combatant) -> void:
 	if not turn_based_combat:
+		# A combatant with an arrow/bolt already chasing it must let that attack
+		# land first - see Combatant.is_expecting_attack(). The per-frame loop
+		# calls request_turn() again next frame (cooldown stays expired and
+		# state stays IDLE), so this naturally retries until it clears, or the
+		# combatant dies first.
+		if c.is_expecting_attack():
+			return
 		_take_action(c)
 		return
 	if c == _acting or _turn_queue.has(c):
@@ -263,9 +270,19 @@ func _advance_turn_queue() -> void:
 		_acting = null
 	if _turn_queue.is_empty():
 		return
-	var c: Combatant = _turn_queue.pop_front()
+	var c: Combatant = _turn_queue[0]
 	if not is_instance_valid(c) or not c.is_alive():
+		_turn_queue.pop_front()
 		return
+	# Hold the front of the queue if an attack is already inbound for this
+	# combatant (a ranged/magic shot fired before it was its turn to act - its
+	# own animation and turn-lock end well before the projectile lands). It
+	# must not blink off to strike an enemy while something is still chasing
+	# it home; it waits here, which can mean the incoming hit kills it before
+	# it ever reaches the front of the line uncontested.
+	if c.is_expecting_attack():
+		return
+	_turn_queue.pop_front()
 	_take_action(c)
 	if c.state == Combatant.State.ATTACKING:
 		_acting = c
@@ -296,15 +313,15 @@ func _take_action(c: Combatant) -> void:
 	var use_special: bool = due or c.special_pending
 
 	# Wounded-ally skip rule (spec 4.1 / 10.2, V6). [v3] Data-driven, not an id
-	# check: special_requires_wounded_ally is true only on priest.tres. Applying
+	# check: special_requires_wounded_ally is true only on mage.tres. Applying
 	# this to every special would also suppress the warrior's Defend at full
 	# party HP, which is backwards - Defend is most useful before anyone is
 	# hurt. "Ally" means every living combatant on the caster's own side,
-	# including the caster, so a wounded priest in an otherwise-healthy party
+	# including the caster, so a wounded mage in an otherwise-healthy party
 	# still heals itself.
 	#
 	# v1 decremented action_count so the next action re-tested the same multiple.
-	# That worked but froze the counter: through a healthy stretch the priest's
+	# That worked but froze the counter: through a healthy stretch the mage's
 	# primaries stopped advancing the rhythm, so a heal fired on the very first
 	# action after anyone took a scratch - reactive twitch rather than a cadence
 	# the player can feel. A pending flag lets the counter advance normally AND
@@ -317,7 +334,7 @@ func _take_action(c: Combatant) -> void:
 		c.special_pending = false
 
 	# [v3] special_targets_opponent, not an id check (spec 4.1 / 10.2, V6). The
-	# warrior's Defend and the priest's Heal must still fire when no opponent is
+	# warrior's Defend and the mage's Heal must still fire when no opponent is
 	# alive - during the resolve window after the last enemy (or last hero)
 	# dies. The ranger's bomb arrow is aimed, so it correctly aborts here; bomb
 	# arrow and slot lightning ignore the chosen target at resolution anyway.
@@ -338,7 +355,7 @@ func _random_target_for(c: Combatant) -> Combatant:
 	return pool[RNG.randi_range(0, pool.size() - 1)]
 
 ## [v3] "Ally" is every living combatant on c's own side, including c itself,
-## so a wounded priest in an otherwise-healthy party still heals itself
+## so a wounded mage in an otherwise-healthy party still heals itself
 ## (spec 10.2, V6).
 func _every_living_ally_at_full_hp(c: Combatant) -> bool:
 	var side := living_heroes() if c.is_hero else living_enemies()

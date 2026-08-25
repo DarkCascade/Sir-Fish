@@ -1,6 +1,97 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene format=3]
 
 [ext_resource type="Script" path="res://scripts/battle/treasure_chest.gd" id="1_chest"]
+[ext_resource type="Shader" path="res://assets/shaders/cel_shade.gdshader" id="2_cel"]
+[ext_resource type="Shader" path="res://assets/shaders/outline.gdshader" id="3_outline"]
+
+; The chest's parts are authored here rather than built in _ready(). Body, the
+; four corner straps, the hinged Lid and InteriorGlow are all inspector-
+; editable; treasure_chest.gd only animates them (the lid swings on Lid's own
+; rotation:x, so the hinge is Lid's position - back edge of the body).
+;
+; The coin shower and the radial flash stay in code: both are transient, are
+; spawned in numbers and are tweened away, so there is nothing to author.
+
+[sub_resource type="ShaderMaterial" id="outline_mat"]
+shader = ExtResource("3_outline")
+shader_parameter/outline_color = Color(0.141176, 0.117647, 0.078431, 1)
+shader_parameter/outline_width = 0.018
+shader_parameter/alpha = 1.0
+
+[sub_resource type="ShaderMaterial" id="wood_mat"]
+next_pass = SubResource("outline_mat")
+shader = ExtResource("2_cel")
+shader_parameter/albedo = Color(0.478431, 0.305882, 0.156863, 1)
+shader_parameter/band_count = 3.0
+shader_parameter/shadow_tint = Color(0.45, 0.52, 0.78, 1)
+shader_parameter/rim_amount = 0.35
+shader_parameter/rim_color = Color(1, 1, 1, 1)
+shader_parameter/emission_color = Color(0, 0, 0, 1)
+shader_parameter/emission_strength = 0.0
+shader_parameter/alpha = 1.0
+
+[sub_resource type="ShaderMaterial" id="gold_mat"]
+next_pass = SubResource("outline_mat")
+shader = ExtResource("2_cel")
+shader_parameter/albedo = Color(0.831373, 0.658824, 0.262745, 1)
+shader_parameter/band_count = 3.0
+shader_parameter/shadow_tint = Color(0.45, 0.52, 0.78, 1)
+shader_parameter/rim_amount = 0.35
+shader_parameter/rim_color = Color(1, 1, 1, 1)
+shader_parameter/emission_color = Color(0, 0, 0, 1)
+shader_parameter/emission_strength = 0.0
+shader_parameter/alpha = 1.0
+
+[sub_resource type="BoxMesh" id="body_mesh"]
+size = Vector3(1, 0.62, 0.7)
+
+[sub_resource type="BoxMesh" id="corner_mesh"]
+size = Vector3(0.1, 0.66, 0.1)
+
+[sub_resource type="CylinderMesh" id="lid_mesh"]
+top_radius = 0.35
+bottom_radius = 0.35
+height = 1.0
+radial_segments = 12
 
 [node name="TreasureChest" type="Node3D"]
 script = ExtResource("1_chest")
+
+[node name="Body" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.31, 0)
+mesh = SubResource("body_mesh")
+material_override = SubResource("wood_mat")
+
+[node name="CornerBackLeft" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.46, 0.31, -0.31)
+mesh = SubResource("corner_mesh")
+material_override = SubResource("gold_mat")
+
+[node name="CornerFrontLeft" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.46, 0.31, 0.31)
+mesh = SubResource("corner_mesh")
+material_override = SubResource("gold_mat")
+
+[node name="CornerBackRight" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.46, 0.31, -0.31)
+mesh = SubResource("corner_mesh")
+material_override = SubResource("gold_mat")
+
+[node name="CornerFrontRight" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.46, 0.31, 0.31)
+mesh = SubResource("corner_mesh")
+material_override = SubResource("gold_mat")
+
+[node name="Lid" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.62, -0.35)
+
+[node name="LidMesh" type="MeshInstance3D" parent="Lid"]
+transform = Transform3D(0, 1, 0, -1, 0, 0, 0, 0, 1, 0, 0, 0.35)
+mesh = SubResource("lid_mesh")
+material_override = SubResource("wood_mat")
+
+[node name="InteriorGlow" type="OmniLight3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.4, 0)
+light_color = Color(0.831373, 0.658824, 0.262745, 1)
+light_energy = 0.0
+omni_range = 3.0

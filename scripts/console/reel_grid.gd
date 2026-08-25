@@ -1,15 +1,20 @@
 extends Control
 class_name ReelGrid
 ## [ui-project-longshot] The gold lattice over the reel window: two verticals
-## and two horizontals dividing it into the concept board's 3x3 of cells.
+## dividing it into the concept board's three reel columns.
 ##
 ## The old cabinet separated its reels with 20 px of cabinet-coloured GAP
 ## between three free-floating windows, which reads as three narrow slots side
 ## by side. The board's reel window is one continuous pane of dark glass with
-## thin gold cames laid over it, like a leaded window - the cells are defined
+## thin gold cames laid over it, like a leaded window - the columns are defined
 ## by the lines, not by the space between them. That is a different object, and
 ## it is most of why the board's cabinet reads as a made thing rather than as
 ## three rectangles.
+##
+## This used to also draw two horizontal dividers marking the middle (payline)
+## row, but those have moved to result_frame.gd, which reuses them as the top
+## and bottom rule of the win-result banner instead of a row divider that was
+## visible even when nothing had won (spec 16.4 result framing).
 ##
 ## Drawn over the reel windows and under the payline (see slot_machine.tscn's
 ## child order), so a spinning symbol passes BEHIND the lattice.
@@ -35,8 +40,6 @@ func _draw() -> void:
 			_faded_line(Vector2(x, 0.0), Vector2(x, size.y))
 		else:
 			draw_line(Vector2(x, 0.0), Vector2(x, size.y), Tuning.C_GOLD_DARK, line_width)
-		var y := size.y * float(i) / 3.0
-		draw_line(Vector2(0.0, y), Vector2(size.x, y), Tuning.C_GOLD_DARK, line_width)
 
 ## One vertical came drawn as a short stack of segments whose alpha rises to
 ## the middle - draw_line takes a single colour, so a gradient along a line has

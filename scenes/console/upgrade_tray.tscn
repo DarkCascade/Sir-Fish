@@ -1,6 +1,18 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene format=3]
 
 [ext_resource type="Script" path="res://scripts/console/upgrade_tray.gd" id="1_tray"]
+[ext_resource type="PackedScene" uid="uid://dqhiuamjks4wi" path="res://scenes/console/upgrade_button.tscn" id="2_button"]
+
+; [move-elements-to-editor] The three cards were instanced and positioned in
+; _ready() from a BUTTON_X table. They are authored instances now - drag one and
+; it stays dragged. upgrade_tray.gd only tells each card WHICH upgrade it is
+; (Upgrades.ORDER, in child order) and stretches them to the height the console
+; hands the tray.
+;
+; Three 340-wide cards with 16 between them and 14 either side is exactly 1080 -
+; the board's cards run edge to edge with only a hair of console showing between,
+; not the 12/358 grid that left a visible gutter. A fourth upgrade is one more
+; entry in Upgrades.DEFS plus one more card duplicated here (spec 22).
 
 [node name="UpgradeTray" type="Control"]
 custom_minimum_size = Vector2(1080, 212)
@@ -8,3 +20,21 @@ offset_right = 1080.0
 offset_bottom = 212.0
 mouse_filter = 1
 script = ExtResource("1_tray")
+
+[node name="UpgradeButton0" parent="." instance=ExtResource("2_button")]
+offset_left = 14.0
+offset_top = 24.0
+offset_right = 354.0
+offset_bottom = 350.0
+
+[node name="UpgradeButton1" parent="." instance=ExtResource("2_button")]
+offset_left = 370.0
+offset_top = 24.0
+offset_right = 710.0
+offset_bottom = 350.0
+
+[node name="UpgradeButton2" parent="." instance=ExtResource("2_button")]
+offset_left = 726.0
+offset_top = 24.0
+offset_right = 1066.0
+offset_bottom = 350.0

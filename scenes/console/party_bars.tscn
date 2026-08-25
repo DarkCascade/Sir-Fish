@@ -1,10 +1,25 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene format=3 uid="uid://c2ny6gdi481j"]
 
-[ext_resource type="Script" path="res://scripts/console/party_bars.gd" id="1_party"]
+[ext_resource type="Script" uid="uid://db68urr0mlckf" path="res://scripts/console/party_bars.gd" id="1_party"]
+[ext_resource type="PackedScene" uid="uid://byuxlf7pqqedv" path="res://scenes/overlay/hero_bars.tscn" id="2_bars"]
 
-[node name="PartyBars" type="Control"]
+[node name="PartyBars" type="VBoxContainer" unique_id=1826543108]
 custom_minimum_size = Vector2(430, 202)
 offset_right = 430.0
 offset_bottom = 202.0
 mouse_filter = 2
+theme_override_constants/separation = 8
+alignment = 1
 script = ExtResource("1_party")
+
+[node name="HeroBars0" parent="." unique_id=1392522598 instance=ExtResource("2_bars")]
+layout_mode = 2
+size_flags_horizontal = 4
+
+[node name="HeroBars1" parent="." unique_id=455466714 instance=ExtResource("2_bars")]
+layout_mode = 2
+size_flags_horizontal = 4
+
+[node name="HeroBars2" parent="." unique_id=1069454071 instance=ExtResource("2_bars")]
+layout_mode = 2
+size_flags_horizontal = 4

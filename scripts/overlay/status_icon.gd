@@ -1,6 +1,6 @@
 extends Control
 ## Procedurally drawn status overlay: the warrior's defend shield and the
-## priest's heal plus (spec 17.5). No image files anywhere in this game.
+## mage's heal plus (spec 17.5). No image files anywhere in this game.
 
 # PackedVector2Array literals are not constant expressions in GDScript.
 static var SHIELD := PackedVector2Array([

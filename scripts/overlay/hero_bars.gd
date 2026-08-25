@@ -37,7 +37,7 @@ const HERO_FILL_WIDTH := 352.0
 ## a round medallion instead of a rounded square.
 const CHIP_RADIUS := 26.0
 
-const KNOWN_ICON_CLASSES := [&"priest", &"ranger", &"warrior"]
+const KNOWN_ICON_CLASSES := [&"mage", &"ranger", &"warrior"]
 
 ## [ui-project-longshot] The concept board's three stat bars run green, blue,
 ## gold from top to bottom - and its numbers (102/120, 80/80, 70/70) are this
@@ -48,13 +48,13 @@ const KNOWN_ICON_CLASSES := [&"priest", &"ranger", &"warrior"]
 ## "lightning payout" on the reels, and borrowing it for the ranger would have
 ## the same glyph mean two things one panel apart. The colour rhythm is what
 ## carries the board's look, and it happens to land on the semantically right
-## hero at every position anyway - the priest heals (green), the warrior
+## hero at every position anyway - the mage heals (green), the warrior
 ## guards (gold).
 ##
 ## Falls back to the hero's own accent_color for any class not listed, so a
 ## fourth hero is a resource edit and not a code change.
 const CLASS_BAR_COLORS := {
-	&"priest": Tuning.C_HEAL,
+	&"mage": Tuning.C_HEAL,
 	&"ranger": Tuning.C_LIGHTNING,
 	&"warrior": Tuning.C_DEFEND,
 }
@@ -127,7 +127,7 @@ func refresh() -> void:
 	# makes a bar's fill mean anything - 102 alone says nothing about whether
 	# this hero is in trouble.
 	hp_text.text = "DEAD" if not alive \
-		else "%d / %d" % [combatant.current_hp, combatant.max_hp]
+		else "%d" % [combatant.current_hp]
 	buff_shield.visible = alive and combatant.is_defending()
 
 ## A dead hero's bar stays in the party strip, greyed and reading DEAD, rather

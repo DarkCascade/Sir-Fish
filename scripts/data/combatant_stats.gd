@@ -23,19 +23,19 @@ enum AttackStyle { MELEE, RANGED, MAGIC }
 @export var attack_cooldown: float = 1.5
 @export var special_every_n_actions: int = 0  # 0 = no special
 ## [v3] Gate the special on "some living ally (incl. self) is below max HP"
-## before it can fire. Priest-only: true only on priest.tres. Applying this
+## before it can fire. Mage-only: true only on mage.tres. Applying this
 ## universally would suppress the warrior's Defend at full party HP, which
 ## is backwards - Defend is pre-emptive mitigation, most useful before anyone
 ## is hurt (spec 4.1 / 10.2, V6).
 @export var special_requires_wounded_ally: bool = false
 ## [v3] Whether this character's special needs a living opponent to fire.
 ## True by default (ranger's bomb arrow is aimed). False for the warrior
-## (Defend buffs itself) and the priest (Heal targets an ally) - neither
+## (Defend buffs itself) and the mage (Heal targets an ally) - neither
 ## should abort just because no enemy is alive (spec 4.1 / 10.2, V6).
 @export var special_targets_opponent: bool = true
 ## [v3.5 F6] Whether this character plays a telegraph beat (darken pass +
-## warning glow) before its special resolves. Priest-only; replaces a
-## hardcoded `stats.id == &"priest"` branch in ability.gd (spec 2.6).
+## warning glow) before its special resolves. Mage-only; replaces a
+## hardcoded `stats.id == &"mage"` branch in ability.gd (spec 2.6).
 @export var telegraphs_primary: bool = false
 @export var attack_style: AttackStyle = AttackStyle.MELEE
 @export var model_scale: float = 1.0

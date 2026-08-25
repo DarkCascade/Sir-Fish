@@ -21,7 +21,7 @@ var combatant: Combatant = null
 ## [ui-project-longshot] What colour this bar's fill returns to. Was implicit
 ## (every bar was C_DANGER red, so the heal flash could hardcode its way back),
 ## and that stopped being true the moment the party bars took a colour per
-## hero: a healed priest flashed green and then settled to red. Subclasses that
+## hero: a healed mage flashed green and then settled to red. Subclasses that
 ## want a coloured bar set this in setup() alongside health_fill.color; the
 ## default keeps every existing red bar exactly as it was.
 var base_fill_color: Color = Tuning.C_DANGER

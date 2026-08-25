@@ -62,7 +62,7 @@ func strike_position(source: Combatant) -> Vector3:
 func charge(source: Combatant) -> void:
 	if not source.stats.telegraphs_primary or is_special:
 		return
-	if Tuning.PRIEST_DARKEN_ENABLED:
+	if Tuning.MAGE_DARKEN_ENABLED:
 		BattleVfx.darken_pass(source)
 	if target != null and target.is_alive():
 		BattleVfx.warning_glow(target)
@@ -75,8 +75,8 @@ func resolve(source: Combatant) -> void:
 			_warrior(source)
 		&"ranger":
 			_ranger(source)
-		&"priest":
-			_priest(source)
+		&"mage":
+			_mage(source)
 		&"shadow_monster":
 			_shadow(source)
 		&"orc_barbarian", &"orc_warlord":
@@ -103,14 +103,14 @@ func _ranger(source: Combatant) -> void:
 	director.world.projectile_root.add_child(proj)
 	proj.launch(source, target, director, is_special)
 
-# --- priest -----------------------------------------------------------------
+# --- mage --------------------------------------------------------------------
 
-func _priest(source: Combatant) -> void:
+func _mage(source: Combatant) -> void:
 	if is_special:
 		var ally: Combatant = director.lowest_hp_living_hero()
 		if ally == null:
 			return
-		var amount := int(round(float(source.compute_damage()) * Tuning.PRIEST_HEAL_MULT))
+		var amount := int(round(float(source.compute_damage()) * Tuning.MAGE_HEAL_MULT))
 		ally.heal(amount)
 		BattleVfx.heal_icon(ally, amount)
 		return

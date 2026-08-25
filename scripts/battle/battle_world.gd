@@ -118,7 +118,7 @@ func set_scroll_speed(value: float) -> void:
 func get_scroll_speed() -> float:
 	return field.scroll_speed
 
-## Priest's darkening pass (spec 9.3).
+## Mage's darkening pass (spec 9.3).
 func tween_brightness(to_value: float, duration: float) -> Tween:
 	var env := world_environment.environment
 	var tween := create_tween()

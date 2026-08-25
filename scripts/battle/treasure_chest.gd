@@ -1,14 +1,20 @@
 extends Node3D
 ## The loot encounter's chest (spec 14.2). Pops in, beats, then opens with the
 ## full juice list.
+##
+## [move-elements-to-editor] Body, the four corner straps, the Lid and
+## InteriorGlow are authored in treasure_chest.tscn - meshes, cel materials and
+## offsets are inspector-editable there. The hinge is Lid's own position (the
+## body's back edge), so open() only has to swing Lid.rotation:x.
+##
+## The coin shower and the radial flash stay in code: both are transient, are
+## spawned in numbers and tween themselves away, so there is nothing for the
+## editor to hold.
 
 signal opened()
 
-var _lid: Node3D = null
-var _light: OmniLight3D = null
-
-func _ready() -> void:
-	_build()
+@onready var _lid: Node3D = $Lid
+@onready var _light: OmniLight3D = $InteriorGlow
 
 func pop_in() -> void:
 	scale = Vector3.ZERO
@@ -85,44 +91,3 @@ func _radial_flash() -> void:
 				m.albedo_color = Color(Color.WHITE, a),
 		0.9, 0.0, 0.35)
 	tw.chain().tween_callback(flash.queue_free)
-
-func _build() -> void:
-	var body := BoxMesh.new()
-	body.size = Vector3(1.0, 0.62, 0.7)
-	_add(self, "Body", body, Tuning.C_WOOD, Vector3(0, 0.31, 0))
-	for sx: int in [-1, 1]:
-		for sz: int in [-1, 1]:
-			var corner := BoxMesh.new()
-			corner.size = Vector3(0.10, 0.66, 0.10)
-			_add(self, "Corner%d%d" % [sx, sz], corner, Tuning.C_GOLD,
-				Vector3(0.46 * float(sx), 0.31, 0.31 * float(sz)))
-
-	_lid = Node3D.new()
-	_lid.name = "Lid"
-	_lid.position = Vector3(0, 0.62, -0.35)      # hinge at the back edge
-	add_child(_lid)
-	var lid_mesh := CylinderMesh.new()
-	lid_mesh.top_radius = 0.35
-	lid_mesh.bottom_radius = 0.35
-	lid_mesh.height = 1.0
-	lid_mesh.radial_segments = 12
-	var lid_mi := _add(_lid, "LidMesh", lid_mesh, Tuning.C_WOOD, Vector3(0, 0, 0.35))
-	lid_mi.rotation_degrees = Vector3(0, 0, 90)
-
-	_light = OmniLight3D.new()
-	_light.name = "InteriorGlow"
-	_light.light_color = Tuning.C_GOLD
-	_light.light_energy = 0.0
-	_light.omni_range = 3.0
-	_light.position = Vector3(0, 0.4, 0)
-	add_child(_light)
-
-func _add(parent: Node3D, node_name: String, mesh: Mesh, color: Color,
-		pos: Vector3) -> MeshInstance3D:
-	var mi := MeshInstance3D.new()
-	mi.name = node_name
-	mi.mesh = mesh
-	mi.position = pos
-	mi.material_override = CelMaterials.cel(color)
-	parent.add_child(mi)
-	return mi

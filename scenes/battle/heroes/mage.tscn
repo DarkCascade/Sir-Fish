@@ -1,10 +1,10 @@
 [gd_scene format=3 uid="uid://bjb4wvpruslrm"]
 
 [ext_resource type="PackedScene" path="res://scenes/battle/combatant.tscn" id="1_base"]
-[ext_resource type="Resource" uid="uid://dn1nscxq8xnly" path="res://resources/stats/priest.tres" id="2_stats"]
+[ext_resource type="Resource" uid="uid://dn1nscxq8xnly" path="res://resources/stats/mage.tres" id="2_stats"]
 [ext_resource type="PackedScene" uid="uid://rqtd76dwdxku" path="res://assets/meshes/mage.glb" id="3_4wmn8"]
 
-[node name="Priest" unique_id=992196169 instance=ExtResource("1_base")]
+[node name="Mage" unique_id=992196169 instance=ExtResource("1_base")]
 stats = ExtResource("2_stats")
 
 [node name="Model" parent="Visual/Rig" index="0" unique_id=1800548899 instance=ExtResource("3_4wmn8")]

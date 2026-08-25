@@ -1,10 +1,16 @@
 extends Control
 ## One reel window (spec 16.1-16.3). Three symbols visible per stop; the middle
 ## cell is the one on the payline.
+##
+## [move-elements-to-editor] The cells are authored instances in slot_reel.tscn
+## rather than instantiated here, so the reel can be opened and looked at in the
+## editor and each cell carries its own inspector properties. How many there are
+## is read off the scene now (VISIBLE_RANGE was a constant): adding a pair above
+## and below is two duplicated nodes, no code change. Their positions stay
+## script-driven - the reel scrolls, so a cell's y is a function of
+## position_stops and cannot be authored.
 
 const DEFAULT_CELL_H := 240.0
-const VISIBLE_RANGE := 2      # cells drawn above and below the payline cell
-const SYMBOL_SCENE := preload("res://scenes/console/slot_symbol.tscn")
 const SPIN_SPEED := 26.0      # stops per second while free-spinning
 
 ## Cell height, driven by the cabinet: the reel window shows exactly three cells
@@ -30,12 +36,16 @@ var _drifting: bool = false
 var _cells: Array[SlotSymbol] = []
 var _stop_tween: Tween = null
 
+## Cells above (and below) the payline cell, derived from however many the scene
+## authored. Five cells means two either side of the middle one.
+var _visible_range: int = 2
+
 func _ready() -> void:
-	clip_contents = true
-	for k: int in range(-VISIBLE_RANGE, VISIBLE_RANGE + 1):
-		var cell := SYMBOL_SCENE.instantiate() as SlotSymbol
-		add_child(cell)
-		_cells.append(cell)
+	for child: Node in get_children():
+		if child is SlotSymbol:
+			_cells.append(child as SlotSymbol)
+	@warning_ignore("integer_division")
+	_visible_range = (_cells.size() - 1) / 2
 	position_stops = float(RNG.randi_range(0, Tuning.SLOT_REEL_STOPS - 1))
 	_resize_cells()
 	_layout()
@@ -106,15 +116,16 @@ func payline_symbol() -> int:
 	var index := int(floor(position_stops)) % Tuning.SLOT_REEL_STOPS
 	return Tuning.SLOT_STRIP[index]
 
-## The SlotSymbol control currently sitting on the payline, for the win pulse.
+## The SlotSymbol control currently sitting on the payline, for the win pulse -
+## the middle authored cell.
 func payline_cell() -> SlotSymbol:
-	return _cells[VISIBLE_RANGE]
+	return _cells[_visible_range]
 
 func _layout() -> void:
 	var base := int(floor(position_stops))
 	var frac := position_stops - float(base)
 	for i: int in range(_cells.size()):
-		var k := i - VISIBLE_RANGE
+		var k := i - _visible_range
 		var cell := _cells[i]
 		var strip_index := posmod(base + k, Tuning.SLOT_REEL_STOPS)
 		cell.set_symbol(Tuning.SLOT_STRIP[strip_index])

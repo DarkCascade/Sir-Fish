@@ -1,17 +1,25 @@
 extends Control
 ## The shop (spec 15). The encounter resolves only when the red X is pressed.
+##
+## [move-elements-to-editor] The bonus strip and the compare flyout are authored
+## children in shop_modal.tscn now, in the positions their code comments used to
+## assert: the strip directly under the header (spec 15.1 - it is what makes
+## selling a real decision instead of free money, because the player can see
+## exactly what leaves the party with the item), and the flyout last, so Escape
+## reaches it before this modal. The buy cards and sell rows stay code-built -
+## one per item in stock and one per inventory item, so there is no fixed set of
+## them to author.
 
 signal closed()
 
 const BUY_CARD := preload("res://scenes/modals/shop_buy_card.tscn")
 const SELL_ROW := preload("res://scenes/modals/shop_sell_row.tscn")
 const NUMBER_SCENE := preload("res://scenes/overlay/damage_number.tscn")
-const BONUS_STRIP_SCENE := preload("res://scenes/console/bonus_strip.tscn")
-const COMPARE_FLYOUT_SCENE := preload("res://scenes/modals/compare_flyout.tscn")
 
 var _encounter: EncounterDef = null
 var _cards: Array = []
-var _compare_flyout = null   # CompareFlyout (untyped: custom API)
+
+@onready var _compare_flyout = $CompareFlyout   # CompareFlyout (untyped: custom API)
 
 @onready var scrim: ColorRect = $Scrim
 @onready var panel: PanelContainer = $Panel
@@ -24,9 +32,6 @@ var _compare_flyout = null   # CompareFlyout (untyped: custom API)
 
 func _ready() -> void:
 	close_button.pressed.connect(close)
-	_add_bonus_strip()
-	_compare_flyout = COMPARE_FLYOUT_SCENE.instantiate()
-	add_child(_compare_flyout)
 	EventBus.gold_changed.connect(_on_gold_changed)
 	hide()
 
@@ -90,18 +95,6 @@ func _unhandled_input(event: InputEvent) -> void:
 	if visible and event.is_action_pressed("ui_cancel"):
 		close()
 		get_viewport().set_input_as_handled()
-
-## Spec 15.1. The strip under the gold readout is what makes selling a real
-## decision instead of free money: the player can see exactly what leaves the
-## party with the item.
-func _add_bonus_strip() -> void:
-	var layout := $Panel/Layout as VBoxContainer
-	var strip = BONUS_STRIP_SCENE.instantiate()
-	strip.name = "BonusStrip"
-	strip.custom_minimum_size = Vector2(880, 34)
-	layout.add_child(strip)
-	# Directly under the header, above the tabs.
-	layout.move_child(strip, 1)
 
 # --- buy --------------------------------------------------------------------
 

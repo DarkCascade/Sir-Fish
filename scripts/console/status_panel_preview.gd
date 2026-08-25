@@ -10,7 +10,7 @@ extends Control
 
 const WARRIOR := preload("res://resources/stats/warrior.tres")
 const RANGER := preload("res://resources/stats/ranger.tres")
-const PRIEST := preload("res://resources/stats/priest.tres")
+const MAGE := preload("res://resources/stats/mage.tres")
 
 ## party_bars.gd only ever reads director.heroes, so this is the entire
 ## surface a stand-in needs.
@@ -25,7 +25,7 @@ func _ready() -> void:
 	# Uneven HP on purpose - a full bar doesn't show you whether the fill,
 	# color and "x/y" text are lining up right.
 	mock.heroes = [
-		_spawn(PRIEST, 45),
+		_spawn(MAGE, 45),
 		_spawn(RANGER, 80),
 		_spawn(WARRIOR, 60),
 	]

@@ -1,13 +1,13 @@
 class_name MagicBolt
 extends Node3D
-## The priest's primary, as an aimed spell (overworld prototype).
+## The mage's primary, as an aimed spell (overworld prototype).
 ##
 ## The side-on view resolved this as a bolt dropped out of the sky onto the
 ## target's head, which worked because caster and target were a fixed distance
-## apart on one axis and the vertical drop read as "the priest did that". Under
+## apart on one axis and the vertical drop read as "the mage did that". Under
 ## an overhead camera the caster can be anywhere on the field, so a strike that
 ## never travels from the caster no longer connects the two - the spell has to
-## visibly leave the priest's hand and fly. The sky-drop version survives as
+## visibly leave the mage's hand and fly. The sky-drop version survives as
 ## the slot machine's lightning payout, which IS a called-down strike and reads
 ## correctly as one (BattleVfx.lightning_bolt).
 ##
@@ -44,6 +44,10 @@ func launch(source: Combatant, target: Combatant, director, _is_special: bool) -
 	_t = 0.0
 	_flying = true
 	_tint()
+	# Held until _impact() so the target can't start its own attack (and
+	# possibly blink away) while this is still chasing it.
+	if _target != null and is_instance_valid(_target):
+		_target.begin_incoming_attack()
 
 func _ready() -> void:
 	_tint()
@@ -87,6 +91,8 @@ func _process(delta: float) -> void:
 		_impact()
 
 func _impact() -> void:
+	if _target != null and is_instance_valid(_target):
+		_target.end_incoming_attack()
 	BattleVfx.magic_burst(global_position, _color)
 	var victim: Combatant = _target
 	# Same retarget rule the arrow uses (spec 9.2 / 21-D8) - the most common

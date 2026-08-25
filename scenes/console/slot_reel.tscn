@@ -1,6 +1,20 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene format=3]
 
 [ext_resource type="Script" path="res://scripts/console/slot_reel.gd" id="1_reel"]
+[ext_resource type="PackedScene" path="res://scenes/console/slot_symbol.tscn" id="2_symbol"]
+
+; [move-elements-to-editor] The five visible cells were instantiated in _ready()
+; from a VISIBLE_RANGE constant. They are authored instances now - the reel can
+; be opened and looked at without Play mode (see reel_layout_playground.tscn),
+; each cell's `symbol` and `box_fraction` are inspector properties, and showing
+; two more cells above and below is a matter of duplicating two nodes here.
+;
+; Their POSITION is still driven every frame by slot_reel.gd: the reel scrolls,
+; so where a cell sits is a function of position_stops, not something the editor
+; can hold. Cell2 is the payline cell - the middle of however many there are.
+;
+; The dummy symbols below are just so the reel reads in the editor; the first
+; frame of _layout() overwrites all five from Tuning.SLOT_STRIP.
 
 [node name="Reel" type="Control"]
 custom_minimum_size = Vector2(40, 120)
@@ -9,3 +23,28 @@ offset_bottom = 720.0
 mouse_filter = 2
 clip_contents = true
 script = ExtResource("1_reel")
+
+[node name="Cell0" parent="." instance=ExtResource("2_symbol")]
+offset_top = -240.0
+offset_bottom = 0.0
+symbol = 0
+
+[node name="Cell1" parent="." instance=ExtResource("2_symbol")]
+offset_top = 0.0
+offset_bottom = 240.0
+symbol = 1
+
+[node name="Cell2" parent="." instance=ExtResource("2_symbol")]
+offset_top = 240.0
+offset_bottom = 480.0
+symbol = 2
+
+[node name="Cell3" parent="." instance=ExtResource("2_symbol")]
+offset_top = 480.0
+offset_bottom = 720.0
+symbol = 3
+
+[node name="Cell4" parent="." instance=ExtResource("2_symbol")]
+offset_top = 720.0
+offset_bottom = 960.0
+symbol = 0

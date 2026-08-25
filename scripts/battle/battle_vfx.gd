@@ -325,7 +325,7 @@ static func blink_trail(from: Vector3, to: Vector3, color: Color) -> void:
 		gt.tween_property(ghost, "scale", Vector3(0.45, 1.2, 0.45), life)
 		gt.chain().tween_callback(ghost.queue_free)
 
-# --- priest / slot lightning ------------------------------------------------
+# --- mage / slot lightning ---------------------------------------------------
 
 static func darken_pass(source: Combatant) -> void:
 	var w := world()
@@ -434,10 +434,10 @@ static func arrow_sparks(pos: Vector3) -> void:
 	var w := world()
 	if w == null:
 		return
-	_burst(w, pos, 8, Color(Tuning.C_PRIEST_CLOTH, 1.0), Tuning.C_PRIEST_CLOTH, 0.35, 2.0, 0.05)
+	_burst(w, pos, 8, Color(Tuning.C_MAGE_CLOTH, 1.0), Tuning.C_MAGE_CLOTH, 0.35, 2.0, 0.05)
 
 ## Where an aimed spell lands. Deliberately lighter than explosion(): the
-## priest's primary fires every couple of seconds, so its impact has to read
+## mage's primary fires every couple of seconds, so its impact has to read
 ## instantly without dominating the frame the way a bomb arrow should.
 static func magic_burst(pos: Vector3, color: Color) -> void:
 	var w := world()
