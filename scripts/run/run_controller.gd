@@ -32,6 +32,11 @@ func _ready() -> void:
 	shop_modal = main.get_node("ModalLayer/ShopModal")
 	run_summary = main.get_node("ModalLayer/RunSummary")
 
+	# As early as possible, so the shader-variant compiles it forces land
+	# before the party is even moving rather than on the first real cast
+	# (smoothness pass, suggestion 1). See BattleVfx.warm_up().
+	BattleVfx.warm_up(world)
+
 	director = BattleDirector.new()
 	director.name = "BattleDirector"
 	director.world = world
@@ -79,6 +84,13 @@ func _travel(def: EncounterDef) -> void:
 	for hero: Combatant in director.living_heroes():
 		hero.set_running(true)
 	EventBus.travel_started.emit()
+
+	# Warm the fight's enemy scenes now, while the run-in gives the loader
+	# several seconds of slack - see battle_director.preload_encounter()
+	# (smoothness pass, suggestion 1). Fire-and-forget: the coroutine keeps
+	# polling in the background while travel proceeds below.
+	if def.type == EncounterDef.Type.COMBAT:
+		director.preload_encounter(def.enemy_stat_ids)
 
 	var accel := create_tween()
 	accel.tween_method(Callable(world, "set_scroll_speed"),

@@ -112,8 +112,71 @@ func clear_enemies() -> void:
 	enemies.clear()
 	pending_drops.clear()
 
+## Scene paths currently warmed (or warming) via preload_encounter() below,
+## keyed by path, cleared only when _spawn_combatant() actually claims one.
+## Stale entries from an encounter that never got spawned (a wipe, a retry)
+## are harmless - the resource just sits cached until claimed or the process
+## ends - so nothing here clears them on stop_combat()/clear_enemies(), which
+## both run at the START of the very call this preload is trying to get
+## ahead of.
+var _threaded_paths: Dictionary = {}   # path:String -> true
+
+## Kicks off a threaded load for every enemy scene an upcoming encounter will
+## need, called by RunController while the party is still running toward the
+## fight (spec smoothness pass, suggestion 1). That run-in is exactly the
+## slack the fix needs: moving the parse/decompress/GPU-upload off the frame
+## start_combat() spawns on turns one multi-hundred-ms freeze into work spread
+## across seconds nobody is waiting on.
+func preload_encounter(enemy_stat_ids: Array) -> void:
+	for id: Variant in enemy_stat_ids:
+		var stats := GameState.get_stats(id)
+		if stats == null or stats.scene_path.is_empty():
+			continue
+		var path := stats.scene_path
+		if _threaded_paths.has(path):
+			continue
+		if ResourceLoader.load_threaded_request(path) == OK:
+			_threaded_paths[path] = true
+	_pump_threaded_loads()
+
+## The web export ships with thread_support=false (see project notes), so on
+## that platform ResourceLoader's "threaded" load is not actually threaded -
+## it is a chunked load that only advances when polled. Firing the request in
+## preload_encounter() and then not touching it again until _spawn_combatant()
+## would leave the whole cost sitting untouched until spawn, defeating the
+## point. This coroutine is what actually spends the run-in's slack: it polls
+## every pending path once a frame, which is what lets the loader make
+## incremental progress across those frames instead of in one block later.
+func _pump_threaded_loads() -> void:
+	while true:
+		var any_in_progress := false
+		for path: String in _threaded_paths.keys():
+			if ResourceLoader.load_threaded_get_status(path) \
+					== ResourceLoader.THREAD_LOAD_IN_PROGRESS:
+				any_in_progress = true
+		if not any_in_progress:
+			return
+		await get_tree().process_frame
+
+## Claims a threaded load requested by preload_encounter() if one is in
+## flight for this path, otherwise falls back to a plain synchronous load -
+## the party's own scenes (spawn_party() runs before any travel/preload) and
+## any encounter that skipped the run-in both take this path.
+func _load_combatant_scene(path: String) -> PackedScene:
+	if _threaded_paths.has(path):
+		_threaded_paths.erase(path)
+		var status := ResourceLoader.load_threaded_get_status(path)
+		if status == ResourceLoader.THREAD_LOAD_LOADED \
+				or status == ResourceLoader.THREAD_LOAD_IN_PROGRESS:
+			var res: Resource = ResourceLoader.load_threaded_get(path)
+			if res is PackedScene:
+				return res as PackedScene
+		# THREAD_LOAD_FAILED / THREAD_LOAD_INVALID_RESOURCE - fall through to
+		# the plain load below rather than handing back a null scene.
+	return load(path) as PackedScene
+
 func _spawn_combatant(stats: CombatantStats, pos: Vector3, hp: int) -> Combatant:
-	var packed: PackedScene = load(stats.scene_path)
+	var packed: PackedScene = _load_combatant_scene(stats.scene_path)
 	var c := packed.instantiate() as Combatant
 	var parent: Node3D = world.hero_slots if stats.is_hero else world.enemy_root
 	parent.add_child(c)

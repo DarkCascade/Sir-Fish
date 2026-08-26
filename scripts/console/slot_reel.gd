@@ -40,6 +40,12 @@ var _stop_tween: Tween = null
 ## authored. Five cells means two either side of the middle one.
 var _visible_range: int = 2
 
+## Smoothness pass: while drifting (attract mode, which is most of a run's
+## runtime) the reel visually reads fine relayed at half rate - toggled every
+## drift frame so _layout() (and its five draw_gem redraws) only runs on the
+## alternate frame. Full-rate while actually spinning, where the pace matters.
+var _drift_layout_pending: bool = true
+
 func _ready() -> void:
 	for child: Node in get_children():
 		if child is SlotSymbol:
@@ -74,11 +80,20 @@ func _resize_cells() -> void:
 func _process(delta: float) -> void:
 	if _spinning:
 		position_stops -= SPIN_SPEED * delta
+		_layout()
 	elif _drifting:
 		position_stops -= SPIN_SPEED * Tuning.SLOT_ATTRACT_SPEED * delta
-	_layout()
+		_drift_layout_pending = not _drift_layout_pending
+		if _drift_layout_pending:
+			_layout()
+	else:
+		# Never reached in the current design (the reel is always either
+		# spinning or drifting - see start_drift()'s doc), but cheap insurance
+		# against a future state that leaves both false.
+		set_process(false)
 
 func start_spin() -> void:
+	set_process(true)
 	if _stop_tween != null and _stop_tween.is_valid():
 		_stop_tween.kill()
 	_drifting = false
@@ -88,10 +103,12 @@ func start_spin() -> void:
 ## no stops, no payline evaluation, no payouts. "The slot does nothing" is read
 ## as "nothing that affects the game", not as dead air - pillar 2.
 func start_drift() -> void:
+	set_process(true)
 	if _stop_tween != null and _stop_tween.is_valid():
 		_stop_tween.kill()
 	_spinning = false
 	_drifting = true
+	_drift_layout_pending = true
 
 func stop_drift() -> void:
 	_drifting = false
@@ -129,8 +146,15 @@ func _layout() -> void:
 		var cell := _cells[i]
 		var strip_index := posmod(base + k, Tuning.SLOT_REEL_STOPS)
 		cell.set_symbol(Tuning.SLOT_STRIP[strip_index])
-		cell.position = Vector2(0.0, cell_h + float(k) * cell_h - frac * cell_h)
+		# Both writes dirty the cell (position dirties layout, modulate queues a
+		# redraw) even when unchanged, which self-cancels most of the time
+		# during actual motion but matters on the drift's throttled frames.
+		var new_y := cell_h + float(k) * cell_h - frac * cell_h
+		if not is_equal_approx(cell.position.y, new_y):
+			cell.position.y = new_y
 		# Legibility naturally drops while the reel is moving fast (spec 16.3).
 		# Legibility drops naturally from the speed while spinning for real; the
 		# slow attract drift stays readable.
-		cell.modulate.a = 0.55 if _spinning else 1.0
+		var new_alpha := 0.55 if _spinning else 1.0
+		if not is_equal_approx(cell.modulate.a, new_alpha):
+			cell.modulate.a = new_alpha
