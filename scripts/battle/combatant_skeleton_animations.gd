@@ -32,6 +32,13 @@ const DEG := PI / 180.0
 static var SKELETON_PATH := {
 	&"orc_barbarian": "Rig/Model/OrcRig/Skeleton3D",
 	&"orc_warlord": "Rig/Model/OrcRig/Skeleton3D",
+	# The sporecap is Meshy-generated geometry rigged in Blender onto THIS
+	# file's 17-bone naming on purpose (Root / Arm.R / Thigh.L ...), rather
+	# than shipping a baked action library like the KayKit imports do. Meshy's
+	# auto-rigger refuses the silhouette - a cap that wide with no neck fails
+	# its pose estimation - so the armature is hand-built, and matching the
+	# in-house names means the shared humanoid clips below drive it unchanged.
+	&"sporecap": "Rig/Model/SporecapRig/Skeleton3D",
 }
 
 static func build_for(player: AnimationPlayer, stats: CombatantStats) -> bool:
@@ -58,6 +65,15 @@ static func build_for(player: AnimationPlayer, stats: CombatantStats) -> bool:
 			lib.add_animation(&"idle", _humanoid_idle(skel, skel_str))
 			lib.add_animation(&"run", _humanoid_run(skel, skel_str))
 			lib.add_animation(&"attack", _orc_attack(skel, skel_str))
+			lib.add_animation(&"hurt", _humanoid_hurt(skel, skel_str))
+			lib.add_animation(&"die", _humanoid_die(skel, skel_str))
+		# Same four shared humanoid clips as the orcs - the sporecap is built
+		# on the same bone names, so idle/run/hurt/die need no variant - plus
+		# one authored attack of its own.
+		&"sporecap":
+			lib.add_animation(&"idle", _humanoid_idle(skel, skel_str))
+			lib.add_animation(&"run", _humanoid_run(skel, skel_str))
+			lib.add_animation(&"attack", _sporecap_attack(skel, skel_str))
 			lib.add_animation(&"hurt", _humanoid_hurt(skel, skel_str))
 			lib.add_animation(&"die", _humanoid_die(skel, skel_str))
 	if player.has_animation_library(&""):
@@ -253,4 +269,44 @@ static func _orc_attack(skel: Skeleton3D, s: String) -> Animation:
 		[0.0, Vector3.ONE], [0.48, Vector3(0.92, 1.10, 0.92)], [0.68, Vector3.ONE],
 	])
 	_call(a, 0.42, &"_anim_impact")
+	return a
+
+# --- sporecap ---------------------------------------------------------------
+
+## A cap-slam, not a punch: the sporecap's whole silhouette is the cap, so the
+## readable beat is winding the head back and driving it forward, with the arms
+## following through. Sign convention is the orc's (see _orc_attack): the Head
+## bone points up, so about world +Z a POSITIVE delta tips it back and a
+## NEGATIVE one drives it forward; the arms hang down, where the signs invert.
+##
+## Length 0.80 / impact 0.40. Both are balance numbers, not art ones - the real
+## cycle (spec 5.2) is attack_cooldown 1.9 + 0.80, and the impact sits on the
+## frame the cap bottoms out so the damage number, the hit flash and the pose
+## land together.
+static func _sporecap_attack(skel: Skeleton3D, s: String) -> Animation:
+	var a := _new_anim(0.80, false)
+	_rot_z(a, skel, s, "Head", [
+		[0.0, 0], [0.24, 26], [0.40, -38], [0.60, -8], [0.80, 0],
+	])
+	_rot_z(a, skel, s, "Arm.L", [
+		[0.0, 0], [0.24, -30], [0.40, 50], [0.62, 14], [0.80, 0],
+	])
+	_rot_z(a, skel, s, "Arm.R", [
+		[0.0, ARM_R_IDLE], [0.24, -30], [0.40, 50], [0.62, 14], [0.80, ARM_R_IDLE],
+	])
+	_value_track(a, ":position", [
+		[0.0, Vector3(0, 0, 0)], [0.24, Vector3(-0.06, 0.03, 0)],
+		[0.40, Vector3(0.22, 0, 0)], [0.62, Vector3(-0.03, 0, 0)],
+		[0.80, Vector3(0, 0, 0)],
+	])
+	_value_track(a, ":rotation", [
+		[0.0, Vector3(0, 0, 0)], [0.24, Vector3(0, 0, deg_to_rad(10))],
+		[0.40, Vector3(0, 0, deg_to_rad(-15))], [0.62, Vector3(0, 0, deg_to_rad(3))],
+		[0.80, Vector3(0, 0, 0)],
+	])
+	# Squat and spread on the slam - a fat fungal body absorbing its own blow.
+	_value_track(a, ":scale", [
+		[0.0, Vector3.ONE], [0.40, Vector3(1.10, 0.88, 1.10)], [0.62, Vector3.ONE],
+	])
+	_call(a, 0.40, &"_anim_impact")
 	return a

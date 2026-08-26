@@ -2,20 +2,8 @@
 
 [ext_resource type="Script" uid="uid://51k4gi4hxnsl" path="res://scripts/modals/shop_modal.gd" id="1_shop"]
 [ext_resource type="Script" uid="uid://0h1qqxld8x2i" path="res://scripts/console/coin_glyph.gd" id="2_sufjm"]
-[ext_resource type="PackedScene" path="res://scenes/console/bonus_strip.tscn" id="3_bonus"]
 [ext_resource type="PackedScene" path="res://scenes/modals/compare_flyout.tscn" id="4_compare"]
 
-; [move-elements-to-editor] BonusStrip and CompareFlyout were both instanced in
-; _ready() - the strip with a move_child(1) to slide it under the header, the
-; flyout appended last so unhandled input reaches it before this modal does.
-; Both are authored children now, in exactly those positions, so their order and
-; the strip's size are visible and editable here instead of being asserted in
-; code.
-
-; [ui-project-longshot] Was a flat scarlet square. Nothing else on the board is
-; scarlet, and a saturated red block in the header pulled harder than the shop's
-; own contents; it is a dark stone disc with a gold rim now, matching the
-; medallions on the upgrade cards.
 [sub_resource type="StyleBoxFlat" id="close_style"]
 content_margin_left = 0.0
 content_margin_top = 0.0
@@ -109,24 +97,11 @@ theme_override_styles/pressed = SubResource("close_style")
 theme_override_styles/hover = SubResource("close_style")
 text = "X"
 
-[node name="BonusStrip" parent="Panel/Layout" instance=ExtResource("3_bonus")]
-custom_minimum_size = Vector2(880, 34)
-layout_mode = 2
-
 [node name="Tabs" type="TabContainer" parent="Panel/Layout" unique_id=1772781655]
 layout_mode = 2
 size_flags_vertical = 3
 current_tab = 0
 
-; [mobile-scroll] scroll_deadzone was 0, the engine default, meaning any single
-; pixel of finger travel counted as a scroll and no imperfect tap had any margin
-; at all. 24 px is roughly Android's own touch slop at this viewport scale, and
-; it is the number that decides where "tap" ends and "drag" begins - crossing it
-; is also what makes the ScrollContainer cancel a child button's press, so a
-; flick that started on Sell no longer sells (see shop_sell_row.tscn).
-; horizontal_scroll_mode is off because the lists only ever scroll vertically;
-; left as AUTO, a diagonal flick drifted the list sideways whenever the vertical
-; scrollbar's arrival pushed content below the 880 px card width.
 [node name="Buy" type="ScrollContainer" parent="Panel/Layout/Tabs" unique_id=1735448592]
 layout_mode = 2
 horizontal_scroll_mode = 0
@@ -171,7 +146,5 @@ text = "Nothing to sell."
 horizontal_alignment = 1
 vertical_alignment = 1
 
-; Last child on purpose: _unhandled_input runs bottom-up through the tree, so
-; Escape closes the comparison before it closes the shop underneath it (see
-; compare_flyout.gd).
-[node name="CompareFlyout" parent="." instance=ExtResource("4_compare")]
+[node name="CompareFlyout" parent="." unique_id=1902813850 instance=ExtResource("4_compare")]
+layout_mode = 1

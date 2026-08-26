@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="CombatantStats" format=3]
+
+[ext_resource type="Script" uid="uid://j4id3pdqg34k" path="res://scripts/data/combatant_stats.gd" id="1_stats"]
+
+[resource]
+script = ExtResource("1_stats")
+id = &"sporecap"
+display_name = "Sporecap"
+max_hp = 65
+base_damage = 13
+attack_cooldown = 1.9
+model_scale = 0.85
+body_color = Color(0.482353, 0.247059, 0.627451, 1)
+accent_color = Color(0.356863, 0.784314, 0.960784, 1)
+scene_path = "res://scenes/battle/enemies/sporecap.tscn"
+drop_chance = 0.3

@@ -1,0 +1,10 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="PackedScene" path="res://scenes/battle/combatant.tscn" id="1_base"]
+[ext_resource type="Resource" path="res://resources/stats/sporecap.tres" id="2_stats"]
+[ext_resource type="PackedScene" path="res://assets/meshes/sporecap.glb" id="3_model"]
+
+[node name="Sporecap" instance=ExtResource("1_base")]
+stats = ExtResource("2_stats")
+
+[node name="Model" parent="Visual/Rig" index="0" instance=ExtResource("3_model")]

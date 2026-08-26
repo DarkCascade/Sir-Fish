@@ -26,6 +26,7 @@ const IMPACT_DELAYS := {
 	&"skeleton_mage":    { "attack": 0.45 },
 	&"skeleton_rogue":   { "attack": 0.24 },
 	&"skeleton_minion":  { "attack": 0.20 },
+	&"sporecap":         { "attack": 0.40 },
 }
 
 static func build(player: AnimationPlayer, stats: CombatantStats) -> void:

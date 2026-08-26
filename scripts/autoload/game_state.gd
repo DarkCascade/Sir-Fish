@@ -285,7 +285,7 @@ const ENDLESS_EARLY_POOL: Array[StringName] = [&"shadow_monster", &"skeleton_min
 ## next to the KayKit skeletons it reads as a stick figure. The stats, scene
 ## and rig branches all stay - nothing spawns it, so nothing renders it.
 const ENDLESS_MID_POOL: Array[StringName] = [
-	&"skeleton_warrior", &"skeleton_mage", &"skeleton_rogue",
+	&"skeleton_warrior", &"skeleton_mage", &"skeleton_rogue", &"sporecap",
 ]
 ## [UI pass] Was just the orc warlord. Any of the four KayKit skeletons can
 ## anchor encounter 6 now - battle_director.start_combat() scales whichever
