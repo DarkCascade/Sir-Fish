@@ -61,6 +61,15 @@ static var STAR := PackedVector2Array([
 
 @export var symbol: int = Tuning.Sym.BLANK
 
+## Smoothness pass: a spinning reel redraws each cell roughly once per stop
+## change (~26/sec while spinning, x3 reels), and every _draw_gem() call used
+## to rebuild three PackedVector2Arrays from scratch even though the geometry
+## only actually depends on `symbol` and `size` - the cell's box_fraction and
+## shape data never change between redraws at a given size. Cached per symbol
+## so switching symbols on the same cell (the common case, every stop) is a
+## dictionary hit instead of a rebuild; only a genuine resize invalidates it.
+var _gem_cache: Dictionary = {}   # Tuning.Sym -> {size, box, pts, closed, facet}
+
 func set_symbol(value: int) -> void:
 	if symbol == value:
 		return
@@ -101,18 +110,38 @@ func _draw() -> void:
 ## bonus_strip), and one blur shader for one symbol would be the only thing in
 ## the file needing a material.
 func _draw_gem(shape: PackedVector2Array, body: Color, bright: Color) -> void:
-	var box := minf(size.x, size.y) * box_fraction
-	var origin := size * 0.5 - Vector2.ONE * box * 0.5
-	var pts := PackedVector2Array()
-	var centroid := Vector2.ZERO
-	for p: Vector2 in shape:
-		var mapped := origin + p * box
-		pts.append(mapped)
-		centroid += mapped
-	centroid /= float(pts.size())
+	var cached: Dictionary = _gem_cache.get(symbol, {})
+	var pts: PackedVector2Array
+	var closed: PackedVector2Array
+	var facet: PackedVector2Array
+	var box: float
+	if cached.get("size", Vector2.ZERO) == size:
+		pts = cached["pts"]
+		closed = cached["closed"]
+		facet = cached["facet"]
+		box = cached["box"]
+	else:
+		box = minf(size.x, size.y) * box_fraction
+		var origin := size * 0.5 - Vector2.ONE * box * 0.5
+		pts = PackedVector2Array()
+		var centroid := Vector2.ZERO
+		for p: Vector2 in shape:
+			var mapped := origin + p * box
+			pts.append(mapped)
+			centroid += mapped
+		centroid /= float(pts.size())
 
-	var closed := pts.duplicate()
-	closed.append(pts[0])
+		closed = pts.duplicate()
+		closed.append(pts[0])
+
+		# The lit facet, pulled toward the centroid and lifted a little - the
+		# light in this console comes from above, the same direction OrnateFrame
+		# bevels.
+		facet = PackedVector2Array()
+		for p: Vector2 in pts:
+			facet.append(p.lerp(centroid, 0.34) - Vector2(0.0, box * 0.055))
+
+		_gem_cache[symbol] = {"size": size, "box": box, "pts": pts, "closed": closed, "facet": facet}
 
 	# Glow: widest and faintest first, so the passes build up toward the edge.
 	for i: int in range(3):
@@ -121,12 +150,6 @@ func _draw_gem(shape: PackedVector2Array, body: Color, bright: Color) -> void:
 			box * lerpf(0.16, 0.045, t))
 
 	draw_colored_polygon(pts, body)
-
-	# The lit facet, pulled toward the centroid and lifted a little - the light
-	# in this console comes from above, the same direction OrnateFrame bevels.
-	var facet := PackedVector2Array()
-	for p: Vector2 in pts:
-		facet.append(p.lerp(centroid, 0.34) - Vector2(0.0, box * 0.055))
 	draw_colored_polygon(facet, Color(bright.r, bright.g, bright.b, 0.72))
 
 	draw_polyline(closed, Tuning.C_INK, maxf(box * 0.035, 2.0))

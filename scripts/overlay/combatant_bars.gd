@@ -7,6 +7,13 @@ extends CombatantBarsBase
 
 const ENEMY_FILL_WIDTH := 136.0
 
+## Smoothness pass: refresh() used to write cooldown_fill.size.x every frame
+## unconditionally, dirtying layout even on the many frames a combatant's
+## cooldown fraction hasn't moved (mid-attack, dead, waiting in the turn
+## queue). -1 never matches a real fraction, so the first refresh() always
+## writes.
+var _last_cd_fraction: float = -1.0
+
 func _ready() -> void:
 	cooldown_border = $CooldownBorder
 	cooldown_bg = $CooldownBg
@@ -26,4 +33,8 @@ func setup(c: Combatant) -> void:
 func refresh() -> void:
 	if combatant == null or not is_instance_valid(combatant):
 		return
-	cooldown_fill.size.x = _cd_width * combatant.cooldown_fraction()
+	var fraction := combatant.cooldown_fraction()
+	if is_equal_approx(fraction, _last_cd_fraction):
+		return
+	_last_cd_fraction = fraction
+	cooldown_fill.size.x = _cd_width * fraction

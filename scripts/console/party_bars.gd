@@ -33,8 +33,10 @@ func _process(_delta: float) -> void:
 		# A party smaller than the authored roster leaves spare bars; hiding
 		# them beats leaving an empty card in the column, and the VBox closes
 		# the gap for free.
-		bars.visible = i < hero_count
-		if not bars.visible:
+		var should_show: bool = i < hero_count
+		if bars.visible != should_show:
+			bars.visible = should_show
+		if not should_show:
 			continue
 		# A retry frees the old party and spawns a new one; the bar has to follow
 		# the live Combatant, not the one it was set up with (spec 18.3).
