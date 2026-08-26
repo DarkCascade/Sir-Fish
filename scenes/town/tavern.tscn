@@ -1,0 +1,80 @@
+[gd_scene format=3 uid="uid://c0u0ujq2slk7r"]
+
+[ext_resource type="Texture2D" uid="uid://dd2vaiw7ex37s" path="res://assets/inn-bg.png" id="1_bg"]
+[ext_resource type="Texture2D" uid="uid://dwk3ypiy61vff" path="res://assets/particle_glow.png" id="2_glow"]
+
+[sub_resource type="Gradient" id="Gradient_h43lo"]
+offsets = PackedFloat32Array(0, 0.35, 0.75, 1)
+colors = PackedColorArray(1, 0.949, 0.69, 1, 1, 0.612, 0.102, 1, 0.761, 0.204, 0.043, 0.8, 0.227, 0.039, 0.02, 0)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_f73nn"]
+gradient = SubResource("Gradient_h43lo")
+width = 64
+
+[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_mro55"]
+emission_shape = 3
+emission_box_extents = Vector3(60, 6, 1)
+direction = Vector3(0, -1, 0)
+spread = 18.0
+initial_velocity_min = 50.0
+initial_velocity_max = 100.0
+gravity = Vector3(0, -20, 0)
+scale_min = 0.35
+scale_max = 0.9
+color_ramp = SubResource("GradientTexture1D_f73nn")
+
+[sub_resource type="Gradient" id="Gradient_f73nn"]
+offsets = PackedFloat32Array(0, 0.15, 0.55, 1)
+colors = PackedColorArray(0.788, 0.655, 0.859, 0, 0.788, 0.655, 0.859, 0.55, 0.608, 0.498, 0.722, 0.3, 0.608, 0.498, 0.722, 0)
+
+[sub_resource type="GradientTexture1D" id="GradientTexture1D_mro55"]
+gradient = SubResource("Gradient_f73nn")
+width = 64
+
+[sub_resource type="ParticleProcessMaterial" id="ParticleProcessMaterial_t8vvc"]
+emission_shape = 3
+emission_box_extents = Vector3(30, 10, 1)
+direction = Vector3(-0.15, -1, 0)
+spread = 22.0
+initial_velocity_min = 18.0
+initial_velocity_max = 34.0
+gravity = Vector3(0, -6, 0)
+damping_min = 2.0
+damping_max = 4.0
+scale_min = 1.4
+scale_max = 2.8
+color_ramp = SubResource("GradientTexture1D_mro55")
+
+[node name="Tavern" type="Control" unique_id=1896430543]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="Background" type="TextureRect" parent="." unique_id=963522472]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+texture = ExtResource("1_bg")
+expand_mode = 1
+metadata/_edit_lock_ = true
+
+[node name="FireParticles" type="GPUParticles2D" parent="." unique_id=689317766]
+position = Vector2(800, 1566)
+amount = 24
+texture = ExtResource("2_glow")
+lifetime = 1.2
+randomness = 0.4
+process_material = SubResource("ParticleProcessMaterial_mro55")
+
+[node name="SmokeParticles" type="GPUParticles2D" parent="." unique_id=145497363]
+position = Vector2(760, 950)
+amount = 16
+texture = ExtResource("2_glow")
+lifetime = 3.0
+randomness = 0.35
+process_material = SubResource("ParticleProcessMaterial_t8vvc")

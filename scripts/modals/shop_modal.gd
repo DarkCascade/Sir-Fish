@@ -9,6 +9,8 @@ extends Control
 ## reaches it before this modal. The buy cards and sell rows stay code-built -
 ## one per item in stock and one per inventory item, so there is no fixed set of
 ## them to author.
+## Bonus strip removed after the other bonus strip was moved to the upper-right
+## corner.
 
 signal closed()
 
