@@ -102,13 +102,18 @@ func _build_buy() -> void:
 	for child: Node in buy_list.get_children():
 		child.queue_free()
 	_cards.clear()
+	var index := 0
 	for item: Item in _encounter.cached_shop_items:
 		var card = BUY_CARD.instantiate()
 		buy_list.add_child(card)
 		card.setup(item)
 		card.purchased.connect(_on_purchased)
 		card.compare_requested.connect(_on_compare_requested)
+		# [meshy-shop-pass] Staggered pop-in, and a one-time swipe teach on the
+		# first card - see shop_buy_card.gd's play_entrance().
+		card.play_entrance(index)
 		_cards.append(card)
+		index += 1
 	await get_tree().process_frame
 	_refresh_cards()
 
@@ -136,6 +141,7 @@ func _build_sell() -> void:
 		child.queue_free()
 	var items := GameState.inventory
 	sell_empty.visible = items.is_empty()
+	var index := 0
 	for item: Item in items:
 		var row = SELL_ROW.instantiate()
 		sell_list.add_child(row)
@@ -143,6 +149,10 @@ func _build_sell() -> void:
 		row.sold.connect(_on_sold)
 		row.compare_requested.connect(_on_compare_requested)
 		row.equip_changed.connect(_on_equip_changed)
+		# [meshy-experiment] Staggered pop-in, and a one-time swipe teach on
+		# the first row - see shop_sell_row.gd's play_entrance().
+		row.play_entrance(index)
+		index += 1
 
 func _on_sold(item: Item, _row: Control) -> void:
 	_float_gold(item.sell_price())
