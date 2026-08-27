@@ -7,18 +7,14 @@ const SCREENSHOT_PATH := "user://mcp_screenshot.png"
 
 
 func _ready() -> void:
+	# This service only exists to serve the editor-driven MCP workflow. In an
+	# exported game it would poll user:// every frame for nothing, so shut it
+	# down entirely there.
+	if not OS.has_feature("editor") or OS.has_environment("GODOT_MCP_HEADLESS_CHILD"):
+		process_mode = Node.PROCESS_MODE_DISABLED
+		set_process(false)
+		return
 	process_mode = Node.PROCESS_MODE_ALWAYS
-	# [Sir Fish, ui-project-longshot] This service polls the filesystem once per
-	# frame and only ever has an editor on the other end of that poll, but the
-	# plugin registers it as a plain autoload - so it shipped in the exported
-	# build too, statting user:// 60 times a second. On the web export user://
-	# is IndexedDB behind Emscripten's synchronous FS shim, which made this (and
-	# its two sibling services) a measurable per-frame main-thread cost on
-	# phones. has_feature("editor") is false in any exported build.
-	#
-	# NOTE: addons/ is vendored; re-installing Godot MCP Pro will overwrite this
-	# guard and it has to be re-applied.
-	set_process(OS.has_feature("editor"))
 
 
 func _process(_delta: float) -> void:

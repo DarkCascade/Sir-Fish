@@ -260,13 +260,18 @@ func _cmd_drops(args: Array) -> void:
 		d.pending_drops.size() if d != null else 0,
 		String(GameState.next_drop_class())])
 
+## [town] Tops out at RARE on purpose: ENHANCED is forge-only (spec 10.1), so no
+## debug verb may mint one directly. There is deliberately no "enhanced" case -
+## that token falls through to the int parse, where int("enhanced") is 0, and an
+## explicit `item 4` clamps to RARE. The harness route to a forged item is the
+## `forge` verb (spec 13.4), which lands with the forge itself.
 func _parse_rarity(token: String) -> int:
 	match token.to_lower():
 		"common": return Item.Rarity.COMMON
 		"uncommon": return Item.Rarity.UNCOMMON
 		"magic": return Item.Rarity.MAGIC
 		"rare": return Item.Rarity.RARE
-		_: return clampi(int(token), 0, 3)
+		_: return clampi(int(token), 0, Item.Rarity.RARE)
 
 func _cmd_equip(args: Array) -> void:
 	if args.is_empty():

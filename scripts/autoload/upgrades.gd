@@ -5,7 +5,9 @@ extends Node
 ## Upgrades change how OFTEN spins happen and how MUCH a win pays. They never
 ## touch Tuning.SLOT_STRIP, the win rule, or the 50.038% win rate (spec 16.2).
 ##
-## Run-scoped: reset() is called from GameState.reset_run(). No meta-progression.
+## Run-scoped: reset() is called from GameState.start_expedition(), which
+## today is only ever reached through reset_run(). No meta-progression - spec
+## 5.4 is explicit that these are NOT the forge.
 
 const DEFS := {
 	&"quick_reels": {

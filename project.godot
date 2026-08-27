@@ -26,6 +26,7 @@ MCPInputService="*res://addons/godot_mcp/mcp_input_service.gd"
 MCPGameInspector="*res://addons/godot_mcp/mcp_game_inspector_service.gd"
 Upgrades="*res://scripts/autoload/upgrades.gd"
 Debug="*res://scripts/autoload/debug.gd"
+SaveGame="*res://scripts/autoload/save_game.gd"
 
 [display]
 
@@ -36,7 +37,7 @@ window/handheld/orientation=1
 
 [editor_plugins]
 
-enabled=PackedStringArray("res://addons/ai_dev_station/plugin.cfg", "res://addons/godot_mcp/plugin.cfg", "res://addons/script-ide/plugin.cfg")
+enabled=PackedStringArray("res://addons/script-ide/plugin.cfg")
 
 [gui]
 

@@ -1,0 +1,37 @@
+[gd_scene format=3 uid="uid://cm4ewrd7cybe5"]
+
+[ext_resource type="Texture2D" uid="uid://c83dwglbj442h" path="res://assets/town_overview.png" id="1_n11nm"]
+
+[node name="Town" type="Control" unique_id=1096428498]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+
+[node name="TownOverview" type="Sprite2D" parent="." unique_id=1825099657]
+position = Vector2(544.00006, 964.00006)
+scale = Vector2(0.87012994, 2.0625002)
+texture = ExtResource("1_n11nm")
+region_rect = Rect2(512, 256, 288, 368)
+
+[node name="BlacksmithButton" type="Button" parent="." unique_id=1571462363]
+layout_mode = 0
+offset_left = 671.0
+offset_top = 984.0
+offset_right = 1018.0
+offset_bottom = 1111.0
+theme_override_font_sizes/font_size = 48
+text = "Blacksmith"
+
+[node name="TavernButton" type="Button" parent="." unique_id=1572585234]
+layout_mode = 0
+offset_left = 321.0
+offset_top = 399.0
+offset_right = 499.0
+offset_bottom = 499.0
+theme_override_font_sizes/font_size = 48
+text = "Tavern"
