@@ -107,6 +107,10 @@ Pass an array of node definitions. Nodes are processed in order, so earlier node
 
 1. **Prefer inspector properties over code** — When changing visual properties (colors, sizes, theme overrides, transforms, etc.), use `update_property` to set them directly on the node. This keeps values visible in the Godot inspector and easy to tweak. Only use GDScript when the property isn't available in the inspector or needs to be dynamic at runtime.
 
+2. **Flag when Meshy would beat procedural drawing** — Before hand-coding a new visual asset as a procedural `_draw()` shape (polygons, arcs, lines), pause and tell the user if it's the kind of thing Meshy would do better, rather than silently defaulting to code. Non-trivial shapes — anything that isn't a handful of vertices, and that a player would recognize as "a sword" or "a shield" rather than "a triangle" — are hard to get right as hand-written coordinate geometry (verified directly on this project: a procedurally-drawn axe icon took two failed geometry rewrites before it read correctly, while the equivalent Meshy-generated icon set was right on the first prompt for 5 of 7 icons). Raise the option; let the user decide, since it costs Meshy credits.
+   - **Suggest Meshy** for icon/sprite/texture-style art with real shape detail: weapon icons, class/status icons, creature or prop art, anything with a recognizable silhouette.
+   - **Keep it procedural** for simple geometric primitives (circles, bars, simple polygons) and anything that must stay dynamically parametric at runtime — recolored per rarity/state, resized, animated by code — since a generated image is baked pixels and loses that flexibility (see `scripts/modals/item_glyph.gd`'s rarity ring/glow, which stays procedural around a Meshy-generated icon for exactly this reason).
+
 ## Common Pitfalls
 
 1. **Never edit project.godot directly** — Use `set_project_setting` instead. The Godot editor overwrites the file.

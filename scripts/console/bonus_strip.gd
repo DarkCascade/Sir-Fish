@@ -31,15 +31,17 @@ const ROWS: Array[StringName] = [
 	&"dmg_flat", &"dmg_pct", &"slot_bolt", &"slot_purse", &"slot_mend",
 ]
 
-static var SWORD := PackedVector2Array([
-	Vector2(0.50, 0.02), Vector2(0.62, 0.22), Vector2(0.58, 0.62),
-	Vector2(0.42, 0.62), Vector2(0.38, 0.22),
-])
-
-static var CHEVRON := PackedVector2Array([
-	Vector2(0.50, 0.10), Vector2(0.92, 0.52), Vector2(0.72, 0.52),
-	Vector2(0.50, 0.32), Vector2(0.28, 0.52), Vector2(0.08, 0.52),
-])
+## [meshy-experiment] Flat Meshy-generated icons, one per numeric glyph -
+## replaces the hand-drawn SWORD/CHEVRON polygons (bolt/purse/mend already
+## drew via SlotSymbol/a plain circle, now unified onto the same art style).
+## Each is cream-on-near-black; drawing with `modulate` in _draw_glyph() below
+## keeps every glyph's own colour exactly as it was (see that function's
+## hardcoded colours, not the `color` this function is passed).
+const TEX_SWORD := preload("res://assets/icons/bonus_sword.png")
+const TEX_CHEVRON := preload("res://assets/icons/bonus_chevron.png")
+const TEX_BOLT := preload("res://assets/icons/bonus_bolt.png")
+const TEX_PURSE := preload("res://assets/icons/bonus_purse.png")
+const TEX_HEAL := preload("res://assets/icons/glyph_heal.png")
 
 ## [screen-corner variant] When true, entries stack top-to-bottom (glyph then
 ## text, left-aligned) instead of the default centred horizontal row. Used by
@@ -180,28 +182,22 @@ func _element_label(element: StringName) -> String:
 	return ""
 
 func _draw_glyph(id: String, origin: Vector2, color: Color = Tuning.C_TEXT_DIM) -> void:
+	var box := Rect2(origin, Vector2(GLYPH, GLYPH))
 	match id:
 		"dmg_flat":
-			draw_colored_polygon(_map(SWORD, origin), Tuning.C_ORC_IRON)
+			draw_texture_rect(TEX_SWORD, box, false, Tuning.C_ORC_IRON)
 		"dmg_pct":
-			draw_colored_polygon(_map(CHEVRON, origin), Tuning.C_DANGER)
+			draw_texture_rect(TEX_CHEVRON, box, false, Tuning.C_DANGER)
 		"slot_bolt":
-			draw_colored_polygon(_map(SlotSymbol.BOLT, origin), Tuning.C_LIGHTNING)
+			draw_texture_rect(TEX_BOLT, box, false, Tuning.C_LIGHTNING)
 		"slot_purse":
-			var c := origin + Vector2(GLYPH, GLYPH) * 0.5
-			draw_circle(c, GLYPH * 0.42, Tuning.C_GOLD)
-			draw_arc(c, GLYPH * 0.42, 0.0, TAU, 20, Tuning.C_INK, 2.0)
+			draw_texture_rect(TEX_PURSE, box, false, Tuning.C_GOLD)
 		"slot_mend":
-			draw_colored_polygon(_map(SlotSymbol.PLUS, origin), Tuning.C_HEAL)
+			draw_texture_rect(TEX_HEAL, box, false, Tuning.C_HEAL)
 		"element":
 			# A 20px filled circle in the element's colour with a 2px ink ring
-			# (spec 17.6).
+			# (spec 17.6) - kept as a plain colour swatch rather than an icon:
+			# it has no shape of its own, only ever the colour it is naming.
 			var c := origin + Vector2(GLYPH, GLYPH) * 0.5
 			draw_circle(c, GLYPH * 0.5, color)
 			draw_arc(c, GLYPH * 0.5, 0.0, TAU, 20, Tuning.C_INK, 2.0)
-
-static func _map(points: PackedVector2Array, origin: Vector2) -> PackedVector2Array:
-	var out := PackedVector2Array()
-	for p: Vector2 in points:
-		out.append(origin + p * GLYPH)
-	return out
