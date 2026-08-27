@@ -2,97 +2,333 @@
 
 [ext_resource type="Script" uid="uid://c054pnnc8kfy0" path="res://scripts/modals/shop_buy_card.gd" id="1_card"]
 [ext_resource type="Script" uid="uid://0h1qqxld8x2i" path="res://scripts/console/coin_glyph.gd" id="2_kylpl"]
+[ext_resource type="Script" path="res://scripts/modals/item_glyph.gd" id="3_glyph"]
+[ext_resource type="Script" path="res://scripts/modals/shop_buy_stage.gd" id="4_stage"]
+[ext_resource type="Script" path="res://scripts/modals/swipeable_face.gd" id="5_swipe"]
 
-[node name="ShopBuyCard" type="PanelContainer" unique_id=1168865359]
-custom_minimum_size = Vector2(880, 260)
+; [meshy-shop-pass] The card face's rarity border/glow is set per-item at
+; runtime (setup() duplicates this and overrides border_color/shadow_color),
+; the same pattern edge.color = i.rarity_color() already used - a template
+; stylebox here just supplies the shared shape (corners, margins, base fill).
+[sub_resource type="StyleBoxFlat" id="face_style"]
+content_margin_left = 26.0
+content_margin_top = 20.0
+content_margin_right = 26.0
+content_margin_bottom = 20.0
+bg_color = Color(0.043137, 0.117647, 0.109804, 1)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0.5, 0.5, 0.5, 1)
+corner_radius_top_left = 18
+corner_radius_top_right = 18
+corner_radius_bottom_right = 18
+corner_radius_bottom_left = 18
+shadow_color = Color(0.5, 0.5, 0.5, 0)
+shadow_size = 0
+
+; The swipe-reveal lane behind the card, in the arcane teal/blue that means
+; "info" everywhere else in the palette - deliberately not gold (BUY) or red
+; (danger), so its colour alone says "this one is safe to tap".
+[sub_resource type="StyleBoxFlat" id="action_normal"]
+bg_color = Color(0.078431, 0.254902, 0.498039, 1)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0.247059, 0.662745, 0.909804, 1)
+corner_radius_top_left = 0
+corner_radius_top_right = 18
+corner_radius_bottom_right = 18
+corner_radius_bottom_left = 0
+
+[sub_resource type="StyleBoxFlat" id="action_hover"]
+bg_color = Color(0.109804, 0.32549, 0.6, 1)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0.74902, 0.933333, 1, 1)
+corner_radius_top_left = 0
+corner_radius_top_right = 18
+corner_radius_bottom_right = 18
+corner_radius_bottom_left = 0
+
+[sub_resource type="StyleBoxFlat" id="action_pressed"]
+bg_color = Color(0.054902, 0.152941, 0.278431, 1)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0.156863, 0.4, 0.6, 1)
+corner_radius_top_left = 0
+corner_radius_top_right = 18
+corner_radius_bottom_right = 18
+corner_radius_bottom_left = 0
+
+; The BUY bar is the card's one dominant call to action - full width, thumb
+; height, gold like every other affirmative button in the shop.
+[sub_resource type="StyleBoxFlat" id="buybar_normal"]
+bg_color = Color(0.078431, 0.278431, 0.207843, 1)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0.831373, 0.658824, 0.262745, 1)
+corner_radius_top_left = 14
+corner_radius_top_right = 14
+corner_radius_bottom_right = 14
+corner_radius_bottom_left = 14
+
+[sub_resource type="StyleBoxFlat" id="buybar_hover"]
+bg_color = Color(0.109804, 0.360784, 0.262745, 1)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0.960784, 0.874509, 0.627451, 1)
+corner_radius_top_left = 14
+corner_radius_top_right = 14
+corner_radius_bottom_right = 14
+corner_radius_bottom_left = 14
+
+[sub_resource type="StyleBoxFlat" id="buybar_pressed"]
+bg_color = Color(0.043137, 0.156863, 0.109804, 1)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0.478431, 0.352941, 0.094118, 1)
+corner_radius_top_left = 14
+corner_radius_top_right = 14
+corner_radius_bottom_right = 14
+corner_radius_bottom_left = 14
+
+[sub_resource type="StyleBoxFlat" id="buybar_disabled"]
+bg_color = Color(0.101961, 0.137255, 0.129412, 1)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0.278431, 0.290196, 0.258824, 1)
+corner_radius_top_left = 14
+corner_radius_top_right = 14
+corner_radius_bottom_right = 14
+corner_radius_bottom_left = 14
+
+; A tight coin-shaped burst rather than the slot machine's wide confetti
+; sheet (Tuning/slot_machine.tscn's confetti_mat) - this fires from a single
+; point on the price plate, not across the whole cabinet width.
+[sub_resource type="ParticleProcessMaterial" id="coin_burst_mat"]
+emission_shape = 1
+emission_sphere_radius = 6.0
+direction = Vector3(0, -1, 0)
+spread = 55.0
+initial_velocity_min = 180.0
+initial_velocity_max = 360.0
+gravity = Vector3(0, 620, 0)
+scale_min = 0.5
+scale_max = 1.15
+color = Color(0.960784, 0.874509, 0.627451, 1)
+
+; [meshy-shop-pass] Full rebuild for mobile usability + juice (spec: Buy tab
+; only). The card is now two stacked layers under Stage (a plain Control, so
+; neither is fought by a Container's own layout pass - see shop_buy_card.gd):
+; ActionLayer (a "Compare" lane pinned to the right edge, exposed by a
+; leftward swipe) sits behind Face (the visible card, icon + info + a
+; full-width BUY bar), which shop_buy_card.gd slides on drag. Root keeps
+; clip_contents so the reveal - and the purchase burst - never spill past the
+; card's own gold frame.
+[node name="ShopBuyCard" type="PanelContainer"]
+custom_minimum_size = Vector2(880, 300)
 offset_right = 880.0
-offset_bottom = 260.0
+offset_bottom = 300.0
+clip_contents = true
 mouse_filter = 1
 script = ExtResource("1_card")
 
-[node name="Row" type="HBoxContainer" parent="." unique_id=1269767436]
+[node name="Stage" type="Control" parent="."]
 layout_mode = 2
-theme_override_constants/separation = 20
+mouse_filter = 1
+script = ExtResource("4_stage")
 
-[node name="Edge" type="ColorRect" parent="Row" unique_id=2134850984]
-custom_minimum_size = Vector2(12, 0)
-layout_mode = 2
-size_flags_horizontal = 0
-size_flags_vertical = 3
+[node name="ActionLayer" type="Control" parent="Stage"]
+layout_mode = 1
+anchor_left = 0.0
+anchor_top = 0.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 0.0
+offset_bottom = 0.0
+grow_horizontal = 2
+grow_vertical = 2
 mouse_filter = 2
-color = Color(0.721569, 0.698039, 0.768627, 1)
 
-[node name="Layout" type="HBoxContainer" parent="Row" unique_id=78601741]
+[node name="ActionButton" type="Button" parent="Stage/ActionLayer"]
+layout_mode = 1
+anchor_left = 1.0
+anchor_top = 0.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -184.0
+offset_top = 0.0
+offset_right = 0.0
+offset_bottom = 0.0
+grow_horizontal = 0
+grow_vertical = 2
+mouse_filter = 0
+theme_override_colors/font_color = Color(0.858824, 0.945098, 1, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
+theme_override_colors/font_pressed_color = Color(0.74902, 0.933333, 1, 1)
+theme_override_font_sizes/font_size = 30
+theme_override_styles/normal = SubResource("action_normal")
+theme_override_styles/hover = SubResource("action_hover")
+theme_override_styles/pressed = SubResource("action_pressed")
+text = "Compare"
+autowrap_mode = 2
+
+[node name="Face" type="PanelContainer" parent="Stage"]
+layout_mode = 1
+anchor_left = 0.0
+anchor_top = 0.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 0.0
+offset_bottom = 0.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 1
+theme_override_styles/panel = SubResource("face_style")
+script = ExtResource("5_swipe")
+
+[node name="FaceLayout" type="VBoxContainer" parent="Stage/Face"]
 layout_mode = 2
-size_flags_horizontal = 3
+theme_override_constants/separation = 14
+
+[node name="TopRow" type="HBoxContainer" parent="Stage/Face/FaceLayout"]
+layout_mode = 2
 theme_override_constants/separation = 20
 
-[node name="Info" type="VBoxContainer" parent="Row/Layout" unique_id=1001257327]
+[node name="Glyph" type="Control" parent="Stage/Face/FaceLayout/TopRow"]
+custom_minimum_size = Vector2(104, 104)
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+script = ExtResource("3_glyph")
+
+[node name="Info" type="VBoxContainer" parent="Stage/Face/FaceLayout/TopRow"]
 layout_mode = 2
 size_flags_horizontal = 3
+size_flags_vertical = 4
 theme_override_constants/separation = 4
 
-[node name="NameLabel" type="Label" parent="Row/Layout/Info" unique_id=1864656627]
+[node name="NameLabel" type="Label" parent="Stage/Face/FaceLayout/TopRow/Info"]
 layout_mode = 2
 theme_type_variation = &"DisplayLabel"
 theme_override_colors/font_color = Color(0.94902, 0.913725, 0.815686, 1)
-theme_override_font_sizes/font_size = 44
+theme_override_font_sizes/font_size = 42
 
-[node name="SubtitleLabel" type="Label" parent="Row/Layout/Info" unique_id=337761693]
+[node name="SubtitleLabel" type="Label" parent="Stage/Face/FaceLayout/TopRow/Info"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 30
+theme_override_font_sizes/font_size = 28
 
-[node name="Modifiers" type="VBoxContainer" parent="Row/Layout/Info" unique_id=544854862]
+[node name="Modifiers" type="VBoxContainer" parent="Stage/Face/FaceLayout/TopRow/Info"]
 layout_mode = 2
 theme_override_constants/separation = 2
 
-[node name="PriceBox" type="VBoxContainer" parent="Row/Layout" unique_id=1641175052]
-custom_minimum_size = Vector2(220, 0)
+[node name="CompareHint" type="Button" parent="Stage/Face/FaceLayout/TopRow/Info"]
 layout_mode = 2
-theme_override_constants/separation = 12
-alignment = 1
+size_flags_horizontal = 0
+mouse_filter = 0
+theme_type_variation = &"SecondaryButton"
+text = "Compare ›"
 
-[node name="BuyButton" type="Button" parent="Row/Layout/PriceBox" unique_id=98947513]
-custom_minimum_size = Vector2(200, 80)
+[node name="BuyBar" type="Button" parent="Stage/Face/FaceLayout"]
+custom_minimum_size = Vector2(0, 108)
 layout_mode = 2
-mouse_filter = 1
+mouse_filter = 0
+theme_override_styles/normal = SubResource("buybar_normal")
+theme_override_styles/hover = SubResource("buybar_hover")
+theme_override_styles/pressed = SubResource("buybar_pressed")
+theme_override_styles/disabled = SubResource("buybar_disabled")
 
-[node name="Content" type="HBoxContainer" parent="Row/Layout/PriceBox/BuyButton" unique_id=1076484790]
+[node name="Content" type="HBoxContainer" parent="Stage/Face/FaceLayout/BuyBar"]
 layout_mode = 0
 anchor_right = 1.0
 anchor_bottom = 1.0
 mouse_filter = 2
-theme_override_constants/separation = 8
+theme_override_constants/separation = 14
 alignment = 1
 
-[node name="CoinGlyph" type="Control" parent="Row/Layout/PriceBox/BuyButton/Content" unique_id=940027668]
-custom_minimum_size = Vector2(34, 34)
+[node name="BuyLabel" type="Label" parent="Stage/Face/FaceLayout/BuyBar/Content"]
+layout_mode = 2
+theme_type_variation = &"DisplayLabel"
+theme_override_colors/font_color = Color(0.94902, 0.913725, 0.815686, 1)
+theme_override_font_sizes/font_size = 40
+text = "BUY"
+vertical_alignment = 1
+
+[node name="Divider" type="ColorRect" parent="Stage/Face/FaceLayout/BuyBar/Content"]
+custom_minimum_size = Vector2(3, 44)
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+color = Color(0.831373, 0.658824, 0.262745, 0.5)
+
+[node name="CoinGlyph" type="Control" parent="Stage/Face/FaceLayout/BuyBar/Content"]
+custom_minimum_size = Vector2(38, 38)
 layout_mode = 2
 size_flags_vertical = 4
 mouse_filter = 2
 script = ExtResource("2_kylpl")
-radius = 15.0
+radius = 17.0
 
-[node name="PriceLabel" type="Label" parent="Row/Layout/PriceBox/BuyButton/Content" unique_id=1473001721]
+[node name="PriceLabel" type="Label" parent="Stage/Face/FaceLayout/BuyBar/Content"]
 layout_mode = 2
 theme_type_variation = &"DisplayLabel"
 theme_override_colors/font_color = Color(0.941176, 0.835294, 0.533333, 1)
 theme_override_font_sizes/font_size = 46
-horizontal_alignment = 2
+vertical_alignment = 1
 
-; [ui-project-longshot] Comparing used to be "tap the card body", which was
-; invisible - nothing on the card said the gesture existed, and the same tap
-; that opened it also had to be told apart from a scroll. It is a button now,
-; under the price plate, in the SecondaryButton variation so it stays clearly
-; the lesser of the two things this card offers.
-[node name="CompareButton" type="Button" parent="Row/Layout/PriceBox" unique_id=1806415332]
-custom_minimum_size = Vector2(200, 0)
+[node name="SoldLabel" type="Label" parent="Stage/Face/FaceLayout/BuyBar/Content"]
+visible = false
 layout_mode = 2
-mouse_filter = 1
-theme_type_variation = &"SecondaryButton"
-text = "Compare"
+theme_type_variation = &"DisplayLabel"
+theme_override_colors/font_color = Color(0.894118, 0.282353, 0.309804, 1)
+theme_override_font_sizes/font_size = 46
+text = "SOLD!"
+vertical_alignment = 1
 
-[node name="RightMargin" type="Control" parent="Row/Layout" unique_id=1267415596]
-custom_minimum_size = Vector2(18, 0)
-layout_mode = 2
+; Purchase juice only - never the reveal/close animation, so it never fires
+; if the card is only being swiped.
+[node name="Burst" type="GPUParticles2D" parent="."]
+position = Vector2(440, 220)
+emitting = false
+amount = 22
+lifetime = 0.7
+one_shot = true
+explosiveness = 0.9
+process_material = SubResource("coin_burst_mat")
+
+; A brief rarity-coloured wash over the whole face on purchase - the shop's
+; only cue that a Magic/Rare buy is a bigger deal than a Common one, since the
+; SOLD stamp and burst otherwise look identical regardless of what was bought.
+[node name="RarityFlash" type="ColorRect" parent="Stage/Face"]
+layout_mode = 1
+anchor_left = 0.0
+anchor_top = 0.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 0.0
+offset_bottom = 0.0
+grow_horizontal = 2
+grow_vertical = 2
 mouse_filter = 2
+color = Color(1, 1, 1, 0)

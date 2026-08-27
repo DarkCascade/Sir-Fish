@@ -2,107 +2,298 @@
 
 [ext_resource type="Script" uid="uid://jyyxcmeq45pq" path="res://scripts/modals/shop_sell_row.gd" id="1_row"]
 [ext_resource type="Script" uid="uid://0h1qqxld8x2i" path="res://scripts/console/coin_glyph.gd" id="2_3r0x6"]
+[ext_resource type="Script" path="res://scripts/modals/item_glyph.gd" id="3_glyph"]
+[ext_resource type="Script" path="res://scripts/modals/shop_buy_stage.gd" id="4_stage"]
+[ext_resource type="Script" path="res://scripts/modals/swipeable_face.gd" id="5_swipe"]
 
-[node name="ShopSellRow" type="PanelContainer" unique_id=243028113]
-custom_minimum_size = Vector2(880, 180)
+; [meshy-experiment] Same card frame as the Buy tab's shop_buy_card.tscn - see
+; its header for the reasoning. Kept as a separate duplicate stylebox set
+; rather than a shared resource file: this project's own convention already
+; duplicates identical styleboxes per-scene (shop_modal.tscn / compare_flyout.
+; tscn both carry their own copy of "close_style").
+[sub_resource type="StyleBoxFlat" id="face_style"]
+content_margin_left = 26.0
+content_margin_top = 20.0
+content_margin_right = 26.0
+content_margin_bottom = 20.0
+bg_color = Color(0.043137, 0.117647, 0.109804, 1)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0.5, 0.5, 0.5, 1)
+corner_radius_top_left = 18
+corner_radius_top_right = 18
+corner_radius_bottom_right = 18
+corner_radius_bottom_left = 18
+shadow_color = Color(0.5, 0.5, 0.5, 0)
+shadow_size = 0
+
+[sub_resource type="StyleBoxFlat" id="action_normal"]
+bg_color = Color(0.078431, 0.254902, 0.498039, 1)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0.247059, 0.662745, 0.909804, 1)
+corner_radius_top_left = 0
+corner_radius_top_right = 18
+corner_radius_bottom_right = 18
+corner_radius_bottom_left = 0
+
+[sub_resource type="StyleBoxFlat" id="action_hover"]
+bg_color = Color(0.109804, 0.32549, 0.6, 1)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0.74902, 0.933333, 1, 1)
+corner_radius_top_left = 0
+corner_radius_top_right = 18
+corner_radius_bottom_right = 18
+corner_radius_bottom_left = 0
+
+[sub_resource type="StyleBoxFlat" id="action_pressed"]
+bg_color = Color(0.054902, 0.152941, 0.278431, 1)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0.156863, 0.4, 0.6, 1)
+corner_radius_top_left = 0
+corner_radius_top_right = 18
+corner_radius_bottom_right = 18
+corner_radius_bottom_left = 0
+
+[sub_resource type="StyleBoxFlat" id="sellbar_normal"]
+bg_color = Color(0.078431, 0.278431, 0.207843, 1)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0.831373, 0.658824, 0.262745, 1)
+corner_radius_top_left = 14
+corner_radius_top_right = 14
+corner_radius_bottom_right = 14
+corner_radius_bottom_left = 14
+
+[sub_resource type="StyleBoxFlat" id="sellbar_hover"]
+bg_color = Color(0.109804, 0.360784, 0.262745, 1)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0.960784, 0.874509, 0.627451, 1)
+corner_radius_top_left = 14
+corner_radius_top_right = 14
+corner_radius_bottom_right = 14
+corner_radius_bottom_left = 14
+
+[sub_resource type="StyleBoxFlat" id="sellbar_pressed"]
+bg_color = Color(0.043137, 0.156863, 0.109804, 1)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0.478431, 0.352941, 0.094118, 1)
+corner_radius_top_left = 14
+corner_radius_top_right = 14
+corner_radius_bottom_right = 14
+corner_radius_bottom_left = 14
+
+[sub_resource type="StyleBoxFlat" id="sellbar_disabled"]
+bg_color = Color(0.101961, 0.137255, 0.129412, 1)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0.278431, 0.290196, 0.258824, 1)
+corner_radius_top_left = 14
+corner_radius_top_right = 14
+corner_radius_bottom_right = 14
+corner_radius_bottom_left = 14
+
+; [meshy-experiment] Full rebuild applying the Buy tab's card frame to the
+; Sell tab (icon medallion + info + a full-width primary bar, with Compare
+; behind a swipe - see shop_buy_card.tscn's header). Equip stays a small,
+; always-visible button next to the swipe-only Compare, since it is a real
+; gameplay action players reach for often, not just information.
+[node name="ShopSellRow" type="PanelContainer"]
+custom_minimum_size = Vector2(880, 300)
 offset_right = 880.0
-offset_bottom = 180.0
+offset_bottom = 300.0
+clip_contents = true
 mouse_filter = 1
 script = ExtResource("1_row")
 
-[node name="Row" type="HBoxContainer" parent="." unique_id=1508353889]
+[node name="Stage" type="Control" parent="."]
+layout_mode = 2
+mouse_filter = 1
+script = ExtResource("4_stage")
+
+[node name="ActionLayer" type="Control" parent="Stage"]
+layout_mode = 1
+anchor_left = 0.0
+anchor_top = 0.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 0.0
+offset_bottom = 0.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="ActionButton" type="Button" parent="Stage/ActionLayer"]
+layout_mode = 1
+anchor_left = 1.0
+anchor_top = 0.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -184.0
+offset_top = 0.0
+offset_right = 0.0
+offset_bottom = 0.0
+grow_horizontal = 0
+grow_vertical = 2
+mouse_filter = 0
+theme_override_colors/font_color = Color(0.858824, 0.945098, 1, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
+theme_override_colors/font_pressed_color = Color(0.74902, 0.933333, 1, 1)
+theme_override_font_sizes/font_size = 30
+theme_override_styles/normal = SubResource("action_normal")
+theme_override_styles/hover = SubResource("action_hover")
+theme_override_styles/pressed = SubResource("action_pressed")
+text = "Compare"
+autowrap_mode = 2
+
+[node name="Face" type="PanelContainer" parent="Stage"]
+layout_mode = 1
+anchor_left = 0.0
+anchor_top = 0.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 0.0
+offset_top = 0.0
+offset_right = 0.0
+offset_bottom = 0.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 1
+theme_override_styles/panel = SubResource("face_style")
+script = ExtResource("5_swipe")
+
+[node name="FaceLayout" type="VBoxContainer" parent="Stage/Face"]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="TopRow" type="HBoxContainer" parent="Stage/Face/FaceLayout"]
 layout_mode = 2
 theme_override_constants/separation = 20
 
-[node name="Edge" type="ColorRect" parent="Row" unique_id=873486950]
-custom_minimum_size = Vector2(12, 0)
+[node name="Glyph" type="Control" parent="Stage/Face/FaceLayout/TopRow"]
+custom_minimum_size = Vector2(104, 104)
 layout_mode = 2
-size_flags_horizontal = 0
-size_flags_vertical = 3
+size_flags_vertical = 4
 mouse_filter = 2
-color = Color(0.721569, 0.698039, 0.768627, 1)
+script = ExtResource("3_glyph")
 
-[node name="Layout" type="VBoxContainer" parent="Row" unique_id=1194020043]
+[node name="Info" type="VBoxContainer" parent="Stage/Face/FaceLayout/TopRow"]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_constants/separation = 6
+size_flags_vertical = 4
+theme_override_constants/separation = 4
 
-[node name="Info" type="VBoxContainer" parent="Row/Layout" unique_id=83528743]
+[node name="NameLabel" type="Label" parent="Stage/Face/FaceLayout/TopRow/Info"]
 layout_mode = 2
-theme_override_constants/separation = 2
+theme_type_variation = &"DisplayLabel"
+theme_override_colors/font_color = Color(0.94902, 0.913725, 0.815686, 1)
+theme_override_font_sizes/font_size = 42
 
-[node name="NameLabel" type="Label" parent="Row/Layout/Info" unique_id=904539612]
-layout_mode = 2
-theme_override_font_sizes/font_size = 38
-
-[node name="SubtitleLabel" type="Label" parent="Row/Layout/Info" unique_id=800441220]
+[node name="SubtitleLabel" type="Label" parent="Stage/Face/FaceLayout/TopRow/Info"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 28
 
-[node name="ModsLabel" type="Label" parent="Row/Layout/Info" unique_id=2037614013]
+[node name="ModsLabel" type="Label" parent="Stage/Face/FaceLayout/TopRow/Info"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.611765, 0.686275, 0.643137, 1)
 theme_override_font_sizes/font_size = 26
 
-[node name="Actions" type="HBoxContainer" parent="Row/Layout" unique_id=1676757750]
+[node name="SecondaryRow" type="HBoxContainer" parent="Stage/Face/FaceLayout/TopRow/Info"]
 layout_mode = 2
-theme_override_constants/separation = 12
+theme_override_constants/separation = 16
 
-; [ui-project-longshot] See shop_buy_card.tscn's CompareButton. Fixed width and
-; NOT expanding, unlike its two neighbours: Equip and Sell carry variable text
-; ("Sell for 148"), so they get the slack and Compare keeps just enough for its
-; own word.
-;
-; [mobile-scroll] All three carry mouse_filter = 1 (PASS) rather than Button's
-; default STOP. STOP swallows the InputEventScreenTouch before the enclosing
-; ScrollContainer sees it, so on a touchscreen a drag beginning on a button
-; neither scrolled the list nor got cancelled - it just fired on release, and
-; Sell is the one action in this modal that cannot be undone. PASS lets the
-; gesture reach the ScrollContainer, which cancels the press once the drag
-; passes scroll_deadzone. Verified with tests/_scratch_shop_touch.tscn: a 60 px
-; drag inside SellButton used to sell the item and scroll nothing; it now
-; scrolls and sells nothing, while a still tap still sells.
-[node name="CompareButton" type="Button" parent="Row/Layout/Actions" unique_id=1806415333]
-custom_minimum_size = Vector2(190, 0)
+[node name="EquipButton" type="Button" parent="Stage/Face/FaceLayout/TopRow/Info/SecondaryRow"]
 layout_mode = 2
-mouse_filter = 1
+size_flags_horizontal = 0
+mouse_filter = 0
 theme_type_variation = &"SecondaryButton"
-text = "Compare"
-
-[node name="EquipButton" type="Button" parent="Row/Layout/Actions" unique_id=240048961]
-layout_mode = 2
-size_flags_horizontal = 3
-mouse_filter = 1
-theme_override_font_sizes/font_size = 32
 text = "Equip"
 
-[node name="SellButton" type="Button" parent="Row/Layout/Actions" unique_id=1120782536]
+[node name="CompareHint" type="Button" parent="Stage/Face/FaceLayout/TopRow/Info/SecondaryRow"]
 layout_mode = 2
-size_flags_horizontal = 3
-mouse_filter = 1
-theme_override_font_sizes/font_size = 32
-text = "Sell"
+size_flags_horizontal = 0
+mouse_filter = 0
+theme_type_variation = &"SecondaryButton"
+text = "Compare ›"
 
-[node name="Content" type="HBoxContainer" parent="Row/Layout/Actions/SellButton" unique_id=1603621531]
-layout_mode = 1
-anchors_preset = 15
+[node name="SellBar" type="Button" parent="Stage/Face/FaceLayout"]
+custom_minimum_size = Vector2(0, 108)
+layout_mode = 2
+mouse_filter = 0
+theme_override_styles/normal = SubResource("sellbar_normal")
+theme_override_styles/hover = SubResource("sellbar_hover")
+theme_override_styles/pressed = SubResource("sellbar_pressed")
+theme_override_styles/disabled = SubResource("sellbar_disabled")
+
+[node name="Content" type="HBoxContainer" parent="Stage/Face/FaceLayout/SellBar"]
+layout_mode = 0
 anchor_right = 1.0
 anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
 mouse_filter = 2
-theme_override_constants/separation = 8
+theme_override_constants/separation = 14
 alignment = 1
 
-[node name="CoinGlyph" type="Control" parent="Row/Layout/Actions/SellButton/Content" unique_id=1569846682]
-custom_minimum_size = Vector2(30, 30)
+[node name="SellLabel" type="Label" parent="Stage/Face/FaceLayout/SellBar/Content"]
+layout_mode = 2
+theme_type_variation = &"DisplayLabel"
+theme_override_colors/font_color = Color(0.94902, 0.913725, 0.815686, 1)
+theme_override_font_sizes/font_size = 40
+text = "SELL"
+vertical_alignment = 1
+
+[node name="Divider" type="ColorRect" parent="Stage/Face/FaceLayout/SellBar/Content"]
+custom_minimum_size = Vector2(3, 44)
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+color = Color(0.831373, 0.658824, 0.262745, 0.5)
+
+[node name="CoinGlyph" type="Control" parent="Stage/Face/FaceLayout/SellBar/Content"]
+custom_minimum_size = Vector2(38, 38)
 layout_mode = 2
 size_flags_vertical = 4
 mouse_filter = 2
 script = ExtResource("2_3r0x6")
-radius = 13.0
+radius = 17.0
 
-[node name="AmountLabel" type="Label" parent="Row/Layout/Actions/SellButton/Content" unique_id=1812893640]
+[node name="AmountLabel" type="Label" parent="Stage/Face/FaceLayout/SellBar/Content"]
 layout_mode = 2
+theme_type_variation = &"DisplayLabel"
+theme_override_colors/font_color = Color(0.941176, 0.835294, 0.533333, 1)
+theme_override_font_sizes/font_size = 46
+vertical_alignment = 1
+
+; Swapped in for SellLabel/Divider/CoinGlyph/AmountLabel (see shop_sell_row.gd's
+; _refresh_sell_state()) while the item is equipped - a plain Label rather
+; than DisplayLabel's serif face, and a smaller size, because "Must Unequip
+; to Sell" is far longer than "SELL | 24" and needs to read as a status
+; message, not a second call to action.
+[node name="LockedLabel" type="Label" parent="Stage/Face/FaceLayout/SellBar/Content"]
+visible = false
+layout_mode = 2
+theme_override_colors/font_color = Color(0.611765, 0.686275, 0.643137, 1)
 theme_override_font_sizes/font_size = 32
+text = "Must Unequip to Sell"
 vertical_alignment = 1
