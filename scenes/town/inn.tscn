@@ -2,6 +2,7 @@
 
 [ext_resource type="Texture2D" path="res://assets/inn-bg.png" id="1_bg"]
 [ext_resource type="Texture2D" path="res://assets/particle_glow.png" id="2_glow"]
+[ext_resource type="Script" path="res://scripts/town/inn.gd" id="3_inn"]
 
 [sub_resource type="Gradient" id="Gradient_h43lo"]
 offsets = PackedFloat32Array(0, 0.35, 0.75, 1)
@@ -45,13 +46,14 @@ scale_min = 1.4
 scale_max = 2.8
 color_ramp = SubResource("GradientTexture1D_mro55")
 
-[node name="Tavern" type="Control" unique_id=1896430543]
+[node name="Inn" type="Control" unique_id=1896430543]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+script = ExtResource("3_inn")
 
 [node name="Background" type="TextureRect" parent="." unique_id=963522472]
 layout_mode = 1
@@ -80,3 +82,52 @@ texture = ExtResource("2_glow")
 lifetime = 3.0
 randomness = 0.35
 process_material = SubResource("ParticleProcessMaterial_t8vvc")
+
+[node name="Layout" type="VBoxContainer" parent="." unique_id=145497400]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -330.0
+offset_top = -380.0
+offset_right = 330.0
+offset_bottom = 380.0
+grow_horizontal = 2
+grow_vertical = 2
+alignment = 1
+theme_override_constants/separation = 30
+
+[node name="Title" type="Label" parent="Layout" unique_id=145497401]
+layout_mode = 2
+theme_override_font_sizes/font_size = 64
+text = "The Inn"
+horizontal_alignment = 1
+
+[node name="Flavour" type="Label" parent="Layout" unique_id=145497402]
+custom_minimum_size = Vector2(0, 120)
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+text = "A warm room, a straw bed, and the fire crackling low."
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 3
+
+[node name="RestButton" type="Button" parent="Layout" unique_id=145497403]
+custom_minimum_size = Vector2(0, 120)
+layout_mode = 2
+theme_override_font_sizes/font_size = 40
+text = "Rest for the night"
+
+[node name="FireButton" type="Button" parent="Layout" unique_id=145497404]
+custom_minimum_size = Vector2(0, 120)
+layout_mode = 2
+theme_override_font_sizes/font_size = 40
+text = "Sit by the fire"
+
+[node name="BackButton" type="Button" parent="Layout" unique_id=145497405]
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+theme_override_font_sizes/font_size = 34
+text = "Back"

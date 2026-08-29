@@ -186,6 +186,11 @@ const SHOP_ITEMS_FOR_SALE := 3
 const PROFILE_STARTING_GOLD := 150
 const PROFILE_STARTING_SCRAP := 0
 
+## [town] The inn's paid full heal (spec 7.2), multiplied by active_party.size()
+## - 50 with a solo warrior. The free "Sit by the fire" option costs nothing and
+## deliberately does not heal.
+const INN_REST_COST_PER_HERO := 50
+
 # --- enemy drops --------------------------------------------------------------
 ## How strongly a class that is behind on drops is favoured by the next roll:
 ##   weight = 1 + DROP_CATCHUP * (leader_count - this_count)

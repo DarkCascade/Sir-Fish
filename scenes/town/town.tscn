@@ -1,6 +1,7 @@
 [gd_scene format=3 uid="uid://cm4ewrd7cybe5"]
 
 [ext_resource type="Texture2D" uid="uid://c83dwglbj442h" path="res://assets/town_overview.png" id="1_n11nm"]
+[ext_resource type="Script" path="res://scripts/town/town.gd" id="2_town"]
 
 [node name="Town" type="Control" unique_id=1096428498]
 layout_mode = 3
@@ -11,6 +12,7 @@ grow_horizontal = 2
 grow_vertical = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
+script = ExtResource("2_town")
 
 [node name="TownOverview" type="Sprite2D" parent="." unique_id=1825099657]
 position = Vector2(544.00006, 964.00006)
@@ -27,11 +29,20 @@ offset_bottom = 1111.0
 theme_override_font_sizes/font_size = 48
 text = "Blacksmith"
 
-[node name="TavernButton" type="Button" parent="." unique_id=1572585234]
+[node name="InnButton" type="Button" parent="." unique_id=1572585234]
 layout_mode = 0
 offset_left = 321.0
 offset_top = 399.0
 offset_right = 499.0
 offset_bottom = 499.0
 theme_override_font_sizes/font_size = 48
-text = "Tavern"
+text = "Inn"
+
+[node name="MayorButton" type="Button" parent="." unique_id=1572585300]
+layout_mode = 0
+offset_left = 321.0
+offset_top = 690.0
+offset_right = 668.0
+offset_bottom = 817.0
+theme_override_font_sizes/font_size = 48
+text = "Mayor"

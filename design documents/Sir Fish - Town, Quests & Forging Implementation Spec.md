@@ -2310,7 +2310,35 @@ previous is green.
      the modal, equip a spare, confirm both sections rebuild and the slot is
      displaced, close and confirm unpaused) plus the full no-edit + edited
      suites staying green.
-7. **§7.1, §7.2 — town hub and inn**, wired to the router.
+7. **§7.1, §7.2 — town hub and inn**, wired to the router. **Done.** The
+   changeset:
+
+   - `scenes/town/tavern.tscn` → `inn.tscn` (`git mv`), root node `Tavern` →
+     `Inn`, `+ scripts/town/inn.gd`. The authored `inn-bg.png` and the
+     fire/dust particles are kept; a centred `Layout` VBox adds the two action
+     buttons, a flavour `Label`, and a Back button.
+   - `scripts/town/inn.gd` — new (§7.2). **Rest for the night** —
+     `INN_REST_COST_PER_HERO × active_party.size()`, `spend_gold()` then
+     `GameState.heal_party()` then `SaveGame.save_profile()`; disabled + greyed
+     when unaffordable, re-evaluated on `gold_changed` (`upgrade_button.gd`'s
+     pattern). **Sit by the fire** — flavour text only, no heal. Back /
+     `ui_cancel` route to `Place.TOWN`. `_ready()` re-asserts
+     `SceneRouter.place = Place.INN` (§3.1).
+   - `scenes/town/town.tscn` + `scripts/town/town.gd` — new script. `TavernButton`
+     → `InnButton` (text "Inn"), new `MayorButton`; `_ready()` connects the three
+     `pressed` signals to `SceneRouter.go()` and re-asserts `place = Place.TOWN`.
+     `BlacksmithButton` / `MayorButton` route to scenes that arrive at steps 10 /
+     8 — `go()`'s missing-path bail covers that.
+   - `scripts/autoload/game_state.gd` — `heal_party()`: `_reset_hero_runtime(true)`,
+     i.e. `new_profile()`'s full-heal branch without the wipe. Profile-scoped
+     state, so GameState owns the heal.
+   - `scripts/autoload/tuning.gd` — `INN_REST_COST_PER_HERO := 50` (§11). The
+     other §11 constants stay with their own steps.
+   - `scripts/autoload/scene_router.gd` / `debug.gd` — comments updated (`inn.tscn`
+     now exists; only `blacksmith` / `mayor` still hit the bail).
+   - `tests/test_scene_router.gd` — the INN existence check widened in (§13.1).
+     Full suite green; a `play_scene` of `boot.tscn` routed
+     town → inn → rest (G 150 → 100, "every wound closed") → back.
 8. **§8 — `QuestDef`, the three `.tres` files, `_build_quest_level()`**, and the
    victory/failure flows. The loop closes here: this is the first commit where
    the game is the game this document describes.

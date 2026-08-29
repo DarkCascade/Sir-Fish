@@ -584,6 +584,13 @@ func _reset_hero_runtime(full_heal: bool) -> void:
 			"alive": hp > 0,
 		})
 
+## [town] The inn's "Rest for the night" (spec 7.2): every hero in active_party
+## back to full HP, the dead among them revived. Hero HP is profile-scoped
+## (spec 2.1), so GameState owns the heal and the inn scene only spends the
+## gold. This is new_profile()'s full-heal branch without the rest of the wipe.
+func heal_party() -> void:
+	_reset_hero_runtime(true)
+
 ## The endless-mode entry point: the one caller that wants BOTH halves.
 ## RunController on boot and on retry, and test_endless_level_gen.gd directly,
 ## all mean "reset absolutely everything, right now" - which is exactly the
