@@ -197,6 +197,14 @@ var active_party: Array[StringName] = [&"warrior"]
 ## endless_mode as the thing build_level() dispatches on (§8.3).
 var quest: QuestDef = null
 
+## [town] The quest that just ENDED, kept for QuestResult to read (§8.5).
+## §8.5 nulls `quest` before routing home and presenting the modal - on purpose,
+## so the destination scene's _ready() sees "not on a quest" - so the reward row
+## and the "this was a quest" branch need a value that outlives that null.
+## Cleared by start_expedition(); stays null on the endless / fixed path, which
+## is what keeps present()'s RETRY branch reachable (step-8 Q1).
+var completed_quest: QuestDef = null
+
 ## [town] Gold and scrap picked up during the CURRENT expedition, banked
 ## separately so the result modal can state "you brought home 47 scrap"
 ## without diffing two profile totals across a scene change (§8.5).
@@ -221,6 +229,13 @@ var _expedition_inventory_mark: int = 0
 exactly, including the `EventBus.scrap_changed(new_total, delta)` emission
 (§3.3). `spend_scrap` returns `false` and mutates nothing when the player
 cannot afford it, same contract as `spend_gold`.
+
+§8.5's two recovery operations are `GameState` methods for the same reason
+`heal_party()` is (§7.2): `discard_expedition_loot()` and
+`street_sleep_recover()` both write profile-scoped state, and the underscore on
+`_expedition_inventory_mark` exists precisely so the failure flow reaches it
+through a helper rather than by touching the field from a scene script
+(step-8 Q2).
 
 ### 2.3 Splitting `reset_run()`
 
@@ -262,8 +277,9 @@ func new_profile() -> void:
 ## Note what is absent: gold, scrap and inventory. That absence is the whole
 ## point of this function existing separately from new_profile(), and is the
 ## one thing a future edit here must not undo.
-func start_expedition(q: QuestDef) -> void:
+func start_expedition(q: QuestDef = null) -> void:
 	quest = q
+	completed_quest = null         # §8.5's reward row reads this, not `quest`
 	current_encounter_index = -1
 	endless_level_number = 1       # MUST precede build_level(), which reads it
 	expedition_gold = 0
@@ -279,7 +295,19 @@ func start_expedition(q: QuestDef) -> void:
 	EventBus.gold_changed.emit(gold, 0)
 	EventBus.scrap_changed.emit(scrap, 0)
 	EventBus.party_bonuses_changed.emit(party_bonuses())
+	if quest != null:
+		EventBus.quest_started.emit(quest)
 ```
+
+**The `= null` default is what keeps `reset_run()` a one-liner** (step-8 Q9).
+Step 1 shipped `var quest` untyped and `func start_expedition(q = null)` because
+`QuestDef` did not exist yet; step 8 tightens **both** - the field to `QuestDef`,
+the parameter to `QuestDef = null` - in the same edit that adds the class,
+alongside `EventBus.quest_started(quest: QuestDef)` (§3.3). The default is the
+endless / fixed dev path: `reset_run()` still calls `start_expedition()` with no
+argument and gets `quest = null`, which is what sends `build_level()` down its
+`endless_mode` branch (§8.3). The `quest_started` emit is gated on `q != null`
+for the same reason - an endless reset is not a quest starting.
 
 `_reset_hero_runtime(full_heal: bool)` rebuilds `hero_runtime` from
 `active_party` (not `PARTY_ORDER`), preserving `current_hp` when `full_heal` is
@@ -678,7 +706,9 @@ A `CanvasLayer` at layer 10, above every scene, holding:
 - `CurrencyPlate` — gold and scrap, the shared readout (§3.3);
 - `ModalLayer` — `PROCESS_MODE_ALWAYS`, hosting `InventoryModal` (which carries
   its own `CompareFlyout` as its last child — step-6 Q2, the same arrangement
-  the shop uses) and `QuestResult`;
+  the shop uses) and `QuestResult` — which from step 8 does not merely present
+  over a town scene but *drives the route to it*, being the only participant in
+  §8.5's flow that the scene swap does not free;
 - `Transition` — a full-screen `ColorRect` for `SceneRouter.go()`.
 
 This one node solves three separate problems at once: the inventory button
@@ -688,20 +718,38 @@ needing something that outlives both scenes.
 
 **`RunSummary` moves out of `main.tscn` into `Hud/ModalLayer`** and is renamed
 `QuestResult` (§8.5). Its `retry_pressed` signal becomes `dismissed`;
-`RunController` no longer owns it or wires it.
+`RunController` no longer owns it, and stops being what drives it on a quest
+ending.
 
-**That last clause is the step-8 end state.** Step 5 relocates the node; §8.5
-rewires the flow. `RunController` is the only thing that presents the modal and
-nothing else will until §8.5, so taking "no longer wires it" literally at step 5
-would leave a party wipe fading nothing and connecting nothing for three
-commits. At step 5 the edit is a reference swap plus a signal rename, not a flow
+**That last clause is the step-8 end state, and it is narrower than "wires"**
+— what step 8 takes away from `RunController` is the *route and present*, not
+the `dismissed` connection, which the endless dev path still needs (step-8 Q2 /
+N4). Step 5 relocates the node; §8.5 rewires the flow. `RunController` is the
+only thing that presents the modal and nothing else will until §8.5, so taking
+"no longer wires it" literally at step 5 would leave a party wipe fading nothing
+and connecting nothing for three commits. At step 5 the edit is a reference swap plus a signal rename, not a flow
 change: drop `main.get_node("ModalLayer/RunSummary")` (`run_controller.gd:33`),
 reach the node as `Hud.quest_result` at the two `present()` call sites (`:276`,
 `:285`), and connect `Hud.quest_result.dismissed` to `_on_retry` in place of
 `retry_pressed` (`:46`). `present(victory: bool)` keeps its current signature —
 the Quest Reward row, the expedition gold/scrap rows and the recovery-button
-variants are all §8.5. Once §8.5 lands, `_run_complete()` / `_game_over()` drive
-`SaveGame` + `SceneRouter` + the modal, and the `_on_retry` connection goes.
+variants are all §8.5.
+
+**It keeps that signature at step 8 too**, which is why the modal needs
+`GameState.completed_quest` (step-8 Q1): `present()` branches three ways —
+endless RETRY, quest VICTORY, quest FAILURE — off `victory` alone, so "was this
+a quest, and what did it pay" has to come from somewhere else, and §8.5 has
+already nulled `quest` by the time the modal runs.
+
+**And §8.5 does not hand the flow to `RunController`** (step-8 Q2). It leaves
+`RunController` with only the synchronous profile work plus `SaveGame`, then an
+emit; `QuestResult` does the `await SceneRouter.go(...)` and the `present()`,
+because `go()` frees `main.tscn` and `RunController` with it. The `_on_retry`
+connection made here therefore **stays**: on a quest ending the route frees
+`RunController` and Godot drops the connection with it, so only `QuestResult`'s
+own dismiss handling runs; on an endless game-over nothing routes and
+`_on_retry` fires exactly as before. The two never collide, because
+`quest_finished` is emitted only on the quest branch.
 
 **The rename lands whole at step 5**, and is bounded: `git mv` **three** files
 (`scenes/modals/run_summary.{tscn,gd,gd.uid}` → `quest_result.*` — the `.uid`
@@ -1402,10 +1450,25 @@ New scene. Needs a static background of a village mayor's office (§12.1).
 
 Three buttons, one per `QuestDef` in `res://resources/quests/`, each showing
 name, blurb, encounter count, and gold reward. Pressing one calls
-`GameState.start_expedition(quest)` and routes to `Place.QUEST`.
+`GameState.start_expedition(quest)`, then `SaveGame.save_profile()` — the
+expedition mark and the cleared street-sleep flag are profile state, and §2.4's
+"when to save" list names this caller — then routes to `Place.QUEST`. Back and
+`ui_cancel` route to `Place.TOWN`, and `_ready()` re-asserts
+`SceneRouter.place = Place.MAYOR` for direct launches (§3.1).
+
+The buttons are built in `_ready()` from an **authored** id list
+(`[&"easy", &"medium", &"hard"]`), not from `DirAccess` iteration order, so easy
+always sits at the top and a fourth tier is a one-line addition there rather
+than a filename-sorting accident.
 
 A quest is **always available**; there is no cooldown, no lockout, and no
 prerequisite. Difficulty is the gate.
+
+**The background is a placeholder until step 11** (step-8 Q4). §12.1 wants Meshy
+art here and §14 already schedules that pass, so step 8 ships the shape
+`inn.tscn` uses — a dark `ColorRect` behind a centred layout — and the generated
+background slots straight in behind it. No Meshy spend on the step whose point
+is that the loop closes.
 
 ---
 
@@ -1436,6 +1499,17 @@ extends Resource
 @export var travel_durations: Array[float] = []
 ```
 
+`encounter_types` holds `EncounterDef.Type` ints, and its **last entry is always
+a COMBAT** — that is the boss, identified by position rather than by a fourth
+enum value (§8.2, step-8 Q7). `travel_durations` is read positionally and may be
+left short or empty; §8.3's fallback ramp covers the gap.
+
+`boss_drop_rarity_floor` defaults to **0** here and to **1** on `EncounterDef`
+(§8.3), and the asymmetry is deliberate: an unauthored `QuestDef` should
+guarantee nothing, while an encounter nobody set a floor on must still keep the
+endless boss's existing "never Common" behaviour. All three authored tiers set
+it, so the 0 is only ever a new-resource default.
+
 ### 8.2 The three quests
 
 `res://resources/quests/easy.tres`, `medium.tres`, `hard.tres`. Sequences are
@@ -1458,6 +1532,29 @@ The rarity floor is what gives hard a reason to exist beyond gold: a guaranteed
 Rare base item is the only cheap way to reach an Enhanced Rare, since forging a
 Common all the way costs 63 scrap and 250 gold.
 
+**"B" is not a fourth `EncounterDef.Type`** (step-8 Q7). The enum stays
+`{ COMBAT, LOOT, SHOP }`; the boss is the **last** COMBAT, identified by
+position. `encounter_types` stores the enum's ints, so the three sequences above
+are authored as:
+
+| | `encounter_types` |
+|---|---|
+| easy | `[0, 1, 0, 2, 0]` |
+| medium | `[0, 0, 1, 0, 0, 2, 0]` |
+| hard | `[0, 1, 0, 0, 0, 1, 2, 0, 0]` |
+
+`_build_quest_level()` flags the final entry `is_boss`, and §13.1's
+`test_quest_gen.gd` asserts that exactly one encounter carries the flag and that
+it is the last — which is what stops "the boss is last by convention" from
+quietly becoming "by accident".
+
+**`boss_pool` is an authoring choice per tier, not a derivation.** The table
+above pins the axes difficulty actually runs on: encounter count, `enemy_pool`,
+`enemy_count`, the drop floor and the reward. *Who* the boss is sits outside
+them — easy leads with one skeleton, medium with either of two, hard with any of
+three. A pool rather than a single id, so a tier does not open on the same
+silhouette every time.
+
 ### 8.3 `GameState.build_level()` dispatches on the quest
 
 ```gdscript
@@ -1475,6 +1572,39 @@ from `quest.enemy_pool` at `quest.enemy_count`, LOOT from
 marking the last encounter `is_boss` with its enemy list **led** by a
 `quest.boss_pool` pick — leading the list matters, because §7.3 puts the first
 enemy at the leftmost slot so the scaled-up boss body stays in frame.
+
+**Group size is one draw per combat** (step-8 Q8). `enemy_count` is an inclusive
+range while `_random_enemies(pool, count)` — the shared helper the endless
+builder already uses — wants a number, so each COMBAT encounter draws
+`RNG.randi_range(enemy_count.x, enemy_count.y)` once. A regular combat is then
+`_random_enemies(pool, clampi(count, 1, MAX_ENEMIES))`; the boss fight is
+`[boss_pool pick] + _random_enemies(pool, clampi(count - 1, 0, MAX_ENEMIES - 1))`,
+so the boss group's **total** is also `count`, and therefore also inside
+`enemy_count`. That is not tidiness: §13.1's "every combat group size within
+`enemy_count`" check does not exempt the boss row. Easy (2–2) fights the boss
+plus one add; hard (3–3), the boss plus two.
+
+**The drop floor rides down on the `EncounterDef`** (step-8 Q3). Nothing else
+carries a value from the `QuestDef` to where the drop is actually rolled, which
+is `battle_director.start_combat()`. So `EncounterDef` gains
+`boss_drop_rarity_floor: int = 1`, read only when `is_boss`;
+`_build_quest_level()` copies the quest's value onto the boss encounter;
+`RunController._arrive()` passes `def.boss_drop_rarity_floor` into
+`start_combat(ids, is_boss, boss_rarity_floor := 1)`, which forces
+`maxi(stats.drop_rarity_floor, maxi(1, boss_rarity_floor))` onto the boss-slot
+combatant in place of the bare `maxi(stats.drop_rarity_floor, 1)` it used to
+hardcode.
+
+**That default of 1 is load-bearing.** `_build_endless_level()` and
+`_build_whispering_wood_level()` never set the field, so their bosses keep
+exactly the "never Common" floor the hardcoded `1` gave them, and `test_drops.gd`
+— on §13.3's no-edit list, and it reconstructs the effective floor as
+`maxi(1, …)` — stays green untouched. Only `_build_quest_level()` raises it.
+
+**Travel durations fall back to a ramp.** `travel_durations` is authored per tier
+and read positionally; where it is short or empty, `_default_quest_travel(i, n)`
+gives 2s into the first encounter, 4s before the boss and 3s for everything
+between — the same shape the endless builder hardcodes.
 
 `endless_mode` and both existing builders stay, untouched, as the dev path.
 
@@ -1497,38 +1627,99 @@ is a shop that only sells you what you walked in with.
 
 ### 8.5 Victory and failure
 
-**Victory** — `_run_complete()`:
+**Neither ending is driven from `RunController`** (step-8 Q2). Read literally,
+the step lists below want an `await SceneRouter.go(...)` inside
+`_run_complete()` / `_game_over()` — and that cannot work. `go()` calls
+`change_scene_to_file()`, which **frees `main.tscn`**, and `RunController` is a
+node inside it: a coroutine that awaited `go()` from there resumes on a freed
+instance, so the `present()` on the next line never runs. The recovery buttons
+have the same problem in reverse — by the time the player presses "Rest at the
+Inn", `RunController` is long gone, so it cannot be what spends the gold and
+heals.
+
+The work therefore splits in two:
+
+- **`RunController`** does only the **synchronous** profile work — bank the
+  reward *or* `discard_expedition_loot()`, set `completed_quest`, null `quest`,
+  `SaveGame.save_profile()` — then `EventBus.quest_finished.emit(victory)` and
+  **returns**. Still after the existing jog-home tween / 1.0s battlefield hold,
+  and the endless / fixed `run_summary.present()` lines below those branches are
+  untouched.
+- **`QuestResult`** — a `Hud/ModalLayer` child, so it outlives every scene swap
+  — connects `quest_finished` in `_ready()` and does
+  `await SceneRouter.go(MAYOR|INN)` then `present(victory)`. It also owns the
+  recovery buttons' `GameState` + `SaveGame` calls, and the victory button's
+  route on dismiss (a `_dismiss_route` field, applied after `hide()`).
+
+The general rule worth carrying forward: **a scene node must not `await` its own
+removal.** Anything that has to run *after* a route lives on something the route
+does not free — an autoload, or a `Hud` child. It is the same reasoning §3.2 used
+to put the router in charge of `go()` rather than a hand-rolled add/remove: the
+thing that outlives both scenes is the only thing that can orchestrate a swap
+between them.
+
+**Victory** — `_run_complete()`, then `QuestResult`:
 
 1. `GameState.add_gold(quest.gold_reward)`.
-2. `GameState.quest = null`; `EventBus.quest_finished.emit(true)`;
-   `SaveGame.save_profile()`.
-3. `await SceneRouter.go(Place.MAYOR)`.
-4. `Hud.quest_result.present(true)` — the stats list gains a **Quest Reward**
-   row showing `gold_reward`, plus rows for expedition gold and scrap. Button
-   text is **"Retire for the evening"**.
+2. `GameState.completed_quest = quest`; `GameState.quest = null`;
+   `SaveGame.save_profile()`; `EventBus.quest_finished.emit(true)`; **return**.
+3. `QuestResult`: `await SceneRouter.go(Place.MAYOR)`.
+4. `present(true)` — the stats list gains a **Quest Reward** row showing
+   `gold_reward`, plus rows for expedition gold and scrap. Button text is
+   **"Retire for the evening"**.
 5. On dismiss: `SceneRouter.go(Place.INN)`.
 
-**Failure** — `_game_over()`:
+**Failure** — `_game_over()`, then `QuestResult`:
 
 1. Hold on the battlefield 1.0s (existing behaviour, §18.1).
 2. **Keep** profile gold and scrap, including everything banked this
    expedition. **Discard** every inventory item acquired during the expedition
-   that is not equipped. Equipped gear survives.
-3. `GameState.quest = null`; `EventBus.quest_finished.emit(false)`;
-   `SaveGame.save_profile()`.
-4. `await SceneRouter.go(Place.INN)`.
-5. `Hud.quest_result.present(false)` with **two** recovery buttons instead of
-   one dismiss:
-   - **Rest at the Inn — 50g** → full heal, spend gold, dismiss. Disabled when
-     unaffordable.
-   - **Sleep in the street — free** → heal
-     `ceili((max_hp - hp) * INN_STREET_HEAL_FRACTION)`, set
-     `street_sleep_used = true`, dismiss. **Disabled when `street_sleep_used`
-     is already true.**
+   that is not equipped, through `GameState.discard_expedition_loot()`. Equipped
+   gear survives.
+3. `GameState.completed_quest = quest`; `GameState.quest = null`;
+   `SaveGame.save_profile()`; `EventBus.quest_finished.emit(false)`; **return**.
+4. `QuestResult`: `await SceneRouter.go(Place.INN)`.
+5. `present(false)` with **two** recovery buttons instead of one dismiss:
+   - **Rest at the Inn** → spend the gold, `GameState.heal_party()`, save,
+     dismiss. The price is the inn's own
+     `INN_REST_COST_PER_HERO × active_party.size()` (§7.2), not a second
+     50-gold literal — one heal at one price, wherever it is bought. Disabled
+     and greyed when unaffordable.
+   - **Sleep in the street — free** → `GameState.street_sleep_recover()`, which
+     heals `ceili((max_hp - hp) * INN_STREET_HEAL_FRACTION)` per hero, revives
+     the dead among them, and sets `street_sleep_used = true`; then dismiss.
+     **Disabled when `street_sleep_used` is already true.**
+
+Both recovery operations are `GameState` methods rather than modal-local code
+(step-8 Q2): hero HP and the inventory are profile state (§2.1), and the modal is
+only the button that asks for them.
 
 That flag is §1.9's fix. `street_sleep_used` is cleared by
 `start_expedition()`, so the free half-heal is once per expedition, not once
 per press.
+
+**`present()` cannot read `quest`, and must not.** Step 2 above nulls it before
+the route, deliberately, so that anything in the destination scene's `_ready()`
+sees "not on a quest". `GameState.completed_quest` (§2.2) is what the modal reads
+instead: non-null means this was a quest ending — VICTORY or FAILURE rather than
+the endless RETRY mode — and it is the source of the Quest Reward row's number.
+`start_expedition()` clears it, which is what keeps the RETRY branch reachable on
+the dev path (step-8 Q1). `expedition_gold` / `expedition_scrap` need no
+equivalent: they already live on `GameState` and are not cleared until the *next*
+`start_expedition()`, so `present()` reads them directly.
+
+**Both expedition rows read 0 until step 9** (step-8 Q5). The pickups that fill
+them are §9. The rows are authored at step 8 regardless, because they are part of
+this modal and wiring them now means step 9 adds a faucet rather than reopening
+the scene. "0 scrap brought home" is honest in the meantime — nothing was picked
+up. The Quest Reward row has real data from step 8.
+
+**The reward is counted twice on screen, deliberately.** `add_gold()` bumps
+`run_stats["gold_earned"]`, so the "Gold earned" row includes the 200 / 400 / 600
+*and* the "Quest reward" row states it again. Read as "gold earned this
+expedition, of which N was the reward" it is not wrong, and `add_gold()` is the
+only sane way to credit it — it is what emits `gold_changed` for the HUD plate.
+Recorded here so it reads as a decision rather than a bug.
 
 **Tracking which items are expedition loot.** Rather than a timestamp or a flag
 on `Item`, `start_expedition()` snapshots the inventory size
@@ -1897,7 +2088,10 @@ generated image is baked pixels that lose runtime parametricity.
   reference as the existing set.
 - **Two static backgrounds**: a medieval blacksmith's forge and a village
   mayor's office, matching `inn-bg.png`'s treatment and painted for a 1080×1920
-  portrait crop.
+  portrait crop. Both scenes arrive before this pass with a dark `ColorRect` in
+  that slot and their layout centred on top (§7.5 at step 8, §7.3 at step 10),
+  so step 11 is a texture swap rather than a scene rebuild — which is why step 8
+  spent no credits here (step-8 Q4).
 
 ### 12.2 Meshy: no
 
@@ -2015,12 +2209,52 @@ anything.
 
 **`tests/test_quest_gen.gd`**
 
-- each of the three `.tres` quests produces a `LevelDef` whose encounter type
-  sequence matches its `encounter_types` exactly;
-- exactly one encounter has `is_boss`, and it is the last;
+- each of the three `.tres` quests loads as a `QuestDef`, and every id in its
+  `enemy_pool` / `boss_pool` resolves to real `CombatantStats`;
+- each produces a `LevelDef` whose encounter type sequence matches its
+  `encounter_types` exactly;
+- exactly one encounter has `is_boss`, and it is the last — §8.2 identifies the
+  boss *by position*, and this is the check that keeps that convention from
+  decaying into an accident;
 - the boss's `enemy_stat_ids[0]` comes from `boss_pool` (leftmost slot, §7.3);
-- every combat encounter's enemy count is within `enemy_count`;
+- the boss encounter carries the quest's `boss_drop_rarity_floor` (§8.3);
+- every combat encounter's enemy count is within `enemy_count` — **including the
+  boss row**, which is why §8.3 spends the boss group's budget on `count - 1`
+  adds rather than a full `count`;
 - every enemy id in the level is in `enemy_pool` or `boss_pool`.
+
+Generation is random, so each of these runs over many rebuilds per tier rather
+than one; it shipped at 60 builds each, 24 checks.
+
+**`tests/test_quest_flow.gd`** — a **second** permanent test at step 8, beyond
+the one this section originally named (step-8 Q6). §8.5's *economy* is the part
+of the step §8.5 itself argues hardest for — a lost quest keeps banked gold and
+scrap, drops every unequipped item found this trip, keeps equipped gear and town
+gear; the free half-heal is `ceil(half missing)` and once per expedition — and
+unlike the scene-routing chain it reduces to cheap headless invariants.
+
+- `start_expedition()` snapshots `_expedition_inventory_mark` at the current
+  inventory size, and clears `completed_quest`;
+- `discard_expedition_loot()` keeps town gear and keeps *equipped* expedition
+  loot, and drops loose expedition loot;
+- `street_sleep_recover()` heals exactly `ceil(half missing)`, sets
+  `street_sleep_used`, and revives a downed hero;
+- `start_expedition()` clears `street_sleep_used`.
+
+Nine checks, headless.
+
+**Step 8's live chain has no permanent test, deliberately.** `quest_finished`
+→ `await go()` → `present()`, and the mayor's button population, need a full
+scene driven to assert anything; they were covered by a throwaway runtime smoke
+during the step, exactly as step 6's modal wiring was (step-6 Q7). §14 step 8
+records what that smoke drove.
+
+A driver for a smoke like that has to survive the swaps it triggers:
+`reparent.call_deferred(get_tree().root)` in its `_ready()` — deferred, because
+the tree is mid-build during `_ready()` — makes it a persistent sibling of
+`current_scene` under `/root`, after which it rides out every
+`change_scene_to_file()` the run performs. It is the same trick a permanent
+HUD-level test would need; whoever writes step 9's pickup smoke wants it too.
 
 **`tests/test_scene_router.gd`** — lands at **step 5**, on the same principle
 as steps 1—4's tests (step-1 Q5): a step that buys isolation and then ships no
@@ -2191,6 +2425,11 @@ null` on the debug side. `route quest` twice just re-runs `start_expedition()`,
 which is a clean expedition reset and costs the profile nothing, and the verb
 stays a one-liner.
 
+`quest <easy|medium|hard>` lands at step 8 and is §7.5's accept path in one
+line: `load` that tier's `.tres`, `GameState.start_expedition(q)`,
+`go(Place.QUEST)`. It is how a quest is reached from the forest or the inn
+without walking the town, and it is the verb step 8's runtime smoke drives.
+
 `wipe` is the one a tester will reach for most and the one most easily
 forgotten, and it becomes *meaningful* at step 5: this is the first step where a
 launch reads `user://profile.save`, so a stale dev save now actually changes
@@ -2349,6 +2588,19 @@ previous is green.
    running editor while the same scene ran clean headless — so treat one editor
    restart as part of the cost of any step that adds or renames an autoload,
    and run that step's verification headless.
+
+   **Step 8 found the headless half of the same footgun** (step-8 Q10). A
+   `godot --headless res://tests/<x>.tscn` run does **not** rebuild
+   `.godot/global_script_class_cache.cfg`, so once `scripts/data/quest_def.gd`
+   added `class_name QuestDef` the whole suite failed with `Could not find type
+   "QuestDef" in the current scope` and, downstream, `game_state.gd does not
+   inherit from 'Node'` — because `game_state.gd` now names `QuestDef` as a type
+   and could not resolve it. One `godot --headless --editor --quit-after 20`
+   pass rebuilds the cache (`update_scripts_classes | QuestDef` in its log),
+   after which every headless run resolves the class. Generalised, and the same
+   family as step-5 I8 / step-6 N2: **adding a `class_name` or an autoload costs
+   one `--editor --headless` pass — and, for an autoload, one restart of any
+   running editor — before the suite means anything.**
 6. **§6 — the inventory modal** and `inventory_row.tscn`. Unblocked by step 5's
    `Hud/ModalLayer` and `SceneRouter`; three hazards are already visible from
    there. The `InventoryButton` `pressed` handler is the one line step 5
