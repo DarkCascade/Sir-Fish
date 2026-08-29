@@ -14,17 +14,24 @@ extends CanvasLayer
 @onready var inventory_button: Button = $InventoryButton
 @onready var currency_plate: PanelContainer = $CurrencyPlate
 @onready var modal_layer: Control = $ModalLayer
+## spec 6: opened by the backpack button, in town and (outside COMBAT) the forest.
+@onready var inventory_modal = $ModalLayer/InventoryModal   # InventoryModal (untyped: custom API)
 ## spec 8.5 reaches the result modal as `Hud.quest_result`.
 @onready var quest_result = $ModalLayer/QuestResult
 @onready var transition: ColorRect = $Transition
 
+func _ready() -> void:
+	# spec 6 / step-5 Q9: the one line step 5 deliberately left out. Everything
+	# about when the button is USABLE was already wired at step 5 (see _process).
+	inventory_button.pressed.connect(inventory_modal.open)
+
 func _process(_delta: float) -> void:
-	# spec 3.2 / step-5 Q9: the button is disabled in COMBAT during a quest so
-	# it can never be used to pause the fight for a free think or a heal-timing
-	# tool. It is ALSO disabled everywhere else until step 6 gives it a modal to
-	# open - step 6 drops the `or true` and adds the `pressed` handler, nothing
-	# else. The COMBAT lock is live now so step 6 does not have to think about it.
-	inventory_button.disabled = _combat_locked() or true
+	# spec 3.2 / step-5 Q9: the button is disabled in COMBAT during a quest so it
+	# can never be used to pause the fight for a free think or a heal-timing
+	# tool. Everywhere else it is live from step 6 on (step 5 shipped this line
+	# as `_combat_locked() or true`, the `or true` being the token this step
+	# removes now that there is a modal to open).
+	inventory_button.disabled = _combat_locked()
 
 ## True during a quest's COMBAT state. Reads SceneRouter.place (set by go(), and
 ## re-asserted by every routed scene's _ready() for direct launches - Q8) and

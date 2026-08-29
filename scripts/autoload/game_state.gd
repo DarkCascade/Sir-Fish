@@ -199,6 +199,10 @@ func equip_item(item: Item, hero_class: StringName) -> void:
 	if previous != null:
 		previous.equipped_by = &""
 	item.equipped_by = hero_class
+	# [town] spec 3.3: the deliberate-equip hook (step 6). Auto-equip on pickup
+	# stays silent - it only fills a slot the player left empty. party_bonuses
+	# still fires for both, since both change the pool.
+	EventBus.item_equipped.emit(item, hero_class, int(item.slot()))
 	EventBus.party_bonuses_changed.emit(party_bonuses())
 
 func unequip_item(item: Item) -> void:

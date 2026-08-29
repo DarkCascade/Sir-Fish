@@ -1,0 +1,147 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/modals/inventory_modal.gd" id="1_modal"]
+[ext_resource type="PackedScene" path="res://scenes/modals/compare_flyout.tscn" id="2_compare"]
+[ext_resource type="PackedScene" path="res://scenes/console/bonus_strip.tscn" id="3_bonus"]
+
+; The same dark stone disc with a gold rim the shop's X wears (shop_modal.tscn /
+; compare_flyout.tscn each carry their own copy - this project duplicates
+; identical close styleboxes per scene).
+[sub_resource type="StyleBoxFlat" id="close_style"]
+content_margin_left = 0.0
+content_margin_top = 0.0
+content_margin_right = 0.0
+content_margin_bottom = 0.0
+bg_color = Color(0.027451, 0.098039, 0.094118, 1)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0.831373, 0.658824, 0.262745, 1)
+corner_radius_top_left = 36
+corner_radius_top_right = 36
+corner_radius_bottom_right = 36
+corner_radius_bottom_left = 36
+
+[node name="InventoryModal" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_modal")
+
+[node name="Scrim" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.011765, 0.035294, 0.058824, 0.76)
+
+[node name="Panel" type="PanelContainer" parent="."]
+layout_mode = 0
+offset_left = 60.0
+offset_top = 300.0
+offset_right = 1020.0
+offset_bottom = 1620.0
+pivot_offset = Vector2(480, 660)
+
+[node name="Layout" type="VBoxContainer" parent="Panel"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="Header" type="HBoxContainer" parent="Panel/Layout"]
+custom_minimum_size = Vector2(0, 80)
+layout_mode = 2
+theme_override_constants/separation = 20
+
+[node name="Title" type="Label" parent="Panel/Layout/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"DisplayLabel"
+theme_override_colors/font_color = Color(0.941176, 0.835294, 0.533333, 1)
+theme_override_font_sizes/font_size = 56
+text = "INVENTORY"
+vertical_alignment = 1
+
+[node name="Currency" type="HBoxContainer" parent="Panel/Layout/Header"]
+layout_mode = 2
+theme_override_constants/separation = 16
+alignment = 2
+
+[node name="GoldLabel" type="Label" parent="Panel/Layout/Header/Currency"]
+layout_mode = 2
+theme_type_variation = &"DisplayLabel"
+theme_override_colors/font_color = Color(0.941176, 0.835294, 0.533333, 1)
+theme_override_font_sizes/font_size = 40
+text = "0 G"
+vertical_alignment = 1
+
+[node name="ScrapLabel" type="Label" parent="Panel/Layout/Header/Currency"]
+layout_mode = 2
+theme_type_variation = &"DisplayLabel"
+theme_override_colors/font_color = Color(0.623529, 0.698039, 0.745098, 1)
+theme_override_font_sizes/font_size = 40
+text = "0 S"
+vertical_alignment = 1
+
+[node name="CloseButton" type="Button" parent="Panel/Layout/Header"]
+custom_minimum_size = Vector2(72, 72)
+layout_mode = 2
+size_flags_vertical = 4
+theme_override_colors/font_color = Color(0.94902, 0.913725, 0.815686, 1)
+theme_override_font_sizes/font_size = 40
+theme_override_styles/normal = SubResource("close_style")
+theme_override_styles/pressed = SubResource("close_style")
+theme_override_styles/hover = SubResource("close_style")
+text = "X"
+
+[node name="BonusStrip" parent="Panel/Layout" instance=ExtResource("3_bonus")]
+custom_minimum_size = Vector2(0, 60)
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Scroll" type="ScrollContainer" parent="Panel/Layout"]
+layout_mode = 2
+size_flags_vertical = 3
+horizontal_scroll_mode = 0
+scroll_deadzone = 24
+
+[node name="Body" type="VBoxContainer" parent="Panel/Layout/Scroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 16
+
+[node name="EquippedHeader" type="Label" parent="Panel/Layout/Scroll/Body"]
+layout_mode = 2
+theme_type_variation = &"DisplayLabel"
+theme_override_colors/font_color = Color(0.941176, 0.835294, 0.533333, 1)
+theme_override_font_sizes/font_size = 34
+text = "Equipped"
+
+[node name="Equipped" type="VBoxContainer" parent="Panel/Layout/Scroll/Body"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="CarriedHeader" type="Label" parent="Panel/Layout/Scroll/Body"]
+layout_mode = 2
+theme_type_variation = &"DisplayLabel"
+theme_override_colors/font_color = Color(0.941176, 0.835294, 0.533333, 1)
+theme_override_font_sizes/font_size = 34
+text = "Carried"
+
+[node name="Carried" type="VBoxContainer" parent="Panel/Layout/Scroll/Body"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="CarriedEmpty" type="Label" parent="Panel/Layout/Scroll/Body"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.611765, 0.686275, 0.643137, 1)
+theme_override_font_sizes/font_size = 32
+text = "Nothing carried."
+
+[node name="CompareFlyout" parent="." instance=ExtResource("2_compare")]
+layout_mode = 1

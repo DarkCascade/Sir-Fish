@@ -21,14 +21,14 @@ RNG="*res://scripts/autoload/rng.gd"
 EventBus="*res://scripts/autoload/event_bus.gd"
 Itemizer="*res://scripts/autoload/itemizer.gd"
 GameState="*res://scripts/autoload/game_state.gd"
-MCPScreenshot="*res://addons/godot_mcp/mcp_screenshot_service.gd"
-MCPInputService="*res://addons/godot_mcp/mcp_input_service.gd"
-MCPGameInspector="*res://addons/godot_mcp/mcp_game_inspector_service.gd"
 Upgrades="*res://scripts/autoload/upgrades.gd"
 Debug="*res://scripts/autoload/debug.gd"
 SaveGame="*res://scripts/autoload/save_game.gd"
 SceneRouter="*res://scripts/autoload/scene_router.gd"
 Hud="*res://scenes/hud/hud.tscn"
+MCPScreenshot="*res://addons/godot_mcp/mcp_screenshot_service.gd"
+MCPInputService="*res://addons/godot_mcp/mcp_input_service.gd"
+MCPGameInspector="*res://addons/godot_mcp/mcp_game_inspector_service.gd"
 
 [display]
 

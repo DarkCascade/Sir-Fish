@@ -153,11 +153,3 @@ func buy_price() -> int:
 
 func sell_price() -> int:
 	return int(round(float(value) * Tuning.SHOP_SELL_RATE))
-
-## Single letter used by the inventory chip (spec 17.2).
-func type_initial() -> String:
-	if weapon_type == &"":
-		return "?"
-	if weapon_type == &"staff":
-		return "T"
-	return String(weapon_type).substr(0, 1).to_upper()

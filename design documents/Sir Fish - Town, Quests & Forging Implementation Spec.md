@@ -676,8 +676,9 @@ A `CanvasLayer` at layer 10, above every scene, holding:
 
 - `InventoryButton` — top-left, backpack icon (§12.1);
 - `CurrencyPlate` — gold and scrap, the shared readout (§3.3);
-- `ModalLayer` — `PROCESS_MODE_ALWAYS`, hosting `InventoryModal`,
-  `CompareFlyout` and `QuestResult`;
+- `ModalLayer` — `PROCESS_MODE_ALWAYS`, hosting `InventoryModal` (which carries
+  its own `CompareFlyout` as its last child — step-6 Q2, the same arrangement
+  the shop uses) and `QuestResult`;
 - `Transition` — a full-screen `ColorRect` for `SceneRouter.go()`.
 
 This one node solves three separate problems at once: the inventory button
@@ -1149,9 +1150,13 @@ Layout, top to bottom:
   row or an empty-slot placeholder naming the slot;
 - **Carried** — every unequipped inventory item.
 
-`BonusStrip` is instanced under the header, exactly as `shop_modal.tscn`
-authors it: seeing what the party actually gains is what makes equipping a
-decision rather than a chore.
+`BonusStrip` is instanced under the header (from
+`scenes/console/bonus_strip.tscn`): seeing what the party actually gains is what
+makes equipping a decision rather than a chore. *`shop_modal.tscn` no longer
+authors one — it dropped its copy when the screen-corner `BonusPanel` landed —
+so this is the modal's own instance, not a mirror of the shop's; it self-wires
+(`bonus_strip.gd._ready()` binds `party_bonuses_changed` and paints from
+`GameState.party_bonuses()`), so the modal adds no code for it (step-6 Q9).*
 
 ### 6.2 `inventory_row.tscn` is a new scene, not a modified sell row
 
@@ -2262,7 +2267,49 @@ previous is green.
    copies (`shop_sell_row.gd` and `shop_buy_card.gd`), not one. And moving
    `CompareFlyout` into `Hud/ModalLayer` (§3.2's end-state list) collides with
    the shop's own instance: step 6 has to decide whether that is one shared node
-   or two, and §6.3's slot fix lands on whichever it is.
+   or two, and §6.3's slot fix lands on whichever it is. **Done.** The three
+   hazards resolved as: `hud.gd` gains a `_ready()` that connects the button and
+   `_process()` drops the `or true`; `item_card_style.gd` lifts only the
+   rarity-tint + glyph block the two `setup()`s share byte-for-byte, into
+   `scripts/ui/` next to `currency_feedback.gd`; and `CompareFlyout` stays
+   **two** instances — the inventory modal carries its own as its last child,
+   exactly as the shop does, since the flyout must be the last child of whatever
+   opened it and the two modals never coexist (§6.3's fix is in
+   `compare_flyout.gd` itself, so both inherit it). Its changeset, after the
+   step-6 questions were resolved:
+
+   - `scripts/ui/item_card_style.gd` — new. Static `apply(face, glyph, item)`.
+     `shop_sell_row.gd` / `shop_buy_card.gd` refactored onto it,
+     behaviour-preserving — the `name`/`subtitle`/modifier lines stay per-caller
+     (the buy card builds a modifier list, the sell row a count).
+   - `scenes/modals/inventory_row.tscn` + `scripts/modals/inventory_row.gd` —
+     new (§6.2). Reuses `swipeable_face` (and the Stage/ActionLayer/Face
+     structure it needs), `item_glyph`, `shop_buy_stage`, the rarity frame via
+     `ItemCardStyle`. Two equal-width buttons — Compare, Equip/Unequip — plus
+     the swipe-revealed Compare lane; emits `compare_requested(item)` and a
+     local `equip_changed()`. Equip hidden when no `active_party` member can
+     wield the item.
+   - `scenes/modals/inventory_modal.tscn` + `scripts/modals/inventory_modal.gd`
+     — new (§6.1). Header (title, gold+scrap, red X), `BonusStrip` (instanced
+     from `scenes/console/bonus_strip.tscn` — `shop_modal.tscn` dropped its own
+     copy, so §6.1's "exactly as shop_modal authors it" is now "under the
+     header"), scrolled Body with **Equipped** (one row or an empty-slot
+     placeholder per `Item.Slot`) and **Carried** (every unequipped item), and
+     its own `CompareFlyout` last child. `open()` pauses the tree; `close()`
+     unpauses first on every path; any row's `equip_changed` rebuilds both
+     sections. No sell action (§6.4).
+   - `scripts/hud/hud.gd` + `scenes/hud/hud.tscn` — `_ready()` connects
+     `inventory_button.pressed` → `inventory_modal.open`; `_process()` drops
+     `or true`; `InventoryModal` instanced under `Hud/ModalLayer`.
+   - `scripts/autoload/game_state.gd` — `equip_item()` emits
+     `EventBus.item_equipped(item, hero_class, int(item.slot()))` (§3.3's
+     step-6 signal); `_maybe_auto_equip()` stays silent.
+   - `scripts/data/item.gd` — `type_initial()` deleted (§15; zero callers
+     remain, the spec-17.2 chip that used it is already gone).
+   - no test file: verification is a headless smoke (populate a profile, open
+     the modal, equip a spare, confirm both sections rebuild and the slot is
+     displaced, close and confirm unpaused) plus the full no-edit + edited
+     suites staying green.
 7. **§7.1, §7.2 — town hub and inn**, wired to the router.
 8. **§8 — `QuestDef`, the three `.tres` files, `_build_quest_level()`**, and the
    victory/failure flows. The loop closes here: this is the first commit where
@@ -2315,12 +2362,12 @@ Recorded so they are decisions rather than omissions.
 - **Armor and trinket modifiers of their own.** Right now every slot draws from
   the same eight-modifier pool, so a helm can roll "+7 Bolt Power". Per-slot
   pools are the obvious next step and want their own balance pass.
-- **`Item.type_initial()`'s letter collisions.** Eleven types share ten initials
-  once armor and trinkets land — sword / shield both `S`, axe / amulet both `A`
-  (`staff` already has a hand-written `T` exception). It feeds only the spec 17.2
-  inventory chip, which §6's inventory modal supersedes at step 6, so step 4
-  leaves it alone rather than inventing a second exception table for a widget on
-  its way out. Revisit at step 6, or delete it with the chip.
+- ~~**`Item.type_initial()`'s letter collisions.**~~ **Resolved at step 6:
+  deleted.** It fed only the spec 17.2 inventory chip, which §6's modal
+  supersedes; `grep` at step 6 found zero callers (the chip scene was already
+  gone), so the function went with it rather than growing a second exception
+  table. Step 4 had left it alone as "a widget on its way out"; step 6 is where
+  it left.
 - **Fly-to-counter pickup polish** (§9.4).
 - **More than one town.** `SceneRouter.Place` is an enum for a reason; a second
   town is a second set of entries.
