@@ -1,6 +1,6 @@
 [gd_scene load_steps=2 format=3]
 
-[ext_resource type="Script" path="res://scripts/modals/run_summary.gd" id="1_sum"]
+[ext_resource type="Script" path="res://scripts/modals/quest_result.gd" id="1_sum"]
 [ext_resource type="PackedScene" uid="uid://46oh8n83yecw" path="res://scenes/console/sir_fish_tank.tscn" id="2_fish"]
 
 ; [move-elements-to-editor] Two things were built in code here and are authored
@@ -10,11 +10,11 @@
 ; statistic it reports, carrying its own caption and a plausible dummy value so
 ; the whole screen reads in the editor.
 ;
-; run_summary.gd fills the Value labels in by row NAME - so rows can be
+; quest_result.gd fills the Value labels in by row NAME - so rows can be
 ; reordered, restyled or removed here without touching the script, and a row it
 ; has no number for simply keeps whatever the editor shows.
 
-[node name="RunSummary" type="Control"]
+[node name="QuestResult" type="Control"]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0

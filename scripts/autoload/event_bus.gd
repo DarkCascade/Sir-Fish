@@ -32,6 +32,16 @@ signal item_added(item: Item)
 signal item_removed(item: Item)
 signal party_bonuses_changed(bonuses: Dictionary)   # [v2] spec 13.5
 
+# --- [town] spec 3.3. All five land in one edit at step 5; only scrap_changed
+# has a step-5 consumer (CurrencyPlate). item_equipped is step 6, item_forged
+# step 9, quest_started / quest_finished step 8. QuestDef does not exist until
+# step 8, so quest_started ships untyped and tightens then.
+signal scrap_changed(new_total: int, delta: int)
+signal item_equipped(item: Item, hero_class: StringName, slot: int)
+signal item_forged(item: Item, new_rarity: int)
+signal quest_started(quest)
+signal quest_finished(victory: bool)
+
 # --- Console ---
 signal slot_spin_started()
 signal slot_spin_stopped(symbols: Array)       # Array[int] of 3 Tuning.Sym values

@@ -20,7 +20,10 @@ extends PanelContainer
 ## it now lives in scenes/overlay/bonus_panel.gd, docked to the top-right of
 ## the screen instead of the console. See that file for the bonus display.
 
-const NUMBER_SCENE := preload("res://scenes/overlay/damage_number.tscn")
+## [town] spec 5.3: the pop-and-float treatment lives in one shared place now,
+## lifted out of this file so CurrencyPlate (and step 9's forge) reuse it rather
+## than carrying a second and third copy.
+const CurrencyFeedback := preload("res://scripts/ui/currency_feedback.gd")
 
 @onready var gold_label: Label = $Layout/ResourceRow/GoldPlate/GoldLabel
 
@@ -36,21 +39,8 @@ func _update_gold() -> void:
 
 func _on_gold_changed(_new_total: int, delta: int) -> void:
 	_update_gold()
-	gold_label.pivot_offset = gold_label.size * 0.5
-	var tw := create_tween()
-	tw.tween_property(gold_label, "scale", Vector2(1.22, 1.22), 0.12) \
-		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tw.tween_property(gold_label, "scale", Vector2.ONE, 0.13)
-	if delta != 0:
-		_float_delta(delta)
-
-## The number pops as a child of StatusPanel itself, not of GoldPlate, so
-## converting through global_position (S6's GoldPlate nesting moved GoldLabel
-## one level deeper than when this read gold_label.position directly).
-func _float_delta(delta: int) -> void:
-	var label = NUMBER_SCENE.instantiate()
-	add_child(label)
-	var local_pos: Vector2 = gold_label.global_position - global_position
-	label.position = local_pos + Vector2(gold_label.size.x + 20.0, 10.0)
-	var color := Tuning.C_GOLD if delta > 0 else Tuning.C_DANGER
-	label.show_number("%s%d" % ["+" if delta > 0 else "", delta], color, 38, 60.0, 0.8)
+	CurrencyFeedback.pop(gold_label)
+	# The number pops as a child of StatusPanel itself, not of GoldPlate, so the
+	# helper converts through global_position (S6's GoldPlate nesting moved
+	# GoldLabel a level deeper than when this read gold_label.position directly).
+	CurrencyFeedback.float_delta(self, gold_label, delta, Tuning.C_GOLD)

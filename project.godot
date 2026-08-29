@@ -11,7 +11,7 @@ config_version=5
 [application]
 
 config/name="Sir Fish"
-run/main_scene="res://scenes/main.tscn"
+run/main_scene="res://scenes/boot.tscn"
 config/features=PackedStringArray("4.7", "Forward Plus")
 
 [autoload]
@@ -27,6 +27,8 @@ MCPGameInspector="*res://addons/godot_mcp/mcp_game_inspector_service.gd"
 Upgrades="*res://scripts/autoload/upgrades.gd"
 Debug="*res://scripts/autoload/debug.gd"
 SaveGame="*res://scripts/autoload/save_game.gd"
+SceneRouter="*res://scripts/autoload/scene_router.gd"
+Hud="*res://scenes/hud/hud.tscn"
 
 [display]
 
@@ -37,7 +39,7 @@ window/handheld/orientation=1
 
 [editor_plugins]
 
-enabled=PackedStringArray("res://addons/script-ide/plugin.cfg")
+enabled=PackedStringArray("res://addons/godot_mcp/plugin.cfg", "res://addons/script-ide/plugin.cfg")
 
 [gui]
 

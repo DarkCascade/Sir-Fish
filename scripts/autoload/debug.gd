@@ -49,6 +49,8 @@ func _run(line: String) -> void:
 		"drops": _cmd_drops(args)
 		"equip": _cmd_equip(args)
 		"parallax": _cmd_parallax(args)
+		"route": _cmd_route(args)
+		"wipe": _cmd_wipe()
 		"lightning": _cmd_lightning()
 		"bone": _cmd_bone(args)
 		"state": _cmd_state()
@@ -293,6 +295,42 @@ func _cmd_equip(args: Array) -> void:
 		hero_class = classes[0]
 	GameState.equip_item(item, hero_class)
 	_log("equip -> '%s' equipped by %s" % [item.display_name, hero_class])
+
+## [town] spec 13.4. Routes to any Place through SceneRouter. `route quest`
+## calls start_expedition() before routing, standing in for the mayor (spec 7.5,
+## step 8) so the loaded profile survives the trip into the forest (spec 3.1);
+## `route inn|blacksmith|mayor` refuses cleanly until those scenes exist, which
+## is go()'s missing-path bail doing its job. Supersedes an earlier bare `town`
+## verb.
+func _cmd_route(args: Array) -> void:
+	if args.is_empty():
+		_log("route -> needs <town|inn|blacksmith|mayor|quest>")
+		return
+	var places := {
+		"town": SceneRouter.Place.TOWN,
+		"inn": SceneRouter.Place.INN,
+		"blacksmith": SceneRouter.Place.BLACKSMITH,
+		"mayor": SceneRouter.Place.MAYOR,
+		"quest": SceneRouter.Place.QUEST,
+	}
+	var key := String(args[0]).to_lower()
+	if not places.has(key):
+		_log("route -> unknown place '%s'" % args[0])
+		return
+	if key == "quest":
+		GameState.start_expedition()
+	SceneRouter.go(places[key])
+	_log("route -> %s" % key)
+
+## [town] spec 13.4. Deletes the save and starts a fresh profile. Meaningful
+## from step 5 on: this is the first step where a launch reads
+## user://profile.save, so a stale dev save now actually changes what a run
+## looks like. reset_run() is, from this step, a dev path that wipes the profile.
+func _cmd_wipe() -> void:
+	if FileAccess.file_exists(SaveGame.PATH):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(SaveGame.PATH))
+	GameState.reset_run()
+	_log("wipe -> save deleted, new profile (%d gold, %d scrap)" % [GameState.gold, GameState.scrap])
 
 ## [v3] Advances every parallax layer by <units> world units at its own speed
 ## multiplier, wrapping normally, without touching scroll_speed or the run

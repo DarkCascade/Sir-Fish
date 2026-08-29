@@ -445,7 +445,10 @@ list eight lines further down its own section.
 
 - any profile mutation in town — buy, sell, forge, equip, unequip, rest,
   shop refresh;
-- `start_expedition()`, and again when the expedition result is banked;
+- `start_expedition()`, and again when the expedition result is banked — both
+  at **step 8**, and both in the *callers* (§7.5, §8.4). `start_expedition()`
+  itself never saves, which is why entering the forest at step 5 wipes the
+  profile in memory only (§3.1);
 - `boot.tscn`, immediately after falling back to `GameState.new_profile()`
   because `load_profile()` returned `false` (§3.1);
 - `NOTIFICATION_APPLICATION_PAUSED` and `NOTIFICATION_WM_CLOSE_REQUEST` in
@@ -487,41 +490,185 @@ var place: Place = Place.TOWN
 func go(to: Place) -> void:
 ```
 
-`res://scenes/main.tscn` stops being the project's main scene. A new
-`res://scenes/boot.tscn` becomes it: it calls `SaveGame.load_profile()`, falls
-back to `GameState.new_profile()` **followed by `SaveGame.save_profile()`**
-(§2.3 — the fallback is persisted here, by the caller, and nowhere else), and
-routes to `Place.TOWN`.
+**Three of `PATHS`'s five scenes do not exist at step 5.** `town.tscn` and
+`main.tscn` are on disk today; `inn.tscn` is `tavern.tscn` renamed at step 7
+(§7.1), `mayor_office.tscn` arrives at step 8 (§7.5) and `blacksmith.tscn` at
+step 10 (§7.3). The table is still written whole at step 5 — a `Place` with no
+path is the failure mode worth designing out — but two things follow from the
+gap:
 
-**`RunController._start_run()` must stop calling `GameState.reset_run()` in this
-same step.** This is the single most destructive latent bug in the document and
-it is invisible until the moment persistence starts working, so it is called out
-here rather than left to be discovered.
+- `go()` must **check the destination loads before it fades**, and return
+  without touching the rect if it does not. `change_scene_to_file()` returns
+  `ERR_CANT_OPEN` on a missing path and queues no swap, so a `go()` that has
+  already faded to black and is awaiting the swap never wakes: opaque rect,
+  input blocked, re-entrancy flag stuck true. That soft-lock is reachable at
+  step 5 by one debug verb (§13.4's `route`), and it is what a typo'd path
+  would do forever after.
+- §13.1's `test_scene_router.gd` asserts **totality** (every `Place` has a
+  `PATHS` key) from step 5, but **existence** only for the places that have been
+  built — that check widens at steps 7, 8 and 10 alongside the scenes.
 
-`RunController._ready()` calls `_start_run()`, whose first line is
-`GameState.reset_run()` — which is `new_profile()` (wipes gold, scrap and
-inventory) followed by `start_expedition()` (which, per §2.4, **saves**). Once
-`main.tscn` is a routed destination rather than the main scene, entering
-`Place.QUEST` therefore wipes the profile `boot.tscn` just loaded *and writes
-the wipe to disk*. The player loses everything the first time they accept a
-quest, and the save file is already overwritten by the time anyone notices.
+**`go()`'s shape.** `change_scene_to_file()` rather than a hand-rolled
+add/remove: it keeps the autoloads (`Hud`, and the `Transition` rect under it)
+alive across the swap and frees the outgoing scene for us. Fade the rect in,
+swap, await the destination actually being current, set `place`, fade back out,
+release input. Two guards, both load-bearing: the missing-path bail above,
+before the fade begins; and **re-entrancy** — `go()` is `await`able and is
+called from `await`ing flows (§8.5), so a second `go()` while one is in flight
+is *ignored*, not queued. A third, cheaper guard came out of the build: `go(to)`
+where `to == place` returns without fading, so a stray re-route to the place you
+are already standing in is a no-op rather than a black dip. `FADE_TIME` (0.18 s,
+each half) is a `const` on the router — chrome timing, not a gameplay number, and
+it has exactly one call site, so it does not belong in `Tuning`.
+
+**`place` lands *after* the incoming `_ready()`, not before.** An earlier draft of
+this paragraph said `place` is set "as part of the swap, before the fade-out, so
+the incoming scene's `_ready()` reads the correct value". The first half is true
+and the second is not: `change_scene_to_file()` defers the swap to frame end, so
+`go()` has to `await tree_changed` (and one more `process_frame` to let the
+destination settle) before it can assign — and by then the incoming scene's
+`_ready()` has already run and already read the *old* `place`. Assigning earlier
+is not available either: before the await, the destination is not up, and a
+`place` that leads the tree is a worse lie than one that trails it. This is why
+the per-scene `SceneRouter.place = Place.<self>` line below is **not**
+belt-and-braces for the routed path — it is the only thing that makes `place`
+correct inside a routed scene's own `_ready()`. `go()`'s assignment is what keeps
+it correct for every frame after.
+
+**Every routed scene also asserts its own `place` in `_ready()`**
+(`SceneRouter.place = Place.<self>`). `go()` setting it covers every frame from
+the transition onward; this covers the destination's own `_ready()` (see above),
+plus F5, MCP `play_scene`, and any other direct-scene launch, where a `place`
+still defaulting to `TOWN` would drive §3.2's `Place.QUEST` button rule off a
+lie. One idempotent line per scene. At step 5 only `RunController` exists
+to carry it — `town.tscn` is scriptless until step 7, and `Place.QUEST` is the
+only place anyone launches directly — so that one line is the whole of it.
+
+**Boot.** `res://scenes/main.tscn` stops being the project's main scene — set
+via `set_project_setting`, never by editing `project.godot` by hand (CLAUDE.md).
+A new `res://scenes/boot.tscn` becomes it: it calls `SaveGame.load_profile()`,
+falls back to `GameState.new_profile()` **followed by `SaveGame.save_profile()`**
+(§2.3 — the fallback is persisted here, by the caller, and nowhere else), then
+**emits `EventBus.gold_changed(GameState.gold, 0)` and
+`EventBus.scrap_changed(GameState.scrap, 0)`**, and routes to `Place.TOWN`.
+
+Those two emits are not decoration. Autoloads `_ready()` before the first scene,
+so `Hud` — and `CurrencyPlate` under it — reads `GameState` *before*
+`load_profile()` has assigned anything, and `load_profile()` assigns silently.
+Without them the plate paints `gold`'s initialiser (**0** — not
+`PROFILE_STARTING_GOLD`, which is applied by `new_profile()`, which has not run
+either) and then never repaints, because the only thing that emits
+`gold_changed` on this path is `start_expedition()`, which the boot → TOWN route
+never calls. Zero-delta emits are the established pattern
+(`game_state.gd:544`), and a `delta` of 0 correctly floats no number.
+`status_panel.gd`'s `GoldPlate` has exactly the same shape and is masked only
+because it exists solely in `Place.QUEST`, which `start_expedition()` always
+precedes.
+
+`boot.gd` is a scene script, not an autoload, so it may call `SaveGame`,
+`GameState`, `EventBus` and `SceneRouter` directly in `_ready()` — the
+`test_autoload_safety` lint scans autoloads only. Boot's own first hop should
+`change_scene_to_file()` directly and set `SceneRouter.place = Place.TOWN`
+rather than call `go()`: the screen is already black, and `go()` should never
+run against a `Hud` that is one frame old.
+
+**That hop needs `await get_tree().process_frame` in front of it.** Called
+straight out of `boot.tscn`'s own root `_ready()`, `change_scene_to_file()` frees
+the outgoing `current_scene` while the tree is still mid-build of that very
+scene, and Godot refuses:
+
+```
+ERROR: Parent node is busy adding/removing children, `remove_child()` can't be
+       called at this time.
+   at: _ready (res://scripts/boot.gd)
+```
+
+One yield fixes it, and it is the same frame this section already wants for
+another reason — it is what makes "a `Hud` that is one frame old" true rather
+than aspirational. `boot.gd`'s `_ready()` is therefore a coroutine; nothing
+awaits it, which is correct, since the profile work above the yield is already
+done by then.
+
+**`RunController._start_run()` must stop calling `GameState.reset_run()`
+unconditionally in this same step.** This is the single most destructive latent
+bug in the document and it is invisible until the moment persistence starts
+working, so it is called out here rather than left to be discovered.
+
+`RunController._ready()` calls `_start_run()` (`run_controller.gd:57`), whose
+first line is `GameState.reset_run()` — which is `new_profile()` (wipes gold,
+scrap and inventory) followed by `start_expedition()`. Once `main.tscn` is a
+routed destination rather than the main scene, entering `Place.QUEST` therefore
+wipes the profile `boot.tscn` just loaded.
+
+**Correction to an earlier draft of this paragraph:** neither half writes to
+disk at the moment of the wipe. `new_profile()` does not save (§2.3), and
+`start_expedition()` does not either. §2.4's "when to save" list does name it,
+but as an obligation on its **caller** — the mayor's office at step 8 (§7.5) —
+and there is no such caller at step 5; the function itself has never written a
+byte. This paragraph used to read as though the save were inside it, and the
+wipe therefore instant. The only unattended save is
+`SaveGame._notification()` on app pause / close (`save_game.gd:96`). That makes
+the bug *quieter*, not smaller: the wipe sits in memory until the player closes
+the game, and is then written over the real profile. "The save file is already
+overwritten by the time anyone notices" is right about the outcome and wrong
+about the moment.
 
 `new_profile()` not saving (§2.3) is what keeps this survivable up to step 5 —
 before then the wipe is memory-only and a relaunch restores nothing because
 nothing was ever stored. It is **not** a fix. The fix is that expedition start
 belongs to the mayor's office (§7.5) and the router, not to `RunController`'s
-`_ready()`:
+`_ready()` — but **guard the call, do not delete it**:
 
-- `_start_run()` drops the `reset_run()` call and assumes `GameState.level` is
-  already built — which it is, because §7.5 calls `start_expedition(quest)`
-  *before* routing to `Place.QUEST`.
-- `reset_run()` survives exactly as §13.3 requires, as endless mode's dev entry
-  point and `test_endless_level_gen.gd`'s. It is from that step on a **dev path
-  that wipes the profile**, which is also precisely what §13.4's `wipe` verb
-  wants.
+```gdscript
+func _start_run() -> void:
+	if GameState.level == null:
+		GameState.reset_run()     # endless / dev entry: nothing built the level
+	director.spawn_party()
+	...
+
+func _on_retry() -> void:
+	...
+	GameState.reset_run()         # endless retry wants the full wipe, explicitly
+	_start_run()
+```
+
+Deleting the call outright null-derefs. `_start_run()`'s next lines are
+`director.spawn_party()` then `_next_encounter()`, whose first read is
+`GameState.level.encounters.size()` (`run_controller.gd:67`). At step 5 *every*
+path into `RunController` — a direct `main.tscn` launch, `route quest`
+(§13.4), `boot` → `Place.QUEST` — arrives with `level` still `null`, because
+§7.5 does not exist for another three steps. After step 8 it is still the
+endless and dev paths, which have no `start_expedition()` in front of them,
+ever. A hard crash on the step whose bar is "leaves the game runnable" is not an
+improvement on a profile wipe.
+
+**`level == null`, not `quest == null`.** Both read correctly at step 8 — the
+mayor calls `start_expedition(quest)` before routing, so `level` is built and
+`quest` is set — but only `level` lets a *dev* path opt out of the wipe by
+calling `start_expedition()` itself, which is exactly what §13.4's `route quest`
+does at step 5. It is also why retry's reset moves into `_on_retry()`: `level`
+is non-null after a dead run, so a guard alone would skip the reset that endless
+retry needs. The reset becomes explicit at the one call site that wants it,
+which is where it belonged.
+
+**What this buys at step 5, and what it does not.** With `route quest` calling
+`GameState.start_expedition()` before it routes, the loaded profile survives the
+trip into the forest — the destructive bug is closed at step 5, not deferred to
+step 8. Reaching `main.tscn` any *other* way (F5 on that scene directly, a bare
+`change_scene_to_file`) still hits `level == null` → `reset_run()` → the wipe,
+persisted on the next app close. That path is dev-only and §13.4's `wipe` exists
+to make it deliberate, but it is precisely why `boot.tscn` is the main scene and
+`route` is the sanctioned way in.
+
+`reset_run()` survives exactly as §13.3 requires, as endless mode's dev entry
+point and `test_endless_level_gen.gd`'s. It is from this step on a **dev path
+that wipes the profile**, which is also precisely what §13.4's `wipe` verb wants.
 
 Both new autoloads must be inert when instantiated headless with no scene-tree
-work pending — `test_autoload_safety.gd` covers this and must stay green.
+work pending — `test_autoload_safety.gd` covers this and must stay green. Note
+that it covers `SceneRouter` and **cannot** cover `Hud`, which is a scene
+autoload: see §13.3. `Hud`'s inertness rests on a `--headless --quit-after` boot
+instead, so run one.
 
 ### 3.2 `scenes/hud/hud.tscn` — autoload `Hud`
 
@@ -542,6 +689,35 @@ needing something that outlives both scenes.
 `QuestResult` (§8.5). Its `retry_pressed` signal becomes `dismissed`;
 `RunController` no longer owns it or wires it.
 
+**That last clause is the step-8 end state.** Step 5 relocates the node; §8.5
+rewires the flow. `RunController` is the only thing that presents the modal and
+nothing else will until §8.5, so taking "no longer wires it" literally at step 5
+would leave a party wipe fading nothing and connecting nothing for three
+commits. At step 5 the edit is a reference swap plus a signal rename, not a flow
+change: drop `main.get_node("ModalLayer/RunSummary")` (`run_controller.gd:33`),
+reach the node as `Hud.quest_result` at the two `present()` call sites (`:276`,
+`:285`), and connect `Hud.quest_result.dismissed` to `_on_retry` in place of
+`retry_pressed` (`:46`). `present(victory: bool)` keeps its current signature —
+the Quest Reward row, the expedition gold/scrap rows and the recovery-button
+variants are all §8.5. Once §8.5 lands, `_run_complete()` / `_game_over()` drive
+`SaveGame` + `SceneRouter` + the modal, and the `_on_retry` connection goes.
+
+**The rename lands whole at step 5**, and is bounded: `git mv` **three** files
+(`scenes/modals/run_summary.{tscn,gd,gd.uid}` → `quest_result.*` — the `.uid`
+travels with the script or Godot mints a second one for the moved file), rename
+the root node, `signal retry_pressed` → `dismissed` and its one `emit`, reword the
+script header, remove the node and its `ext_resource` from `main.tscn` (`:8`,
+`:90`) and instance it under `Hud/ModalLayer`, and fix the stale reference in
+`console.gd:8`. No test references it and there is no `class_name`; the
+`@onready` paths are internal and survive the reparent. `run_summary.tscn`
+carries no `uid=` on its `gd_scene` line, so both the removal from `main.tscn`
+and the new instance in `hud.tscn` reference it by `path=` and no uid churn
+follows. `RunController`'s own `var run_summary` **keeps its name** (it is just
+assigned `Hud.quest_result`); renaming the field as well is pure diff noise on a
+step whose point is that nothing player-visible changed. Deferring the file
+rename to step 8 only means step 8 touches `main.tscn`, renames files *and*
+rewrites the flow in one commit.
+
 **Visibility.** `InventoryButton` and `CurrencyPlate` are visible in every
 `Place`. During `Place.QUEST` the button is additionally **disabled while
 `RunController.state == COMBAT`**.
@@ -554,6 +730,27 @@ stay open — keeps the button useful without making it an exploit. This is a
 one-line policy and is called out here so a future reader knows it was a
 choice, not an oversight.
 
+**At step 5 the chrome ships ahead of what it opens.** `InventoryModal` is §6,
+so `InventoryButton` ships visible and `disabled = true`, carrying a one-line
+`# step 6 (§6): pressed -> Hud.inventory_modal.open()`. Implement the
+`Place.QUEST` + `COMBAT` rule above **now** rather than with the handler — "when
+is this usable" is the part worth having right before anything depends on it,
+and step 6 then adds nothing but the `pressed` connection. Concretely that is
+one line in `hud.gd._process()` — `inventory_button.disabled = _combat_locked()
+or true`, where `_combat_locked()` reads `SceneRouter.place` and
+`RunController.state` — so the real predicate is genuinely evaluated every frame
+from step 5 on, and the `or true` is the single token step 6 deletes. Its backpack icon is
+§12 (step 11); a placeholder until then is correct, and hiding the button
+entirely would defeat one of the three reasons this node exists.
+
+**`Transition` at rest is invisible and inert**: `modulate:a = 0.0` and
+`mouse_filter = MOUSE_FILTER_IGNORE`, raised to `STOP` only for the duration of
+a transition. It is the **last** child of `Hud`, so a fade covers an open modal
+too. Plain black — §8.5's "fade back once the destination is up" is a dip, not
+a themed wipe. A rect that defaulted to opaque and `STOP` would eat every click
+in town and forest, and would sit on top of the frames `test_parallax_seam.gd`
+and `test_damage_chunk.gd` inspect, both of which are on §13.3's no-edit list.
+
 ### 3.3 `EventBus` additions
 
 ```gdscript
@@ -563,6 +760,17 @@ signal item_forged(item: Item, new_rarity: int)
 signal quest_started(quest: QuestDef)
 signal quest_finished(victory: bool)
 ```
+
+All five land in **one edit at step 5**, though only `scrap_changed` has a
+step-5 consumer: `item_equipped` is step 6, `quest_started` / `quest_finished`
+are step 8, `item_forged` is step 9 — and §14 step 9 already records
+`item_forged` as having arrived at step 5, so `forge()` may assume it.
+`event_bus.gd`'s file-wide `@warning_ignore_start("unused_signal")`
+(`event_bus.gd:8`) means a declared, unemitted signal is already silent, so five
+one-line diffs spread across four steps buy nothing. **`QuestDef` does not exist
+until step 8**, so `quest_started` ships untyped — `signal
+quest_started(quest)` — and tightens to the signature above at step 8 alongside
+the class.
 
 `CurrencyPlate` binds `gold_changed` and `scrap_changed` and is the **only**
 new gold/scrap readout written for this pass. `status_panel.gd`'s existing
@@ -902,6 +1110,15 @@ churn does, which is the only reason scrap is worth adding as a currency at all.
 pop-and-float feedback on change (`status_panel._float_delta()` is the
 reference implementation; lift it into a shared helper rather than copying it a
 third time).
+
+**That helper landed at step 5, not step 9**: `scripts/ui/currency_feedback.gd`,
+a static `RefCounted` with `pop(label)` and `float_delta(host, label, delta,
+positive_color)`, lifted verbatim from `status_panel` — which is refactored onto
+it in the same step, behaviour-preserving, so there is never a moment with two
+copies. `CurrencyPlate` is its second caller and step 9's forge is the third,
+which is the "don't copy it a third time" this section asked for. It lives in
+`scripts/ui/` rather than `scripts/hud/` because one of its two callers is a
+console node.
 
 ### 5.4 Not to be confused with `Upgrades`
 
@@ -1726,6 +1943,40 @@ anything.
 - every combat encounter's enemy count is within `enemy_count`;
 - every enemy id in the level is in `enemy_pool` or `boss_pool`.
 
+**`tests/test_scene_router.gd`** — lands at **step 5**, on the same principle
+as steps 1—4's tests (step-1 Q5): a step that buys isolation and then ships no
+assertion of its own has spent the isolation and not collected. Step 5 is the
+first step whose acceptance is partly a *runtime* check, but these invariants
+are cheap to pin headless. Keep it to about ten checks — it shipped at **12**.
+
+- **totality**: every `Place` enum value has a `PATHS` key — `Place.size()` vs
+  `PATHS.size()`, and each key present by value. The failure mode is adding a
+  `Place` and forgetting its path, which crashes only when someone routes there;
+- **existence, for built places only**: `ResourceLoader.exists(PATHS[p])` for
+  `TOWN` and `QUEST` at step 5, widening to `INN` at step 7, `MAYOR` at step 8
+  and `BLACKSMITH` at step 10 (§3.1). Asserting all five at step 5 fails on
+  arrival — three of those scenes have not been built yet;
+- `SceneRouter` instantiates under a headless tree with no error pushed, and its
+  `_ready()` / `_init()` reference no sibling autoload — belt-and-braces over
+  §13.3's scene-autoload blind spot;
+- **§3.1's boot rule**: after `load_profile()` returns `false`, exactly one
+  `SaveGame.save_profile()` follows. This is the guard against "every launch
+  overwrites the player's file" regressing silently. Two halves, and the runtime
+  one is the stronger: assert directly that `new_profile()` alone writes no file
+  and that a `save_profile()` after it writes a *loadable* one; then, as a
+  source scan, that `boot.gd` contains exactly one call to each. **The source
+  scan must strip comments first** — `boot.gd`'s own header explains the
+  never-persists rule and so names `new_profile()` in prose, which makes a naive
+  `count("new_profile()") == 1` fail on a correct file.
+
+Written as built, that is: totality ×2, existence ×2, autoload liveness ×2,
+router lifecycle-lint ×1, boot rule ×5. `SceneRouter.Place.size()` and its keys
+read directly — a named GDScript enum is a `Dictionary` constant, so the
+totality check needs no `.values()` dance.
+
+Anything here that touches `user://profile.save` goes through
+`test_support.gd`'s `guard_user_file()`, the same as `test_profile_save.gd`.
+
 ### 13.2 Edited
 
 - `test_drops.gd` — **four edits, all step 4** (step-4 Q2, Q11). An earlier
@@ -1810,21 +2061,52 @@ default-`true` on `GameState`, and only bypassed when `quest != null`. It calls
 `GameState.reset_run()` directly, which is why §2.3 keeps that function alive
 for the whole pass rather than deleting it.
 
+**`test_autoload_safety.gd` cannot see a scene autoload, and `Hud` is one.** The
+lint reads the script at `autoload/<Name>` and isolates the bodies of top-level
+`func _ready(` / `func _init(` lines. For `Hud` that path is `hud.tscn`;
+`FileAccess` opens it happily, finds no column-0 `func _ready(` in scene text,
+and scans an empty body — a vacuous pass, not coverage. `hud.gd`'s real
+`_ready()` is never scanned. Two consequences, both for step 5: keep
+sibling-autoload work out of `hud.gd`'s root `_ready()` on the honour system
+(`CurrencyPlate` binds its own `EventBus` signals in its own script — a child
+node, unscanned either way, and the right home for it regardless;
+`call_deferred` anything that genuinely needs a sibling at boot), and treat a
+`--headless --quit-after` boot of `boot.tscn` as the check that actually covers
+`Hud`. The test's `t.check(autoloads.size() >= 6)` still holds at 13, so it
+needs no edit — but do not mistake its green for coverage of the HUD.
+
 ### 13.4 Debug harness
 
 `scripts/autoload/debug.gd` gains verbs, in its existing one-line-per-command
 style:
 
 ```
-scrap <n>                   add scrap
-forge <weapon|armor|trinket>  forge the item in that slot once
-quest <easy|medium|hard>    start that quest from anywhere
-town                        route to town
-wipe                        delete the save file and start a new profile
+route <town|inn|blacksmith|mayor|quest>   SceneRouter.go(Place.<x>)         step 5
+wipe                                      delete the save, new profile      step 5
+quest <easy|medium|hard>                  start that quest from anywhere    step 8
+scrap <n>                                 add scrap                         step 9
+forge <weapon|armor|trinket>              forge that slot's item once       step 9
 ```
 
+`route` supersedes the bare `town` verb an earlier draft listed — one verb, all
+five destinations, and it is how a tester reaches the forest through the router
+before the mayor exists. **Its `quest` branch calls
+`GameState.start_expedition()` before routing**, standing in for §7.5 so the
+loaded profile survives the trip (§3.1); `route inn|blacksmith|mayor` refuses
+cleanly until those scenes exist, which is `go()`'s missing-path bail doing its
+job rather than a soft-lock. That call is **unconditional** — no `if level ==
+null` on the debug side. `route quest` twice just re-runs `start_expedition()`,
+which is a clean expedition reset and costs the profile nothing, and the verb
+stays a one-liner.
+
 `wipe` is the one a tester will reach for most and the one most easily
-forgotten.
+forgotten, and it becomes *meaningful* at step 5: this is the first step where a
+launch reads `user://profile.save`, so a stale dev save now actually changes
+what a run looks like.
+
+`route` and `wipe` land at step 5; the other three come with their own sections.
+All of them go in `debug.gd`'s `match verb` block (`debug.gd:38`) in the
+existing one-line style, with `_cmd_route` / `_cmd_wipe` alongside `_cmd_gold`.
 
 ---
 
@@ -1896,11 +2178,91 @@ previous is green.
    for them and `_draw()` falls through to `_draw_gem()` — which is correct for a
    step that is invisible by design.
 5. **§3 — `SceneRouter` and `Hud`**, `boot.tscn`, `RunSummary` → `QuestResult`
-   moved into the HUD. The forest still starts, now via the router. **Read
-   §3.1's `RunController._start_run()` warning before starting this step** — it
-   is the step where a leftover `reset_run()` on the boot path stops being
-   harmless and starts destroying saved profiles.
-6. **§6 — the inventory modal** and `inventory_row.tscn`.
+   moved into the HUD. The forest still starts, now via the router. The first
+   player-visible step, and the first whose acceptance is partly a *runtime*
+   check rather than a headless one. **Read §3.1's
+   `RunController._start_run()` warning before starting this step** — it is the
+   step where a leftover `reset_run()` on the boot path stops being harmless and
+   starts destroying saved profiles. **Done.** §13.3's no-edit list plus the four
+   earlier-edited tests are still green, `test_scene_router.gd` (12 checks) is
+   new and green, a `--headless --quit-after` boot of `boot.tscn` reaches
+   `Place.TOWN` with no error, and a headless `debug route quest` takes
+   `place` `TOWN → QUEST`, makes `main.tscn` current, builds `GameState.level`
+   and leaves the loaded profile **unwiped** — which is the whole point of the
+   step. Its changeset, after the step-5 questions were resolved:
+
+   - `scenes/boot.tscn` + `scripts/boot.gd` — new. `load_profile()`, else
+     `new_profile()` + `save_profile()`; then the two zero-delta currency emits
+     (§3.1), so `CurrencyPlate` sees the profile it was built before; then
+     `await get_tree().process_frame` — the swap cannot run inside its own
+     scene's `_ready()` (§3.1) — and the first hop to `Place.TOWN` by direct
+     `change_scene_to_file`, not `go()`.
+   - `scripts/autoload/scene_router.gd` — new. `Place`, `PATHS`, `place`, and an
+     `await`able `go()` carrying **both** guards: re-entrancy, and the
+     missing-path bail that keeps `route inn` from soft-locking behind an opaque
+     rect (§3.1) — plus a `to == place` no-op and a `FADE_TIME` const that came
+     out of the build. Three of the five `PATHS` scenes do not exist yet; that is
+     expected, and is why the bail is not optional. `place` is assigned after the
+     swap settles, so it trails the incoming scene's `_ready()` — see §3.1.
+   - `scenes/hud/hud.tscn` + `scripts/hud/hud.gd` — new autoload. `CanvasLayer`
+     at layer 10: `InventoryButton` (visible, `disabled`, COMBAT rule already
+     wired, §3.2), `CurrencyPlate`, `ModalLayer` (`PROCESS_MODE_ALWAYS`) hosting
+     `QuestResult`, and `Transition` last and inert. A `quest_result` accessor,
+     because §8.5 reaches it by name.
+   - `scripts/hud/currency_plate.gd` — new. Reads `GameState.gold` / `scrap`
+     directly for its first paint, then trusts `gold_changed` / `scrap_changed`.
+     The scrap half stays silent until step 9 gives it a source.
+   - `scripts/ui/currency_feedback.gd` — new, and `scripts/console/status_panel.gd`
+     refactored onto it. §5.3's shared pop-and-float helper lands **here, not at
+     step 9**: `CurrencyPlate` is its second caller, so this is the step where
+     the third copy would otherwise have been written.
+   - `scenes/modals/run_summary.{tscn,gd,gd.uid}` → `quest_result.*` — `git mv`
+     all three, node + signal rename, reparented under `Hud/ModalLayer` (§3.2).
+     `RunController`'s `var run_summary` keeps its name.
+   - `scenes/main.tscn` — the `RunSummary` node and its `ext_resource` removed
+     (`:8`, `:90`); `ModalLayer/ShopModal` stays exactly where it is.
+   - `scripts/run/run_controller.gd` — `_start_run()` guarded on
+     `GameState.level == null`, with the retry reset moved into `_on_retry()`
+     (§3.1); the `run_summary` references at `:21`, `:33`, `:46`, `:276`, `:285`
+     repointed at `Hud.quest_result` with `dismissed` for `retry_pressed`
+     (§3.2); one line **first** in `_ready()` asserting `SceneRouter.place =
+     Place.QUEST` — ahead of the `main.get_node()` lookups, so a failure there
+     still leaves `place` honest.
+   - `scripts/autoload/event_bus.gd` — all five §3.3 signals in one edit, with
+     `quest_started` untyped until `QuestDef` exists at step 8.
+   - `scripts/console/console.gd:8` — one stale `run_summary.gd` reference.
+   - `scripts/autoload/debug.gd` — `route` and `wipe` (§13.4).
+   - `project.godot`, **via `set_project_setting` only** — `main_scene` →
+     `boot.tscn`; autoloads `SceneRouter` then `Hud`, both after `SaveGame`, so
+     `Hud` (the heavier one, and the one `SceneRouter` calls into) is freed last.
+   - `tests/test_scene_router.gd` + `.tscn` — new (§13.1).
+
+   **What step 5 accepts, deliberately:** `play_scene` and F5 now land in a town
+   with dead buttons until step 7 — every "run the game" reflex, human and MCP,
+   goes there instead of the forest, which is what `route quest` is for. The
+   inventory button is on screen and does nothing until step 6, and wears no
+   icon until step 11. And `Hud`'s headless inertness is **not** covered by
+   `test_autoload_safety.gd` (§13.3): a `--headless --quit-after` boot of
+   `boot.tscn` reaching `Place.TOWN` clean is part of this step's green bar, not
+   an optional extra.
+
+   **One workflow footgun, for whoever reviews this step in the editor:** after
+   the two autoloads are registered, a *running* Godot editor still reports
+   `Compile Error: Identifier not found: SceneRouter` / `Hud` for every file
+   that names them, and `reload_project` does not clear it — the editor reads
+   the autoload table only at start. Restart the editor once. Every `--headless`
+   run is a fresh process and never sees this, which is why the suite can be
+   green while the Errors panel is red.
+6. **§6 — the inventory modal** and `inventory_row.tscn`. Unblocked by step 5's
+   `Hud/ModalLayer` and `SceneRouter`; three hazards are already visible from
+   there. The `InventoryButton` `pressed` handler is the one line step 5
+   deliberately left out — step 6 adds `Hud.inventory_modal.open()` and deletes
+   the `or true` from `hud.gd`, and nothing else about the button changes.
+   §6.2's shared `item_card_style.gd` has to be lifted from **two** existing
+   copies (`shop_sell_row.gd` and `shop_buy_card.gd`), not one. And moving
+   `CompareFlyout` into `Hud/ModalLayer` (§3.2's end-state list) collides with
+   the shop's own instance: step 6 has to decide whether that is one shared node
+   or two, and §6.3's slot fix lands on whichever it is.
 7. **§7.1, §7.2 — town hub and inn**, wired to the router.
 8. **§8 — `QuestDef`, the three `.tres` files, `_build_quest_level()`**, and the
    victory/failure flows. The loop closes here: this is the first commit where

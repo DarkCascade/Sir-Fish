@@ -1,14 +1,20 @@
 extends Control
-## Defeat / victory screen with the full run stats and a Retry (spec 18).
+## [town] Quest / run result screen with the full run stats and a dismiss
+## button (spec 18, spec 8.5). Renamed from RunSummary at step 5 and reparented
+## into Hud/ModalLayer so it can present over a town scene it was never a child
+## of; the victory/failure flow rewiring (Quest Reward row, expedition
+## gold/scrap rows, the two recovery buttons) is spec 8.5 at step 8. At step 5
+## present(victory: bool) keeps its exact prior behaviour and RunController
+## still drives it.
 ##
-## [move-elements-to-editor] The whole screen is authored in run_summary.tscn -
+## [move-elements-to-editor] The whole screen is authored in quest_result.tscn -
 ## Sir Fish at the top (he is the first thing the player sees on this screen,
 ## spec 18.2) and one named row per statistic, each carrying its caption and a
 ## plausible dummy number. This script writes numbers into the rows it
 ## recognises, by node NAME, and leaves everything else alone: reordering,
 ## restyling or deleting a row is editor work and needs no change here.
 
-signal retry_pressed()
+signal dismissed()
 
 @onready var scrim: ColorRect = $Scrim
 @onready var panel: PanelContainer = $Panel
@@ -20,7 +26,7 @@ signal retry_pressed()
 func _ready() -> void:
 	retry_button.pressed.connect(func() -> void:
 		hide()
-		retry_pressed.emit())
+		dismissed.emit())
 	hide()
 
 func present(victory: bool) -> void:

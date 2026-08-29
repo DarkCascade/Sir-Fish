@@ -1,0 +1,86 @@
+[gd_scene load_steps=4 format=3 uid="uid://b0hudsirfish05"]
+
+[ext_resource type="Script" path="res://scripts/hud/hud.gd" id="1_hud"]
+[ext_resource type="Script" path="res://scripts/hud/currency_plate.gd" id="2_plate"]
+[ext_resource type="PackedScene" path="res://scenes/modals/quest_result.tscn" id="3_qr"]
+
+[node name="Hud" type="CanvasLayer"]
+layer = 10
+script = ExtResource("1_hud")
+
+[node name="InventoryButton" type="Button" parent="."]
+offset_left = 24.0
+offset_top = 24.0
+offset_right = 128.0
+offset_bottom = 128.0
+disabled = true
+theme_override_font_sizes/font_size = 30
+text = "Bag"
+
+[node name="CurrencyPlate" type="PanelContainer" parent="."]
+offset_left = 724.0
+offset_top = 24.0
+offset_right = 1056.0
+offset_bottom = 110.0
+mouse_filter = 2
+script = ExtResource("2_plate")
+
+[node name="Row" type="HBoxContainer" parent="CurrencyPlate"]
+layout_mode = 2
+theme_override_constants/separation = 28
+alignment = 1
+
+[node name="Gold" type="HBoxContainer" parent="CurrencyPlate/Row"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Caption" type="Label" parent="CurrencyPlate/Row/Gold"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.831, 0.659, 0.263, 1)
+theme_override_font_sizes/font_size = 34
+text = "G"
+
+[node name="Value" type="Label" parent="CurrencyPlate/Row/Gold"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.961, 0.945, 0.894, 1)
+theme_override_font_sizes/font_size = 34
+text = "0"
+
+[node name="Scrap" type="HBoxContainer" parent="CurrencyPlate/Row"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Caption" type="Label" parent="CurrencyPlate/Row/Scrap"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.624, 0.698, 0.745, 1)
+theme_override_font_sizes/font_size = 34
+text = "S"
+
+[node name="Value" type="Label" parent="CurrencyPlate/Row/Scrap"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.961, 0.945, 0.894, 1)
+theme_override_font_sizes/font_size = 34
+text = "0"
+
+[node name="ModalLayer" type="Control" parent="."]
+process_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="QuestResult" parent="ModalLayer" instance=ExtResource("3_qr")]
+visible = false
+layout_mode = 1
+
+[node name="Transition" type="ColorRect" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0, 0, 0, 1)
+modulate = Color(1, 1, 1, 0)

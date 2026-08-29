@@ -4,8 +4,8 @@ extends Control
 ##
 ## [ui-project-longshot] Sir Fish's tank has left the status strip - the
 ## concept board puts DEPTH where the tank was, and there is no fish anywhere
-## on it. The tank scene is untouched and the run summary still shows him
-## (run_summary.gd), so this is a relocation, not a deletion.
+## on it. The tank scene is untouched and the quest result screen still shows
+## him (quest_result.gd), so this is a relocation, not a deletion.
 ##
 ## The bands are laid out from the console's own height rather than from baked
 ## offsets, so the battle / console split can be moved (see main_layout.gd) without
