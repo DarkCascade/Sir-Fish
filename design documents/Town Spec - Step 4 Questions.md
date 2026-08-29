@@ -632,6 +632,92 @@ places a literal reading of the spec/answers needed a small, local decision.
 
    Comment-only, no logic touched, suite re-run green after.
 
+---
+
+## Two findings from the verification pass
+
+Both surfaced from one thread — looking properly at the element-tie probe in
+`test_item_distribution.gd`, whose stale comment note 6 above corrects. Neither
+was in step 4's changeset; the first is now deferred in §15, the second is a spec
+error and is fixed.
+
+### F1. `party_bonuses()` counts gear worn by heroes who are not on the field
+
+The probe asserts a 5-fire/5-ice tie resolves to fire. What it really pins is an
+**emergent** tiebreak: `elements` is built as the literal
+`{ &"fire": 0, &"ice": 0, &"light": 0 }` and the winner loop uses a strict `>`,
+so the first key holding the maximum wins and GDScript's insertion order makes
+that fire. Reorder the literal, or "tidy" `>` into `>=` (which hands ties to the
+*last* key), and the damage-number colour §11.4 reads silently changes. Nobody
+wrote "fire wins ties" as a rule; this check is the only thing that says so.
+
+The probe puts its ice item on `&"ranger"` — who §4.5 just took off the field —
+and still passes. That is not a property of the test: `party_bonuses()` gates on
+`equipped_by != &""` and never consults `active_party` or `hero_runtime`.
+
+Confirmed live rather than read off the source. After `additem rare ranger`:
+
+```
+equipped warrior=[]  |  bonuses { "dmg_flat": 8, "dmg_pct": 16, ..., "slot_mend": 4 }
+```
+
+A Rare Bow auto-equipped to an absent ranger, feeding the slot machine, with no
+visible source — `state`'s loops are `active_party` now (Q6). Unreachable in
+normal play (§4.4 gates generation both ways), reachable through the debug verb,
+because `_maybe_auto_equip()` skips the `active_party` check too.
+
+**Not fixed here.** The filter is one line, but it changes what the reels read
+and §0.2 fences those off; it also wants deciding with the mage and ranger's
+return. Recorded as a §15 bullet.
+
+*(One incidental result, and the better argument for leaving the probe's code on
+two heroes than the §13.2 bookkeeping I first wrote: both probe items are
+`Item.new()` with `weapon_type = &""`, so `slot()` returns the `WEAPON` default
+for both. On one hero they would both claim that slot — `party_bonuses()` sums
+both, `equipped_set()` returns only the first — manufacturing a state the two
+APIs disagree about.)*
+
+### F2. §2.4's `VERSION`-bump waiver was refuted by its own section — **fixed**
+
+Checking whether F1's state could persist, §2.4's reason for not bumping
+`VERSION` at §4.5 turned out to be false:
+
+> The build order happens to make this moot (nothing writes a save until §3.1's
+> `boot.tscn` at step 5, which lands *after* §4.5 at step 4).
+
+`SaveGame._notification()` writes on `WM_CLOSE_REQUEST` / `APPLICATION_PAUSED`,
+and §2.4's own "When to save" list — eight lines below the waiver — mandates it
+**at step 2** (step-2 Q5). The argument accounted for the reader and forgot its
+own writer. The real window is steps 2 → 5: any dev who ran the game and closed
+its window in that window has a version-1 save holding the three-hero roster, and
+step 5's `boot.tscn` would load it verbatim — resurrecting the party §4.5
+retired, with orphaned gear still feeding F1.
+
+Fixed, three edits:
+
+- **`save_game.gd`: `VERSION` 1 → 2**, with the reasoning inline. §2.4's own
+  policy already mandated it ("bump when the meaning of an existing key
+  changes") — `active_party`'s meaning changed at §4.5; only the false premise
+  waived it. `load_profile()`'s gate is an exact `!=`, so version-1 saves are
+  discarded and `boot.tscn` falls back to `new_profile()`. No migration code: a
+  pre-town save is a dev artifact, not player data.
+- **§2.4 rewritten** — the waiver replaced with the bump, the contradiction named
+  so it is not re-derived, and the `inventory` half of the hazard (F1) added
+  beside the `heroes` half it already described.
+- **§14 step 4** gains the `save_game.gd` line, since it is §4.5 that invalidates
+  the saves.
+
+No test moved: `test_profile_save.gd` round-trips through `save_profile()` /
+`load_profile()` and is version-agnostic, and its S4 case writes `version: 999`
+explicitly. Checked `user://profile.save` — no file on disk, so nothing of the
+dev's was affected; `stop_scene` kills the process rather than sending
+`WM_CLOSE_REQUEST`, which is why the runs above wrote nothing.
+
+**The transferable lesson:** a "nothing writes yet" argument has to name the
+writers, not just the reader.
+
+---
+
 **Verified at runtime, not just headless.** §14's bar is "leave the game
 runnable", and step 4 is the first time the game actually spawns a solo party.
 `main.tscn` boots, renders one warrior with one HP bar (no spare/broken bars from

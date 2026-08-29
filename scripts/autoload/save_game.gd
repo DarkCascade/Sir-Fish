@@ -13,7 +13,21 @@ extends Node
 ##     godot --headless --path "C:/Projects/Godot/Sir Fish" res://tests/test_profile_save.tscn
 
 const PATH := "user://profile.save"
-const VERSION := 1
+
+## Bumped 1 -> 2 at spec 4.5, which changed what `active_party` MEANS: it was
+## "the authored three-hero roster", it is now "the solo warrior". That is
+## exactly the trigger spec 2.4's VERSION policy names ("bump when the meaning
+## of an existing key changes"; adding a key alone never needs one).
+##
+## Spec 2.4 originally waived this bump, arguing nothing writes a save until
+## boot.tscn at step 5. That was wrong - _notification() below writes on window
+## close and has been live since step 2, so any dev who played and closed the
+## window between steps 2 and 4 has a version-1 save holding the three-hero
+## roster and possibly mage/ranger-equipped items. load_profile()'s gate is an
+## exact match, so this bump discards those saves and boot.tscn falls back to
+## new_profile() - rather than resurrecting a party 4.5 just retired, with
+## orphaned gear still feeding party_bonuses().
+const VERSION := 2
 
 ## Every profile mutation in town saves (spec 2.4's "When to save" list); this
 ## is also called from GameState.new_profile(), from start_expedition() and the

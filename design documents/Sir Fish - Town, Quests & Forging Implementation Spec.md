@@ -414,11 +414,32 @@ dict at §7.4 without a bump.
 The case that *does* need one is `active_party`: before §4.5 it means "the
 authored three-hero roster", after it means "the solo warrior". A save from
 either side of that flip describes a party the other side does not support, and
-`load_profile()` restores `heroes` verbatim without reconciling it against
-`active_party` — so a stale save would resurrect a three-hero party that §4.5
-had just retired. The build order happens to make this moot (nothing writes a
-save until §3.1's `boot.tscn` at step 5, which lands *after* §4.5 at step 4), so
-no bump is required in this pass. It is recorded because the shape recurs.
+`load_profile()` restores `heroes` and `inventory` verbatim without reconciling
+either against `active_party` — so a stale save resurrects a three-hero party
+that §4.5 had just retired, *and* restores mage/ranger-equipped items that
+`party_bonuses()` goes on counting even though nobody is wearing them (it gates
+on `equipped_by != &""`, never on who is on the field).
+
+**So `VERSION` becomes `2` at step 4, with §4.5's value flip.**
+
+An earlier draft of this paragraph waived the bump, arguing the build order made
+it moot because "nothing writes a save until §3.1's `boot.tscn` at step 5, which
+lands after §4.5 at step 4". **That was wrong, and it contradicted this very
+subsection**: `SaveGame._notification()` writes on `NOTIFICATION_WM_CLOSE_REQUEST`
+and `NOTIFICATION_APPLICATION_PAUSED`, and the "When to save" list immediately
+below mandates it *at step 2* (step-2 Q5). The argument accounted for the reader
+and forgot its own writer. The real window is steps 2 → 5: any dev who ran the
+game and closed the window in it has a version-1 save on disk holding the
+three-hero roster.
+
+`load_profile()`'s gate is an exact `!=` match, so the bump discards those saves
+and `boot.tscn` falls back to `new_profile()` — which is the whole point of
+having a version field. No migration code: a pre-town save is a dev artifact,
+not player data.
+
+The general lesson is worth more than the fix: **a "nothing writes yet" argument
+has to name the writers, not just the reader.** This one was refuted by a bullet
+list eight lines further down its own section.
 
 **When to save.** Every one of these, no exceptions:
 
@@ -1861,6 +1882,9 @@ previous is green.
      without it change nothing.
    - `scripts/modals/compare_flyout.gd` — the §6.3 one-liner.
    - `scripts/autoload/debug.gd` — the `state` line via `equipped_set()` (§4.3).
+   - `scripts/autoload/save_game.gd` — **`VERSION` 1 → 2** (§2.4). The value flip
+     changes what `active_party` *means*, which is precisely the policy's bump
+     trigger; it lands here because it is §4.5 that invalidates the old saves.
    - tests: `test_drops.gd` (D2, D7, D4/D9), `test_item_distribution.gd` (the
      four-to-five widening), `test_profile_expedition.gd` (P6),
      `test_profile_save.gd` (one item per slot) — all §13.2.
@@ -1908,6 +1932,24 @@ Recorded so they are decisions rather than omissions.
   trinket rows in `ITEM_TYPES` carrying their class ids. Drop coverage
   (`DROP_CATCHUP`, `next_drop_class`) is untouched and waiting for them — do
   not delete it.
+
+- **`party_bonuses()` counts gear worn by heroes who are not on the field.** It
+  gates on `equipped_by != &""` and never consults `active_party` or
+  `hero_runtime`, so an item equipped by the retired mage or ranger keeps feeding
+  `dmg_flat` / `slot_purse` / the rest. Harmless in normal play after §4.4 —
+  generation is `active_party`-gated on both paths, so no mage or ranger item can
+  enter the inventory — but reachable *today* through §13.4's
+  `additem <rarity> <class>` verb, since `_maybe_auto_equip()` iterates
+  `usable_by()` without an `active_party` check either. Observed: `additem rare
+  ranger` yields `equipped warrior=[]` beside a non-zero `bonuses` line, a bonus
+  with no visible source.
+
+  Deliberately **not** fixed in this pass. The one-line filter (skip items whose
+  `equipped_by` is not in `active_party`) changes what the slot machine reads,
+  and §0.2 fences the reels off from this document; it also wants deciding
+  alongside the mage and ranger's return, when "off the field" starts meaning
+  benched rather than deleted. Until then §2.4's `VERSION` bump is what stops a
+  stale save from creating the state without a debug verb.
 - **Armor and trinket modifiers of their own.** Right now every slot draws from
   the same eight-modifier pool, so a helm can roll "+7 Bolt Power". Per-slot
   pools are the obvious next step and want their own balance pass.
