@@ -61,6 +61,13 @@ const CLASS_BAR_COLORS := {
 
 var _dead: bool = false
 
+## Smoothness pass: refresh() used to run the "%d / %d"-style format and
+## reassign hp_text.text every frame regardless of whether current_hp had
+## moved - a fresh String allocated per hero per frame purely to compare equal
+## to what was already on screen. -2 never matches a real HP value (dead is
+## sentinel -1), so the first refresh() still formats and writes once.
+var _last_hp_shown: int = -2
+
 var chip_border: ColorRect
 var chip: ColorRect
 var chip_glyph: ClassIconGlyph
@@ -126,9 +133,13 @@ func refresh() -> void:
 	# "current / max", as the board reads them. The maximum is the half that
 	# makes a bar's fill mean anything - 102 alone says nothing about whether
 	# this hero is in trouble.
-	hp_text.text = "DEAD" if not alive \
-		else "%d" % [combatant.current_hp]
-	buff_shield.visible = alive and combatant.is_defending()
+	var hp_shown: int = combatant.current_hp if alive else -1
+	if hp_shown != _last_hp_shown:
+		_last_hp_shown = hp_shown
+		hp_text.text = "DEAD" if not alive else "%d" % [hp_shown]
+	var defending := alive and combatant.is_defending()
+	if defending != buff_shield.visible:
+		buff_shield.visible = defending
 
 ## A dead hero's bar stays in the party strip, greyed and reading DEAD, rather
 ## than vanishing: the roster is the only place the party's losses are shown.

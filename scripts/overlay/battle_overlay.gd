@@ -56,9 +56,15 @@ func _process(delta: float) -> void:
 		# Hero bars are wide enough to hang off the viewport when a hero stands
 		# near an edge, and a clipped name chip or a clipped HP number is worse
 		# than a bar that is a few pixels off-centre (pillar 1).
-		bars.position = Vector2(
+		var new_pos := Vector2(
 			clampf(vp.x - bars.size.x * 0.5, 0.0, maxf(size.x - bars.size.x, 0.0)),
 			vp.y - bars.size.y * 0.5)
+		# Writing Control.position dirties layout even when the value hasn't
+		# actually moved, and most frames an idle combatant hasn't (smoothness
+		# pass, spec 16.4-adjacent). Most combatants sit still between actions,
+		# so this skips the write on nearly every frame nobody is animating.
+		if not bars.position.is_equal_approx(new_pos):
+			bars.position = new_pos
 		bars.visible = not cam.is_position_behind(world_pos)
 		bars.refresh()
 
