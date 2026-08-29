@@ -44,6 +44,8 @@ func _run(line: String) -> void:
 		"slot": _cmd_slot(args)
 		"shop": _cmd_shop(args)
 		"gold": _cmd_gold(args)
+		"scrap": _cmd_scrap(args)
+		"forge": _cmd_forge(args)
 		"upgrade": _cmd_upgrade(args)
 		"additem": _cmd_additem(args)
 		"drops": _cmd_drops(args)
@@ -222,6 +224,44 @@ func _cmd_gold(args: Array) -> void:
 	GameState.gold = n
 	EventBus.gold_changed.emit(GameState.gold, delta)
 	_log("gold -> %d" % GameState.gold)
+
+## [town] spec 13.4. Adds scrap, the forge's currency (spec 5). Additive, unlike
+## `gold` which sets an absolute - scrap has no "spend down to N" use.
+func _cmd_scrap(args: Array) -> void:
+	if args.is_empty():
+		_log("scrap -> needs <n>")
+		return
+	var n := maxi(0, int(String(args[0])))
+	GameState.add_scrap(n)
+	_log("scrap -> %d (+%d)" % [GameState.scrap, n])
+
+## [town] spec 13.4. Forges the field leader's item in the named slot once (spec
+## 10.2) - the harness route to an ENHANCED item. Fails cleanly on an empty slot,
+## a maxed rarity, or too little scrap / gold.
+func _cmd_forge(args: Array) -> void:
+	if args.is_empty():
+		_log("forge -> needs <weapon|armor|trinket>")
+		return
+	var slots := {
+		"weapon": Item.Slot.WEAPON,
+		"armor": Item.Slot.ARMOR,
+		"trinket": Item.Slot.TRINKET,
+	}
+	var key := String(args[0]).to_lower()
+	if not slots.has(key):
+		_log("forge -> unknown slot '%s'" % args[0])
+		return
+	var leader: StringName = GameState.active_party[0] if not GameState.active_party.is_empty() else &""
+	var item: Item = GameState.equipped_item(leader, slots[key])
+	if item == null:
+		_log("forge -> nothing equipped in %s" % key)
+		return
+	var before := item.rarity_name()
+	if Itemizer.forge(item):
+		_log("forge -> %s: %s -> %s (forge_count %d, value %d)" % [
+			item.display_name, before, item.rarity_name(), item.forge_count, item.value])
+	else:
+		_log("forge -> failed (rarity maxed, or not enough scrap/gold)")
 
 func _cmd_upgrade(args: Array) -> void:
 	if args.size() < 2:

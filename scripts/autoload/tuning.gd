@@ -196,6 +196,37 @@ const INN_REST_COST_PER_HERO := 50
 ## because half of half repeated converges on a full heal (spec 1.9).
 const INN_STREET_HEAL_FRACTION := 0.5
 
+# --- [town] The forge (spec 11) ----------------------------------------------
+## [scrap, gold] to raise an item FROM rarity index i to i + 1. Indexed by the
+## item's CURRENT rarity, so the array is one shorter than Item.Rarity - there
+## is no step out of ENHANCED (spec 10.2).
+const FORGE_COSTS := [
+	[5, 20],      # Common   -> Uncommon
+	[10, 40],     # Uncommon -> Magic
+	[18, 70],     # Magic    -> Rare
+	[30, 120],    # Rare     -> Enhanced
+]
+## The final rung's modifier rolls at double magnitude, and carries an
+## `enhanced: true` marker the UI tints (spec 10.3).
+const FORGE_ENHANCED_MULT := 2
+
+# --- [town] Combat pickups (spec 9) ----------------------------------------------
+## VALUE rolled per kill, NOT an object count (spec 9.3): spawn
+## mini(value, LOOT_PICKUP_MAX_OBJECTS) meshes to represent it and split the
+## value across them. Floors of 3 / 2 (not 0) so every kill pays something.
+const ENEMY_GOLD_DROP := Vector2i(3, 9)
+const ENEMY_SCRAP_DROP := Vector2i(2, 6)
+const BOSS_LOOT_MULT := 3
+const LOOT_PICKUP_MAX_OBJECTS := 5
+const LOOT_ARC_TIME := 0.45
+const LOOT_ARC_HEIGHT := 0.9               # world units at the apex
+const LOOT_SCATTER_RADIUS := 0.7
+const LOOT_SETTLE_TIME := 0.20
+const LOOT_FADE_TIME := 0.25               # 0.45 + 0.20 + 0.25 = 0.90s total, which
+										   # fits inside the corpse hold + fade
+										   # (0.75s) plus the front of
+										   # ENCOUNTER_RESOLVE_PAUSE (spec 9.1).
+
 # --- enemy drops --------------------------------------------------------------
 ## How strongly a class that is behind on drops is favoured by the next roll:
 ##   weight = 1 + DROP_CATCHUP * (leader_count - this_count)

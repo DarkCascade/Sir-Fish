@@ -131,7 +131,12 @@ func _fill_mods(container: VBoxContainer, item: Item) -> void:
 		container.add_child(_line("No modifiers", Tuning.C_TEXT_DIM))
 		return
 	for mod: Dictionary in item.modifiers:
-		container.add_child(_line(String(mod["label"]), Tuning.C_TEXT))
+		# [town] spec 10.3: an Enhanced modifier (last forge rung, doubled roll)
+		# draws in the ENHANCED rarity colour so it reads as its own thing rather
+		# than as a lucky roll of the normal range.
+		var color: Color = Tuning.RARITY_COLORS[Item.Rarity.ENHANCED] \
+			if mod.get("enhanced", false) else Tuning.C_TEXT
+		container.add_child(_line(String(mod["label"]), color))
 
 # --- the change list --------------------------------------------------------
 

@@ -53,6 +53,11 @@ func _ready() -> void:
 func _on_combatant_died(c) -> void:
 	if _active and c is Combatant and enemies.has(c):
 		_roll_drop(c)
+		# [town] spec 9: gold + scrap arc off the corpse now, during the hold, not
+		# after the fade. Only the scaled-up boss unit (enemies[0] in a boss
+		# fight) pays the BOSS_LOOT_MULT - spec 11.1's "the boss counting triple".
+		var is_boss_unit: bool = _boss_fight and not enemies.is_empty() and c == enemies[0]
+		LootPickup.spawn_for(c.hit_world_position(), is_boss_unit)
 		_pending_corpse_fades += 1
 		var gen: int = int(c.get_meta("corpse_gen", 0)) + 1
 		c.set_meta("corpse_gen", gen)

@@ -33,6 +33,9 @@ var run_stats := {
 	"items_sold": 0,
 	"items_dropped": 0,       # [drops] drop-only subset of items_found, for the summary
 	"upgrades_bought": 0,     # [v2]
+	# [town] forge uses (spec 5.4). The slot machine's three run-scoped upgrades
+	# stay counted by upgrades_bought - the forge is never an "upgrade".
+	"items_forged": 0,
 	"run_time": 0.0,
 }
 
@@ -58,10 +61,9 @@ var drops_by_class: Dictionary = {}      # StringName -> int
 ## nothing observable changes yet - see reset_run()'s own comment for why that
 ## is deliberate rather than an oversight.
 
-## [town] Scrap metal - the forge's currency. Inert for now: nothing awards or
-## spends it yet (that lands with the forge and the combat pickups). Declared
-## here, at 0, so the save format and the profile/expedition split can be
-## built around a field that already exists.
+## [town] Scrap metal - the forge's currency (spec 5). Awarded by enemy pickups
+## (spec 9, add_scrap via add_expedition_scrap) and spent by Itemizer.forge()
+## (spec 10.2). Profile-scoped: it survives a retry, exactly like gold.
 var scrap: int = 0
 
 ## [town] The heroes that actually take the field. PARTY_ORDER stays the
@@ -87,9 +89,10 @@ var quest: QuestDef = null
 ## null. Cleared by start_expedition(); stays null on the endless / fixed path.
 var completed_quest: QuestDef = null
 
-## [town] Gold and scrap picked up during the CURRENT expedition. Inert until
-## the result modal reads them; kept at 0 here since nothing yet adds to
-## either mid-run.
+## [town] Gold and scrap picked up during the CURRENT expedition, tallied by
+## add_expedition_gold() / add_expedition_scrap() as pickups land (spec 9) so
+## QuestResult can state "you brought home N scrap" without diffing profile
+## totals across a scene change (spec 8.5). Reset by start_expedition().
 var expedition_gold: int = 0
 var expedition_scrap: int = 0
 
@@ -153,6 +156,42 @@ func spend_gold(amount: int) -> bool:
 	run_stats["gold_spent"] = int(run_stats["gold_spent"]) + amount
 	EventBus.gold_changed.emit(gold, -amount)
 	return true
+
+# --- scrap (spec 5) -------------------------------------------------------------
+
+## [town] The forge's currency. One faucet - enemy pickups (spec 9) - and one
+## sink - forging (spec 10.2). Never bought, sold, or converted to gold in
+## either direction (spec 10.5). Mirrors add_gold()/spend_gold() so the HUD's
+## CurrencyPlate animates it off scrap_changed exactly as it does gold.
+func add_scrap(amount: int) -> void:
+	if amount <= 0:
+		return
+	scrap += amount
+	EventBus.scrap_changed.emit(scrap, amount)
+
+func spend_scrap(amount: int) -> bool:
+	if amount <= 0 or scrap < amount:
+		return false
+	scrap -= amount
+	EventBus.scrap_changed.emit(scrap, -amount)
+	return true
+
+## [town] spec 8.4: a pickup in the forest credits the PROFILE immediately (so
+## the quest's mid-run shop can spend today's winnings) and is ALSO tallied into
+## the expedition bank the result modal reads back. Kept apart from add_gold() /
+## add_scrap() so the quest reward (spec 8.5) and slot payouts never land in the
+## "brought home" row.
+func add_expedition_gold(amount: int) -> void:
+	if amount <= 0:
+		return
+	add_gold(amount)
+	expedition_gold += amount
+
+func add_expedition_scrap(amount: int) -> void:
+	if amount <= 0:
+		return
+	add_scrap(amount)
+	expedition_scrap += amount
 
 # --- inventory --------------------------------------------------------------
 

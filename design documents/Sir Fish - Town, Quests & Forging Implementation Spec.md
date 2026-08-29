@@ -2207,6 +2207,23 @@ anything.
   spent. This is §10.5's invariant, and it is the assertion most likely to catch
   a future well-meaning "let's recompute value properly" edit.
 
+Shipped at 35 checks. `run_stats["items_forged"]` incrementing per forge is
+folded into the ladder block.
+
+**`tests/test_loot_pickup.gd`** — added at **step 9** alongside `test_forge.gd`.
+§9's arc is a tween that needs a running battle to watch, but the arithmetic
+under it is a headless invariant: `LootPickup._split(value, count)` produces
+whole shares that sum back to `value` with the count capped at
+`LOOT_PICKUP_MAX_OBJECTS`; the no-battle-world award path credits both the
+profile total and the expedition bank (§8.4) by amounts inside
+`ENEMY_GOLD_DROP` / `ENEMY_SCRAP_DROP`; and `is_boss` multiplies both by
+`BOSS_LOOT_MULT` (§11.1). Five checks, headless. **Still wanting an eyeball:**
+the arc/spin/fade rendering in a live fight — the award and the counts are
+pinned, but the tween itself was only reasoned about, not watched. A `debug
+quest easy` run was attempted and blocked before combat by the editor pausing
+on a pre-existing confusable-local warning in `battle_vfx.gd` (`pm` / `grad`),
+unrelated to this step; retry it when step 10 is driving the forest anyway.
+
 **`tests/test_quest_gen.gd`**
 
 - each of the three `.tres` quests loads as a `QuestDef`, and every id in its
@@ -2773,7 +2790,59 @@ previous is green.
    `FORGE_COSTS` / `FORGE_ENHANCED_MULT` come with them. Order within the step:
    the currency API first, then `forge()`, then `test_forge.gd` — the test's
    "insufficient scrap spends neither" and arbitrage assertions are meaningless
-   against anything less than real spending.
+   against anything less than real spending. **Done.** `test_forge` (35 checks)
+   and `test_loot_pickup` (5) are new and green; the whole §13.3 no-edit list
+   plus every earlier-edited test still pass. A headless boot of `boot.tscn`
+   comes up clean. Its changeset:
+
+   - `scripts/autoload/game_state.gd` — `add_scrap()` / `spend_scrap()` mirroring
+     the gold pair, each emitting `scrap_changed`; `add_expedition_gold()` /
+     `add_expedition_scrap()`, which credit the profile via `add_gold` /
+     `add_scrap` **and** tally the expedition bank (§8.4) — kept apart from
+     `add_gold()` so the quest reward and slot payouts never land in the
+     "brought home" row; `run_stats["items_forged"]` added to the dict (§5.4), so
+     `start_expedition()`'s reset loop clears it for free.
+   - `scripts/autoload/itemizer.gd` — `forge()` exactly as §10.2 lists it, plus
+     `_modifier_pool_excluding()` (the no-duplicate-id rule, surviving forging)
+     and `_roll_modifier()` (§10.3 — same ids, doubled roll, `enhanced: true`
+     marker). The refund branch is defensive: the pre-check catches every
+     affordable-then-not case single-threaded, but a half-charged forge is the
+     worst bug this screen could have.
+   - `scripts/autoload/tuning.gd` — §11's `FORGE_COSTS` / `FORGE_ENHANCED_MULT`
+     and the ten `LOOT_*` / `ENEMY_*_DROP` / `BOSS_LOOT_MULT` pickup constants.
+   - `scripts/battle/loot_pickup.gd` — new. A `class_name LootPickup` static
+     helper in the `BattleVfx` mould: `spawn_for(origin, is_boss)` rolls gold and
+     scrap (§9.3), `_split()` divides each into whole shares that sum back
+     exactly, and each share rides a computed ballistic arc — `tween_method`
+     along a parabola, independent spin, no `RigidBody3D` (§9.2) — then, at the
+     end of its settle-and-fade, awards its share via `add_expedition_*` (§9.4).
+     No battle world (headless) → award straight through, same instalments.
+   - `scripts/battle/battle_director.gd` — `_on_combatant_died()` calls
+     `LootPickup.spawn_for(c.hit_world_position(), _boss_fight and c == enemies[0])`
+     concurrently with the corpse hold (§9.1). Only the scaled-up boss unit
+     triples (§11.1).
+   - `scripts/modals/compare_flyout.gd`, `scripts/modals/shop_buy_card.gd`,
+     `scripts/modals/inventory_row.gd` — §10.3's one-line tint: a modifier line
+     (or the inventory row's count) with `enhanced: true` draws in
+     `RARITY_COLORS[Item.Rarity.ENHANCED]`. `_fill_changes()` needs no edit — it
+     keys by id.
+   - `scripts/autoload/event_bus.gd` — the `scrap_changed` / `item_forged`
+     comment updated to name their step-9 emitters.
+   - `scripts/autoload/debug.gd` — `scrap <n>` (additive) and
+     `forge <weapon|armor|trinket>` (§13.4).
+   - `tests/test_forge.{gd,tscn}` — new (§13.1). `tests/test_loot_pickup.{gd,tscn}`
+     — new: the pickup arc is a tween and wants a running battle, but `_split()`'s
+     sum-to-value invariant, the headless award path and the boss multiplier all
+     reduce to cheap headless checks, so they get a permanent file rather than
+     only a throwaway smoke.
+
+   **What step 9 accepts, deliberately:** the pickup meshes are flat-shaded
+   boxes, not modelled coins or scrap — §12's art pass is step 11, and at 0.16
+   units for 0.9s they read as "loot" regardless. The optional §9.4 fly-to-plate
+   2D polish is not built. `CurrencyPlate`'s scrap half needed no wiring — step 5
+   already bound `scrap_changed`; step 9 only gave it a faucet. And the forge
+   itself has no screen yet: `forge()` exists and is tested, but the only way to
+   reach it before step 10's blacksmith is the `forge` debug verb.
 10. **§7.3, §7.4 — the blacksmith**, forge and expanded shop.
 11. **§12 — art**: Meshy icons and the two backgrounds.
 

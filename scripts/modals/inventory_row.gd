@@ -47,6 +47,18 @@ func setup(i: Item) -> void:
 	subtitle_label.add_theme_color_override("font_color", i.rarity_color())
 	mods_label.text = "%d modifier%s" % [i.modifiers.size(),
 		"" if i.modifiers.size() == 1 else "s"]
+	# [town] spec 10.3: this row shows a count, not per-modifier lines, so the
+	# Enhanced tint lands on the count itself once the item carries a forged
+	# (doubled) modifier - the "Forged" tell the compare flyout spells out in full.
+	var has_enhanced := false
+	for mod: Dictionary in i.modifiers:
+		if mod.get("enhanced", false):
+			has_enhanced = true
+	if has_enhanced:
+		mods_label.add_theme_color_override("font_color",
+			Tuning.RARITY_COLORS[Item.Rarity.ENHANCED])
+	else:
+		mods_label.remove_theme_color_override("font_color")
 
 	compare_button.pressed.connect(func() -> void: compare_requested.emit(item))
 

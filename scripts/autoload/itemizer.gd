@@ -134,6 +134,71 @@ func _generate_typed(wtype: StringName, rarity_index: int) -> Item:
 	item.value = int(round(float(base_value) * rarity_mult * (1.0 + mod_sum)))
 	return item
 
+# --- the forge (spec 10.2) ------------------------------------------------------
+
+## [town] Raises `item` one rarity step, adding one modifier. The ONLY way an
+## item's rarity ever changes after generation (spec 10.2).
+##
+## The new modifier is drawn from the same MODIFIERS pool, excluding ids the
+## item already carries - _generate_typed()'s "never roll the same modifier
+## twice on one item" rule has to survive forging, or a player ends up with two
+## "+N Damage" lines that party_bonuses() happily sums.
+##
+## spend_scrap() and spend_gold() are two separate transactions and the
+## affordability check above them is not atomic with them; the refund branch is
+## what stops a half-charged forge, the worst possible bug on a screen that
+## spends the player's savings.
+func forge(item: Item) -> bool:
+	if item == null or item.rarity >= Item.Rarity.ENHANCED:
+		return false
+	var cost: Array = Tuning.FORGE_COSTS[item.rarity]
+	if GameState.scrap < int(cost[0]) or GameState.gold < int(cost[1]):
+		return false
+	var pool := _modifier_pool_excluding(item)
+	if pool.is_empty():
+		return false                       # unreachable: 8 modifiers, 4 slots
+	if not GameState.spend_scrap(int(cost[0])):
+		return false
+	if not GameState.spend_gold(int(cost[1])):
+		GameState.add_scrap(int(cost[0]))  # refund - never half-charge
+		return false
+	var enhanced: bool = item.rarity == Item.Rarity.RARE
+	item.modifiers.append(_roll_modifier(pool, enhanced))
+	item.rarity = (item.rarity + 1) as Item.Rarity
+	item.forge_count += 1
+	item.value += int(cost[1])             # spec 10.5 - the gold half only
+	GameState.run_stats["items_forged"] = int(GameState.run_stats["items_forged"]) + 1
+	EventBus.item_forged.emit(item, item.rarity)
+	return true
+
+## The MODIFIERS entries whose id `item` does not already carry.
+func _modifier_pool_excluding(item: Item) -> Array:
+	var have: Dictionary = {}
+	for m: Dictionary in item.modifiers:
+		have[m["id"]] = true
+	var pool: Array = []
+	for def: Dictionary in MODIFIERS:
+		if not have.has(def["id"]):
+			pool.append(def)
+	return pool
+
+## [town] spec 10.3: Enhanced modifiers are the SAME ids as the normal pool,
+## with the roll doubled and an `enhanced: true` marker - not a second table.
+## party_bonuses() and compare_flyout read `id` / `roll` and need no edit; the
+## marker is only what the UI tints.
+func _roll_modifier(pool: Array, enhanced: bool) -> Dictionary:
+	var def: Dictionary = pool[RNG.randi_range(0, pool.size() - 1)]
+	var roll: int = RNG.randi_range(int(def["roll"][0]), int(def["roll"][1]))
+	if enhanced:
+		roll *= Tuning.FORGE_ENHANCED_MULT
+	return {
+		"id": def["id"],
+		"label": (def["label"] as String) % roll,
+		"roll": roll,
+		"value_mult": RNG.randf_range(float(def["value_mult"][0]), float(def["value_mult"][1])),
+		"enhanced": enhanced,
+	}
+
 # --- class-first generation (enemy drops) -----------------------------------
 
 ## Every type `hero_class` can wield, in ANY slot. Stays the "all types for a

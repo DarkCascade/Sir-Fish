@@ -58,7 +58,12 @@ func setup(i: Item) -> void:
 		var line := Label.new()
 		line.text = String(mod["label"])
 		line.add_theme_font_size_override("font_size", 26)
-		line.add_theme_color_override("font_color", Tuning.C_TEXT_DIM)
+		# [town] spec 10.3: Enhanced modifiers tint to the ENHANCED rarity colour.
+		# Shop stock is never Enhanced (weight 0), but a forged item resold onto a
+		# future stock would be - and the rule is one line wherever a modifier renders.
+		line.add_theme_color_override("font_color",
+			Tuning.RARITY_COLORS[Item.Rarity.ENHANCED] if mod.get("enhanced", false) \
+			else Tuning.C_TEXT_DIM)
 		modifiers_box.add_child(line)
 
 	price_label.text = str(i.buy_price())
