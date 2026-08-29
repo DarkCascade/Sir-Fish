@@ -83,6 +83,13 @@ func _start_run() -> void:
 func _next_encounter() -> void:
 	GameState.current_encounter_index += 1
 	if GameState.current_encounter_index >= GameState.level.encounters.size():
+		# [town] spec 8.3: a quest is a BOUNDED expedition - when its encounters
+		# run out the party has won, so _run_complete() (previously dead code,
+		# reachable only with endless_mode off) fires. Checked ahead of
+		# endless_mode, which stays default-true even during a quest.
+		if GameState.quest != null:
+			_run_complete()
+			return
 		if not GameState.endless_mode:
 			_run_complete()
 			return
@@ -134,7 +141,7 @@ func _arrive(def: EncounterDef) -> void:
 	match def.type:
 		EncounterDef.Type.COMBAT:
 			state = RunState.COMBAT
-			director.start_combat(def.enemy_stat_ids, def.is_boss)
+			director.start_combat(def.enemy_stat_ids, def.is_boss, def.boss_drop_rarity_floor)
 		EncounterDef.Type.LOOT:
 			state = RunState.LOOT
 			_run_loot(def)
@@ -291,7 +298,22 @@ func _run_complete() -> void:
 		hero.set_running(false)
 	_running = false
 	EventBus.run_completed.emit()
-	run_summary.present(true)
+
+	# [town] spec 8.5 victory. RunController does the synchronous profile work
+	# and emits; QuestResult (a persistent Hud child, unlike this scene) does the
+	# await SceneRouter.go(MAYOR) -> present(true). It CANNOT be driven from here:
+	# go() frees main.tscn, so a coroutine that awaited it would resume on a
+	# freed RunController.
+	if GameState.quest != null:
+		var q := GameState.quest
+		GameState.add_gold(q.gold_reward)
+		GameState.completed_quest = q
+		GameState.quest = null
+		SaveGame.save_profile()
+		EventBus.quest_finished.emit(true)
+		return
+
+	run_summary.present(true)     # endless_mode = false dev path, unchanged
 
 func _game_over() -> void:
 	state = RunState.GAME_OVER
@@ -300,7 +322,19 @@ func _game_over() -> void:
 	await get_tree().create_timer(1.0).timeout
 	_running = false
 	EventBus.game_over.emit()
-	run_summary.present(false)
+
+	# [town] spec 8.5 failure: keep banked gold and scrap, drop every unequipped
+	# item found this trip, then hand off to QuestResult exactly as victory does
+	# (see _run_complete()'s comment for why the route is not driven from here).
+	if GameState.quest != null:
+		GameState.discard_expedition_loot()
+		GameState.completed_quest = GameState.quest
+		GameState.quest = null
+		SaveGame.save_profile()
+		EventBus.quest_finished.emit(false)
+		return
+
+	run_summary.present(false)    # endless / fixed dev path, unchanged
 
 # --- retry (spec 18.3) ------------------------------------------------------
 

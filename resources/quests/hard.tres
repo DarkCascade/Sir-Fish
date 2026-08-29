@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="QuestDef" format=3 uid="uid://cq0quest0hard0"]
+
+[ext_resource type="Script" path="res://scripts/data/quest_def.gd" id="1_qd"]
+
+[resource]
+script = ExtResource("1_qd")
+id = &"hard"
+display_name = "The Heart of the Wood"
+blurb = "Nine stretches of dark road to where the wood keeps its worst. Come back with a Rare, or do not come back."
+encounter_types = Array[int]([0, 1, 0, 0, 0, 1, 2, 0, 0])
+gold_reward = 600
+enemy_pool = Array[StringName]([&"skeleton_warrior", &"skeleton_mage", &"skeleton_rogue", &"sporecap"])
+enemy_count = Vector2i(3, 3)
+boss_pool = Array[StringName]([&"skeleton_mage", &"skeleton_rogue", &"skeleton_warrior"])
+boss_drop_rarity_floor = 3
+travel_durations = Array[float]([2.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 4.0])

@@ -32,14 +32,15 @@ signal item_added(item: Item)
 signal item_removed(item: Item)
 signal party_bonuses_changed(bonuses: Dictionary)   # [v2] spec 13.5
 
-# --- [town] spec 3.3. All five land in one edit at step 5; only scrap_changed
-# has a step-5 consumer (CurrencyPlate). item_equipped is step 6, item_forged
-# step 9, quest_started / quest_finished step 8. QuestDef does not exist until
-# step 8, so quest_started ships untyped and tightens then.
+# --- [town] spec 3.3. All five landed in one edit at step 5; item_forged is
+# step 9's. quest_started / quest_finished are step 8: start_expedition() emits
+# quest_started when a QuestDef is passed, and RunController's victory / failure
+# flows emit quest_finished, which QuestResult listens for to route home and
+# present (spec 8.5). quest_started tightened to QuestDef at step 8.
 signal scrap_changed(new_total: int, delta: int)
 signal item_equipped(item: Item, hero_class: StringName, slot: int)
 signal item_forged(item: Item, new_rarity: int)
-signal quest_started(quest)
+signal quest_started(quest: QuestDef)
 signal quest_finished(victory: bool)
 
 # --- Console ---

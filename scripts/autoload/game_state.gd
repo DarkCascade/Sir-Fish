@@ -76,10 +76,16 @@ var scrap: int = 0
 ## PARTY_ORDER. PARTY_ORDER itself is untouched.
 var active_party: Array[StringName] = [&"warrior"]
 
-## [town] The quest being run, or null in town / outside a quest. Untyped
-## until QuestDef exists (a later pass); GameState.build_level() does not yet
-## branch on it.
-var quest = null
+## [town] The quest being run, or null in town / outside a quest (spec 8.1).
+## build_level() branches on it first, ahead of endless_mode (spec 8.3); the
+## mayor's office and debug `quest` set it via start_expedition(q).
+var quest: QuestDef = null
+
+## [town] The quest that just ENDED, kept for QuestResult to read (spec 8.5).
+## spec 8.5 nulls `quest` before routing home and presenting the modal, so the
+## reward row and the "this was a quest" branch need a value that outlives that
+## null. Cleared by start_expedition(); stays null on the endless / fixed path.
+var completed_quest: QuestDef = null
 
 ## [town] Gold and scrap picked up during the CURRENT expedition. Inert until
 ## the result modal reads them; kept at 0 here since nothing yet adds to
@@ -345,9 +351,65 @@ func living_hero_count() -> int:
 ## is that generator; _build_whispering_wood_level() is the original fixed
 ## level, kept for endless_mode = false.
 func build_level() -> LevelDef:
+	# [town] spec 8.3: a quest wins over endless_mode, which stays default-true
+	# and is only bypassed here. endless / fixed are the dev paths from now on.
+	if quest != null:
+		return _build_quest_level(quest)
 	if endless_mode:
 		return _build_endless_level(endless_level_number)
 	return _build_whispering_wood_level()
+
+# --- quests (spec 8.3) -----------------------------------------------------
+
+## Walks quest.encounter_types into a LevelDef: COMBAT slots filled from
+## quest.enemy_pool at quest.enemy_count, LOOT / SHOP at the same Tuning counts
+## every other builder uses, and the LAST entry (always a COMBAT) marked is_boss
+## with its enemy list LED by a quest.boss_pool pick - leading the list puts the
+## scaled-up boss body at the leftmost slot so it stays in frame (spec 7.3).
+##
+## No stat-scaling factor: difficulty is the pool, the counts, the depth and the
+## boss drop floor, never a multiplier on CombatantStats (spec 8.1).
+func _build_quest_level(q: QuestDef) -> LevelDef:
+	var lvl := LevelDef.new()
+	lvl.display_name = q.display_name
+	var n: int = q.encounter_types.size()
+	for i: int in range(n):
+		var enc := EncounterDef.new()
+		enc.travel_duration = q.travel_durations[i] if i < q.travel_durations.size() \
+			else _default_quest_travel(i, n)
+		var is_last: bool = i == n - 1
+		match q.encounter_types[i]:
+			EncounterDef.Type.LOOT:
+				enc.type = EncounterDef.Type.LOOT
+				enc.loot_item_count = Tuning.LOOT_ITEMS_PER_CHEST
+			EncounterDef.Type.SHOP:
+				enc.type = EncounterDef.Type.SHOP
+				enc.shop_item_count = Tuning.SHOP_ITEMS_FOR_SALE
+			_:
+				enc.type = EncounterDef.Type.COMBAT
+				var count: int = RNG.randi_range(q.enemy_count.x, q.enemy_count.y)
+				if is_last:
+					enc.is_boss = true
+					enc.boss_drop_rarity_floor = q.boss_drop_rarity_floor
+					var ids: Array[StringName] = [RNG.pick(q.boss_pool) as StringName]
+					ids.append_array(_random_enemies(q.enemy_pool,
+						clampi(count - 1, 0, Tuning.MAX_ENEMIES - 1)))
+					enc.enemy_stat_ids = ids
+				else:
+					enc.enemy_stat_ids = _random_enemies(q.enemy_pool,
+						clampi(count, 1, Tuning.MAX_ENEMIES))
+		lvl.encounters.append(enc)
+	return lvl
+
+## Fallback travel ramp when a quest leaves travel_durations short: 2s in, 4s
+## before the boss, 3s for everything between - the same shape the endless
+## builder hardcodes.
+func _default_quest_travel(index: int, count: int) -> float:
+	if index == 0:
+		return 2.0
+	if index == count - 1:
+		return 4.0
+	return 3.0
 
 # --- endless mode (spec: Endless Mode) --------------------------------------
 
@@ -516,16 +578,16 @@ func new_profile() -> void:
 	street_sleep_used = false
 	_reset_hero_runtime(true)     # full heal - a new profile starts whole
 
-## [town] Everything an EXPEDITION owns, and nothing a profile owns. Will be
-## called from the mayor's office on quest accept (a later pass), which is
-## also when `q` starts being a real QuestDef instead of always null. For now
-## the only caller is reset_run() below, always with no argument.
+## [town] Everything an EXPEDITION owns, and nothing a profile owns. Called from
+## the mayor's office (spec 7.5) and debug `quest` on accept, and from reset_run()
+## with no argument for the endless / fixed dev path.
 ##
 ## Deliberately does NOT touch gold, scrap or inventory - see reset_run()'s
 ## comment for why that absence matters once this stops being called back to
 ## back with new_profile() on every retry.
-func start_expedition(q = null) -> void:
+func start_expedition(q: QuestDef = null) -> void:
 	quest = q
+	completed_quest = null
 	current_encounter_index = -1
 	# Must precede build_level() - _build_endless_level() reads it. Spec 2.3's
 	# listing omits this line; without it a retry regenerates at the depth the
@@ -547,6 +609,8 @@ func start_expedition(q = null) -> void:
 			run_stats[key] = 0
 	EventBus.gold_changed.emit(gold, 0)
 	EventBus.party_bonuses_changed.emit(party_bonuses())
+	if quest != null:
+		EventBus.quest_started.emit(quest)
 
 ## [town] Rebuilds hero_runtime from active_party, exactly as spec 2.3 words
 ## it ("rebuilds hero_runtime from active_party, not PARTY_ORDER").
@@ -590,6 +654,31 @@ func _reset_hero_runtime(full_heal: bool) -> void:
 ## gold. This is new_profile()'s full-heal branch without the rest of the wipe.
 func heal_party() -> void:
 	_reset_hero_runtime(true)
+
+## [town] spec 8.5 failure flow: a lost quest keeps profile gold and scrap but
+## discards every UNEQUIPPED item picked up during the expedition - inventory
+## entries at indices >= _expedition_inventory_mark (the snapshot start_expedition()
+## took). Gear worn into or found on the trip survives; items bought at the
+## quest's shop are discarded too, which is correct - expedition gold bought them
+## and they never made it home. Iterates backwards so remove_at() is index-safe.
+func discard_expedition_loot() -> void:
+	for i: int in range(inventory.size() - 1, _expedition_inventory_mark - 1, -1):
+		if inventory[i].equipped_by == &"":
+			inventory.remove_at(i)
+	EventBus.party_bonuses_changed.emit(party_bonuses())
+
+## [town] spec 8.5's free "Sleep in the street": every hero heals ceil(half its
+## missing HP) - the dead among them revived to that - and street_sleep_used is
+## set so the button cannot be pressed twice. start_expedition() clears the flag,
+## so the free half-heal is once per expedition, not once per press (spec 1.9).
+func street_sleep_recover() -> void:
+	for entry: Dictionary in hero_runtime:
+		var missing: int = int(entry["max_hp"]) - int(entry["current_hp"])
+		if missing > 0:
+			entry["current_hp"] = int(entry["current_hp"]) \
+				+ ceili(float(missing) * Tuning.INN_STREET_HEAL_FRACTION)
+		entry["alive"] = int(entry["current_hp"]) > 0
+	street_sleep_used = true
 
 ## The endless-mode entry point: the one caller that wants BOTH halves.
 ## RunController on boot and on retry, and test_endless_level_gen.gd directly,

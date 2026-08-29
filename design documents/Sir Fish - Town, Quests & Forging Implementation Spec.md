@@ -768,10 +768,12 @@ are step 8, `item_forged` is step 9 — and §14 step 9 already records
 `item_forged` as having arrived at step 5, so `forge()` may assume it.
 `event_bus.gd`'s file-wide `@warning_ignore_start("unused_signal")`
 (`event_bus.gd:8`) means a declared, unemitted signal is already silent, so five
-one-line diffs spread across four steps buy nothing. **`QuestDef` does not exist
-until step 8**, so `quest_started` ships untyped — `signal
-quest_started(quest)` — and tightens to the signature above at step 8 alongside
-the class.
+one-line diffs spread across four steps buy nothing. `quest_started` shipped
+untyped at step 5 (`QuestDef` did not exist yet) and **tightened to
+`quest_started(quest: QuestDef)` at step 8** with the class. Its step-8 emitter
+is `GameState.start_expedition()` when a quest is passed; `quest_finished` is
+emitted by `RunController`'s victory / failure flows and `QuestResult` listens
+for it to route home and present (§8.5).
 
 **`item_equipped`'s emitter is `GameState.equip_item()`, and only that**
 (step-6 Q4). It fires after `equipped_by` is assigned, alongside the existing
@@ -2443,7 +2445,74 @@ previous is green.
      town → inn → rest (G 150 → 100, "every wound closed") → back.
 8. **§8 — `QuestDef`, the three `.tres` files, `_build_quest_level()`**, and the
    victory/failure flows. The loop closes here: this is the first commit where
-   the game is the game this document describes.
+   the game is the game this document describes. **Done.** A `debug quest easy`
+   from `boot.tscn` routed town → mayor → forest (`GameState.quest` set, a
+   5-encounter level built), a simulated victory banked the 200 gold and routed
+   to the mayor's office with `QuestResult` up, and "Retire for the evening"
+   routed on to the inn - the full §8.5 victory chain, driven headless.
+   `test_quest_gen` (24 checks) and `test_quest_flow` (9) are new and green; the
+   whole §13.3 no-edit list plus `test_scene_router` (now 14, MAYOR widened in)
+   still pass. Its changeset, after the step-8 questions were resolved:
+
+   - `scripts/data/quest_def.gd` — new `QuestDef` (§8.1). `encounter_types`
+     (`EncounterDef.Type` ints), `enemy_pool` / `enemy_count` / `boss_pool` /
+     `boss_drop_rarity_floor`, `gold_reward`, `travel_durations`.
+   - `resources/quests/{easy,medium,hard}.tres` — the three authored tiers
+     (§8.2): 5 / 7 / 9 encounters, `enemy_count` 2-2 / 2-3 / 3-3, boss drop floor
+     1 / 2 / 3, reward 200 / 400 / 600. Pools are `ENDLESS_EARLY_POOL` / early+mid
+     / `ENDLESS_MID_POOL` as §8.2's table gives them.
+   - `scripts/data/encounter_def.gd` — `boss_drop_rarity_floor: int = 1`
+     (default preserves the endless / fixed boss's "never Common" floor
+     untouched; the quest builder raises it - Q3).
+   - `scripts/autoload/game_state.gd` — `build_level()` branches on `quest` ahead
+     of `endless_mode` (§8.3); `_build_quest_level()` + `_default_quest_travel()`;
+     `completed_quest` (read by `QuestResult` after `quest` is nulled - Q1);
+     `start_expedition(q: QuestDef = null)` clears `completed_quest`, emits
+     `quest_started` when `q != null`; `discard_expedition_loot()` and
+     `street_sleep_recover()` (§8.5, owned by GameState - Q2).
+   - `scripts/battle/battle_director.gd` — `start_combat()` gains
+     `boss_rarity_floor := 1`, applied as `maxi(stats.drop_rarity_floor,
+     maxi(1, boss_rarity_floor))` on the boss slot.
+   - `scripts/run/run_controller.gd` — `_next_encounter()` calls `_run_complete()`
+     when `quest != null` and the encounters run out (§8.3); `_arrive()` passes
+     `def.boss_drop_rarity_floor`; `_run_complete()` / `_game_over()` do the
+     synchronous profile work (bank reward / discard loot, null `quest`, save)
+     then emit `quest_finished` and **return** - they do not route or present,
+     because `SceneRouter.go()` frees `main.tscn` and a coroutine that awaited it
+     from here would resume on a freed `RunController` (Q2). The endless / fixed
+     `run_summary.present()` paths and the `_on_retry` wiring are untouched.
+   - `scripts/modals/quest_result.gd` + `.tscn` — three modes (RETRY / VICTORY /
+     FAILURE). Listens for `EventBus.quest_finished`, does
+     `await SceneRouter.go(MAYOR|INN)` then `present()` (Q2). New rows
+     `QuestReward` (win only) / `ExpeditionGold` / `ExpeditionScrap` (shown on a
+     quest ending; the last two read 0 until step 9's pickups - Q5). Buttons are
+     a `PrimaryButton` + `SecondaryButton` HBox: "RETRY" / "Retire for the
+     evening" (routes to the inn on dismiss) / the two recovery buttons with
+     §8.5's affordability gates. Rest and street-sleep run
+     `GameState` + `SaveGame` here, since `RunController` is gone by then (Q2).
+   - `scenes/town/mayor_office.tscn` + `scripts/town/mayor_office.gd` — new
+     (§7.5). One button per `res://resources/quests/*.tres` in easy→hard order,
+     built in `_ready()`; press → `start_expedition(q)` + `save_profile()` +
+     `go(QUEST)`. Back / `ui_cancel` → `TOWN`. Placeholder background until §12
+     (Q4).
+   - `scripts/autoload/tuning.gd` — `INN_STREET_HEAL_FRACTION := 0.5` (§11).
+   - `scripts/autoload/event_bus.gd` — `quest_started` tightened to
+     `(quest: QuestDef)`; comment updated to name the step-8 emitters.
+   - `scripts/autoload/debug.gd` — `quest <easy|medium|hard>` (§13.4).
+   - `scripts/autoload/scene_router.gd`, `scripts/town/town.gd` — comments: only
+     `blacksmith` still hits the missing-path bail.
+   - `tests/test_quest_gen.{gd,tscn}` — new (§13.1). `tests/test_quest_flow.{gd,tscn}`
+     — new, the §8.5 keep/drop/heal economy (Q6). `tests/test_scene_router.gd` —
+     MAYOR existence check widened in (§13.1 / §13.4).
+
+   **What step 8 accepts, deliberately:** `boss_pool` per tier is an authoring
+   choice, not derived - easy leads with one skeleton, hard with three; the
+   difficulty axis §8.2 actually pins is the encounter count, `enemy_count` and
+   the drop floor. The mayor's office is a room the player only passes through
+   (§8.5's observation). `ExpeditionGold` / `ExpeditionScrap` always read 0 until
+   step 9. And the live `quest_finished` → route → `present()` chain has no
+   headless invariant test - it was covered by a throwaway runtime smoke during
+   the step, exactly as step 6's modal wiring was (step-6 Q7).
 9. **§5, §9 — scrap and the pickups**, and with them **§10.2, §10.3 and
    `test_forge.gd`** (step-3 Q1). `GameState.add_scrap` / `spend_scrap` and the
    `scrap_changed` emission are born here, which is what `forge()` has been

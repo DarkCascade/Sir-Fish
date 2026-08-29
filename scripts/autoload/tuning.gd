@@ -191,6 +191,11 @@ const PROFILE_STARTING_SCRAP := 0
 ## deliberately does not heal.
 const INN_REST_COST_PER_HERO := 50
 
+## [town] Fraction of a hero's MISSING hp restored by spec 8.5's free "Sleep in
+## the street" on a failed quest. Half - and once per expedition (street_sleep_used),
+## because half of half repeated converges on a full heal (spec 1.9).
+const INN_STREET_HEAL_FRACTION := 0.5
+
 # --- enemy drops --------------------------------------------------------------
 ## How strongly a class that is behind on drops is favoured by the next roll:
 ##   weight = 1 + DROP_CATCHUP * (leader_count - this_count)

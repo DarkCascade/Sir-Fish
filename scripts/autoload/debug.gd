@@ -51,6 +51,7 @@ func _run(line: String) -> void:
 		"parallax": _cmd_parallax(args)
 		"route": _cmd_route(args)
 		"wipe": _cmd_wipe()
+		"quest": _cmd_quest(args)
 		"lightning": _cmd_lightning()
 		"bone": _cmd_bone(args)
 		"state": _cmd_state()
@@ -321,6 +322,25 @@ func _cmd_route(args: Array) -> void:
 		GameState.start_expedition()
 	SceneRouter.go(places[key])
 	_log("route -> %s" % key)
+
+## [town] spec 13.4. Starts one of the three authored quests from anywhere,
+## standing in for the mayor's office (spec 7.5). start_expedition() is
+## unconditional here - `route quest` twice just re-runs a clean expedition reset
+## and costs the profile nothing.
+func _cmd_quest(args: Array) -> void:
+	if args.is_empty():
+		_log("quest -> needs <easy|medium|hard>")
+		return
+	var key := String(args[0]).to_lower()
+	var path := "res://resources/quests/%s.tres" % key
+	if not ResourceLoader.exists(path):
+		_log("quest -> unknown quest '%s'" % key)
+		return
+	var q := load(path) as QuestDef
+	GameState.start_expedition(q)
+	SceneRouter.go(SceneRouter.Place.QUEST)
+	_log("quest -> started %s (%d encounters, %d gold)" % [
+		key, q.encounter_types.size(), q.gold_reward])
 
 ## [town] spec 13.4. Deletes the save and starts a fresh profile. Meaningful
 ## from step 5 on: this is the first step where a launch reads

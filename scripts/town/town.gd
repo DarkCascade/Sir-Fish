@@ -3,9 +3,9 @@ extends Control
 ## otherwise scriptless chrome - button positions and art are authored in
 ## town.tscn, per CLAUDE.md's "prefer inspector properties over code".
 ##
-## BlacksmithButton and MayorButton route to scenes that do not exist until
-## steps 10 and 8. That is fine: SceneRouter.go()'s missing-path bail (spec 3.1)
-## logs a warning and stays put rather than soft-locking behind the fade.
+## BlacksmithButton routes to a scene that does not exist until step 10. That is
+## fine: SceneRouter.go()'s missing-path bail (spec 3.1) logs a warning and stays
+## put rather than soft-locking behind the fade. MayorButton is live from step 8.
 
 @onready var _inn_button: Button = $InnButton
 @onready var _blacksmith_button: Button = $BlacksmithButton

@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="QuestDef" format=3 uid="uid://cq0quest0easy0"]
+
+[ext_resource type="Script" path="res://scripts/data/quest_def.gd" id="1_qd"]
+
+[resource]
+script = ExtResource("1_qd")
+id = &"easy"
+display_name = "The Shallow Wood"
+blurb = "A short loop through the near woods. Little waits there that a knight need fear."
+encounter_types = Array[int]([0, 1, 0, 2, 0])
+gold_reward = 200
+enemy_pool = Array[StringName]([&"shadow_monster", &"skeleton_minion"])
+enemy_count = Vector2i(2, 2)
+boss_pool = Array[StringName]([&"skeleton_warrior"])
+boss_drop_rarity_floor = 1
+travel_durations = Array[float]([2.0, 3.0, 3.0, 3.0, 4.0])

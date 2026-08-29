@@ -67,6 +67,60 @@ layout_mode = 2
 size_flags_vertical = 3
 theme_override_constants/separation = 4
 
+[node name="QuestReward" type="HBoxContainer" parent="Panel/Layout/Stats"]
+custom_minimum_size = Vector2(0, 54)
+layout_mode = 2
+
+[node name="Caption" type="Label" parent="Panel/Layout/Stats/QuestReward"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.941176, 0.784314, 0.376471, 1)
+theme_override_font_sizes/font_size = 38
+text = "Quest reward"
+
+[node name="Value" type="Label" parent="Panel/Layout/Stats/QuestReward"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.941176, 0.784314, 0.376471, 1)
+theme_override_font_sizes/font_size = 38
+text = "200"
+horizontal_alignment = 2
+
+[node name="ExpeditionGold" type="HBoxContainer" parent="Panel/Layout/Stats"]
+custom_minimum_size = Vector2(0, 54)
+layout_mode = 2
+
+[node name="Caption" type="Label" parent="Panel/Layout/Stats/ExpeditionGold"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.611765, 0.690196, 0.674510, 1)
+theme_override_font_sizes/font_size = 38
+text = "Gold brought home"
+
+[node name="Value" type="Label" parent="Panel/Layout/Stats/ExpeditionGold"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.960784, 0.945098, 0.894118, 1)
+theme_override_font_sizes/font_size = 38
+text = "47"
+horizontal_alignment = 2
+
+[node name="ExpeditionScrap" type="HBoxContainer" parent="Panel/Layout/Stats"]
+custom_minimum_size = Vector2(0, 54)
+layout_mode = 2
+
+[node name="Caption" type="Label" parent="Panel/Layout/Stats/ExpeditionScrap"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.611765, 0.690196, 0.674510, 1)
+theme_override_font_sizes/font_size = 38
+text = "Scrap brought home"
+
+[node name="Value" type="Label" parent="Panel/Layout/Stats/ExpeditionScrap"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.960784, 0.945098, 0.894118, 1)
+theme_override_font_sizes/font_size = 38
+text = "31"
+horizontal_alignment = 2
+
 [node name="EncountersCleared" type="HBoxContainer" parent="Panel/Layout/Stats"]
 custom_minimum_size = Vector2(0, 54)
 layout_mode = 2
@@ -283,9 +337,22 @@ theme_override_font_sizes/font_size = 38
 text = "3"
 horizontal_alignment = 2
 
-[node name="RetryButton" type="Button" parent="Panel/Layout"]
-custom_minimum_size = Vector2(560, 140)
+[node name="Buttons" type="HBoxContainer" parent="Panel/Layout"]
 layout_mode = 2
-size_flags_horizontal = 4
-theme_override_font_sizes/font_size = 52
+theme_override_constants/separation = 20
+alignment = 1
+
+[node name="PrimaryButton" type="Button" parent="Panel/Layout/Buttons"]
+custom_minimum_size = Vector2(0, 136)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 40
 text = "RETRY"
+
+[node name="SecondaryButton" type="Button" parent="Panel/Layout/Buttons"]
+custom_minimum_size = Vector2(0, 136)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 40
+text = "Sleep in the street — free"
+visible = false

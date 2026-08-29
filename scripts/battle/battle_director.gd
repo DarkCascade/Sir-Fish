@@ -194,7 +194,7 @@ func _spawn_combatant(stats: CombatantStats, pos: Vector3, hp: int) -> Combatant
 ## regular pool encounters) is untouched.
 const BOSS_SCALE_MULT := 1.5
 
-func start_combat(enemy_stat_ids: Array, is_boss: bool = false) -> void:
+func start_combat(enemy_stat_ids: Array, is_boss: bool = false, boss_rarity_floor: int = 1) -> void:
 	clear_enemies()
 	_resolving = false
 	_turn_queue.clear()
@@ -217,7 +217,11 @@ func start_combat(enemy_stat_ids: Array, is_boss: bool = false) -> void:
 			# regular skeletons now, not a single dedicated boss id, so this can't
 			# be authored on one .tres the way the other rows are.
 			stats.drop_chance = 1.0
-			stats.drop_rarity_floor = maxi(stats.drop_rarity_floor, 1)
+			# [town] spec 8.2: a quest raises this to its boss_drop_rarity_floor
+			# (1 easy / 2 medium / 3 hard). boss_rarity_floor defaults to 1, so an
+			# endless / fixed boss keeps exactly the "never Common" floor this
+			# line has always applied.
+			stats.drop_rarity_floor = maxi(stats.drop_rarity_floor, maxi(1, boss_rarity_floor))
 		# [overworld prototype] Spec 10.1's fade-in is gone. Enemies now spawn
 		# off-screen past the top-right corner and RUN to their slots, which is
 		# the one entrance that reads correctly on an open field - a fade would
