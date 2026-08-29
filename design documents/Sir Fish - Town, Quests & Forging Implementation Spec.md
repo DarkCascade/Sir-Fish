@@ -773,6 +773,16 @@ until step 8**, so `quest_started` ships untyped — `signal
 quest_started(quest)` — and tightens to the signature above at step 8 alongside
 the class.
 
+**`item_equipped`'s emitter is `GameState.equip_item()`, and only that**
+(step-6 Q4). It fires after `equipped_by` is assigned, alongside the existing
+`party_bonuses_changed`, with the slot passed as `int(item.slot())`.
+`_maybe_auto_equip()` stays **silent**: it only fills a slot the player left
+empty, `add_item()` already fires `party_bonuses_changed` for it, and "the
+player equipped something" is a different event from "a pickup slotted itself".
+There is no `item_unequipped` counterpart and this pass does not add one — the
+inventory row's local `equip_changed` covers the modal's own rebuild need
+(§6.2), and step 9's forge only ever needs the equip side.
+
 `CurrencyPlate` binds `gold_changed` and `scrap_changed` and is the **only**
 new gold/scrap readout written for this pass. `status_panel.gd`'s existing
 `GoldPlate` stays as it is — the console is the *expedition's* readout and the
@@ -901,7 +911,9 @@ func equipped_set(hero_class: StringName) -> Array[Item]:
 
 `equip_item(item, hero_class)` replaces only the occupant of `item.slot()`.
 `_maybe_auto_equip(item)` fills that slot only when it is empty. Neither
-signature changes; both bodies gain the slot lookup.
+signature changes; both bodies gain the slot lookup. From step 6,
+`equip_item()` also emits `EventBus.item_equipped` and `_maybe_auto_equip()`
+deliberately does not — §3.3 gives the reason.
 
 **Every caller of the old one-arg `equipped_item()` must be updated.**
 `grep -rn "equipped_item" scripts/` before declaring this done. It returns
@@ -1158,6 +1170,31 @@ so this is the modal's own instance, not a mirror of the shop's; it self-wires
 (`bonus_strip.gd._ready()` binds `party_bonuses_changed` and paints from
 `GameState.party_bonuses()`), so the modal adds no code for it (step-6 Q9).*
 
+**Equipped is the field leader's three slots** — `active_party[0]`, which is the
+solo warrior for the whole of this pass (§4.5). The modal does not build a
+section per party member: that generalisation belongs with the mage and ranger's
+return (§15), and until then a per-hero layout is three columns of which two are
+always empty. `Carried` shows a dim "nothing carried" line when the filter comes
+back empty, rather than an empty box.
+
+**Opening pauses the tree.** `open()` sets `get_tree().paused = true`, exactly
+as `shop_modal.open()` does, and `close()` sets it back **first, on every exit
+path**, so a modal torn down unexpectedly can never strand the tree paused
+(`shop_modal`'s own rule). In town the pause is a no-op — nothing is running —
+but in the forest it has to freeze the fight: an unpaused inventory screen
+mid-expedition is a free "stop and think" and a heal-timing tool, which is the
+same argument §3.2 makes for disabling the button in `COMBAT` (step-6 Q8).
+`ModalLayer` is `PROCESS_MODE_ALWAYS`, so the modal's own tweens keep running
+while the world is frozen.
+
+What the modal does **not** copy from `shop_modal` is
+`owner.set_world_rendering(false)`. That call depends on `owner` being
+`MainLayout`, and this modal — a child of `Hud/ModalLayer`, not of `main.tscn` —
+never is. The scrim covers the frozen world on its own.
+
+The red X stays the only *required* close path (§15.4); `ui_cancel` is wired as
+the same optional desktop / Android-back nicety `shop_modal` carries.
+
 ### 6.2 `inventory_row.tscn` is a new scene, not a modified sell row
 
 `shop_sell_row.tscn`'s entire layout hangs off a **full-width primary `SellBar`**
@@ -1172,6 +1209,19 @@ from `shop_sell_row.gd` verbatim. Lift that `setup()` styling block into a
 shared `item_card_style.gd` static helper rather than copy-pasting it a third
 time — `shop_buy_card.gd` already carries a second copy.
 
+That helper is `scripts/ui/item_card_style.gd`, the "shared UI helper" bucket
+next to step 5's `currency_feedback.gd` — one of its three callers is a shop
+card and one an inventory row, so "modal" is the wrong bucket (step-6 Q3). It is
+a single static `ItemCardStyle.apply(face, glyph, item)` carrying exactly the
+block the two `setup()`s shared byte-for-byte: the duplicated panel stylebox
+with the rarity border and shadow, and the glyph's `ring_color` / `weapon_type`
+/ `kind`. Nothing else moves. The `name_label` / `subtitle_label` lines stay
+per-caller, because only the caller knows what belongs there — the buy card
+builds a modifier `VBox`, the sell row and the inventory row an "N modifiers"
+label — and so does the one-line subtitle colour override, which now reads
+`i.rarity_color()` directly since the local the lifted block used to compute
+went with it.
+
 The row's action area is two equal-width buttons side by side:
 
 | button | behaviour |
@@ -1183,8 +1233,30 @@ The row's action area is two equal-width buttons side by side:
 of `active_party` — an item nobody on the field can wear says so by having no
 Equip button, rather than by having a button that silently fails.
 
+"Nobody on the field can wear it" is decided by the row's `_eligible_class()`:
+the first `active_party` member listed in `item.usable_by()`, or — for an item
+whose `usable_by()` is **empty**, §4.2's deferred universal path — the field
+leader. `&""` back means no Equip button.
+
+Compare is reachable **twice**: the button, and the same swipe-to-reveal gesture
+the shop cards use. That second path is why the row keeps `swipeable_face`'s
+`Stage / ActionLayer / Face` structure instead of collapsing to a plain
+`PanelContainer` once the Sell bar is gone.
+
 `equip_changed` rebuilds **both** sections, for the reason `shop_modal` already
 documents: equipping may have displaced a different row's item.
+
+Two ordering facts the build turned up, both worth keeping:
+
+- **`setup()` runs *after* `add_child()`.** The row's `@onready` references
+  resolve when it enters the tree, so the modal adds the row to its section and
+  *then* calls `row.setup(i)` — the same order `shop_modal` uses for its cards.
+  `setup()` on a detached instance null-derefs.
+- **Equipping from a carried row frees the row whose button was just pressed.**
+  `equip_changed` → `_rebuild()` → `queue_free()` on every row, that one
+  included. This is safe and deliberate: `queue_free` defers to frame end, so
+  the signal callback returns first — the same thing
+  `shop_modal._on_equip_changed()` → `_build_sell()` already relies on.
 
 ### 6.3 `CompareFlyout` needs the slot
 
@@ -1982,6 +2054,19 @@ totality check needs no `.values()` dance.
 Anything here that touches `user://profile.save` goes through
 `test_support.gd`'s `guard_user_file()`, the same as `test_profile_save.gd`.
 
+**Step 6 adds nothing to this list, deliberately** (step-6 Q7). Everything the
+inventory modal stands on is already pinned — `equip_item()`,
+`equipped_item(hero, slot)` and `equipped_set()` by `test_profile_expedition.gd`,
+`test_drops.gd` and `test_profile_save.gd`. What step 6 puts on top is scene
+instantiation, signal forwarding (`compare_requested` → flyout, `equip_changed`
+→ rebuild) and rebuild-on-signal: none of it reduces to a cheap headless
+invariant, and all of it needs a full scene driven to assert anything. Its
+verification is a throwaway headless smoke plus the rest of the suite staying
+green; §14 step 6 records what that smoke asserted. Step-1 Q5's "a step that
+ships no assertion has spent its isolation and not collected" is satisfied here
+by the smoke, not by a permanent file — the same call step 5 made for the
+runtime half of its own acceptance.
+
 ### 13.2 Edited
 
 - `test_drops.gd` — **four edits, all step 4** (step-4 Q2, Q11). An earlier
@@ -2257,7 +2342,11 @@ previous is green.
    that names them, and `reload_project` does not clear it — the editor reads
    the autoload table only at start. Restart the editor once. Every `--headless`
    run is a fresh process and never sees this, which is why the suite can be
-   green while the Errors panel is red.
+   green while the Errors panel is red. It recurred verbatim at step 6 — a
+   `play_scene` of a scratch scene naming `Hud` failed to compile in the
+   running editor while the same scene ran clean headless — so treat one editor
+   restart as part of the cost of any step that adds or renames an autoload,
+   and run that step's verification headless.
 6. **§6 — the inventory modal** and `inventory_row.tscn`. Unblocked by step 5's
    `Hud/ModalLayer` and `SceneRouter`; three hazards are already visible from
    there. The `InventoryButton` `pressed` handler is the one line step 5
@@ -2306,10 +2395,23 @@ previous is green.
      step-6 signal); `_maybe_auto_equip()` stays silent.
    - `scripts/data/item.gd` — `type_initial()` deleted (§15; zero callers
      remain, the spec-17.2 chip that used it is already gone).
-   - no test file: verification is a headless smoke (populate a profile, open
-     the modal, equip a spare, confirm both sections rebuild and the slot is
-     displaced, close and confirm unpaused) plus the full no-edit + edited
-     suites staying green.
+   - no test file (§13.1): verification is a headless smoke — populate a
+     profile, open the modal, assert **3** Equipped rows and **2** Carried,
+     equip the spare weapon, assert both sections rebuilt with the weapon slot
+     displaced (Equipped still 3, the displaced Axe now among the 2 Carried),
+     then `close()` and assert `not visible` and `not get_tree().paused` — plus
+     the full §13.3 no-edit list and the six §13.1 / §13.2 tests
+     (`test_enhanced_rarity`, `test_profile_save`, `test_profile_expedition`,
+     `test_drops`, `test_item_distribution`, `test_scene_router`) staying
+     green.
+
+   **What step 6 accepts, deliberately:** Equipped is the field leader's three
+   slots rather than one section per hero (§6.1, and §15's mage-and-ranger
+   bullet, which now names this as its third seam); an item nobody on the field
+   can wield says so by having *no* Equip button rather than by explaining
+   itself; and the six armor / trinket types still render as the generic gem
+   glyph until step 11, so a full Equipped section is three differently
+   coloured gems until §12 lands.
 7. **§7.1, §7.2 — town hub and inn**, wired to the router. **Done.** The
    changeset:
 
@@ -2368,7 +2470,11 @@ Recorded so they are decisions rather than omissions.
 - **The mage and ranger returning.** The seam is `active_party` plus armor and
   trinket rows in `ITEM_TYPES` carrying their class ids. Drop coverage
   (`DROP_CATCHUP`, `next_drop_class`) is untouched and waiting for them — do
-  not delete it.
+  not delete it. The inventory modal is the third seam: its Equipped section
+  lists `active_party[0]`'s three slots and its rows equip for the first
+  eligible party member (§6.1, §6.2), so a returning party wants either a hero
+  selector in the header or one Equipped section each — a layout decision, not
+  a data one.
 
 - **`party_bonuses()` counts gear worn by heroes who are not on the field.** It
   gates on `equipped_by != &""` and never consults `active_party` or
