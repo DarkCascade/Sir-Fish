@@ -35,9 +35,14 @@ enum Slot { WEAPON, ARMOR, TRINKET }
 @export var modifiers: Array[Dictionary] = [] # [{ "id": &"dmg_flat", "label": "+4 Damage", "value_mult": 0.42 }, ...]
 @export var value: int = 0                    # computed intrinsic gold value
 ## Which hero currently has this equipped, or &"" if none. A StringName rather
-## than a bool because equipping is per-hero (one item per hero, GameState.
-## equip_item()) - a shared-usable_by() type still needs to say WHICH of its
-## eligible classes actually holds it, not just that it is held.
+## than a bool because equipping is per-hero - a shared-usable_by() type still
+## needs to say WHICH of its eligible classes actually holds it, not just that
+## it is held.
+##
+## [town] A hero now wears one item per Item.Slot (spec 4.3), not one item
+## total. This field deliberately does NOT record the slot: it is recoverable
+## from the item's own type via slot(), so an item can never be ambiguous about
+## which slot it fills - which is why three slots needed no new field here.
 @export var equipped_by: StringName = &""
 
 ## [town] How many times this item has been through the forge (spec 10.2, 10.4).

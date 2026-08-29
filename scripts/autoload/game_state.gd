@@ -219,10 +219,14 @@ func _maybe_auto_equip(item: Item) -> void:
 
 # --- party bonuses (spec 13.5) ---------------------------------------------
 
-## Only EQUIPPED items contribute (one per hero, GameState.equip_item()) - an
-## item sitting unequipped in inventory is inert. Carrying loot only makes the
-## party stronger once it is actually worn; selling an equipped item empties
-## that hero's slot the moment it leaves the inventory.
+## Only EQUIPPED items contribute - an item sitting unequipped in inventory is
+## inert. Carrying loot only makes the party stronger once it is actually worn;
+## selling an equipped item empties that slot the moment it leaves the inventory.
+##
+## [town] Up to THREE items per hero now, one per Item.Slot (spec 4.3) - it was
+## one. That is the point of three slots: spec 1.5 records the solo warrior
+## carrying a third as much as the old three-hero party into this pool, and the
+## slot machine, the core loop, is what reads the result.
 ##
 ## Recomputed on demand and re-emitted on every inventory/equip change.
 func party_bonuses() -> Dictionary:

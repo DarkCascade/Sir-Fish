@@ -614,6 +614,37 @@ places a literal reading of the spec/answers needed a small, local decision.
    `equip_bits` loop — Q6's answer folded that into §4.3, and both loops now read
    `GameState.active_party` rather than `Itemizer.droppable_classes()`.
 
-Full suite: 15 test scenes, **0 failures**. `test_drops` goes 19 → 28 checks
-(re-derived D7: the old 5 per-type bands become 3 slot-share + 11 per-type
+6. **Three "one item per hero" comments were stale and are corrected** — found
+   on the verification pass, not the first one. The changeset lists the call
+   sites that *compile*; these are prose stating the rule §4.3 replaced, which no
+   test can catch:
+   - `game_state.gd`'s `party_bonuses()` header said "one per hero" directly
+     above the loop whose whole purpose, per §1.5, is that a hero now feeds
+     **three** items into that pool. The most misleading of the three.
+   - `item.gd`'s `equipped_by` field said "one item per hero"; it now also
+     records *why* the field deliberately does not store the slot (recoverable
+     via `slot()`), which is the reasoning §4.3 gives for needing no new field.
+   - `test_item_distribution.gd`'s element-tie probe justified using two heroes
+     with "fire and ice can never tie on the SAME hero, since only one item can
+     be equipped there" — false under three slots. **The code is unchanged**
+     (§13.2 gives this file one step-4 edit); only the justification is
+     rewritten, since the two-hero form still exercises the same tiebreak.
+
+   Comment-only, no logic touched, suite re-run green after.
+
+**Verified at runtime, not just headless.** §14's bar is "leave the game
+runnable", and step 4 is the first time the game actually spawns a solo party.
+`main.tscn` boots, renders one warrior with one HP bar (no spare/broken bars from
+`party_bars.gd`), and `debug.gd`'s `state` prints the new bracketed form —
+`equipped warrior=[Weeping Chopper, Grumbling Talisman]`, a weapon and a trinket
+with the armor slot empty. A throwaway probe scene confirmed the shape §4.4
+predicts: slot split 1928/2074/1998 of 6000; axe/sword ≈16.6%, the six
+armor/trinket types ≈11%; **bow, dagger and staff exactly 0** (§1.6);
+`_equippable_slots_for()` returning all three slots for the party but `[WEAPON]`
+alone for the mage and for the ranger (Q4's whole point); `generate_drop()` 0
+unwieldable over 500×3; and equipping a `mail` displacing only the `helm` while
+the axe and ring stayed put (§4.3's per-slot replacement). Probe deleted after.
+
+Full suite: 13 test scenes, 287 checks, **0 failures**. `test_drops` goes 19 → 28
+checks (re-derived D7: the old 5 per-type bands become 3 slot-share + 11 per-type
 assertions); `test_profile_expedition`'s P6 goes from one check to two.
