@@ -19,9 +19,11 @@ func _ready() -> void:
 	t.check(d1_wrong == 0,
 		"every generate_drop(c) item is usable by c, 1000 samples/class (%d wrong)" % d1_wrong)
 
-	# --- D2: droppable_classes() == PARTY_ORDER, no hero unreachable --------
-	t.check(Itemizer.droppable_classes() == GameState.PARTY_ORDER,
-		"droppable_classes() equals PARTY_ORDER (got %s)" % [Itemizer.droppable_classes()])
+	# --- D2: droppable_classes() == active_party, no hero unreachable ------
+	# [town] spec 4.5 flipped the party solo; droppable_classes() follows
+	# active_party now, not PARTY_ORDER.
+	t.check(Itemizer.droppable_classes() == GameState.active_party,
+		"droppable_classes() equals active_party (got %s)" % [Itemizer.droppable_classes()])
 
 	# --- D3: no generated item (drop, chest, shop) has an empty usable_by() -
 	var d3_empty := 0
@@ -40,16 +42,26 @@ func _ready() -> void:
 		"no drop/chest/shop item has an empty usable_by() (%d empty)" % d3_empty)
 
 	# --- D4: live-counter coverage is 33.3% +/- 2pp over 3000 drops ---------
+	# [town] active_party is solo now (spec 4.5), which would make this
+	# tautological ("the one droppable class got 100%"). DROP_CATCHUP's catch-up
+	# weighting is written for a multi-class party and spec 15 keeps it alive for
+	# the party's return, so override active_party to the full roster for this
+	# block - keeping the algorithm under a real three-class test - then restore.
+	# Same save/override/restore idiom D8 and _report_party_bonuses() already use
+	# for endless_level_number / inventory (step-4 Q11).
+	var d4_saved_party := GameState.active_party
+	GameState.active_party = GameState.PARTY_ORDER.duplicate()
 	GameState.drops_by_class.clear()
 	const D4_N := 3000
 	for i: int in range(D4_N):
 		GameState.record_drop(GameState.next_drop_class())
-	for hero_class: StringName in GameState.PARTY_ORDER:
+	for hero_class: StringName in Itemizer.droppable_classes():
 		var share := 100.0 * float(GameState.drop_count(hero_class)) / float(D4_N)
 		t.check_between(share, 31.3, 35.3,
 			"%s's live-counter drop share is 33.3%% +/- 2pp over %d drops (got %.1f%%)"
 				% [hero_class, D4_N, share])
 	GameState.drops_by_class.clear()
+	GameState.active_party = d4_saved_party
 
 	# --- D5: generate_drop(c, 1) never returns a Common, 500 samples/class --
 	var d5_commons := 0
@@ -74,18 +86,51 @@ func _ready() -> void:
 			"generate_drop(c, 0) %s share is %.1f%% +/- 4pp (got %.1f%%)"
 				% [d6_names[i], d6_expected[i], pct])
 
-	# --- D7: regression guard - generate_item() weapon types stay ~20% -----
-	const D7_N := 3000
+	# --- D7: slot-first generation (spec 4.4, re-derived per step-4 Q2) -----
+	# The old per-type "every weapon type ~20%" band cannot survive slot-first
+	# generation with a solo warrior: axe/sword land ~16.7% each, the six
+	# armor/trinket types ~11.1% each, and bow/dagger/staff exactly 0. D7 keeps
+	# its spirit - generation is evenly spread, no slot starved or flooded -
+	# pointed at what §4.4 actually produces, over 6000 samples:
+	#   * slot share: each of WEAPON/ARMOR/TRINKET is 33.3% +/- 3pp;
+	#   * per-type: a wieldable type's share is (33.3% / types-in-its-slot) +/- 3pp
+	#     (the within-slot-uniform check, folded together with the slot share);
+	#   * the §1.6 guarantee, asserted directly: a type no active-party member
+	#     can wield generates EXACTLY zero times. This is the regression guard
+	#     D7 was always meant to be, now aimed at what slot-first generation is
+	#     for. It survives the mage's return in meaning (only the literal list of
+	#     zero-count types would then change).
+	const D7_N := 6000
+	var d7_by_slot: Array[int] = [0, 0, 0]
 	var d7_by_type: Dictionary = {}
-	for wtype: StringName in Itemizer.WEAPON_TYPES.keys():
+	for wtype: StringName in Itemizer.ITEM_TYPES.keys():
 		d7_by_type[wtype] = 0
 	for i: int in range(D7_N):
-		var wtype: StringName = Itemizer.generate_item().weapon_type
-		d7_by_type[wtype] = int(d7_by_type[wtype]) + 1
-	for wtype: StringName in Itemizer.WEAPON_TYPES.keys():
+		var it := Itemizer.generate_item()
+		d7_by_slot[int(it.slot())] += 1
+		d7_by_type[it.weapon_type] = int(d7_by_type[it.weapon_type]) + 1
+	var d7_slot_names := ["Weapon", "Armor", "Trinket"]
+	for s: int in range(3):
+		var slot_share := 100.0 * float(d7_by_slot[s]) / float(D7_N)
+		t.check_between(slot_share, 30.3, 36.3,
+			"generate_item() fills the %s slot 33.3%% +/- 3pp (got %.1f%%)"
+				% [d7_slot_names[s], slot_share])
+	for wtype: StringName in Itemizer.ITEM_TYPES.keys():
+		var wieldable := false
+		for c: StringName in GameState.active_party:
+			if (Itemizer.ITEM_TYPES[wtype]["classes"] as Array).has(c):
+				wieldable = true
 		var pct := 100.0 * float(d7_by_type[wtype]) / float(D7_N)
-		t.check_between(pct, 16.0, 24.0,
-			"generate_item()'s %s share is 20%% +/- 3pp (got %.1f%%)" % [wtype, pct])
+		if not wieldable:
+			t.check(int(d7_by_type[wtype]) == 0,
+				"generate_item() never rolls %s - no active-party member can wield it (got %d)"
+					% [wtype, int(d7_by_type[wtype])])
+		else:
+			var entry_slot: int = int(Itemizer.ITEM_TYPES[wtype]["slot"])
+			var n_in_slot := Itemizer.types_for_slot(entry_slot as Item.Slot, GameState.active_party).size()
+			var want := (100.0 / 3.0) / float(n_in_slot)
+			t.check_between(pct, want - 3.0, want + 3.0,
+				"generate_item()'s %s share is %.1f%% +/- 3pp (got %.1f%%)" % [wtype, want, pct])
 
 	# --- D8: mean expected drops per level is 3.0 - 4.5 ---------------------
 	const D8_LEVELS := 500
@@ -99,6 +144,11 @@ func _ready() -> void:
 	t.check_between(d8_mean, 3.0, 4.5, "mean drops per level is 3.0-4.5 (got %.2f)" % d8_mean)
 
 	# --- D9: coverage - >=95%% of >=3-drop levels cover all three classes ---
+	# [town] Same active_party override as D4 (step-4 Q11): next_drop_class()
+	# reads droppable_classes(), which follows active_party now, so a solo party
+	# would make this pass by pigeonhole and assert nothing about the weighting.
+	var d9_saved_party := GameState.active_party
+	GameState.active_party = GameState.PARTY_ORDER.duplicate()
 	const D9_LEVELS := 500
 	var d9_with_3plus := 0
 	var d9_covered := 0
@@ -123,7 +173,7 @@ func _ready() -> void:
 		if level_drops >= 3:
 			d9_with_3plus += 1
 			var all_covered := true
-			for hero_class: StringName in GameState.PARTY_ORDER:
+			for hero_class: StringName in Itemizer.droppable_classes():
 				if GameState.drop_count(hero_class) <= 0:
 					all_covered = false
 					break
@@ -138,6 +188,7 @@ func _ready() -> void:
 		">= 95%% of >= 3-drop levels covered all three classes (got %.1f%%)" % d9_rate)
 
 	GameState.endless_level_number = saved_level_number
+	GameState.active_party = d9_saved_party
 
 	# --- informational: party_bonuses()["dmg_flat"] after a 3-level run -----
 	_report_party_bonuses()

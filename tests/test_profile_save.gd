@@ -43,20 +43,22 @@ func _ready() -> void:
 	GameState.gold = 843
 	GameState.scrap = 271
 
-	# Three "equipped" items of different types and rarities, one forged twice,
-	# plus one loose item. (Slots arrive in spec 4; distinct weapon_type stands
-	# in for distinct slot here.)
+	# [town] spec 4/13.2: one item per slot, all on the warrior - what a real
+	# solo-warrior profile looks like. slot() is DERIVED from weapon_type and
+	# never serialized, so the existing "every @exported field round-trips"
+	# coverage already proves it survives; no new assertion is needed. The
+	# equipped_by boundary that matters (&"warrior" vs &"") is kept by `loose`.
 	GameState.inventory.clear()
 	var a := Itemizer.generate_item_with_rarity(Item.Rarity.MAGIC)
-	a.weapon_type = &"axe"
+	a.weapon_type = &"axe"      # WEAPON slot
 	a.equipped_by = &"warrior"
 	a.forge_count = 2
 	var b := Itemizer.generate_item_with_rarity(Item.Rarity.RARE)
-	b.weapon_type = &"bow"
-	b.equipped_by = &"ranger"
+	b.weapon_type = &"helm"     # ARMOR slot
+	b.equipped_by = &"warrior"
 	var c := Itemizer.generate_item_with_rarity(Item.Rarity.UNCOMMON)
-	c.weapon_type = &"staff"
-	c.equipped_by = &"mage"
+	c.weapon_type = &"ring"     # TRINKET slot
+	c.equipped_by = &"warrior"
 	var loose := Itemizer.generate_item_with_rarity(Item.Rarity.COMMON)
 	loose.equipped_by = &""
 	GameState.inventory = [a, b, c, loose]

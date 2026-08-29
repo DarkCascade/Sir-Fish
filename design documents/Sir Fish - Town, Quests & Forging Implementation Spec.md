@@ -65,13 +65,20 @@ These tests must pass **with no edits to the test files**:
 | `test_autoload_safety.gd` | new autoloads must be safe to instantiate headless (§3.1). |
 | `test_item_distribution.gd` | `modifiers.size() == RARITY_MOD_COUNT[rarity]` must hold **after every forge step too** (§10.2). Adding `ENHANCED` at weight **0** keeps it out of generated output entirely (§10.1). |
 
-Two tests **do** need edits, and those edits are part of this pass:
+Four tests **do** need edits, and those edits are part of this pass (§13.2 is
+the full list; all four land at step 4):
 
 - `test_drops.gd` — its `droppable_classes() == PARTY_ORDER` assertion becomes
-  `== GameState.active_party` (§4.5).
-- `test_item_distribution.gd` — its type-mix expectations change once
-  generation rolls the slot first (§4.4). The mod-count invariant above does
-  **not** change.
+  `== GameState.active_party` (§4.5), and **D7's type-mix expectations are
+  re-derived** for §4.4's slot-first roll. D7 is the suite's only
+  type-distribution assertion; D4 and D9 also move, because `next_drop_class()`
+  reads `droppable_classes()` transitively (§4.5).
+- `test_item_distribution.gd` — its four-wide rarity arrays widen to five
+  (step-3 Q6). It asserts no type mix, so nothing in §4.4 reaches it, and the
+  mod-count invariant above does **not** change.
+- `test_profile_expedition.gd` — P6's `active_party` check (§4.5).
+- `test_profile_save.gd` — its fixture's three equipped items become one per
+  slot (§13.1).
 
 ### 0.4 Decisions taken
 
@@ -565,6 +572,18 @@ func slot() -> Slot:
 used by `item_glyph.gd`; slot is a separate axis and overloading `Kind` to
 carry it would break the glyph's kind-based fallback drawing.
 
+**Every generated item keeps `kind = Item.Kind.WEAPON` — armor and trinkets
+included** (step-4 Q7). `_generate_typed()` sets it unconditionally and that does
+not change, because three separate derivations read it: `usable_by()`
+early-returns empty unless `kind == Kind.WEAPON`, so a helm marked `RELIC` would
+render as "Anyone", never auto-equip and never be targeted by `generate_drop()`;
+`type_name()`'s "Helm" comes off the same branch; and `shop_sell_row.gd` /
+`shop_buy_card.gd` feed `kind` to the glyph. So until `POTION` / `RELIC`
+generation exists, `kind` effectively means "was generated" and `slot()` carries
+all the real classification. Recorded as a known wart rather than silently left,
+so the next reader does not "fix" it into three broken derivations — §15 defers
+the per-slot behaviour that would make `kind` earn its keep.
+
 `weapon_type` keeps its name even though it now names armor and trinkets too.
 Renaming it touches `item_glyph.gd`, `shop_sell_row.gd`, `shop_buy_card.gd`,
 `compare_flyout.gd`, `debug.gd` and two tests, for zero behavioural gain. A
@@ -619,8 +638,14 @@ every existing derivation working untouched. When the mage and ranger return,
 they get their own armor and trinket types in this same table, and the "Anyone"
 path is there if a truly universal item is ever wanted.
 
-`WEAPON_TYPES` may be kept as a deprecated alias for exactly one commit if that
-eases the migration; it must not survive the branch.
+**No deprecated alias: `WEAPON_TYPES` is renamed in one commit** (step-4 Q1).
+The live references are one production file (`itemizer.gd` — the `const` plus six
+internal reads in `generate_item_with_rarity()`, `_generate_typed()` and
+`weapon_types_for()`), one helper (`item.gd`'s `usable_by()`), and one test block
+(`test_drops.gd` D7, which §13.2 rewrites this step anyway). No scene file or
+`.tres` references it. An alias that "must not survive the branch" is a second
+cleanup commit to remember on a rename this small, and the compiler finds every
+miss.
 
 ### 4.3 `GameState` — the equip API takes a slot
 
@@ -649,7 +674,30 @@ func equipped_set(hero_class: StringName) -> Array[Item]:
 signature changes; both bodies gain the slot lookup.
 
 **Every caller of the old one-arg `equipped_item()` must be updated.**
-`grep -rn "equipped_item" scripts/` before declaring this done.
+`grep -rn "equipped_item" scripts/` before declaring this done. It returns
+exactly four, and three of them are mechanical (step-4 Q6):
+
+| site | fix |
+|---|---|
+| `compare_flyout.gd:58` | `GameState.equipped_item(hero_class, item.slot())` — §6.3 gives it verbatim |
+| `game_state.gd:191` (`equip_item`) | `var previous := equipped_item(hero_class, item.slot())` |
+| `game_state.gd:209` (`_maybe_auto_equip`) | `if equipped_item(hero_class, item.slot()) == null:` |
+| `debug.gd:392` (`state`) | no longer retargetable — with three slots "the hero's equipped item" is not a thing |
+
+`debug.gd`'s `state` line iterates `equipped_set()` instead, one bracketed list
+per hero:
+
+```gdscript
+equip_bits.append("%s=[%s]" % [c, ", ".join(equipped_set(c).map(
+    func(i: Item) -> String: return i.display_name))])
+```
+
+so a fully-kitted warrior reads `warrior=[Rusty Axe, Fat Helm, Lucky Ring]` and an
+empty-handed one reads `warrior=[]`. Showing only the WEAPON slot would keep the
+line shorter but would hide exactly the state a forge tester is checking. That
+loop (and the `drops` loop above it) reads `GameState.active_party` rather than
+`Itemizer.droppable_classes()`; the two are equal under a solo warrior, but the
+`state` line is about who is on the field.
 
 ### 4.4 Generation rolls the slot first
 
@@ -658,30 +706,83 @@ type table. With eleven types split 5/3/3 across slots, a uniform draw means
 45% weapons, 27% armor, 27% trinkets — and adding a twelfth type silently
 reweights it again.
 
-Roll the **slot** first, uniformly over the three, then the type within it.
-This is the same reasoning drops §0.3 gave for rolling the class before the
-weapon: the number of types a slot happens to have must not decide how often
-that slot is served.
+Roll the **slot** first, then the type within it. This is the same reasoning
+drops §0.3 gave for rolling the class before the weapon: the number of types a
+slot happens to have must not decide how often that slot is served.
+
+**Roll over the slots that are actually fillable, not over all three** (step-4
+Q4). An earlier draft of this section gave two formulations — a uniform-over-3
+roll with a WEAPON fallback for `generate_item_with_rarity()`, and "class first,
+then slot" prose for `generate_drop()`. For a solo warrior they are identical
+and the fallback is dead code; they diverge the moment `generate_drop(&"mage")`
+is called, which `test_drops.gd` D1 does 1000 times. A uniform-over-3 roll lands
+on ARMOR or TRINKET two thirds of the time for a class that has no armor or
+trinket type, and the party-wide WEAPON fallback is, for a single-class call,
+just "give up on slots". One helper filtering to non-empty slots collapses both
+paths onto the stricter behaviour, and makes "a drop is always wieldable" true by
+construction rather than by a fallback:
 
 ```gdscript
+## The slots at least one member of `classes` can fill. Rolling over THIS rather
+## than over all three is what lets one helper serve both generators: a
+## party-wide call gets [WEAPON, ARMOR, TRINKET], a single-class call for the
+## mage gets [WEAPON] and can never land on a slot that class has no type for.
+func _equippable_slots_for(classes: Array[StringName]) -> Array[Item.Slot]
+
+## The types in `slot` wieldable by some class in `classes`. Built on
+## weapon_types_for(), which stays as the "all types for a class, any slot"
+## accessor droppable_classes() reads.
+func types_for_slot(slot: Item.Slot, classes: Array[StringName]) -> Array[StringName]
+
+## Slot first, then type within it - the shared body of both generators.
+func _roll_typed(classes: Array[StringName], rarity_index: int) -> Item:
+	var slots := _equippable_slots_for(classes)
+	if slots.is_empty():
+		# Unreachable while some class can wield something, but a generated item is
+		# better than a crash - the guard generate_drop() already carried.
+		var all: Array = ITEM_TYPES.keys()
+		return _generate_typed(all[RNG.randi_range(0, all.size() - 1)], rarity_index)
+	var slot: Item.Slot = slots[RNG.randi_range(0, slots.size() - 1)]
+	var types := types_for_slot(slot, classes)
+	return _generate_typed(types[RNG.randi_range(0, types.size() - 1)], rarity_index)
+
 func generate_item_with_rarity(rarity_index: int) -> Item:
 	rarity_index = clampi(rarity_index, 0, Item.Rarity.RARE)   # never ENHANCED (§10.1)
-	var slot: Item.Slot = _random_equippable_slot()
-	var types := types_for_slot(slot, GameState.active_party)
-	if types.is_empty():
-		types = types_for_slot(Item.Slot.WEAPON, GameState.active_party)
-	return _generate_typed(types[RNG.randi_range(0, types.size() - 1)], rarity_index)
+	return _roll_typed(GameState.active_party, rarity_index)
+
+func generate_drop(hero_class: StringName, rarity_floor: int = 0) -> Item:
+	var rarity: int = maxi(RNG.weighted_index(RARITY_WEIGHTS),
+		clampi(rarity_floor, 0, Item.Rarity.RARE))
+	return _roll_typed([hero_class] as Array[StringName], rarity)
 ```
 
-`types_for_slot(slot, party)` returns the types in that slot wieldable by *some
-member of the active party*. This is what fixes §1.6: with a solo warrior,
-staves and bows stop appearing in chests and shop stock entirely, and every
-item the player sees is an item they can wear. The mage's staff comes back the
-day the mage does, with no further edit.
+`generate_item_with_rarity()` passes the **active party**, so with a solo warrior
+staves and bows stop appearing in chests and shop stock entirely and every item
+the player sees is an item they can wear — this is the §1.6 fix. The mage's staff
+comes back the day the mage does, with no further edit.
 
-`generate_drop(hero_class, rarity_floor)` (drops §4) keeps picking the class
-first and now picks the slot second, then the type. Its guarantee is unchanged:
+`generate_drop(hero_class, rarity_floor)` (drops §4) still picks the class first
+— its rarity roll and floor are untouched — and now picks the slot second, from
+*that class's* fillable slots. Its guarantee is unchanged and now unconditional:
 a drop is always something the target class can wield.
+
+The helper names §4.1–§4.4 use are canonical; the full set this step adds
+(step-4 Q5):
+
+| name | file | signature |
+|---|---|---|
+| `Item.Slot` | `item.gd` | `enum { WEAPON, ARMOR, TRINKET }` |
+| `Item.slot()` | `item.gd` | `-> Slot` — reads `Itemizer.ITEM_TYPES[weapon_type]["slot"]`, default `WEAPON` |
+| `Itemizer.types_for_slot()` | `itemizer.gd` | `(Item.Slot, Array[StringName]) -> Array[StringName]` |
+| `Itemizer._equippable_slots_for()` | `itemizer.gd` | `(Array[StringName]) -> Array[Item.Slot]` |
+| `Itemizer._roll_typed()` | `itemizer.gd` | `(Array[StringName], int) -> Item` |
+| `GameState.equipped_item()` | `game_state.gd` | `(StringName, Item.Slot) -> Item` |
+| `GameState.equipped_set()` | `game_state.gd` | `(StringName) -> Array[Item]` — Slot order, gaps omitted |
+
+`_random_equippable_slot()`, named in an earlier draft of this section, does not
+exist: `_equippable_slots_for()` replaces it. `weapon_types_for(hero_class)`
+(drops §2.2) is unchanged and stays the "all types for a class, any slot"
+accessor the other two are built on.
 
 ### 4.5 `active_party` replaces `PARTY_ORDER` at three call sites
 
@@ -715,8 +816,32 @@ against — drops aimed at a hero who is not on the field — is created by the
 `test_drops.gd:23`'s assertion changes from `== GameState.PARTY_ORDER` to
 `== GameState.active_party`, and `test_profile_expedition.gd`'s
 "active_party still equals PARTY_ORDER" check (§13.1) is updated here too —
-deliberately, which is the point of it existing. Everything else in that test is party-size
-agnostic and stays.
+deliberately, which is the point of it existing. Everything else in
+`test_profile_expedition.gd` is party-size agnostic and stays.
+
+**`droppable_classes()` is read transitively by `next_drop_class()`, so two more
+`test_drops.gd` blocks move with it** (step-4 Q11) — this is the one consequence
+of the value flip that is not visible from a `grep` for `active_party`:
+
+- **D4** asserts each of `PARTY_ORDER`'s three classes takes 33.3% ± 2pp of 3000
+  `next_drop_class()` draws. With one droppable class the warrior takes 100% and
+  the other two take 0% — three failing checks.
+- **D9** requires ≥ 95% of ≥ 3-drop levels to have given *all three* classes a
+  drop. With one droppable class that rate is 0% — one failing check.
+
+Both test `DROP_CATCHUP` and `next_drop_class()`, which §15 explicitly keeps
+alive for the party's return ("untouched and waiting for them — do not delete
+it"). Re-pointing their loops at `active_party` would leave them passing and
+**tautological** — "the only droppable class got 100% of the drops" asserts
+nothing about the weighting, and a rewrite of `next_drop_class()` would sail
+through. So instead each block **saves `active_party`, sets it to
+`PARTY_ORDER.duplicate()` for its own duration, and restores it**, keeping the
+coverage algorithm under a real three-class test while the field it reads is
+solo. D8 and `_report_party_bonuses()` already save and restore
+`endless_level_number` / `inventory` / `drops_by_class` the same way, so this is
+the file's existing idiom rather than a new one. Their `PARTY_ORDER` loops become
+`Itemizer.droppable_classes()` loops so they follow the override rather than
+restating the roster.
 
 `party_bars.gd` already handles a short party ("A party smaller than the
 authored roster leaves spare bars"), and `world.hero_slot_position()` already
@@ -1501,6 +1626,9 @@ is the only bug in this document that destroys player data.
 Its three equipped items are "of different slots" only from step 4 on; at step 2
 distinct `weapon_type` / `rarity` / `equipped_by` stand in, which exercises every
 serialized field without depending on an enum that does not exist yet (step-2 Q9).
+**Step 4 makes it honest**: all three move onto the warrior as one WEAPON, one
+ARMOR and one TRINKET — what a real solo-warrior profile looks like — with no new
+assertion, because `slot()` is derived rather than serialized (step-4 Q9, §13.2).
 
 **The suite must not clobber the dev's save.** `test_profile_save.gd` reads and
 writes the real `user://profile.save`, because `SaveGame.PATH` is a `const` and
@@ -1579,25 +1707,73 @@ anything.
 
 ### 13.2 Edited
 
-- `test_drops.gd:23` — `droppable_classes() == GameState.active_party`.
-- `test_item_distribution.gd` — type-mix expectations re-derived for §4.4's
-  slot-first roll. **The mod-count assertion at line 68 does not change** and
-  must stay passing throughout.
-
-  While editing it, widen its `by_rarity`, `names` and `expected` arrays from
-  four entries to five (step-3 Q6). They are safe unedited at step 3 — weight 0
-  means `by_rarity[item.rarity]` is never indexed at 4 — but they are a
+- `test_drops.gd` — **four edits, all step 4** (step-4 Q2, Q11). An earlier
+  draft of this section named only line 23; the type-mix re-derivation it
+  attributed to `test_item_distribution.gd` belongs here, because D7 is the only
+  type-distribution assertion in the suite.
+  - **D2** (line 23): `droppable_classes() == GameState.active_party`.
+  - **D7** (lines 77–88) is re-derived. Its `check_between(pct, 16.0, 24.0)` on
+    every type's share cannot survive §4.4: slot-first with a solo warrior gives
+    axe and sword ≈ 16.7% each, the six armor/trinket types ≈ 11.1% each, and
+    bow / dagger / staff exactly 0%. Every one of those is outside the band, and
+    the loop iterates the renamed constant besides. The replacement keeps D7's
+    spirit — generation is evenly spread, no slot starved or flooded — pointed at
+    what §4.4 actually produces, over ~6000 samples:
+    - **slot share**: `item.slot()` is WEAPON / ARMOR / TRINKET 33.3% ± 3pp each;
+    - **within-slot uniformity**: among the types rolled in a slot, each is
+      `1 / n_types_in_slot` ± 3pp;
+    - **the §1.6 guarantee, asserted directly**: `bow`, `dagger` and `staff`
+      appear **exactly zero** times. This is the regression guard D7 was always
+      meant to be, now aimed at the thing slot-first generation is *for*.
+  - **D4 and D9** save / override / restore `active_party` and loop
+    `droppable_classes()` — §4.5 gives the reasoning.
+  - D1, D3, D5, D6 and D8 are **not** edited. D1/D3/D5/D6 pass an explicit class
+    to `generate_drop()`, which still works per-class for the mage and ranger
+    under §4.4's slot filter, so they keep looping `PARTY_ORDER` and stay green.
+- `test_item_distribution.gd` — **one edit**: widen its `by_rarity`, `names` and
+  `expected` arrays from four entries to five (step-3 Q6), so `[0, 0, 0, 0]`
+  becomes `[0, 0, 0, 0, 0]`, `names` gains `"Enhanced"`, `expected` gains `0.0`
+  and the report loop becomes `range(5)`. They are safe unedited at step 3 —
+  weight 0 means `by_rarity[item.rarity]` is never indexed at 4 — but they are a
   four-wide array indexed by a five-value enum, and the only thing standing
   between that and an out-of-bounds write is a weight this pass deliberately
   makes editable. Widening costs nothing and removes the trap.
+
+  It asserts **no** type mix (its rarity split is an informational `print`, not a
+  `check`), so nothing type-related changes here and no new distribution test is
+  added — that is D7's job. **The mod-count assertion at line 68 does not
+  change** and must stay passing throughout.
+- `test_profile_save.gd` — its three equipped items become one WEAPON, one ARMOR
+  and one TRINKET **on the warrior**, which is what §13.1 has always asked for
+  and what a real solo-warrior profile looks like; at step 2 distinct
+  `weapon_type` / `rarity` / `equipped_by` stood in (step-4 Q9). The fixture
+  assigns `weapon_type` directly after generation, so this is three literals
+  (`&"axe"` / `&"helm"` / `&"ring"`, all `equipped_by = &"warrior"`) and no new
+  assertion: `slot()` is **derived** from `weapon_type` and never serialized, so
+  the existing "every `@export`ed field round-trips" coverage already proves it
+  survives. `equipped_by`'s StringName round-trip stays covered by the
+  `&"warrior"` / `&""` pair, which is the boundary that matters.
 - `test_profile_expedition.gd` — edited **twice**, deliberately, and that is a
   feature rather than churn. It is the file that pins whichever seam each step
   moves, so an edit to it is the visible cost of moving one:
   - **step 2** re-points its `new_profile()` / `reset_run()` gold and scrap
     checks from `Tuning.STARTING_GOLD` to §11's `PROFILE_STARTING_GOLD` /
     `PROFILE_STARTING_SCRAP`, because §2.3 mandates the constant swap (step-2 Q3);
-  - **step 4** updates its "`active_party` still equals `PARTY_ORDER`" check when
-    §4.5 flips the party solo.
+  - **step 4** replaces its P6 "`active_party` still equals `PARTY_ORDER`" check
+    (line 123) with **two** checks when §4.5 flips the party solo (step-4 Q8):
+
+    ```gdscript
+    t.check(GameState.active_party == ([&"warrior"] as Array[StringName]),
+        "active_party is the solo warrior (got %s)" % [GameState.active_party])
+    t.check(GameState.PARTY_ORDER.size() == 3,
+        "PARTY_ORDER is untouched - the 3-hero roster still exists (spec 4.5)")
+    ```
+
+    The second line is the one worth having: §4.5 and §0.2 both say the flip is
+    `active_party`'s *value*, **not** a deletion of `PARTY_ORDER`, and without an
+    assertion a future tidy-up that trims the roster to match would go unnoticed
+    until the mage came back. P6 runs after `reset_run()` at P5, i.e. post-
+    `new_profile()`, so `[&"warrior"]` is the expected value.
 
   An edit here should always be traceable to a named section. An edit that is
   not is a regression wearing a test's clothes.
@@ -1665,7 +1841,36 @@ previous is green.
    for. `test_enhanced_rarity.gd` (§13.1) is what makes that claim checkable.
 4. **§4 — three slots**: `Item.slot()`, `ITEM_TYPES`, the slot-aware
    `equipped_item()`, the `compare_flyout` fix, slot-first generation. Update
-   `test_drops.gd` and `test_item_distribution.gd`.
+   `test_drops.gd` and `test_item_distribution.gd`. The last invisible step, and
+   the one with the largest test surface in the pass. Its changeset, after the
+   step-4 questions were resolved:
+
+   - `scripts/data/item.gd` — the `Slot` enum and `slot()`; `usable_by()` reads
+     `ITEM_TYPES`; comments on `weapon_type` and on `kind` staying `WEAPON`
+     (§4.1). `type_initial()` is **not** touched (see §15).
+   - `scripts/autoload/itemizer.gd` — `WEAPON_TYPES` → `ITEM_TYPES` with a `slot`
+     on every entry plus the six new armor / trinket types (§4.2);
+     `types_for_slot()`, `_equippable_slots_for()`, `_roll_typed()`, and
+     `generate_item_with_rarity()` / `generate_drop()` rebuilt on them (§4.4);
+     `droppable_classes()` reads `active_party` (§4.5).
+   - `scripts/autoload/game_state.gd` — `equipped_item(hero, slot)` and
+     `equipped_set(hero)`; the slot lookups in `equip_item()` and
+     `_maybe_auto_equip()` (§4.3); **and the value flip** — `active_party`'s
+     initialiser *and* `new_profile()`'s assignment both become `[&"warrior"]`
+     (§4.5). That flip is the edit that actually does the work; the read swaps
+     without it change nothing.
+   - `scripts/modals/compare_flyout.gd` — the §6.3 one-liner.
+   - `scripts/autoload/debug.gd` — the `state` line via `equipped_set()` (§4.3).
+   - tests: `test_drops.gd` (D2, D7, D4/D9), `test_item_distribution.gd` (the
+     four-to-five widening), `test_profile_expedition.gd` (P6),
+     `test_profile_save.gd` (one item per slot) — all §13.2.
+
+   **What step 4 accepts, deliberately:** one modifier pool serves all three
+   slots, so a helm can roll `+7 Bolt Power` and a ring `+5 Fire Damage` (§15
+   defers per-slot pools). The six new types render as the generic gem glyph
+   until §12 at step 11, since `item_glyph.gd`'s `WEAPON_TEXTURES` has no entry
+   for them and `_draw()` falls through to `_draw_gem()` — which is correct for a
+   step that is invisible by design.
 5. **§3 — `SceneRouter` and `Hud`**, `boot.tscn`, `RunSummary` → `QuestResult`
    moved into the HUD. The forest still starts, now via the router. **Read
    §3.1's `RunController._start_run()` warning before starting this step** — it
@@ -1706,6 +1911,12 @@ Recorded so they are decisions rather than omissions.
 - **Armor and trinket modifiers of their own.** Right now every slot draws from
   the same eight-modifier pool, so a helm can roll "+7 Bolt Power". Per-slot
   pools are the obvious next step and want their own balance pass.
+- **`Item.type_initial()`'s letter collisions.** Eleven types share ten initials
+  once armor and trinkets land — sword / shield both `S`, axe / amulet both `A`
+  (`staff` already has a hand-written `T` exception). It feeds only the spec 17.2
+  inventory chip, which §6's inventory modal supersedes at step 6, so step 4
+  leaves it alone rather than inventing a second exception table for a widget on
+  its way out. Revisit at step 6, or delete it with the chip.
 - **Fly-to-counter pickup polish** (§9.4).
 - **More than one town.** `SceneRouter.Place` is an enum for a reason; a second
   town is a second set of entries.

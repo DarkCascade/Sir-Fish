@@ -1,12 +1,28 @@
 extends Node
 ## Itemizer — the only place items are created (spec 13).
 
-const WEAPON_TYPES := {
-	&"axe":    { "base_value": 20, "classes": [&"warrior"], "nouns": ["Axe", "Hatchet", "Cleaver", "Chopper"] },
-	&"sword":  { "base_value": 22, "classes": [&"warrior"], "nouns": ["Sword", "Blade", "Saber", "Longsword"] },
-	&"bow":    { "base_value": 20, "classes": [&"ranger"],  "nouns": ["Bow", "Longbow", "Shortbow", "Recurve"] },
-	&"dagger": { "base_value": 18, "classes": [&"ranger"],  "nouns": ["Dagger", "Knife", "Dirk", "Shiv"] },
-	&"staff":  { "base_value": 25, "classes": [&"mage"],    "nouns": ["Staff", "Rod", "Cane", "Scepter"] },
+## [town] Renamed from WEAPON_TYPES (spec 4.2) - it now names armor and trinket
+## types too. Every entry carries a `slot` (Item.Slot); the five weapon rows are
+## otherwise unchanged, base_values included (moving them would move
+## test_economy.gd's affordability gate). Armor and trinkets list
+## classes: [&"warrior"] rather than [] so usable_by() / weapon_types_for() /
+## _maybe_auto_equip() keep working untouched; the mage and ranger get their own
+## rows here when they return (spec 15).
+const ITEM_TYPES := {
+	# --- weapons (unchanged from WEAPON_TYPES) ---
+	&"axe":    { "slot": Item.Slot.WEAPON,  "base_value": 20, "classes": [&"warrior"], "nouns": ["Axe", "Hatchet", "Cleaver", "Chopper"] },
+	&"sword":  { "slot": Item.Slot.WEAPON,  "base_value": 22, "classes": [&"warrior"], "nouns": ["Sword", "Blade", "Saber", "Longsword"] },
+	&"bow":    { "slot": Item.Slot.WEAPON,  "base_value": 20, "classes": [&"ranger"],  "nouns": ["Bow", "Longbow", "Shortbow", "Recurve"] },
+	&"dagger": { "slot": Item.Slot.WEAPON,  "base_value": 18, "classes": [&"ranger"],  "nouns": ["Dagger", "Knife", "Dirk", "Shiv"] },
+	&"staff":  { "slot": Item.Slot.WEAPON,  "base_value": 25, "classes": [&"mage"],    "nouns": ["Staff", "Rod", "Cane", "Scepter"] },
+	# --- armor [town] ---
+	&"helm":   { "slot": Item.Slot.ARMOR,   "base_value": 18, "classes": [&"warrior"], "nouns": ["Helm", "Casque", "Barbute", "Coif"] },
+	&"mail":   { "slot": Item.Slot.ARMOR,   "base_value": 24, "classes": [&"warrior"], "nouns": ["Mail", "Hauberk", "Cuirass", "Plate"] },
+	&"shield": { "slot": Item.Slot.ARMOR,   "base_value": 22, "classes": [&"warrior"], "nouns": ["Shield", "Buckler", "Targe", "Kite"] },
+	# --- trinkets [town] ---
+	&"ring":   { "slot": Item.Slot.TRINKET, "base_value": 19, "classes": [&"warrior"], "nouns": ["Ring", "Band", "Signet", "Loop"] },
+	&"amulet": { "slot": Item.Slot.TRINKET, "base_value": 21, "classes": [&"warrior"], "nouns": ["Amulet", "Pendant", "Charm", "Talisman"] },
+	&"idol":   { "slot": Item.Slot.TRINKET, "base_value": 23, "classes": [&"warrior"], "nouns": ["Idol", "Fetish", "Totem", "Effigy"] },
 }
 
 const ADJECTIVES := [
@@ -65,12 +81,15 @@ func generate_item() -> Item:
 
 ## Shop stock and the Debug harness need a specific rarity; everything else
 ## should go through generate_item() and take the weighted roll.
+##
+## [town] Rolls the SLOT first, then a type within it (spec 4.4) - the number of
+## types a slot happens to have must not decide how often that slot is served.
+## Passes the active party, so with a solo warrior staves and bows stop
+## appearing in chests and shop stock entirely (the spec 1.6 fix).
 func generate_item_with_rarity(rarity_index: int) -> Item:
 	# Clamp to RARE, never ENHANCED (spec 10.1): the guard now says what it means.
 	rarity_index = clampi(rarity_index, 0, Item.Rarity.RARE)
-	var types: Array = WEAPON_TYPES.keys()
-	var wtype: StringName = types[RNG.randi_range(0, types.size() - 1)]
-	return _generate_typed(wtype, rarity_index)
+	return _roll_typed(GameState.active_party, rarity_index)
 
 ## The whole of the old generate_item_with_rarity() body from `item.weapon_type`
 ## onward, with the type handed in. Nothing else moves.
@@ -81,7 +100,7 @@ func _generate_typed(wtype: StringName, rarity_index: int) -> Item:
 
 	item.rarity = rarity_index as Item.Rarity
 
-	var nouns: Array = WEAPON_TYPES[wtype]["nouns"]
+	var nouns: Array = ITEM_TYPES[wtype]["nouns"]
 	var adjective: String = ADJECTIVES[RNG.randi_range(0, ADJECTIVES.size() - 1)]
 	var noun: String = nouns[RNG.randi_range(0, nouns.size() - 1)]
 	item.display_name = "%s %s" % [adjective, noun]
@@ -109,7 +128,7 @@ func _generate_typed(wtype: StringName, rarity_index: int) -> Item:
 		})
 	item.modifiers = mods
 
-	var base_value: int = int(WEAPON_TYPES[wtype]["base_value"])
+	var base_value: int = int(ITEM_TYPES[wtype]["base_value"])
 	var rarity_mult: float = RNG.randf_range(
 		RARITY_VALUE_MULT[rarity_index][0], RARITY_VALUE_MULT[rarity_index][1])
 	item.value = int(round(float(base_value) * rarity_mult * (1.0 + mod_sum)))
@@ -117,39 +136,76 @@ func _generate_typed(wtype: StringName, rarity_index: int) -> Item:
 
 # --- class-first generation (enemy drops) -----------------------------------
 
-## Every weapon type `hero_class` can wield.
+## Every type `hero_class` can wield, in ANY slot. Stays the "all types for a
+## class" accessor the slot-aware helpers below are built on (spec 4.4).
 func weapon_types_for(hero_class: StringName) -> Array[StringName]:
 	var out: Array[StringName] = []
-	for wtype: StringName in WEAPON_TYPES:
-		if (WEAPON_TYPES[wtype]["classes"] as Array).has(hero_class):
+	for wtype: StringName in ITEM_TYPES:
+		if (ITEM_TYPES[wtype]["classes"] as Array).has(hero_class):
 			out.append(wtype)
 	return out
 
-## The classes a drop can be aimed at, in PARTY_ORDER. Derived from the weapon
-## table rather than listed, so a class with no wieldable type is excluded
-## automatically instead of silently receiving items it cannot use.
+## [town] The types in `slot` wieldable by some class in `classes`. Built on
+## weapon_types_for(), then filtered to the one slot (spec 4.4 helper table).
+func types_for_slot(slot: Item.Slot, classes: Array[StringName]) -> Array[StringName]:
+	var out: Array[StringName] = []
+	for c: StringName in classes:
+		for wtype: StringName in weapon_types_for(c):
+			if int(ITEM_TYPES[wtype].get("slot", Item.Slot.WEAPON)) == int(slot) and not out.has(wtype):
+				out.append(wtype)
+	return out
+
+## [town] The equipment slots at least one class in `classes` can fill. Rolling
+## the slot over THIS (not all three) is what lets one helper serve both
+## generators: the solo warrior gets [WEAPON, ARMOR, TRINKET]; a single-class
+## generate_drop(&"mage") gets [WEAPON] and can never land on a slot the mage
+## has no type for (spec 4.4, step-4 Q4). Replaces the earlier draft's bare
+## _random_equippable_slot().
+func _equippable_slots_for(classes: Array[StringName]) -> Array[Item.Slot]:
+	var out: Array[Item.Slot] = []
+	for s: Item.Slot in [Item.Slot.WEAPON, Item.Slot.ARMOR, Item.Slot.TRINKET]:
+		if not types_for_slot(s, classes).is_empty():
+			out.append(s)
+	return out
+
+## [town] Slot first, then a type within it - the shared body of both
+## generators (spec 4.4). Keeping this one function is what stops the two
+## generation paths drifting apart again.
+func _roll_typed(classes: Array[StringName], rarity_index: int) -> Item:
+	var slots := _equippable_slots_for(classes)
+	if slots.is_empty():
+		# Unreachable while some class in `classes` can wield something. A
+		# generated item still beats a crash - the guard generate_drop() has
+		# always carried, re-aimed: with no party-derived answer left, fall back
+		# to a uniform draw over every type.
+		var all: Array = ITEM_TYPES.keys()
+		return _generate_typed(all[RNG.randi_range(0, all.size() - 1)], rarity_index)
+	var slot: Item.Slot = slots[RNG.randi_range(0, slots.size() - 1)]
+	var types := types_for_slot(slot, classes)
+	return _generate_typed(types[RNG.randi_range(0, types.size() - 1)], rarity_index)
+
+## The classes a drop can be aimed at, in active_party order (spec 4.5 - was
+## PARTY_ORDER). Derived from the type table rather than listed, so a class with
+## no wieldable type is excluded automatically instead of silently receiving
+## items it cannot use.
 func droppable_classes() -> Array[StringName]:
 	var out: Array[StringName] = []
-	for id: StringName in GameState.PARTY_ORDER:
+	for id: StringName in GameState.active_party:
 		if not weapon_types_for(id).is_empty():
 			out.append(id)
 	return out
 
 ## One item aimed at `hero_class`. Rarity is the normal §13.2 weighted roll
-## raised to `rarity_floor`; the weapon type is drawn only from that class's
-## types. THE ONLY generator that picks a class first - see §0.3.
+## raised to `rarity_floor`; the type is drawn slot-first from THAT class's
+## fillable slots (spec 4.4). THE ONLY generator that picks a class first - see
+## §0.3. Its guarantee is unchanged and now unconditional: a drop is always
+## something the target class can wield.
 func generate_drop(hero_class: StringName, rarity_floor: int = 0) -> Item:
 	# Same RARE ceiling as generate_item_with_rarity() - a drop is never ENHANCED
 	# (spec 10.1). Stated as the enum value now that RARITY_WEIGHTS has a fifth,
-	# zero-weight entry sitting right above this line.
+	# zero-weight entry.
 	var rarity: int = maxi(RNG.weighted_index(RARITY_WEIGHTS), clampi(rarity_floor, 0, Item.Rarity.RARE))
-	var types := weapon_types_for(hero_class)
-	if types.is_empty():
-		# Unreachable while droppable_classes() gates the caller, but a drop is
-		# better than a crash if a future class joins PARTY_ORDER before it has
-		# a weapon.
-		return generate_item_with_rarity(rarity)
-	return _generate_typed(types[RNG.randi_range(0, types.size() - 1)], rarity)
+	return _roll_typed([hero_class] as Array[StringName], rarity)
 
 # --- shop stock (spec 13.6 / Q14) -------------------------------------------
 

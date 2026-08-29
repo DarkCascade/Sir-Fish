@@ -55,7 +55,9 @@ func show_for(item: Item) -> void:
 	for_label.visible = hero_class != &""
 	for_label.text = "For %s" % String(hero_class).capitalize()
 
-	var equipped: Item = GameState.equipped_item(hero_class) if hero_class != &"" else null
+	# [town] spec 6.3: look up the equipped item BY SLOT, so a helm is compared
+	# against the equipped helm and not against whatever the hero holds first.
+	var equipped: Item = GameState.equipped_item(hero_class, item.slot()) if hero_class != &"" else null
 	equipped_none.visible = equipped == null
 	# The whole left column empties out when there is nothing equipped, down to
 	# its rarity stripe - a stripe with no item over it reads as a colour the

@@ -384,13 +384,16 @@ func _cmd_state() -> void:
 	var levels: Array[String] = []
 	for id: StringName in Upgrades.DEFS.keys():
 		levels.append("%s=%d" % [id, Upgrades.level(id)])
+	# [town] spec 4.3: both loops walk active_party - `state` is a report about
+	# who is on the field, not about loot targeting (droppable_classes()). Under
+	# a solo warrior the two are equal; this keeps the line honest if they diverge.
 	var drop_bits: Array[String] = []
-	for c: StringName in Itemizer.droppable_classes():
+	for c: StringName in GameState.active_party:
 		drop_bits.append("%s=%d" % [c, GameState.drop_count(c)])
 	var equip_bits: Array[String] = []
-	for c: StringName in Itemizer.droppable_classes():
-		var equipped := GameState.equipped_item(c)
-		equip_bits.append("%s=%s" % [c, equipped.display_name if equipped != null else "none"])
+	for c: StringName in GameState.active_party:
+		equip_bits.append("%s=[%s]" % [c, ", ".join(GameState.equipped_set(c).map(
+			func(i: Item) -> String: return i.display_name))])
 	_log("state -> run=%s encounter=%d gold=%d | %s | upgrades %s | drops %s | equipped %s | bonuses %s" % [
 		run_state, GameState.current_encounter_index, GameState.gold,
 		", ".join(hp_bits), ", ".join(levels), ", ".join(drop_bits), ", ".join(equip_bits),

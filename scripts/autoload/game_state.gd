@@ -69,17 +69,12 @@ var scrap: int = 0
 ## against, and restoring a three-hero party is one assignment - and this is
 ## who is currently in it. Profile-scoped.
 ##
-## Initialised to the FULL roster, deliberately. Spec 2.2's listing shows
-## `[&"warrior"]` because it describes the END state; spec 14 step 1 says
-## "active_party still equal to PARTY_ORDER, nothing else changed", and the
-## party going solo is a behaviour change that belongs with spec 4.5.
-##
-## Note for whoever does spec 4.5: flipping this initialiser - and
-## new_profile()'s matching assignment - to `[&"warrior"]` is a FOURTH edit
-## that 4.5's text does not name. Switching only the three reads it does name
-## changes nothing, because all three would be reading a variable that still
-## equals PARTY_ORDER. The value flip is what makes the party solo.
-var active_party: Array[StringName] = PARTY_ORDER.duplicate()
+## [town] spec 4.5: the party is solo. This initialiser and new_profile()'s
+## matching assignment are the VALUE FLIP that actually makes it so - the three
+## reads spec 4.5 lists (droppable_classes(), _reset_hero_runtime(),
+## spawn_party() via hero_runtime) only matter once this stops equalling
+## PARTY_ORDER. PARTY_ORDER itself is untouched.
+var active_party: Array[StringName] = [&"warrior"]
 
 ## [town] The quest being run, or null in town / outside a quest. Untyped
 ## until QuestDef exists (a later pass); GameState.build_level() does not yet
@@ -173,22 +168,34 @@ func remove_item(item: Item) -> void:
 
 # --- equipping ----------------------------------------------------------
 
-## The item a hero currently has equipped, or null. One item per hero
-## (equip_item() enforces it), so the first match in inventory is the only one.
-func equipped_item(hero_class: StringName) -> Item:
+## [town] The item in `hero_class`'s `slot`, or null (spec 4.3). `equipped_by`
+## still records only the hero, not the slot - the slot is recoverable from the
+## item's own type (Item.slot()), so one item is never ambiguous about which
+## slot it fills, which is why this needs no new field on Item.
+func equipped_item(hero_class: StringName, slot: Item.Slot) -> Item:
 	for i: Item in inventory:
-		if i.equipped_by == hero_class:
+		if i.equipped_by == hero_class and i.slot() == slot:
 			return i
 	return null
 
-## Equips item for hero_class, replacing whatever that hero already had
-## equipped - "one item per hero" (§ equip request 1). Does not require
+## [town] Every item `hero_class` currently wears, in Slot order, gaps omitted
+## (spec 4.3). What the forge and the inventory modal's Equipped section list.
+func equipped_set(hero_class: StringName) -> Array[Item]:
+	var out: Array[Item] = []
+	for s: Item.Slot in [Item.Slot.WEAPON, Item.Slot.ARMOR, Item.Slot.TRINKET]:
+		var it := equipped_item(hero_class, s)
+		if it != null:
+			out.append(it)
+	return out
+
+## Equips item for hero_class, replacing whatever that hero already had in
+## THAT item's slot - "one item per slot" (spec 4.3). Does not require
 ## hero_class to be in item.usable_by(): the UI only ever offers eligible
 ## classes, and the Debug harness wants the freedom to force odd states.
 func equip_item(item: Item, hero_class: StringName) -> void:
 	if item == null or hero_class == &"":
 		return
-	var previous := equipped_item(hero_class)
+	var previous := equipped_item(hero_class, item.slot())
 	if previous != null:
 		previous.equipped_by = &""
 	item.equipped_by = hero_class
@@ -201,12 +208,12 @@ func unequip_item(item: Item) -> void:
 	EventBus.party_bonuses_changed.emit(party_bonuses())
 
 ## Fills an EMPTY slot only - never swaps out an existing equip (§ equip
-## request 2). Picks the first of the item's eligible classes with nothing
-## equipped; in practice every generated weapon has exactly one eligible
+## request 2). Picks the first of the item's eligible classes whose matching
+## slot is empty; in practice every generated item has exactly one eligible
 ## class today, so there is no real ambiguity to resolve.
 func _maybe_auto_equip(item: Item) -> void:
 	for hero_class: StringName in item.usable_by():
-		if equipped_item(hero_class) == null:
+		if equipped_item(hero_class, item.slot()) == null:
 			item.equipped_by = hero_class
 			return
 
@@ -490,13 +497,14 @@ func _build_whispering_wood_level() -> LevelDef:
 ## crash costs nothing - there is no state here worth persisting eagerly.
 ## Spec 2.4's own "When to save" list never names this function.
 ##
-## One step-1 placeholder remains, marked inline so it cannot ship silently:
-##   - active_party gets the full roster; spec 4.5 flips it to [&"warrior"].
+## [town] spec 4.5 flipped active_party here to the solo warrior - this
+## assignment plus the field's initialiser are the value flip that makes the
+## party solo. PARTY_ORDER stays the canonical roster.
 func new_profile() -> void:
 	gold = Tuning.PROFILE_STARTING_GOLD
 	scrap = Tuning.PROFILE_STARTING_SCRAP
 	inventory.clear()
-	active_party = PARTY_ORDER.duplicate()   # -> [&"warrior"] (spec 4.5)
+	active_party = [&"warrior"] as Array[StringName]
 	street_sleep_used = false
 	_reset_hero_runtime(true)     # full heal - a new profile starts whole
 
