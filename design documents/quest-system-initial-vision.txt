@@ -1,0 +1,65 @@
+implement a basic Quest system:
+- add an inventory button at the top left of the screen
+  - generate a 2d picture of a backpack as the button icon
+  - on tap show the new inventory modal
+    - use a modified version of the existing Sell tab showing the party's equipped and inventory items
+	- include the party's gold and scrap metal counts
+	- remove the Sell button and move the Compare button such that each item has a Compare button and an Equip/Unequip button side by side under the details
+  - the button should be on-screen throughout town scenes and in the forest scene
+- use the existing town scene as the new game start and main hub
+  - i started on the town and tavern but they need more work
+  - redesign the town to keep this same general vibe but offer these options:
+    - inn
+	  - the same vibe as the existing tavern scene but fleshed out
+	  - here the party can sit and rest for the evening to heal
+	  - the party can also rest for the night for 50 gold per party member
+	- blacksmith
+	  - a new area requiring a static background, this time of a medieval blacksmith
+	  - the party can upgrade their equipment here by spending scrap metal and gold
+	    - the upgrade section should list only the equipped items with an option to upgrade them
+		  - items can be upgraded with a cost in scrap and gold dependent on the rarity:
+		    - common: 5 scrap, 20 gold
+			  - adds one random modifier, increasing rarity to magic
+			- magic: 10 scrap, 40 gold
+			  - adds another modifier, increasing rarity to rare
+			- rare: 25 scrap, 100 gold
+			  - adds another modifier from a new Enhanced pool which is the same as the normal pool of modifiers but doubled in strength
+			  - the rarity is increased to Enhanced Rare
+			  - the item can no longer be upgraded
+	  - the blacksmith also offers an expanded shop featuring twice as many options as the existing shop
+	    - 2 cheap options, 2 average options, 2 expensive options
+		- the shop contents can be refreshed by paying 100 gold
+		  - include a little refresh button using standard iconography
+		  - this button is disabled if the player cannot afford 100 gold
+	- mayor's office
+	  - a new area requiring a static background of a vibe-appropriate village mayor's office
+	  - offer the player 3 quests as buttons with descriptive text
+		- easy quest: 5 encounters
+		  - combat, chest, combat, shop, boss
+		  - 200 gold reward on completion
+		- medium quest: 7 encounters
+		  - combat, combat, chest, combat, combat, shop, boss
+		  - 400 gold reward
+		- hard quest: 9 encounters
+		  - combat, chest, combat, combat, combat, chest, shop, combat, boss
+		  - 600 gold reward
+	  - on quest selection start the existing bioluminescent forest stage configured with the chosen parameters
+		- the party is now only the warrior
+		- modify the gold counter to include collected scrap
+		- enemies now pop a small handful of scrap metal pieces and gold coins on death
+		  - generate 3d assets of bolts, nuts, and screws to represent scrap metal pieces
+		  - generate a small 3d gold coin using the existing coin glyphs as reference
+		  - after the model is done fading, spawn a random number of scrap metal and gold in a little volcano style explosion
+		    - 0-9 scrap metal, each one a random asset from the generated metal pieces
+			- 0-9 gold, each one the generated gold coin model
+		  - let the individual pieces in the loot explosion settle for 1 second, then fade them out and add them to the party's inventory
+		- on hero death:
+		  - return to the inn in town with with the existing failure modal over top
+		  - the player is offered two options:
+		    - stay at the inn to recover fully (costs the inn's normal fee)
+			- sleep in the street to recover half of missing health (free)
+		- on hero win:
+		  - return to the mayor's office in town with the existing success modal over top
+		    - include the quest reward in the stat list
+			- modify the button text to "retire for the evening"
+			  - go to the inn scene on button press

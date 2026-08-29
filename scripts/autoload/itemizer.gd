@@ -30,13 +30,23 @@ const MODIFIERS := [
 ]
 
 # 13.2 Rarity: weight, modifier count, value multiplier range.
-const RARITY_WEIGHTS := [50, 30, 15, 5]
-const RARITY_MOD_COUNT := [0, 1, 2, 3]
+#
+# [town] Every array here is indexed by Item.Rarity and carries an ENHANCED slot
+# (spec 10.1). ENHANCED's weight is 0: RNG.weighted_index() sums the weights and
+# rolls randi_range(1, total), so a trailing 0 contributes nothing to the total
+# and its index is unreachable - ENHANCED can never be rolled into a chest or
+# shop. It is reached only by Itemizer.forge() walking an item up the ladder
+# (spec 10.2, lands with scrap). RARITY_VALUE_MULT's ENHANCED row is never read
+# (forging adds gold to value directly, spec 10.5) but the array has to match
+# the others in length or an index goes stale.
+const RARITY_WEIGHTS := [50, 30, 15, 5, 0]
+const RARITY_MOD_COUNT := [0, 1, 2, 3, 4]
 const RARITY_VALUE_MULT := [
 	[1.0, 1.0],
 	[1.6, 2.2],
 	[2.8, 3.6],
 	[4.5, 6.0],
+	[6.5, 8.0],   # ENHANCED - never read, present for length parity
 ]
 
 # TODO (post-demo): replace the random multiplier ranges with a designed curve -
@@ -56,7 +66,8 @@ func generate_item() -> Item:
 ## Shop stock and the Debug harness need a specific rarity; everything else
 ## should go through generate_item() and take the weighted roll.
 func generate_item_with_rarity(rarity_index: int) -> Item:
-	rarity_index = clampi(rarity_index, 0, 3)
+	# Clamp to RARE, never ENHANCED (spec 10.1): the guard now says what it means.
+	rarity_index = clampi(rarity_index, 0, Item.Rarity.RARE)
 	var types: Array = WEAPON_TYPES.keys()
 	var wtype: StringName = types[RNG.randi_range(0, types.size() - 1)]
 	return _generate_typed(wtype, rarity_index)
@@ -128,7 +139,10 @@ func droppable_classes() -> Array[StringName]:
 ## raised to `rarity_floor`; the weapon type is drawn only from that class's
 ## types. THE ONLY generator that picks a class first - see §0.3.
 func generate_drop(hero_class: StringName, rarity_floor: int = 0) -> Item:
-	var rarity: int = maxi(RNG.weighted_index(RARITY_WEIGHTS), clampi(rarity_floor, 0, 3))
+	# Same RARE ceiling as generate_item_with_rarity() - a drop is never ENHANCED
+	# (spec 10.1). Stated as the enum value now that RARITY_WEIGHTS has a fifth,
+	# zero-weight entry sitting right above this line.
+	var rarity: int = maxi(RNG.weighted_index(RARITY_WEIGHTS), clampi(rarity_floor, 0, Item.Rarity.RARE))
 	var types := weapon_types_for(hero_class)
 	if types.is_empty():
 		# Unreachable while droppable_classes() gates the caller, but a drop is

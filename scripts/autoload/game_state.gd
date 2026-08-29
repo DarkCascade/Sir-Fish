@@ -36,7 +36,8 @@ var run_stats := {
 	"run_time": 0.0,
 }
 
-## [drops] Drops received per hero class this run. Cleared by reset_run().
+## [drops] Drops received per hero class this run. Cleared by
+## start_expedition().
 ##
 ## The goal is COVERAGE, not fairness. A run where the mage never sees a
 ## staff is a run where a third of the party is inert once equipping exists, so
@@ -45,6 +46,68 @@ var run_stats := {
 ## round robin is readable by the player within two levels and stops being a
 ## drop at all.
 var drops_by_class: Dictionary = {}      # StringName -> int
+
+# --- [town] profile vs. expedition (step 1 of the town/quests/forging spec) -
+##
+## Two lifetimes are being teased apart here. PROFILE survives everything and
+## will be saved to disk (a later pass). EXPEDITION is one quest, from the
+## mayor's desk to the result modal, and resets every retry exactly as the
+## whole run used to.
+##
+## For now `reset_run()` below still calls both in sequence on every retry, so
+## nothing observable changes yet - see reset_run()'s own comment for why that
+## is deliberate rather than an oversight.
+
+## [town] Scrap metal - the forge's currency. Inert for now: nothing awards or
+## spends it yet (that lands with the forge and the combat pickups). Declared
+## here, at 0, so the save format and the profile/expedition split can be
+## built around a field that already exists.
+var scrap: int = 0
+
+## [town] The heroes that actually take the field. PARTY_ORDER stays the
+## canonical roster - it is what the drop-coverage weighting is written
+## against, and restoring a three-hero party is one assignment - and this is
+## who is currently in it. Profile-scoped.
+##
+## Initialised to the FULL roster, deliberately. Spec 2.2's listing shows
+## `[&"warrior"]` because it describes the END state; spec 14 step 1 says
+## "active_party still equal to PARTY_ORDER, nothing else changed", and the
+## party going solo is a behaviour change that belongs with spec 4.5.
+##
+## Note for whoever does spec 4.5: flipping this initialiser - and
+## new_profile()'s matching assignment - to `[&"warrior"]` is a FOURTH edit
+## that 4.5's text does not name. Switching only the three reads it does name
+## changes nothing, because all three would be reading a variable that still
+## equals PARTY_ORDER. The value flip is what makes the party solo.
+var active_party: Array[StringName] = PARTY_ORDER.duplicate()
+
+## [town] The quest being run, or null in town / outside a quest. Untyped
+## until QuestDef exists (a later pass); GameState.build_level() does not yet
+## branch on it.
+var quest = null
+
+## [town] Gold and scrap picked up during the CURRENT expedition. Inert until
+## the result modal reads them; kept at 0 here since nothing yet adds to
+## either mid-run.
+var expedition_gold: int = 0
+var expedition_scrap: int = 0
+
+## [town] Whether the free half-heal has been used since this expedition
+## started. Inert until the inn's recovery flow exists; declared now so
+## start_expedition() has something real to clear.
+var street_sleep_used: bool = false
+
+## [town] Inventory size at the moment the current expedition started, so a
+## failed quest can later tell "brought from town" apart from "found this
+## trip" without tagging every Item. Inert until the failure flow reads it.
+##
+## Underscored because nothing outside GameState should WRITE it; spec 8.5's
+## failure flow needs to READ it to pick which unequipped items to discard, so
+## the intended access path is a discard helper on GameState rather than a
+## reach-in from RunController. Spec 2.2's field listing omits this field
+## entirely - it appears only in 8.5's prose - which is why it is called out
+## here rather than left to be rediscovered.
+var _expedition_inventory_mark: int = 0
 
 var _stats_cache: Dictionary = {}   # StringName -> CombatantStats
 
@@ -404,28 +467,62 @@ func _build_whispering_wood_level() -> LevelDef:
 	lvl.encounters = [e0, e1, e2, e3, e4, e5]
 	return lvl
 
-func reset_run() -> void:
-	gold = Tuning.STARTING_GOLD
+## [town] A brand new profile - the thing a missing / unreadable save file
+## falls back to (spec 2.4). Resets everything PROFILE-scoped: currencies,
+## inventory, the active party, and hero HP to full. Memory only - the caller
+## persists the fallback (see "THIS FUNCTION DOES NOT SAVE" below).
+##
+## Step 2 (spec 14) replaced this function's step-1 placeholders: gold/scrap now
+## use spec 11's PROFILE_STARTING_GOLD / PROFILE_STARTING_SCRAP (a 75-gold
+## profile shipping forever was the failure mode). STARTING_GOLD (75) is
+## untouched and still means "gold the slot economy was balanced against"
+## (test_economy.gd:41).
+##
+## THIS FUNCTION DOES NOT SAVE, and that is deliberate (step-2 Q4). It is a
+## memory-only reset; whoever DECIDES a new profile is real - boot.tscn, on
+## load_profile() returning false (spec 3.1) - is what persists it.
+##
+## The reason is that this function is DESTRUCTIVE and reset_run() calls it
+## unconditionally, which RunController._start_run() calls on every boot and
+## retry. A save call here would mean every single launch overwrites the
+## player's file with a fresh 150-gold profile before anything has a chance to
+## load it. A new profile is fully deterministic, so re-deriving it after a
+## crash costs nothing - there is no state here worth persisting eagerly.
+## Spec 2.4's own "When to save" list never names this function.
+##
+## One step-1 placeholder remains, marked inline so it cannot ship silently:
+##   - active_party gets the full roster; spec 4.5 flips it to [&"warrior"].
+func new_profile() -> void:
+	gold = Tuning.PROFILE_STARTING_GOLD
+	scrap = Tuning.PROFILE_STARTING_SCRAP
 	inventory.clear()
+	active_party = PARTY_ORDER.duplicate()   # -> [&"warrior"] (spec 4.5)
+	street_sleep_used = false
+	_reset_hero_runtime(true)     # full heal - a new profile starts whole
+
+## [town] Everything an EXPEDITION owns, and nothing a profile owns. Will be
+## called from the mayor's office on quest accept (a later pass), which is
+## also when `q` starts being a real QuestDef instead of always null. For now
+## the only caller is reset_run() below, always with no argument.
+##
+## Deliberately does NOT touch gold, scrap or inventory - see reset_run()'s
+## comment for why that absence matters once this stops being called back to
+## back with new_profile() on every retry.
+func start_expedition(q = null) -> void:
+	quest = q
 	current_encounter_index = -1
+	# Must precede build_level() - _build_endless_level() reads it. Spec 2.3's
+	# listing omits this line; without it a retry regenerates at the depth the
+	# party died on, and test_endless_level_gen.gd:13 is what catches that.
 	endless_level_number = 1
-	level = build_level()
-
-	hero_runtime.clear()
-	for id: StringName in PARTY_ORDER:
-		var s := get_stats(id)
-		if s == null:
-			continue
-		hero_runtime.append({
-			"stats_id": id,
-			"current_hp": s.max_hp,
-			"max_hp": s.max_hp,
-			"alive": true,
-		})
-
-	Upgrades.reset()
-
+	expedition_gold = 0
+	expedition_scrap = 0
+	street_sleep_used = false
+	_expedition_inventory_mark = inventory.size()
 	drops_by_class.clear()
+	Upgrades.reset()
+	level = build_level()
+	_reset_hero_runtime(false)    # keep current HP - the inn is the heal
 
 	for key: String in run_stats.keys():
 		if key == "run_time":
@@ -434,3 +531,60 @@ func reset_run() -> void:
 			run_stats[key] = 0
 	EventBus.gold_changed.emit(gold, 0)
 	EventBus.party_bonuses_changed.emit(party_bonuses())
+
+## [town] Rebuilds hero_runtime from active_party, exactly as spec 2.3 words
+## it ("rebuilds hero_runtime from active_party, not PARTY_ORDER").
+##
+## Reading active_party here is a provable no-op today - the field is
+## initialised to PARTY_ORDER.duplicate() and nothing writes it - so it costs
+## no behaviour change and takes one site off spec 4.5's list of three. The
+## coupling 4.5 worries about (drops targeting a hero who is not on the field)
+## is created by active_party's VALUE changing, not by which name each site
+## reads, so moving this one read early decouples nothing.
+##
+## `full_heal` false preserves an existing entry's current_hp instead of
+## resetting it to max. That is what lets damage carry home once new_profile()
+## and start_expedition() stop being called back to back (spec 2.1: hero HP is
+## profile-scoped, the inn is the heal). `alive` is derived from the resulting
+## hp, never assumed true, so a hero who died stays dead until something heals
+## them - which is what spec 8.5's two recovery buttons are for.
+func _reset_hero_runtime(full_heal: bool) -> void:
+	var previous: Array = hero_runtime
+	hero_runtime = []
+	for id: StringName in active_party:
+		var s := get_stats(id)
+		if s == null:
+			continue
+		var hp: int = s.max_hp
+		if not full_heal:
+			for entry: Dictionary in previous:
+				if entry["stats_id"] == id:
+					hp = int(entry["current_hp"])
+					break
+		hero_runtime.append({
+			"stats_id": id,
+			"current_hp": hp,
+			"max_hp": s.max_hp,
+			"alive": hp > 0,
+		})
+
+## The endless-mode entry point: the one caller that wants BOTH halves.
+## RunController on boot and on retry, and test_endless_level_gen.gd directly,
+## all mean "reset absolutely everything, right now" - which is exactly the
+## two halves in sequence, so nothing observable changed at step 1. Gold,
+## scrap and inventory still reset on every retry, same as before the split.
+##
+## This is NOT a temporary shim, despite spec 2.3's "reset_run() is deleted".
+## Spec 13.3 requires test_endless_level_gen.gd to keep passing with NO edits
+## for the whole of this pass, and that test calls reset_run() directly; 13.3
+## also states endless mode survives intact, "only bypassed when quest !=
+## null". Deleting this function would force the test edit 13.3 forbids, so it
+## stays, permanently, as endless mode's way in.
+##
+## What DOES change later is that quest accept calls start_expedition() ALONE
+## (spec 8, via the mayor's office). That is the path on which gold, scrap and
+## inventory finally survive a retry, and it is the whole reason the two halves
+## are separate functions. Nothing on this line reaches that path.
+func reset_run() -> void:
+	new_profile()
+	start_expedition()

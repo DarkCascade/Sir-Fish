@@ -1,7 +1,13 @@
 class_name Item
 extends Resource
 
-enum Rarity { COMMON, UNCOMMON, MAGIC, RARE }
+## COMMON..RARE are the rolled rarities (Itemizer.RARITY_WEIGHTS). ENHANCED is
+## [town]: forge-only, never generated (its weight is 0), reached only by walking
+## an item up the full ladder (spec 10.1 / 10.2). Five index-addressed arrays
+## are keyed by this enum and must all carry an ENHANCED slot -
+## Item.rarity_name(), Tuning.RARITY_COLORS, and Itemizer's RARITY_WEIGHTS /
+## RARITY_MOD_COUNT / RARITY_VALUE_MULT.
+enum Rarity { COMMON, UNCOMMON, MAGIC, RARE, ENHANCED }
 enum Kind { WEAPON, POTION, RELIC }
 
 @export var display_name: String = ""         # generated, e.g. "Fat Knife"
@@ -15,6 +21,54 @@ enum Kind { WEAPON, POTION, RELIC }
 ## equip_item()) - a shared-usable_by() type still needs to say WHICH of its
 ## eligible classes actually holds it, not just that it is held.
 @export var equipped_by: StringName = &""
+
+## [town] How many times this item has been through the forge (spec 10.2, 10.4).
+## Not derivable: rarity alone cannot say whether a Rare was found or forged up
+## from Common. Part of the save format (spec 2.4). The forge that increments it
+## lands with spec 7.3 - declared now, at 0, so to_dict()/from_dict() can cover
+## the whole item this step (spec 14 step 2).
+@export var forge_count: int = 0
+
+## [town] A flat dictionary of primitives for the profile save (spec 2.4).
+## Explicit rather than ResourceSaver on the resource: a saved .tres embeds this
+## script's path, so moving item.gd a year from now would silently invalidate
+## every player's save. Covers exactly the @exported fields; usable_by(),
+## prices and (later) slot() are all recomputed on load, never stored.
+func to_dict() -> Dictionary:
+	var mods: Array[Dictionary] = []
+	for m: Dictionary in modifiers:
+		mods.append(m.duplicate(true))
+	return {
+		"display_name": display_name,
+		"kind": int(kind),
+		"rarity": int(rarity),
+		"weapon_type": weapon_type,
+		"modifiers": mods,
+		"value": value,
+		"equipped_by": equipped_by,
+		"forge_count": forge_count,
+	}
+
+## Rebuilds an Item from to_dict()'s output. `modifiers` is copied with
+## duplicate(true) so a loaded item never aliases the dictionary literals in
+## Itemizer.MODIFIERS (spec 2.4). Unknown / missing keys fall back to a fresh
+## Item's defaults rather than crashing - a partially-readable save is still
+## rejected wholesale by SaveGame.load_profile()'s version gate, so this only
+## has to be total, not strict.
+static func from_dict(data: Dictionary) -> Item:
+	var item := Item.new()
+	item.display_name = String(data.get("display_name", ""))
+	item.kind = int(data.get("kind", Kind.WEAPON)) as Kind
+	item.rarity = int(data.get("rarity", Rarity.COMMON)) as Rarity
+	item.weapon_type = StringName(data.get("weapon_type", &""))
+	var mods: Array[Dictionary] = []
+	for m: Dictionary in data.get("modifiers", []):
+		mods.append((m as Dictionary).duplicate(true))
+	item.modifiers = mods
+	item.value = int(data.get("value", 0))
+	item.equipped_by = StringName(data.get("equipped_by", &""))
+	item.forge_count = int(data.get("forge_count", 0))
+	return item
 
 func subtitle() -> String:
 	# "Magic Sword - Warrior". The class half is what makes an item legible as
@@ -52,7 +106,7 @@ func class_label() -> String:
 	return " / ".join(names)
 
 func rarity_name() -> String:
-	return ["Common", "Uncommon", "Magic", "Rare"][rarity]
+	return ["Common", "Uncommon", "Magic", "Rare", "Enhanced"][rarity]
 
 func type_name() -> String:
 	# Weapons read as their weapon type ("Sword"); the deferred kinds fall back

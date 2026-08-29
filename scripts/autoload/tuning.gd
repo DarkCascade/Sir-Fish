@@ -177,6 +177,15 @@ const SHOP_SELL_RATE := 0.5               # sell price = round(value x 0.5)
 const LOOT_ITEMS_PER_CHEST := 2
 const SHOP_ITEMS_FOR_SALE := 3
 
+# --- [town] Profile economy (spec 11) -------------------------------------------
+## Distinct from STARTING_GOLD (75), which stays exactly as it is: that number
+## is what spec 5.4's slot-economy arithmetic and test_economy.gd:41 are written
+## against, and it now means "gold the slot economy was balanced against" rather
+## than "gold a new player has". Conflating the two breaks a green test for
+## nothing. new_profile() (spec 2.3) uses THESE for the genuine no-save fallback.
+const PROFILE_STARTING_GOLD := 150
+const PROFILE_STARTING_SCRAP := 0
+
 # --- enemy drops --------------------------------------------------------------
 ## How strongly a class that is behind on drops is favoured by the next roll:
 ##   weight = 1 + DROP_CATCHUP * (leader_count - this_count)
@@ -631,11 +640,16 @@ const ENEMY_DEATH_HOLD_RUSH := 0.30       # corpse hold when the fight is alread
 const ENEMY_DEATH_FADE_RUSH := 0.45       # 0.30 + 0.45 = 0.75, inside ENCOUNTER_RESOLVE_PAUSE
 
 # --- 17.6 Rarity colours ----------------------------------------------------
+## Indexed by Item.Rarity - keep this the same length as Itemizer's three
+## rarity arrays (spec 10.1). Enhanced is [town]: a forge-hot red-orange, well
+## clear of Rare's gold and Magic's blue, so a forged item reads as its own
+## thing at a glance. item_glyph.gd picks this up for free via rarity_color().
 const RARITY_COLORS := [
 	Color("B8B2C4"),  # Common
 	Color("4CC38A"),  # Uncommon
 	Color("4A9BE8"),  # Magic
 	Color("F2C230"),  # Rare
+	Color("FF6B4A"),  # Enhanced [town] - forge-hot
 ]
 
 # --- 2.1 Screen budget (logical viewport pixels) ---------------------------
