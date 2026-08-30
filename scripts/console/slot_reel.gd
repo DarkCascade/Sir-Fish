@@ -33,6 +33,12 @@ var position_stops: float = 0.0
 var _spinning: bool = false
 ## Attract mode: the reel drifts upward continuously and never stops (spec 16.6).
 var _drifting: bool = false
+## Decelerating onto a stop: stop_at()'s tween is driving position_stops and
+## _layout() has to keep running to move the cells with it. Without this the reel
+## freezes on its last spinning frame the instant _spinning goes false, while
+## payline_symbol() already reports the target - the symbols on the payline stop
+## matching the win the machine evaluated and paid.
+var _stopping: bool = false
 var _cells: Array[SlotSymbol] = []
 var _stop_tween: Tween = null
 
@@ -86,16 +92,20 @@ func _process(delta: float) -> void:
 		_drift_layout_pending = not _drift_layout_pending
 		if _drift_layout_pending:
 			_layout()
+	elif _stopping:
+		# The deceleration tween owns position_stops; re-lay so the cells travel
+		# with it and settle showing the symbol payline_symbol() reports.
+		_layout()
 	else:
-		# Never reached in the current design (the reel is always either
-		# spinning or drifting - see start_drift()'s doc), but cheap insurance
-		# against a future state that leaves both false.
+		# The reel is fully stopped between a stop and the next spin (combat) or
+		# was left in neither state. Nothing to relay; idle until start_*().
 		set_process(false)
 
 func start_spin() -> void:
 	set_process(true)
 	if _stop_tween != null and _stop_tween.is_valid():
 		_stop_tween.kill()
+	_stopping = false
 	_drifting = false
 	_spinning = true
 
@@ -106,6 +116,7 @@ func start_drift() -> void:
 	set_process(true)
 	if _stop_tween != null and _stop_tween.is_valid():
 		_stop_tween.kill()
+	_stopping = false
 	_spinning = false
 	_drifting = true
 	_drift_layout_pending = true
@@ -118,6 +129,8 @@ func stop_drift() -> void:
 func stop_at(target_stop: int, duration: float = 0.18) -> void:
 	_spinning = false
 	_drifting = false
+	_stopping = true
+	set_process(true)   # _process()'s _stopping branch drives the cells now
 	var current := position_stops
 	# Always approach from below so the reel keeps scrolling in one direction.
 	var target := float(target_stop)
@@ -127,7 +140,9 @@ func stop_at(target_stop: int, duration: float = 0.18) -> void:
 	_stop_tween.tween_property(self, "position_stops", target, duration) \
 		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	_stop_tween.tween_callback(func() -> void:
-		position_stops = fposmod(position_stops, float(Tuning.SLOT_REEL_STOPS)))
+		position_stops = fposmod(position_stops, float(Tuning.SLOT_REEL_STOPS))
+		_stopping = false
+		_layout())   # exact settled frame, after the wrap
 
 func payline_symbol() -> int:
 	var index := int(floor(position_stops)) % Tuning.SLOT_REEL_STOPS

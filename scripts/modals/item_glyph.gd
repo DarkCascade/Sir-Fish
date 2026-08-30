@@ -67,78 +67,14 @@ func _draw() -> void:
 		var half: float = r * 0.94 * 0.7071
 		draw_texture_rect(WEAPON_TEXTURES[weapon_type], Rect2(c - Vector2.ONE * half, Vector2.ONE * half * 2.0), false)
 	else:
-		var g: float = r * 0.62   # glyph half-extent
-		match weapon_type:
-			&"sword":
-				_draw_blade(c, g, 1.0)
-			&"dagger":
-				_draw_blade(c, g, 0.62)
-			&"axe":
-				_draw_axe(c, g)
-			&"bow":
-				_draw_bow(c, g)
-			&"staff":
-				_draw_staff(c, g)
-			_:
-				_draw_gem(c, g)
+		# Step 11 gave every one of ITEM_TYPES' eleven keys a Meshy texture above,
+		# so this arm is now reached only for weapon_type == &"" (a bare
+		# Item.new(), which test_item_distribution.gd's element-tie probe still
+		# constructs). The per-type procedural weapon builders that used to live
+		# here are gone with their callers (D3); the gem is the one survivor.
+		_draw_gem(c, r * 0.62)
 
 	draw_arc(c, r * 0.94, 0.0, TAU, 40, ring_color, r * 0.09, true)
-
-func _draw_blade(c: Vector2, g: float, blade_frac: float) -> void:
-	var blade_len := g * 1.7 * blade_frac
-	var blade_w := g * 0.26
-	var tip := c + Vector2(0, -blade_len)
-	var pts := PackedVector2Array([
-		tip,
-		c + Vector2(blade_w, -blade_len * 0.15),
-		c + Vector2(blade_w, blade_len * 0.15),
-		c + Vector2(-blade_w, blade_len * 0.15),
-		c + Vector2(-blade_w, -blade_len * 0.15),
-	])
-	draw_colored_polygon(pts, C_GLYPH)
-	# crossguard
-	draw_rect(Rect2(c + Vector2(-g * 0.85, blade_len * 0.12), Vector2(g * 1.7, g * 0.16)), C_GLYPH)
-	# handle + pommel
-	draw_rect(Rect2(c + Vector2(-blade_w * 0.5, blade_len * 0.28), Vector2(blade_w, g * 0.62)), C_GLYPH)
-	draw_circle(c + Vector2(0, blade_len * 0.28 + g * 0.62), g * 0.16, C_GLYPH)
-
-func _draw_axe(c: Vector2, g: float) -> void:
-	var haft_top := c + Vector2(0, -g * 1.15)
-	var haft_bot := c + Vector2(0, g * 1.15)
-	draw_line(haft_top, haft_bot, C_GLYPH, g * 0.16, true)
-	# Head: a rounded fan/wedge sweeping out from a point near the haft - a
-	# filled pie-slice reads unmistakably as a curved axe blade at icon size;
-	# a thin crescent (two arcs) tried first collapsed into a flag/pennant
-	# shape once scaled down this small.
-	var apex := c + Vector2(-g * 0.05, -g * 0.35)
-	var outer_r := g * 1.35
-	var a_from := deg_to_rad(-95.0)
-	var a_to := deg_to_rad(75.0)
-	var steps := 14
-	var pts := PackedVector2Array([apex])
-	for i: int in range(steps + 1):
-		var a: float = lerpf(a_from, a_to, float(i) / float(steps))
-		pts.append(apex + Vector2(cos(a), sin(a)) * outer_r)
-	draw_colored_polygon(pts, C_GLYPH)
-
-func _draw_bow(c: Vector2, g: float) -> void:
-	var rect := Rect2(c - Vector2(g * 0.9, g * 1.15), Vector2(g * 1.8, g * 2.3))
-	draw_arc(rect.position + rect.size * 0.5, g * 1.15, -PI * 0.42, PI * 0.42, 24, C_GLYPH, g * 0.16, true)
-	var top := c + Vector2(g * 0.78, -g * 0.98)
-	var bot := c + Vector2(g * 0.78, g * 0.98)
-	draw_line(top, bot, C_GLYPH, g * 0.06, true)
-	# nocked arrow
-	draw_line(c + Vector2(-g * 1.1, 0), c + Vector2(g * 0.78, 0), C_GLYPH, g * 0.07, true)
-	draw_colored_polygon(PackedVector2Array([
-		c + Vector2(-g * 1.1, -g * 0.16),
-		c + Vector2(-g * 1.45, 0),
-		c + Vector2(-g * 1.1, g * 0.16),
-	]), C_GLYPH)
-
-func _draw_staff(c: Vector2, g: float) -> void:
-	draw_line(c + Vector2(0, -g * 0.55), c + Vector2(0, g * 1.15), C_GLYPH, g * 0.15, true)
-	draw_circle(c + Vector2(0, -g * 0.85), g * 0.42, C_GLYPH)
-	draw_circle(c + Vector2(0, -g * 0.85), g * 0.20, Color(1, 1, 1, 0.85))
 
 func _draw_gem(c: Vector2, g: float) -> void:
 	draw_colored_polygon(PackedVector2Array([

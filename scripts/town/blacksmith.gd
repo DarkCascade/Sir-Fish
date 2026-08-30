@@ -45,9 +45,12 @@ func _ready() -> void:
 	EventBus.scrap_changed.connect(_on_currency_changed)
 
 	# spec 7.4: first visit generates the stock and persists it; every visit after
-	# reads the cached copy. new_profile() clears it, so a fresh profile lands here.
-	if GameState.forge_stock.is_empty():
+	# reads the cached copy. new_profile() clears the flag, so a fresh profile
+	# lands here. The flag (not forge_stock.is_empty()) is the sentinel - buying
+	# out all six cards must not read as "never generated" (A1).
+	if GameState.needs_forge_restock():
 		GameState.forge_stock = Itemizer.generate_forge_stock()
+		GameState.forge_stock_generated = true
 		SaveGame.save_profile()
 
 	_build_forge()
@@ -151,6 +154,7 @@ func _on_refresh() -> void:
 	if not GameState.spend_gold(Tuning.SHOP_REFRESH_COST):
 		return
 	GameState.forge_stock = Itemizer.generate_forge_stock()
+	GameState.forge_stock_generated = true   # harmless when already true (A1)
 	SaveGame.save_profile()
 	_build_buy()
 

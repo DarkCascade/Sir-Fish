@@ -168,6 +168,12 @@ func forge(item: Item) -> bool:
 	item.forge_count += 1
 	item.value += int(cost[1])             # spec 10.5 - the gold half only
 	GameState.run_stats["items_forged"] = int(GameState.run_stats["items_forged"]) + 1
+	# A2: forge() mutates an equipped item's modifier set (the Forge tab lists
+	# equipped_set() and nothing else), so it must announce the change like every
+	# other equipped-set mutation - or the inventory modal's BonusStrip keeps the
+	# pre-forge numbers for the session (spec 1.5, 3.3). Unconditional: a
+	# recompute on an unequipped item is a cheap no-op.
+	EventBus.party_bonuses_changed.emit(GameState.party_bonuses())
 	EventBus.item_forged.emit(item, item.rarity)
 	return true
 
@@ -309,15 +315,18 @@ func _generate_in_bucket(bucket: Array) -> Item:
 ## generate_shop_stock()'s shape (always SHOP_ITEMS_FOR_SALE items, a fixed
 ## bucket spread) and this stock has different guarantees. ENHANCED never appears
 ## here - it is forge-only (weight 0, spec 10.1). The result count is
-## Tuning.FORGE_SHOP_SLOTS (2 per bucket x 3 buckets).
+## Tuning.FORGE_SHOP_SLOTS, drawn evenly across three buckets - so the constant
+## must stay a multiple of three (B2).
 func generate_forge_stock() -> Array[Item]:
 	var stock: Array[Item] = []
+	@warning_ignore("integer_division")
+	var per_bucket: int = Tuning.FORGE_SHOP_SLOTS / 3
 	for bucket: Array in [
 		[Item.Rarity.COMMON,   Item.Rarity.UNCOMMON],   # cheap
 		[Item.Rarity.UNCOMMON, Item.Rarity.MAGIC],      # average
 		[Item.Rarity.MAGIC,    Item.Rarity.RARE],       # dear
 	]:
-		stock.append(_generate_in_bucket(bucket))
-		stock.append(_generate_in_bucket(bucket))
+		for _i: int in range(per_bucket):
+			stock.append(_generate_in_bucket(bucket))
 	stock.shuffle()
 	return stock

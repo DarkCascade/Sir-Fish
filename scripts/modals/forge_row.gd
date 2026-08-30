@@ -13,9 +13,6 @@ extends PanelContainer
 signal forge_pressed(item: Item)
 
 const ItemCardStyle := preload("res://scripts/ui/item_card_style.gd")
-## Mirrors Item.rarity_name()'s inline array; indexed here by rarity + 1 to name
-## the step's DESTINATION.
-const RARITY_NAMES := ["Common", "Uncommon", "Magic", "Rare", "Enhanced"]
 
 var item: Item = null
 
@@ -63,7 +60,7 @@ func refresh_affordability() -> void:
 	var cost: Array = Tuning.FORGE_COSTS[item.rarity]
 	var need_scrap := int(cost[0])
 	var need_gold := int(cost[1])
-	var to_name: String = RARITY_NAMES[item.rarity + 1]
+	var to_name: String = Item.rarity_name_for(item.rarity + 1)
 	var short_scrap: int = maxi(0, need_scrap - GameState.scrap)
 	var short_gold: int = maxi(0, need_gold - GameState.gold)
 	if short_scrap == 0 and short_gold == 0:

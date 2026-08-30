@@ -191,10 +191,11 @@ const SHOP_ITEMS_FOR_SALE := 3
 const PROFILE_STARTING_GOLD := 150
 const PROFILE_STARTING_SCRAP := 0
 
-## [town] The blacksmith's shop (spec 7.4). Its stock is six cards - two cheap,
-## two average, two dear - rerolled only by the refresh button, which spends
-## SHOP_REFRESH_COST gold. FORGE_SHOP_SLOTS is the card count; generate_forge_stock()
-## fills it two-per-bucket across three buckets.
+## [town] The blacksmith's shop (spec 7.4). Its stock is FORGE_SHOP_SLOTS cards -
+## a cheap third, an average third, a dear third - rerolled only by the refresh
+## button, which spends SHOP_REFRESH_COST gold. generate_forge_stock() draws
+## FORGE_SHOP_SLOTS / 3 from each of its three buckets, so this must stay a
+## multiple of three (B2).
 const SHOP_REFRESH_COST := 100
 const FORGE_SHOP_SLOTS := 6
 

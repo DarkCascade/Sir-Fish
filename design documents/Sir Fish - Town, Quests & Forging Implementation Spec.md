@@ -779,6 +779,15 @@ stay open — keeps the button useful without making it an exploit. This is a
 one-line policy and is called out here so a future reader knows it was a
 choice, not an oversight.
 
+**Position.** `CurrencyPlate` sits top-right, `InventoryButton` top-left, both
+with bare `offset_*` and no anchors — positioned for the one portrait viewport
+width the game runs at, which is acceptable (Acceptance Testing Spec E1). Step
+5's plate landed on top of the screen-corner `BonusPanel` (console furniture,
+§0.2), which was anchored top-right at roughly `y 16–46`; the `Hud` layer wins,
+so the plate hid it. Resolved by moving `BonusPanel` down to
+`offset_top = 130` / `offset_bottom = 160`, clear of the plate — confirmed, and
+recorded here and in §14 step 5's changeset.
+
 **At step 5 the chrome ships ahead of what it opens.** `InventoryModal` is §6,
 so `InventoryButton` ships visible and `disabled = true`, carrying a one-line
 `# step 6 (§6): pressed -> Hud.inventory_modal.open()`. Implement the
@@ -2208,7 +2217,10 @@ anything.
   a future well-meaning "let's recompute value properly" edit.
 
 Shipped at 35 checks. `run_stats["items_forged"]` incrementing per forge is
-folded into the ladder block.
+folded into the ladder block. The acceptance pass (Acceptance Testing Spec A2)
+adds three more (38 total): `forge()` emits `EventBus.party_bonuses_changed`
+exactly once, and the forged modifier is then in `party_bonuses()` — the emit
+every other equipped-set mutation already made and this one did not.
 
 **`tests/test_loot_pickup.gd`** — added at **step 9** alongside `test_forge.gd`.
 §9's arc is a tween that needs a running battle to watch, but the arithmetic
@@ -2306,6 +2318,30 @@ totality check needs no `.values()` dance.
 
 Anything here that touches `user://profile.save` goes through
 `test_support.gd`'s `guard_user_file()`, the same as `test_profile_save.gd`.
+
+**`tests/test_forge_stock.gd`** — added by the acceptance pass (Acceptance
+Testing Spec C1), the permanent step-10 test the initiative shipped without.
+`generate_forge_stock()`'s shape, `forge_stock`'s persistence and the restock
+predicate are all pure headless invariants, and A1 (buying out the stock is a
+free refresh) and B2 (`FORGE_SHOP_SLOTS` was documented-only) would both have
+been caught here. House style; wrapped in `guard_user_file(SaveGame.PATH)`.
+
+- `generate_forge_stock().size() == Tuning.FORGE_SHOP_SLOTS`, and over ~400
+  stocks: no `ENHANCED` (forge-only, §7.4), every rarity `COMMON`..`RARE`
+  appears, every `slot()` is one of the three, every item `usable_by()` the
+  active party (slot-first, §4.4);
+- `generate_shop_stock()` still returns `SHOP_ITEMS_FOR_SALE` and the two
+  generators stay distinct (§7.4's "a new generator function, not a parameter");
+- **the restock predicate (A1)**: `needs_forge_restock()` is `true` after
+  `new_profile()`, `false` after a generation sets `forge_stock_generated`,
+  **still `false` once `forge_stock` is emptied item by item** — the A1
+  regression guard — and `false` after a reroll;
+- `forge_stock` round-trips field-for-field through `save_profile()` /
+  `load_profile()`; `forge_stock_generated` round-trips; a save dict with **no**
+  `forge_stock_generated` key loads with the derived default
+  (`not forge_stock.is_empty()`), not a bare `false`.
+
+Shipped at 15 checks.
 
 **Step 6 adds nothing to this list, deliberately** (step-6 Q7). Everything the
 inventory modal stands on is already pinned — `equip_item()`,
@@ -2557,6 +2593,16 @@ previous is green.
      wired, §3.2), `CurrencyPlate`, `ModalLayer` (`PROCESS_MODE_ALWAYS`) hosting
      `QuestResult`, and `Transition` last and inert. A `quest_result` accessor,
      because §8.5 reaches it by name.
+     - *Amendment (Acceptance Testing Spec E1):* `CurrencyPlate` was placed
+       top-right on top of the screen-corner `BonusPanel`, and the `Hud` layer
+       hid it. `scenes/overlay/bonus_panel.tscn` is moved down to
+       `offset_top = 130` / `offset_bottom = 160` to clear it. `CurrencyPlate`'s
+       bare-offset, single-viewport-width positioning is accepted as-is. See
+       §3.2's **Position** note.
+     - *Amendment (Acceptance Testing Spec B1, folded from step 11):*
+       `CurrencyPlate` gains an `OrnateFrame` child (reused `ornate_frame.gd`,
+       inspector props only) plus a `StyleBoxEmpty` panel override, so it wears
+       §5.3's carved-frame treatment like `status_panel`'s `GoldPlate`.
    - `scripts/hud/currency_plate.gd` — new. Reads `GameState.gold` / `scrap`
      directly for its first paint, then trusts `gold_changed` / `scrap_changed`.
      The scrap half stays silent until step 9 gives it a source.
@@ -2843,11 +2889,112 @@ previous is green.
    already bound `scrap_changed`; step 9 only gave it a faucet. And the forge
    itself has no screen yet: `forge()` exists and is tested, but the only way to
    reach it before step 10's blacksmith is the `forge` debug verb.
-10. **§7.3, §7.4 — the blacksmith**, forge and expanded shop.
-11. **§12 — art**: Meshy icons and the two backgrounds.
+10. **§7.3, §7.4 — the blacksmith**, forge and expanded shop. **Done** (commit
+    `6b46877`, jointly with step 11). The blacksmith is a routed town scene with
+    a two-tab `TabContainer` mirroring the shop: **Forge** lists
+    `equipped_set()` — the field leader's three slots, an empty-slot placeholder
+    row where a slot is unfilled — each row walking its item one rarity step via
+    `Itemizer.forge()`, every forge saving the profile and flashing the new
+    modifier line; **Buy** shows `FORGE_SHOP_SLOTS` cards from
+    `Itemizer.generate_forge_stock()`, cached on `GameState.forge_stock`,
+    rerolled only by the refresh button (`SHOP_REFRESH_COST` gold). No Sell tab
+    (§6.4). Changeset:
+
+    - `scenes/town/blacksmith.tscn` + `scripts/town/blacksmith.gd` — new. Two
+      tabs, `_build_forge()` / `_build_buy()`, empty-slot placeholder rows,
+      cached `forge_stock`, refresh button with its affordability gate, Back /
+      `ui_cancel` → `TOWN`, `_ready()` re-asserts `SceneRouter.place =
+      Place.BLACKSMITH` (§3.1).
+    - `scenes/modals/forge_row.tscn` + `scripts/modals/forge_row.gd` — new. The
+      shared rarity-tinted card (`ItemCardStyle`) plus a single FORGE button
+      that names the destination rarity and spells out any shortfall; a static
+      "Fully forged" plate at `ENHANCED`; `flash_new_modifier()` for §7.3's
+      rarity-coloured flash.
+    - `scripts/autoload/itemizer.gd` — `generate_forge_stock()` /
+      `_generate_in_bucket()` reuse: two cards per bucket across three buckets
+      (cheap / average / dear), `ENHANCED` never present (weight 0). A **new**
+      generator, deliberately not a parameter on `generate_shop_stock()`, whose
+      shape `test_economy.gd` pins (§7.4).
+    - `scripts/autoload/game_state.gd` — `forge_stock: Array[Item]`,
+      profile-scoped, cleared by `new_profile()`.
+    - `scripts/autoload/save_game.gd` — the `forge_stock` key, **with the
+      deliberate no-`VERSION`-bump reasoning at `save_game.gd:49-51`** (§2.4:
+      bump on a meaning change, never merely to add a key).
+    - `scripts/autoload/tuning.gd` — `SHOP_REFRESH_COST := 100`,
+      `FORGE_SHOP_SLOTS := 6`.
+    - `scripts/autoload/scene_router.gd`, `scripts/town/town.gd`,
+      `scripts/autoload/debug.gd` — `blacksmith.tscn` now exists, so `route`'s
+      missing-path bail no longer covers it; comments updated.
+    - `tests/test_scene_router.gd` — the BLACKSMITH existence check widened in
+      (§13.1 / §3.1), so all five `PATHS` scenes are now asserted present.
+
+    **What step 10 accepts, deliberately:** the acceptance pass (Acceptance
+    Testing Spec) found two real bugs this changeset shipped — **A1**, buying out
+    all six cards read as "never generated" and gave a free reroll (fixed with
+    `GameState.forge_stock_generated` + `needs_forge_restock()`); and **A2**,
+    `forge()` never emitted `party_bonuses_changed`, so a forge at the
+    blacksmith left the inventory modal's BonusStrip stale for the session.
+    `FORGE_SHOP_SLOTS` was also documented-only (**B2**) — the generator now
+    derives its per-bucket draw as `FORGE_SHOP_SLOTS / 3`. All three are fixed
+    and pinned by `tests/test_forge_stock.gd` and `test_forge.gd`'s new checks.
+
+11. **§12 — art**: Meshy icons and the two backgrounds. **Done** (commit
+    `6b46877`, jointly with step 10). Changeset:
+
+    - `assets/icons/weapon_{helm,mail,shield,ring,amulet,idol}.png` — the six
+      armor / trinket glyphs, same matte-clay-on-teal style as the five weapon
+      icons; `scripts/modals/item_glyph.gd`'s `WEAPON_TEXTURES` gains an entry
+      for each, so `WEAPON_TEXTURES` now covers **all eleven** `ITEM_TYPES` keys.
+    - `assets/icons/ui_backpack.png` — the inventory button's icon;
+      `scenes/hud/hud.tscn`'s `InventoryButton` wears it (`expand_icon`).
+    - `assets/blacksmith-bg.png` — the forge background + darkening `Vignette`
+      scrim, authored in `blacksmith.tscn`.
+    - `assets/mayor-bg.png` — `mayor_office.tscn`'s placeholder background
+      swapped for the real art (§8 step 8's Q4 deferral, resolved here).
+    - `scripts/battle/battle_vfx.gd`, `scripts/battle/overworld_field.gd` —
+      **rode along**, not step 11 work: a `BattleVfx._acquire()` fix for pooled
+      effect nodes freed with the previous quest's scene across a
+      `SceneRouter` swap (`_pool_free` is static and kept dangling refs). An
+      independent bug fix that should not have been committed under a
+      town/art-pass message.
+
+    **What step 11 accepts, deliberately:** with `WEAPON_TEXTURES` now total,
+    `item_glyph.gd`'s per-type procedural weapon builders (`_draw_blade`,
+    `_draw_axe`, `_draw_bow`, `_draw_staff`) became **unreachable** — the
+    acceptance pass (**D3**) removed them, keeping only the `_draw_gem` fallback
+    for a bare `Item.new()` (`weapon_type == &""`). `_draw_axe` in particular is
+    CLAUDE.md's cautionary tale for hand-written coordinate geometry; it is gone.
+    The HUD's `CurrencyPlate` also shipped without the `OrnateFrame` treatment
+    §5.3 asks for (**B1**) — added by the acceptance pass, reusing
+    `ornate_frame.gd` in `hud.tscn`.
 
 Steps 1–4 are all invisible to the player and all individually testable. Step 8
 is the one worth demoing.
+
+### 14.1 Completion criterion
+
+The town initiative is finished when:
+
+- **The green bar holds.** All 19 test scenes `RESULT PASS` via the Acceptance
+  Testing Spec §0.4 command (the original 18 plus `test_forge_stock`), §13.3's
+  eight no-edit tests are unedited, and a `--headless --quit-after 120` boot of
+  `boot.tscn` prints nothing but the engine banner.
+- **The loop closes end to end**, driven in one runtime pass: boot → town →
+  mayor → accept easy → forest → victory → mayor's office with `QuestResult` up
+  → "Retire for the evening" → inn → rest → town → blacksmith → forge a slot →
+  open the inventory modal and see the new bonus totals.
+- **The acceptance pass is discharged.** Every A/B/C/D finding in the Acceptance
+  Testing Spec is fixed or has an amendment here; every **E-series** finding is
+  resolved: **E1** (the `CurrencyPlate` / `BonusPanel` collision) is recorded in
+  §3.2's **Position** note and §14 step 5's changeset — the 130px `BonusPanel`
+  move is confirmed and the plate's single-viewport positioning accepted;
+  **E2** (abandoning a quest), **E3** (selling items in town, via a future
+  blacksmith Sell tab) and **E4** (an economy-balancing pass verifying §11.1)
+  are recorded in §15 as deferred.
+
+The Acceptance Testing Spec is the step-10/11 questions pass, run late (there is
+no separate `Town Spec - Step 10 Questions.md` / `Step 11`); its A/B/C/D answers
+are folded back into §13 and §14 here, exactly as steps 1–8 folded theirs.
 
 ---
 
@@ -2901,3 +3048,32 @@ Recorded so they are decisions rather than omissions.
   and the slot payouts were balanced for a 75-gold single run; a player who
   walks into a quest with 900 banked gold is in a different economy. Worth a
   pass once the loop is playable and there are real numbers to look at.
+- **Abandoning a quest.** (Acceptance Testing Spec E2.) In `Place.QUEST` the HUD
+  carries the inventory button and nothing else — no Back button, no `ui_cancel`
+  handler — so the forest's only exits are victory (§8.5) and a party wipe. That
+  is deliberate for this pass: a free walk-out would let a player bank an
+  expedition's pickups and skip the boss, the exact arbitrage §8.5's discard
+  rule exists to prevent. A future abandon mechanic wants to carry §8.5's
+  failure cost (keep gold and scrap, lose loose items) or a stiffer one, and a
+  confirm step, so leaving is a real decision rather than a risk-free reset.
+- **Selling items at the blacksmith.** (Acceptance Testing Spec E3.) Selling
+  today exists only at a quest's shop encounter, so a player back from a hard
+  quest with nine unequipped items can neither sell nor scrap them in town, and
+  the Carried section grows monotonically for the life of a profile (§5.1 bars
+  the junk-to-scrap route outright). §6.4's "an always-available sell button in
+  a modal reachable mid-expedition is a gold faucet" argument does **not** apply
+  in town, where no expedition is running — so the future home for a town sell
+  action is a blacksmith **Sell** tab (which contradicts `blacksmith.gd`'s
+  current header, "selling stays at the quest shop where a merchant is
+  standing"; that header changes when this lands). Wants deciding alongside the
+  slot-economy repricing bullet above and E4's economy pass.
+- **An economy-balancing pass.** (Acceptance Testing Spec E4.) §11.1's
+  loop-closes arithmetic — ~+198 gold / +32 scrap per easy quest, ~+676 / +84
+  per hard, against 189 scrap / 750 gold for a full three-slot forge, "roughly
+  six runs" easy and "two or three" hard — was never checked against the
+  shipped, tunable numbers (`ENEMY_GOLD_DROP`, `ENEMY_SCRAP_DROP`,
+  `BOSS_LOOT_MULT`, the three `gold_reward`s, `INN_REST_COST_PER_HERO`,
+  `FORGE_COSTS`). §11.1 is explicitly starting numbers. The pass wants a
+  headless economy-projection check (simulate N easy and N hard quests through
+  the real drop rolls, assert the per-quest gold/scrap yield lands within a band
+  of §11.1's figures) plus a playtest, run once the loop has been exercised.

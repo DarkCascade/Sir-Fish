@@ -30,6 +30,10 @@ func _ready() -> void:
 	# would leave it defaulting to TOWN and drive Hud's InventoryButton rule off
 	# a lie.
 	SceneRouter.place = SceneRouter.Place.QUEST
+	# D1: hand Hud a direct reference so _combat_locked() stops running a
+	# recursive whole-tree find_child() every frame. Hud drops it when `place`
+	# leaves QUEST and guards it with is_instance_valid() (go() frees this node).
+	Hud.register_run_controller(self)
 
 	var main := get_parent()
 	world = main.get_node("BattleView/BattleViewport/BattleWorld")

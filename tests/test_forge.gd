@@ -27,6 +27,7 @@ func _ready() -> void:
 	_test_insufficient_currency()
 	_test_enhanced_marker_and_rolls()
 	_test_arbitrage_gate()
+	_test_emits_party_bonuses_changed()
 
 	GameState.gold = saved_gold
 	GameState.scrap = saved_scrap
@@ -189,3 +190,27 @@ func _test_arbitrage_gate() -> void:
 	_t.check(profitable == 0,
 		"buy -> forge to ENHANCED -> sell never returns more gold than spent (%d/1000, worst recovered %.2fx spent)"
 			% [profitable, worst_ratio])
+
+# --- the party_bonuses_changed emit (spec 1.5 / 3.3, A2) --------------------
+
+func _test_emits_party_bonuses_changed() -> void:
+	_be_rich()
+	var item := _fresh_common()
+	item.weapon_type = &"axe"
+	GameState.inventory.append(item)
+	GameState.equip_item(item, &"warrior")
+
+	var fired := [0]
+	var counter := func(_b: Dictionary) -> void: fired[0] += 1
+	EventBus.party_bonuses_changed.connect(counter)
+	var before: int = int(GameState.party_bonuses()["dmg_flat"]) \
+		+ int(GameState.party_bonuses()["dmg_pct"])
+	var ok := Itemizer.forge(item)
+	EventBus.party_bonuses_changed.disconnect(counter)
+
+	_t.check(ok, "the forge under test succeeds")
+	_t.check(fired[0] == 1, "forge() emits party_bonuses_changed exactly once (fired %d)" % fired[0])
+	_t.check(int(GameState.party_bonuses()["dmg_flat"]) + int(GameState.party_bonuses()["dmg_pct"]) >= before,
+		"the forged modifier is now in party_bonuses()")
+
+	GameState.inventory.erase(item)

@@ -61,8 +61,10 @@ func go(to: Place) -> void:
 	await get_tree().tree_changed        # the swap is deferred to frame end
 	await get_tree().process_frame       # let the incoming scene's _ready() settle
 
-	# Set before the fade-out so the new scene's _ready() reads the right value
-	# (spec 3.2's InventoryButton COMBAT rule depends on it - step-5 Q8).
+	# Assigned after the swap settles - so it TRAILS the incoming scene's _ready()
+	# (which is why every routed scene re-asserts its own place in _ready(),
+	# step-5 Q8) - but still before the fade-out finishes, so `place` is correct
+	# by the time the screen is visible again.
 	place = to
 
 	var fade_out := create_tween()

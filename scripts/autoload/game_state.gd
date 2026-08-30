@@ -120,6 +120,13 @@ var _expedition_inventory_mark: int = 0
 ## quest shop follows via EncounterDef.cached_shop_items. Cleared by new_profile().
 var forge_stock: Array[Item] = []
 
+## [town] Whether forge_stock has ever been generated for this profile. Distinct
+## from forge_stock.is_empty(), which is ALSO true once the player has bought
+## every card - and using emptiness as the sentinel makes buying out the stock a
+## free refresh, which is exactly what spec 7.4 forbids. Cleared by new_profile();
+## set by the blacksmith's first generation and by every reroll.
+var forge_stock_generated: bool = false
+
 var _stats_cache: Dictionary = {}   # StringName -> CombatantStats
 
 func _ready() -> void:
@@ -590,6 +597,15 @@ func _build_whispering_wood_level() -> LevelDef:
 	lvl.encounters = [e0, e1, e2, e3, e4, e5]
 	return lvl
 
+## [town] Whether the blacksmith should generate Buy-tab stock on entry (spec
+## 7.4). The ONLY caller is blacksmith.gd's _ready(); it lives here rather than in
+## the scene so it is reachable headless (see tests/test_forge_stock.gd). Not
+## derivable from forge_stock.is_empty() - that is also true once every card has
+## been bought, and treating "sold out" as "never generated" turns leaving the
+## screen into a free refresh (spec 7.4).
+func needs_forge_restock() -> bool:
+	return not forge_stock_generated
+
 ## [town] A brand new profile - the thing a missing / unreadable save file
 ## falls back to (spec 2.4). Resets everything PROFILE-scoped: currencies,
 ## inventory, the active party, and hero HP to full. Memory only - the caller
@@ -621,6 +637,7 @@ func new_profile() -> void:
 	scrap = Tuning.PROFILE_STARTING_SCRAP
 	inventory.clear()
 	forge_stock.clear()          # the blacksmith regenerates on first visit (spec 7.4)
+	forge_stock_generated = false
 	active_party = [&"warrior"] as Array[StringName]
 	street_sleep_used = false
 	_reset_hero_runtime(true)     # full heal - a new profile starts whole

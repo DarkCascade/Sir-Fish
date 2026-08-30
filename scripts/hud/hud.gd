@@ -20,6 +20,15 @@ extends CanvasLayer
 @onready var quest_result = $ModalLayer/QuestResult
 @onready var transition: ColorRect = $Transition
 
+## The running quest's RunController, registered from its own _ready() rather
+## than found by a recursive whole-tree search every frame (D1). SceneRouter.go()
+## frees main.tscn and the RunController in it (step-8 N2), so _combat_locked()
+## guards this with is_instance_valid() and drops it when `place` leaves QUEST.
+var _run_controller: Node = null
+
+func register_run_controller(rc: Node) -> void:
+	_run_controller = rc
+
 func _ready() -> void:
 	# spec 6 / step-5 Q9: the one line step 5 deliberately left out. Everything
 	# about when the button is USABLE was already wired at step 5 (see _process).
@@ -38,6 +47,8 @@ func _process(_delta: float) -> void:
 ## RunController.state.
 func _combat_locked() -> bool:
 	if SceneRouter.place != SceneRouter.Place.QUEST:
+		_run_controller = null
 		return false
-	var rc := get_tree().root.find_child("RunController", true, false)
-	return rc != null and int(rc.state) == rc.RunState.COMBAT
+	if not is_instance_valid(_run_controller):
+		return false
+	return int(_run_controller.state) == _run_controller.RunState.COMBAT

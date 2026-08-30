@@ -1,10 +1,13 @@
-[gd_scene load_steps=6 format=3 uid="uid://b0hudsirfish05"]
+[gd_scene load_steps=8 format=3 uid="uid://b0hudsirfish05"]
 
 [ext_resource type="Script" path="res://scripts/hud/hud.gd" id="1_hud"]
 [ext_resource type="Script" path="res://scripts/hud/currency_plate.gd" id="2_plate"]
 [ext_resource type="PackedScene" path="res://scenes/modals/quest_result.tscn" id="3_qr"]
 [ext_resource type="PackedScene" path="res://scenes/modals/inventory_modal.tscn" id="4_inv"]
 [ext_resource type="Texture2D" path="res://assets/icons/ui_backpack.png" id="5_bag"]
+[ext_resource type="Script" path="res://scripts/console/ornate_frame.gd" id="6_frame"]
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_plate"]
 
 [node name="Hud" type="CanvasLayer"]
 layer = 10
@@ -26,7 +29,16 @@ offset_top = 24.0
 offset_right = 1056.0
 offset_bottom = 110.0
 mouse_filter = 2
+theme_override_styles/panel = SubResource("StyleBoxEmpty_plate")
 script = ExtResource("2_plate")
+
+[node name="Frame" type="Control" parent="CurrencyPlate"]
+layout_mode = 2
+mouse_filter = 2
+script = ExtResource("6_frame")
+border = 12.0
+corner_radius = 14.0
+edge_diamonds = false
 
 [node name="Row" type="HBoxContainer" parent="CurrencyPlate"]
 layout_mode = 2

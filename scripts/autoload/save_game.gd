@@ -50,6 +50,10 @@ func save_profile() -> void:
 		# loads cleanly under load_profile()'s d.get(key, default) (spec 2.4's
 		# VERSION policy: bump on a meaning change, never merely to add a key).
 		"forge_stock": GameState.forge_stock.map(func(i: Item) -> Dictionary: return i.to_dict()),
+		# [town] spec 7.4 / A1: distinct from forge_stock being non-empty, so that
+		# buying out the stock does not present as "never generated" on next load.
+		# No VERSION bump - same rule as forge_stock above (spec 2.4).
+		"forge_stock_generated": GameState.forge_stock_generated,
 	}))
 
 ## Returns false when there is no save, or it is unreadable, or its version is
@@ -95,6 +99,10 @@ func load_profile() -> bool:
 	for raw: Variant in d.get("forge_stock", []):
 		stock.append(Item.from_dict(raw))
 	GameState.forge_stock = stock
+	# A1: a save written before this key existed, but holding real stock, must not
+	# present as never-generated - derive the default from the stock it carries.
+	GameState.forge_stock_generated = bool(d.get("forge_stock_generated",
+		not stock.is_empty()))
 
 	return true
 

@@ -10,13 +10,13 @@ extends PanelContainer
 ## gold_changed / scrap_changed. boot.gd re-emits both with a zero delta once
 ## the profile is settled so this repaints (spec 3.1 / step-5 Q5).
 ##
-## The scrap half has no faucet until step 9 (spec 5); until then scrap_changed
-## never fires and the value just sits at whatever load_profile() restored.
+## Both halves are live: combat pickups feed scrap_changed via
+## GameState.add_scrap (spec 9, step 9) and the forge spends it (spec 10.2).
 
 const CurrencyFeedback := preload("res://scripts/ui/currency_feedback.gd")
 
 ## Scrap's float colour. A UI tint, not a gameplay number, so it lives here
-## rather than in Tuning; the path is dead until step 9 gives scrap a delta.
+## rather than in Tuning.
 const SCRAP_COLOR := Color("9FB2BE")
 
 @onready var gold_label: Label = $Row/Gold/Value
