@@ -15,6 +15,8 @@ extends PanelContainer
 signal purchased(item: Item, card: Control)
 signal compare_requested(item: Item)
 
+const ItemCardStyle := preload("res://scripts/ui/item_card_style.gd")
+
 var item: Item = null
 var sold: bool = false
 
@@ -45,28 +47,23 @@ func _ready() -> void:
 
 func setup(i: Item) -> void:
 	item = i
-	var rarity_color := i.rarity_color()
-
-	var face_style: StyleBoxFlat = (face.get_theme_stylebox("panel") as StyleBoxFlat).duplicate()
-	face_style.border_color = rarity_color
-	face_style.shadow_color = Color(rarity_color.r, rarity_color.g, rarity_color.b, 0.45)
-	face_style.shadow_size = 8
-	face.add_theme_stylebox_override("panel", face_style)
-
-	glyph.set("ring_color", rarity_color)
-	glyph.set("weapon_type", i.weapon_type)
-	glyph.set("kind", i.kind)
+	ItemCardStyle.apply(face, glyph, i)
 
 	name_label.text = i.display_name
 	subtitle_label.text = i.subtitle()
-	subtitle_label.add_theme_color_override("font_color", rarity_color)
+	subtitle_label.add_theme_color_override("font_color", i.rarity_color())
 	for child: Node in modifiers_box.get_children():
 		child.queue_free()
 	for mod: Dictionary in i.modifiers:
 		var line := Label.new()
 		line.text = String(mod["label"])
 		line.add_theme_font_size_override("font_size", 26)
-		line.add_theme_color_override("font_color", Tuning.C_TEXT_DIM)
+		# [town] spec 10.3: Enhanced modifiers tint to the ENHANCED rarity colour.
+		# Shop stock is never Enhanced (weight 0), but a forged item resold onto a
+		# future stock would be - and the rule is one line wherever a modifier renders.
+		line.add_theme_color_override("font_color",
+			Tuning.RARITY_COLORS[Item.Rarity.ENHANCED] if mod.get("enhanced", false) \
+			else Tuning.C_TEXT_DIM)
 		modifiers_box.add_child(line)
 
 	price_label.text = str(i.buy_price())

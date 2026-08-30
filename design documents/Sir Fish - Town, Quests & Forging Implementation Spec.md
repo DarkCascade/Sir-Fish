@@ -65,13 +65,20 @@ These tests must pass **with no edits to the test files**:
 | `test_autoload_safety.gd` | new autoloads must be safe to instantiate headless (§3.1). |
 | `test_item_distribution.gd` | `modifiers.size() == RARITY_MOD_COUNT[rarity]` must hold **after every forge step too** (§10.2). Adding `ENHANCED` at weight **0** keeps it out of generated output entirely (§10.1). |
 
-Two tests **do** need edits, and those edits are part of this pass:
+Four tests **do** need edits, and those edits are part of this pass (§13.2 is
+the full list; all four land at step 4):
 
 - `test_drops.gd` — its `droppable_classes() == PARTY_ORDER` assertion becomes
-  `== GameState.active_party` (§4.5).
-- `test_item_distribution.gd` — its type-mix expectations change once
-  generation rolls the slot first (§4.4). The mod-count invariant above does
-  **not** change.
+  `== GameState.active_party` (§4.5), and **D7's type-mix expectations are
+  re-derived** for §4.4's slot-first roll. D7 is the suite's only
+  type-distribution assertion; D4 and D9 also move, because `next_drop_class()`
+  reads `droppable_classes()` transitively (§4.5).
+- `test_item_distribution.gd` — its four-wide rarity arrays widen to five
+  (step-3 Q6). It asserts no type mix, so nothing in §4.4 reaches it, and the
+  mod-count invariant above does **not** change.
+- `test_profile_expedition.gd` — P6's `active_party` check (§4.5).
+- `test_profile_save.gd` — its fixture's three equipped items become one per
+  slot (§13.1).
 
 ### 0.4 Decisions taken
 
@@ -190,6 +197,14 @@ var active_party: Array[StringName] = [&"warrior"]
 ## endless_mode as the thing build_level() dispatches on (§8.3).
 var quest: QuestDef = null
 
+## [town] The quest that just ENDED, kept for QuestResult to read (§8.5).
+## §8.5 nulls `quest` before routing home and presenting the modal - on purpose,
+## so the destination scene's _ready() sees "not on a quest" - so the reward row
+## and the "this was a quest" branch need a value that outlives that null.
+## Cleared by start_expedition(); stays null on the endless / fixed path, which
+## is what keeps present()'s RETRY branch reachable (step-8 Q1).
+var completed_quest: QuestDef = null
+
 ## [town] Gold and scrap picked up during the CURRENT expedition, banked
 ## separately so the result modal can state "you brought home 47 scrap"
 ## without diffing two profile totals across a scene change (§8.5).
@@ -214,6 +229,13 @@ var _expedition_inventory_mark: int = 0
 exactly, including the `EventBus.scrap_changed(new_total, delta)` emission
 (§3.3). `spend_scrap` returns `false` and mutates nothing when the player
 cannot afford it, same contract as `spend_gold`.
+
+§8.5's two recovery operations are `GameState` methods for the same reason
+`heal_party()` is (§7.2): `discard_expedition_loot()` and
+`street_sleep_recover()` both write profile-scoped state, and the underscore on
+`_expedition_inventory_mark` exists precisely so the failure flow reaches it
+through a helper rather than by touching the field from a scene script
+(step-8 Q2).
 
 ### 2.3 Splitting `reset_run()`
 
@@ -255,8 +277,9 @@ func new_profile() -> void:
 ## Note what is absent: gold, scrap and inventory. That absence is the whole
 ## point of this function existing separately from new_profile(), and is the
 ## one thing a future edit here must not undo.
-func start_expedition(q: QuestDef) -> void:
+func start_expedition(q: QuestDef = null) -> void:
 	quest = q
+	completed_quest = null         # §8.5's reward row reads this, not `quest`
 	current_encounter_index = -1
 	endless_level_number = 1       # MUST precede build_level(), which reads it
 	expedition_gold = 0
@@ -272,7 +295,19 @@ func start_expedition(q: QuestDef) -> void:
 	EventBus.gold_changed.emit(gold, 0)
 	EventBus.scrap_changed.emit(scrap, 0)
 	EventBus.party_bonuses_changed.emit(party_bonuses())
+	if quest != null:
+		EventBus.quest_started.emit(quest)
 ```
+
+**The `= null` default is what keeps `reset_run()` a one-liner** (step-8 Q9).
+Step 1 shipped `var quest` untyped and `func start_expedition(q = null)` because
+`QuestDef` did not exist yet; step 8 tightens **both** - the field to `QuestDef`,
+the parameter to `QuestDef = null` - in the same edit that adds the class,
+alongside `EventBus.quest_started(quest: QuestDef)` (§3.3). The default is the
+endless / fixed dev path: `reset_run()` still calls `start_expedition()` with no
+argument and gets `quest = null`, which is what sends `build_level()` down its
+`endless_mode` branch (§8.3). The `quest_started` emit is gated on `q != null`
+for the same reason - an endless reset is not a quest starting.
 
 `_reset_hero_runtime(full_heal: bool)` rebuilds `hero_runtime` from
 `active_party` (not `PARTY_ORDER`), preserving `current_hp` when `full_heal` is
@@ -407,17 +442,41 @@ dict at §7.4 without a bump.
 The case that *does* need one is `active_party`: before §4.5 it means "the
 authored three-hero roster", after it means "the solo warrior". A save from
 either side of that flip describes a party the other side does not support, and
-`load_profile()` restores `heroes` verbatim without reconciling it against
-`active_party` — so a stale save would resurrect a three-hero party that §4.5
-had just retired. The build order happens to make this moot (nothing writes a
-save until §3.1's `boot.tscn` at step 5, which lands *after* §4.5 at step 4), so
-no bump is required in this pass. It is recorded because the shape recurs.
+`load_profile()` restores `heroes` and `inventory` verbatim without reconciling
+either against `active_party` — so a stale save resurrects a three-hero party
+that §4.5 had just retired, *and* restores mage/ranger-equipped items that
+`party_bonuses()` goes on counting even though nobody is wearing them (it gates
+on `equipped_by != &""`, never on who is on the field).
+
+**So `VERSION` becomes `2` at step 4, with §4.5's value flip.**
+
+An earlier draft of this paragraph waived the bump, arguing the build order made
+it moot because "nothing writes a save until §3.1's `boot.tscn` at step 5, which
+lands after §4.5 at step 4". **That was wrong, and it contradicted this very
+subsection**: `SaveGame._notification()` writes on `NOTIFICATION_WM_CLOSE_REQUEST`
+and `NOTIFICATION_APPLICATION_PAUSED`, and the "When to save" list immediately
+below mandates it *at step 2* (step-2 Q5). The argument accounted for the reader
+and forgot its own writer. The real window is steps 2 → 5: any dev who ran the
+game and closed the window in it has a version-1 save on disk holding the
+three-hero roster.
+
+`load_profile()`'s gate is an exact `!=` match, so the bump discards those saves
+and `boot.tscn` falls back to `new_profile()` — which is the whole point of
+having a version field. No migration code: a pre-town save is a dev artifact,
+not player data.
+
+The general lesson is worth more than the fix: **a "nothing writes yet" argument
+has to name the writers, not just the reader.** This one was refuted by a bullet
+list eight lines further down its own section.
 
 **When to save.** Every one of these, no exceptions:
 
 - any profile mutation in town — buy, sell, forge, equip, unequip, rest,
   shop refresh;
-- `start_expedition()`, and again when the expedition result is banked;
+- `start_expedition()`, and again when the expedition result is banked — both
+  at **step 8**, and both in the *callers* (§7.5, §8.4). `start_expedition()`
+  itself never saves, which is why entering the forest at step 5 wipes the
+  profile in memory only (§3.1);
 - `boot.tscn`, immediately after falling back to `GameState.new_profile()`
   because `load_profile()` returned `false` (§3.1);
 - `NOTIFICATION_APPLICATION_PAUSED` and `NOTIFICATION_WM_CLOSE_REQUEST` in
@@ -459,41 +518,185 @@ var place: Place = Place.TOWN
 func go(to: Place) -> void:
 ```
 
-`res://scenes/main.tscn` stops being the project's main scene. A new
-`res://scenes/boot.tscn` becomes it: it calls `SaveGame.load_profile()`, falls
-back to `GameState.new_profile()` **followed by `SaveGame.save_profile()`**
-(§2.3 — the fallback is persisted here, by the caller, and nowhere else), and
-routes to `Place.TOWN`.
+**Three of `PATHS`'s five scenes do not exist at step 5.** `town.tscn` and
+`main.tscn` are on disk today; `inn.tscn` is `tavern.tscn` renamed at step 7
+(§7.1), `mayor_office.tscn` arrives at step 8 (§7.5) and `blacksmith.tscn` at
+step 10 (§7.3). The table is still written whole at step 5 — a `Place` with no
+path is the failure mode worth designing out — but two things follow from the
+gap:
 
-**`RunController._start_run()` must stop calling `GameState.reset_run()` in this
-same step.** This is the single most destructive latent bug in the document and
-it is invisible until the moment persistence starts working, so it is called out
-here rather than left to be discovered.
+- `go()` must **check the destination loads before it fades**, and return
+  without touching the rect if it does not. `change_scene_to_file()` returns
+  `ERR_CANT_OPEN` on a missing path and queues no swap, so a `go()` that has
+  already faded to black and is awaiting the swap never wakes: opaque rect,
+  input blocked, re-entrancy flag stuck true. That soft-lock is reachable at
+  step 5 by one debug verb (§13.4's `route`), and it is what a typo'd path
+  would do forever after.
+- §13.1's `test_scene_router.gd` asserts **totality** (every `Place` has a
+  `PATHS` key) from step 5, but **existence** only for the places that have been
+  built — that check widens at steps 7, 8 and 10 alongside the scenes.
 
-`RunController._ready()` calls `_start_run()`, whose first line is
-`GameState.reset_run()` — which is `new_profile()` (wipes gold, scrap and
-inventory) followed by `start_expedition()` (which, per §2.4, **saves**). Once
-`main.tscn` is a routed destination rather than the main scene, entering
-`Place.QUEST` therefore wipes the profile `boot.tscn` just loaded *and writes
-the wipe to disk*. The player loses everything the first time they accept a
-quest, and the save file is already overwritten by the time anyone notices.
+**`go()`'s shape.** `change_scene_to_file()` rather than a hand-rolled
+add/remove: it keeps the autoloads (`Hud`, and the `Transition` rect under it)
+alive across the swap and frees the outgoing scene for us. Fade the rect in,
+swap, await the destination actually being current, set `place`, fade back out,
+release input. Two guards, both load-bearing: the missing-path bail above,
+before the fade begins; and **re-entrancy** — `go()` is `await`able and is
+called from `await`ing flows (§8.5), so a second `go()` while one is in flight
+is *ignored*, not queued. A third, cheaper guard came out of the build: `go(to)`
+where `to == place` returns without fading, so a stray re-route to the place you
+are already standing in is a no-op rather than a black dip. `FADE_TIME` (0.18 s,
+each half) is a `const` on the router — chrome timing, not a gameplay number, and
+it has exactly one call site, so it does not belong in `Tuning`.
+
+**`place` lands *after* the incoming `_ready()`, not before.** An earlier draft of
+this paragraph said `place` is set "as part of the swap, before the fade-out, so
+the incoming scene's `_ready()` reads the correct value". The first half is true
+and the second is not: `change_scene_to_file()` defers the swap to frame end, so
+`go()` has to `await tree_changed` (and one more `process_frame` to let the
+destination settle) before it can assign — and by then the incoming scene's
+`_ready()` has already run and already read the *old* `place`. Assigning earlier
+is not available either: before the await, the destination is not up, and a
+`place` that leads the tree is a worse lie than one that trails it. This is why
+the per-scene `SceneRouter.place = Place.<self>` line below is **not**
+belt-and-braces for the routed path — it is the only thing that makes `place`
+correct inside a routed scene's own `_ready()`. `go()`'s assignment is what keeps
+it correct for every frame after.
+
+**Every routed scene also asserts its own `place` in `_ready()`**
+(`SceneRouter.place = Place.<self>`). `go()` setting it covers every frame from
+the transition onward; this covers the destination's own `_ready()` (see above),
+plus F5, MCP `play_scene`, and any other direct-scene launch, where a `place`
+still defaulting to `TOWN` would drive §3.2's `Place.QUEST` button rule off a
+lie. One idempotent line per scene. At step 5 only `RunController` exists
+to carry it — `town.tscn` is scriptless until step 7, and `Place.QUEST` is the
+only place anyone launches directly — so that one line is the whole of it.
+
+**Boot.** `res://scenes/main.tscn` stops being the project's main scene — set
+via `set_project_setting`, never by editing `project.godot` by hand (CLAUDE.md).
+A new `res://scenes/boot.tscn` becomes it: it calls `SaveGame.load_profile()`,
+falls back to `GameState.new_profile()` **followed by `SaveGame.save_profile()`**
+(§2.3 — the fallback is persisted here, by the caller, and nowhere else), then
+**emits `EventBus.gold_changed(GameState.gold, 0)` and
+`EventBus.scrap_changed(GameState.scrap, 0)`**, and routes to `Place.TOWN`.
+
+Those two emits are not decoration. Autoloads `_ready()` before the first scene,
+so `Hud` — and `CurrencyPlate` under it — reads `GameState` *before*
+`load_profile()` has assigned anything, and `load_profile()` assigns silently.
+Without them the plate paints `gold`'s initialiser (**0** — not
+`PROFILE_STARTING_GOLD`, which is applied by `new_profile()`, which has not run
+either) and then never repaints, because the only thing that emits
+`gold_changed` on this path is `start_expedition()`, which the boot → TOWN route
+never calls. Zero-delta emits are the established pattern
+(`game_state.gd:544`), and a `delta` of 0 correctly floats no number.
+`status_panel.gd`'s `GoldPlate` has exactly the same shape and is masked only
+because it exists solely in `Place.QUEST`, which `start_expedition()` always
+precedes.
+
+`boot.gd` is a scene script, not an autoload, so it may call `SaveGame`,
+`GameState`, `EventBus` and `SceneRouter` directly in `_ready()` — the
+`test_autoload_safety` lint scans autoloads only. Boot's own first hop should
+`change_scene_to_file()` directly and set `SceneRouter.place = Place.TOWN`
+rather than call `go()`: the screen is already black, and `go()` should never
+run against a `Hud` that is one frame old.
+
+**That hop needs `await get_tree().process_frame` in front of it.** Called
+straight out of `boot.tscn`'s own root `_ready()`, `change_scene_to_file()` frees
+the outgoing `current_scene` while the tree is still mid-build of that very
+scene, and Godot refuses:
+
+```
+ERROR: Parent node is busy adding/removing children, `remove_child()` can't be
+       called at this time.
+   at: _ready (res://scripts/boot.gd)
+```
+
+One yield fixes it, and it is the same frame this section already wants for
+another reason — it is what makes "a `Hud` that is one frame old" true rather
+than aspirational. `boot.gd`'s `_ready()` is therefore a coroutine; nothing
+awaits it, which is correct, since the profile work above the yield is already
+done by then.
+
+**`RunController._start_run()` must stop calling `GameState.reset_run()`
+unconditionally in this same step.** This is the single most destructive latent
+bug in the document and it is invisible until the moment persistence starts
+working, so it is called out here rather than left to be discovered.
+
+`RunController._ready()` calls `_start_run()` (`run_controller.gd:57`), whose
+first line is `GameState.reset_run()` — which is `new_profile()` (wipes gold,
+scrap and inventory) followed by `start_expedition()`. Once `main.tscn` is a
+routed destination rather than the main scene, entering `Place.QUEST` therefore
+wipes the profile `boot.tscn` just loaded.
+
+**Correction to an earlier draft of this paragraph:** neither half writes to
+disk at the moment of the wipe. `new_profile()` does not save (§2.3), and
+`start_expedition()` does not either. §2.4's "when to save" list does name it,
+but as an obligation on its **caller** — the mayor's office at step 8 (§7.5) —
+and there is no such caller at step 5; the function itself has never written a
+byte. This paragraph used to read as though the save were inside it, and the
+wipe therefore instant. The only unattended save is
+`SaveGame._notification()` on app pause / close (`save_game.gd:96`). That makes
+the bug *quieter*, not smaller: the wipe sits in memory until the player closes
+the game, and is then written over the real profile. "The save file is already
+overwritten by the time anyone notices" is right about the outcome and wrong
+about the moment.
 
 `new_profile()` not saving (§2.3) is what keeps this survivable up to step 5 —
 before then the wipe is memory-only and a relaunch restores nothing because
 nothing was ever stored. It is **not** a fix. The fix is that expedition start
 belongs to the mayor's office (§7.5) and the router, not to `RunController`'s
-`_ready()`:
+`_ready()` — but **guard the call, do not delete it**:
 
-- `_start_run()` drops the `reset_run()` call and assumes `GameState.level` is
-  already built — which it is, because §7.5 calls `start_expedition(quest)`
-  *before* routing to `Place.QUEST`.
-- `reset_run()` survives exactly as §13.3 requires, as endless mode's dev entry
-  point and `test_endless_level_gen.gd`'s. It is from that step on a **dev path
-  that wipes the profile**, which is also precisely what §13.4's `wipe` verb
-  wants.
+```gdscript
+func _start_run() -> void:
+	if GameState.level == null:
+		GameState.reset_run()     # endless / dev entry: nothing built the level
+	director.spawn_party()
+	...
+
+func _on_retry() -> void:
+	...
+	GameState.reset_run()         # endless retry wants the full wipe, explicitly
+	_start_run()
+```
+
+Deleting the call outright null-derefs. `_start_run()`'s next lines are
+`director.spawn_party()` then `_next_encounter()`, whose first read is
+`GameState.level.encounters.size()` (`run_controller.gd:67`). At step 5 *every*
+path into `RunController` — a direct `main.tscn` launch, `route quest`
+(§13.4), `boot` → `Place.QUEST` — arrives with `level` still `null`, because
+§7.5 does not exist for another three steps. After step 8 it is still the
+endless and dev paths, which have no `start_expedition()` in front of them,
+ever. A hard crash on the step whose bar is "leaves the game runnable" is not an
+improvement on a profile wipe.
+
+**`level == null`, not `quest == null`.** Both read correctly at step 8 — the
+mayor calls `start_expedition(quest)` before routing, so `level` is built and
+`quest` is set — but only `level` lets a *dev* path opt out of the wipe by
+calling `start_expedition()` itself, which is exactly what §13.4's `route quest`
+does at step 5. It is also why retry's reset moves into `_on_retry()`: `level`
+is non-null after a dead run, so a guard alone would skip the reset that endless
+retry needs. The reset becomes explicit at the one call site that wants it,
+which is where it belonged.
+
+**What this buys at step 5, and what it does not.** With `route quest` calling
+`GameState.start_expedition()` before it routes, the loaded profile survives the
+trip into the forest — the destructive bug is closed at step 5, not deferred to
+step 8. Reaching `main.tscn` any *other* way (F5 on that scene directly, a bare
+`change_scene_to_file`) still hits `level == null` → `reset_run()` → the wipe,
+persisted on the next app close. That path is dev-only and §13.4's `wipe` exists
+to make it deliberate, but it is precisely why `boot.tscn` is the main scene and
+`route` is the sanctioned way in.
+
+`reset_run()` survives exactly as §13.3 requires, as endless mode's dev entry
+point and `test_endless_level_gen.gd`'s. It is from this step on a **dev path
+that wipes the profile**, which is also precisely what §13.4's `wipe` verb wants.
 
 Both new autoloads must be inert when instantiated headless with no scene-tree
-work pending — `test_autoload_safety.gd` covers this and must stay green.
+work pending — `test_autoload_safety.gd` covers this and must stay green. Note
+that it covers `SceneRouter` and **cannot** cover `Hud`, which is a scene
+autoload: see §13.3. `Hud`'s inertness rests on a `--headless --quit-after` boot
+instead, so run one.
 
 ### 3.2 `scenes/hud/hud.tscn` — autoload `Hud`
 
@@ -501,8 +704,11 @@ A `CanvasLayer` at layer 10, above every scene, holding:
 
 - `InventoryButton` — top-left, backpack icon (§12.1);
 - `CurrencyPlate` — gold and scrap, the shared readout (§3.3);
-- `ModalLayer` — `PROCESS_MODE_ALWAYS`, hosting `InventoryModal`,
-  `CompareFlyout` and `QuestResult`;
+- `ModalLayer` — `PROCESS_MODE_ALWAYS`, hosting `InventoryModal` (which carries
+  its own `CompareFlyout` as its last child — step-6 Q2, the same arrangement
+  the shop uses) and `QuestResult` — which from step 8 does not merely present
+  over a town scene but *drives the route to it*, being the only participant in
+  §8.5's flow that the scene swap does not free;
 - `Transition` — a full-screen `ColorRect` for `SceneRouter.go()`.
 
 This one node solves three separate problems at once: the inventory button
@@ -512,7 +718,54 @@ needing something that outlives both scenes.
 
 **`RunSummary` moves out of `main.tscn` into `Hud/ModalLayer`** and is renamed
 `QuestResult` (§8.5). Its `retry_pressed` signal becomes `dismissed`;
-`RunController` no longer owns it or wires it.
+`RunController` no longer owns it, and stops being what drives it on a quest
+ending.
+
+**That last clause is the step-8 end state, and it is narrower than "wires"**
+— what step 8 takes away from `RunController` is the *route and present*, not
+the `dismissed` connection, which the endless dev path still needs (step-8 Q2 /
+N4). Step 5 relocates the node; §8.5 rewires the flow. `RunController` is the
+only thing that presents the modal and nothing else will until §8.5, so taking
+"no longer wires it" literally at step 5 would leave a party wipe fading nothing
+and connecting nothing for three commits. At step 5 the edit is a reference swap plus a signal rename, not a flow
+change: drop `main.get_node("ModalLayer/RunSummary")` (`run_controller.gd:33`),
+reach the node as `Hud.quest_result` at the two `present()` call sites (`:276`,
+`:285`), and connect `Hud.quest_result.dismissed` to `_on_retry` in place of
+`retry_pressed` (`:46`). `present(victory: bool)` keeps its current signature —
+the Quest Reward row, the expedition gold/scrap rows and the recovery-button
+variants are all §8.5.
+
+**It keeps that signature at step 8 too**, which is why the modal needs
+`GameState.completed_quest` (step-8 Q1): `present()` branches three ways —
+endless RETRY, quest VICTORY, quest FAILURE — off `victory` alone, so "was this
+a quest, and what did it pay" has to come from somewhere else, and §8.5 has
+already nulled `quest` by the time the modal runs.
+
+**And §8.5 does not hand the flow to `RunController`** (step-8 Q2). It leaves
+`RunController` with only the synchronous profile work plus `SaveGame`, then an
+emit; `QuestResult` does the `await SceneRouter.go(...)` and the `present()`,
+because `go()` frees `main.tscn` and `RunController` with it. The `_on_retry`
+connection made here therefore **stays**: on a quest ending the route frees
+`RunController` and Godot drops the connection with it, so only `QuestResult`'s
+own dismiss handling runs; on an endless game-over nothing routes and
+`_on_retry` fires exactly as before. The two never collide, because
+`quest_finished` is emitted only on the quest branch.
+
+**The rename lands whole at step 5**, and is bounded: `git mv` **three** files
+(`scenes/modals/run_summary.{tscn,gd,gd.uid}` → `quest_result.*` — the `.uid`
+travels with the script or Godot mints a second one for the moved file), rename
+the root node, `signal retry_pressed` → `dismissed` and its one `emit`, reword the
+script header, remove the node and its `ext_resource` from `main.tscn` (`:8`,
+`:90`) and instance it under `Hud/ModalLayer`, and fix the stale reference in
+`console.gd:8`. No test references it and there is no `class_name`; the
+`@onready` paths are internal and survive the reparent. `run_summary.tscn`
+carries no `uid=` on its `gd_scene` line, so both the removal from `main.tscn`
+and the new instance in `hud.tscn` reference it by `path=` and no uid churn
+follows. `RunController`'s own `var run_summary` **keeps its name** (it is just
+assigned `Hud.quest_result`); renaming the field as well is pure diff noise on a
+step whose point is that nothing player-visible changed. Deferring the file
+rename to step 8 only means step 8 touches `main.tscn`, renames files *and*
+rewrites the flow in one commit.
 
 **Visibility.** `InventoryButton` and `CurrencyPlate` are visible in every
 `Place`. During `Place.QUEST` the button is additionally **disabled while
@@ -526,6 +779,36 @@ stay open — keeps the button useful without making it an exploit. This is a
 one-line policy and is called out here so a future reader knows it was a
 choice, not an oversight.
 
+**Position.** `CurrencyPlate` sits top-right, `InventoryButton` top-left, both
+with bare `offset_*` and no anchors — positioned for the one portrait viewport
+width the game runs at, which is acceptable (Acceptance Testing Spec E1). Step
+5's plate landed on top of the screen-corner `BonusPanel` (console furniture,
+§0.2), which was anchored top-right at roughly `y 16–46`; the `Hud` layer wins,
+so the plate hid it. Resolved by moving `BonusPanel` down to
+`offset_top = 130` / `offset_bottom = 160`, clear of the plate — confirmed, and
+recorded here and in §14 step 5's changeset.
+
+**At step 5 the chrome ships ahead of what it opens.** `InventoryModal` is §6,
+so `InventoryButton` ships visible and `disabled = true`, carrying a one-line
+`# step 6 (§6): pressed -> Hud.inventory_modal.open()`. Implement the
+`Place.QUEST` + `COMBAT` rule above **now** rather than with the handler — "when
+is this usable" is the part worth having right before anything depends on it,
+and step 6 then adds nothing but the `pressed` connection. Concretely that is
+one line in `hud.gd._process()` — `inventory_button.disabled = _combat_locked()
+or true`, where `_combat_locked()` reads `SceneRouter.place` and
+`RunController.state` — so the real predicate is genuinely evaluated every frame
+from step 5 on, and the `or true` is the single token step 6 deletes. Its backpack icon is
+§12 (step 11); a placeholder until then is correct, and hiding the button
+entirely would defeat one of the three reasons this node exists.
+
+**`Transition` at rest is invisible and inert**: `modulate:a = 0.0` and
+`mouse_filter = MOUSE_FILTER_IGNORE`, raised to `STOP` only for the duration of
+a transition. It is the **last** child of `Hud`, so a fade covers an open modal
+too. Plain black — §8.5's "fade back once the destination is up" is a dip, not
+a themed wipe. A rect that defaulted to opaque and `STOP` would eat every click
+in town and forest, and would sit on top of the frames `test_parallax_seam.gd`
+and `test_damage_chunk.gd` inspect, both of which are on §13.3's no-edit list.
+
 ### 3.3 `EventBus` additions
 
 ```gdscript
@@ -535,6 +818,29 @@ signal item_forged(item: Item, new_rarity: int)
 signal quest_started(quest: QuestDef)
 signal quest_finished(victory: bool)
 ```
+
+All five land in **one edit at step 5**, though only `scrap_changed` has a
+step-5 consumer: `item_equipped` is step 6, `quest_started` / `quest_finished`
+are step 8, `item_forged` is step 9 — and §14 step 9 already records
+`item_forged` as having arrived at step 5, so `forge()` may assume it.
+`event_bus.gd`'s file-wide `@warning_ignore_start("unused_signal")`
+(`event_bus.gd:8`) means a declared, unemitted signal is already silent, so five
+one-line diffs spread across four steps buy nothing. `quest_started` shipped
+untyped at step 5 (`QuestDef` did not exist yet) and **tightened to
+`quest_started(quest: QuestDef)` at step 8** with the class. Its step-8 emitter
+is `GameState.start_expedition()` when a quest is passed; `quest_finished` is
+emitted by `RunController`'s victory / failure flows and `QuestResult` listens
+for it to route home and present (§8.5).
+
+**`item_equipped`'s emitter is `GameState.equip_item()`, and only that**
+(step-6 Q4). It fires after `equipped_by` is assigned, alongside the existing
+`party_bonuses_changed`, with the slot passed as `int(item.slot())`.
+`_maybe_auto_equip()` stays **silent**: it only fills a slot the player left
+empty, `add_item()` already fires `party_bonuses_changed` for it, and "the
+player equipped something" is a different event from "a pickup slotted itself".
+There is no `item_unequipped` counterpart and this pass does not add one — the
+inventory row's local `equip_changed` covers the modal's own rebuild need
+(§6.2), and step 9's forge only ever needs the equip side.
 
 `CurrencyPlate` binds `gold_changed` and `scrap_changed` and is the **only**
 new gold/scrap readout written for this pass. `status_panel.gd`'s existing
@@ -564,6 +870,18 @@ func slot() -> Slot:
 `Item.Kind` is **left alone**. It already reads `WEAPON, POTION, RELIC` and is
 used by `item_glyph.gd`; slot is a separate axis and overloading `Kind` to
 carry it would break the glyph's kind-based fallback drawing.
+
+**Every generated item keeps `kind = Item.Kind.WEAPON` — armor and trinkets
+included** (step-4 Q7). `_generate_typed()` sets it unconditionally and that does
+not change, because three separate derivations read it: `usable_by()`
+early-returns empty unless `kind == Kind.WEAPON`, so a helm marked `RELIC` would
+render as "Anyone", never auto-equip and never be targeted by `generate_drop()`;
+`type_name()`'s "Helm" comes off the same branch; and `shop_sell_row.gd` /
+`shop_buy_card.gd` feed `kind` to the glyph. So until `POTION` / `RELIC`
+generation exists, `kind` effectively means "was generated" and `slot()` carries
+all the real classification. Recorded as a known wart rather than silently left,
+so the next reader does not "fix" it into three broken derivations — §15 defers
+the per-slot behaviour that would make `kind` earn its keep.
 
 `weapon_type` keeps its name even though it now names armor and trinkets too.
 Renaming it touches `item_glyph.gd`, `shop_sell_row.gd`, `shop_buy_card.gd`,
@@ -619,8 +937,14 @@ every existing derivation working untouched. When the mage and ranger return,
 they get their own armor and trinket types in this same table, and the "Anyone"
 path is there if a truly universal item is ever wanted.
 
-`WEAPON_TYPES` may be kept as a deprecated alias for exactly one commit if that
-eases the migration; it must not survive the branch.
+**No deprecated alias: `WEAPON_TYPES` is renamed in one commit** (step-4 Q1).
+The live references are one production file (`itemizer.gd` — the `const` plus six
+internal reads in `generate_item_with_rarity()`, `_generate_typed()` and
+`weapon_types_for()`), one helper (`item.gd`'s `usable_by()`), and one test block
+(`test_drops.gd` D7, which §13.2 rewrites this step anyway). No scene file or
+`.tres` references it. An alias that "must not survive the branch" is a second
+cleanup commit to remember on a rename this small, and the compiler finds every
+miss.
 
 ### 4.3 `GameState` — the equip API takes a slot
 
@@ -646,10 +970,35 @@ func equipped_set(hero_class: StringName) -> Array[Item]:
 
 `equip_item(item, hero_class)` replaces only the occupant of `item.slot()`.
 `_maybe_auto_equip(item)` fills that slot only when it is empty. Neither
-signature changes; both bodies gain the slot lookup.
+signature changes; both bodies gain the slot lookup. From step 6,
+`equip_item()` also emits `EventBus.item_equipped` and `_maybe_auto_equip()`
+deliberately does not — §3.3 gives the reason.
 
 **Every caller of the old one-arg `equipped_item()` must be updated.**
-`grep -rn "equipped_item" scripts/` before declaring this done.
+`grep -rn "equipped_item" scripts/` before declaring this done. It returns
+exactly four, and three of them are mechanical (step-4 Q6):
+
+| site | fix |
+|---|---|
+| `compare_flyout.gd:58` | `GameState.equipped_item(hero_class, item.slot())` — §6.3 gives it verbatim |
+| `game_state.gd:191` (`equip_item`) | `var previous := equipped_item(hero_class, item.slot())` |
+| `game_state.gd:209` (`_maybe_auto_equip`) | `if equipped_item(hero_class, item.slot()) == null:` |
+| `debug.gd:392` (`state`) | no longer retargetable — with three slots "the hero's equipped item" is not a thing |
+
+`debug.gd`'s `state` line iterates `equipped_set()` instead, one bracketed list
+per hero:
+
+```gdscript
+equip_bits.append("%s=[%s]" % [c, ", ".join(equipped_set(c).map(
+    func(i: Item) -> String: return i.display_name))])
+```
+
+so a fully-kitted warrior reads `warrior=[Rusty Axe, Fat Helm, Lucky Ring]` and an
+empty-handed one reads `warrior=[]`. Showing only the WEAPON slot would keep the
+line shorter but would hide exactly the state a forge tester is checking. That
+loop (and the `drops` loop above it) reads `GameState.active_party` rather than
+`Itemizer.droppable_classes()`; the two are equal under a solo warrior, but the
+`state` line is about who is on the field.
 
 ### 4.4 Generation rolls the slot first
 
@@ -658,30 +1007,83 @@ type table. With eleven types split 5/3/3 across slots, a uniform draw means
 45% weapons, 27% armor, 27% trinkets — and adding a twelfth type silently
 reweights it again.
 
-Roll the **slot** first, uniformly over the three, then the type within it.
-This is the same reasoning drops §0.3 gave for rolling the class before the
-weapon: the number of types a slot happens to have must not decide how often
-that slot is served.
+Roll the **slot** first, then the type within it. This is the same reasoning
+drops §0.3 gave for rolling the class before the weapon: the number of types a
+slot happens to have must not decide how often that slot is served.
+
+**Roll over the slots that are actually fillable, not over all three** (step-4
+Q4). An earlier draft of this section gave two formulations — a uniform-over-3
+roll with a WEAPON fallback for `generate_item_with_rarity()`, and "class first,
+then slot" prose for `generate_drop()`. For a solo warrior they are identical
+and the fallback is dead code; they diverge the moment `generate_drop(&"mage")`
+is called, which `test_drops.gd` D1 does 1000 times. A uniform-over-3 roll lands
+on ARMOR or TRINKET two thirds of the time for a class that has no armor or
+trinket type, and the party-wide WEAPON fallback is, for a single-class call,
+just "give up on slots". One helper filtering to non-empty slots collapses both
+paths onto the stricter behaviour, and makes "a drop is always wieldable" true by
+construction rather than by a fallback:
 
 ```gdscript
+## The slots at least one member of `classes` can fill. Rolling over THIS rather
+## than over all three is what lets one helper serve both generators: a
+## party-wide call gets [WEAPON, ARMOR, TRINKET], a single-class call for the
+## mage gets [WEAPON] and can never land on a slot that class has no type for.
+func _equippable_slots_for(classes: Array[StringName]) -> Array[Item.Slot]
+
+## The types in `slot` wieldable by some class in `classes`. Built on
+## weapon_types_for(), which stays as the "all types for a class, any slot"
+## accessor droppable_classes() reads.
+func types_for_slot(slot: Item.Slot, classes: Array[StringName]) -> Array[StringName]
+
+## Slot first, then type within it - the shared body of both generators.
+func _roll_typed(classes: Array[StringName], rarity_index: int) -> Item:
+	var slots := _equippable_slots_for(classes)
+	if slots.is_empty():
+		# Unreachable while some class can wield something, but a generated item is
+		# better than a crash - the guard generate_drop() already carried.
+		var all: Array = ITEM_TYPES.keys()
+		return _generate_typed(all[RNG.randi_range(0, all.size() - 1)], rarity_index)
+	var slot: Item.Slot = slots[RNG.randi_range(0, slots.size() - 1)]
+	var types := types_for_slot(slot, classes)
+	return _generate_typed(types[RNG.randi_range(0, types.size() - 1)], rarity_index)
+
 func generate_item_with_rarity(rarity_index: int) -> Item:
 	rarity_index = clampi(rarity_index, 0, Item.Rarity.RARE)   # never ENHANCED (§10.1)
-	var slot: Item.Slot = _random_equippable_slot()
-	var types := types_for_slot(slot, GameState.active_party)
-	if types.is_empty():
-		types = types_for_slot(Item.Slot.WEAPON, GameState.active_party)
-	return _generate_typed(types[RNG.randi_range(0, types.size() - 1)], rarity_index)
+	return _roll_typed(GameState.active_party, rarity_index)
+
+func generate_drop(hero_class: StringName, rarity_floor: int = 0) -> Item:
+	var rarity: int = maxi(RNG.weighted_index(RARITY_WEIGHTS),
+		clampi(rarity_floor, 0, Item.Rarity.RARE))
+	return _roll_typed([hero_class] as Array[StringName], rarity)
 ```
 
-`types_for_slot(slot, party)` returns the types in that slot wieldable by *some
-member of the active party*. This is what fixes §1.6: with a solo warrior,
-staves and bows stop appearing in chests and shop stock entirely, and every
-item the player sees is an item they can wear. The mage's staff comes back the
-day the mage does, with no further edit.
+`generate_item_with_rarity()` passes the **active party**, so with a solo warrior
+staves and bows stop appearing in chests and shop stock entirely and every item
+the player sees is an item they can wear — this is the §1.6 fix. The mage's staff
+comes back the day the mage does, with no further edit.
 
-`generate_drop(hero_class, rarity_floor)` (drops §4) keeps picking the class
-first and now picks the slot second, then the type. Its guarantee is unchanged:
+`generate_drop(hero_class, rarity_floor)` (drops §4) still picks the class first
+— its rarity roll and floor are untouched — and now picks the slot second, from
+*that class's* fillable slots. Its guarantee is unchanged and now unconditional:
 a drop is always something the target class can wield.
+
+The helper names §4.1–§4.4 use are canonical; the full set this step adds
+(step-4 Q5):
+
+| name | file | signature |
+|---|---|---|
+| `Item.Slot` | `item.gd` | `enum { WEAPON, ARMOR, TRINKET }` |
+| `Item.slot()` | `item.gd` | `-> Slot` — reads `Itemizer.ITEM_TYPES[weapon_type]["slot"]`, default `WEAPON` |
+| `Itemizer.types_for_slot()` | `itemizer.gd` | `(Item.Slot, Array[StringName]) -> Array[StringName]` |
+| `Itemizer._equippable_slots_for()` | `itemizer.gd` | `(Array[StringName]) -> Array[Item.Slot]` |
+| `Itemizer._roll_typed()` | `itemizer.gd` | `(Array[StringName], int) -> Item` |
+| `GameState.equipped_item()` | `game_state.gd` | `(StringName, Item.Slot) -> Item` |
+| `GameState.equipped_set()` | `game_state.gd` | `(StringName) -> Array[Item]` — Slot order, gaps omitted |
+
+`_random_equippable_slot()`, named in an earlier draft of this section, does not
+exist: `_equippable_slots_for()` replaces it. `weapon_types_for(hero_class)`
+(drops §2.2) is unchanged and stays the "all types for a class, any slot"
+accessor the other two are built on.
 
 ### 4.5 `active_party` replaces `PARTY_ORDER` at three call sites
 
@@ -715,8 +1117,32 @@ against — drops aimed at a hero who is not on the field — is created by the
 `test_drops.gd:23`'s assertion changes from `== GameState.PARTY_ORDER` to
 `== GameState.active_party`, and `test_profile_expedition.gd`'s
 "active_party still equals PARTY_ORDER" check (§13.1) is updated here too —
-deliberately, which is the point of it existing. Everything else in that test is party-size
-agnostic and stays.
+deliberately, which is the point of it existing. Everything else in
+`test_profile_expedition.gd` is party-size agnostic and stays.
+
+**`droppable_classes()` is read transitively by `next_drop_class()`, so two more
+`test_drops.gd` blocks move with it** (step-4 Q11) — this is the one consequence
+of the value flip that is not visible from a `grep` for `active_party`:
+
+- **D4** asserts each of `PARTY_ORDER`'s three classes takes 33.3% ± 2pp of 3000
+  `next_drop_class()` draws. With one droppable class the warrior takes 100% and
+  the other two take 0% — three failing checks.
+- **D9** requires ≥ 95% of ≥ 3-drop levels to have given *all three* classes a
+  drop. With one droppable class that rate is 0% — one failing check.
+
+Both test `DROP_CATCHUP` and `next_drop_class()`, which §15 explicitly keeps
+alive for the party's return ("untouched and waiting for them — do not delete
+it"). Re-pointing their loops at `active_party` would leave them passing and
+**tautological** — "the only droppable class got 100% of the drops" asserts
+nothing about the weighting, and a rewrite of `next_drop_class()` would sail
+through. So instead each block **saves `active_party`, sets it to
+`PARTY_ORDER.duplicate()` for its own duration, and restores it**, keeping the
+coverage algorithm under a real three-class test while the field it reads is
+solo. D8 and `_report_party_bonuses()` already save and restore
+`endless_level_number` / `inventory` / `drops_by_class` the same way, so this is
+the file's existing idiom rather than a new one. Their `PARTY_ORDER` loops become
+`Itemizer.droppable_classes()` loops so they follow the override rather than
+restating the roster.
 
 `party_bars.gd` already handles a short party ("A party smaller than the
 authored roster leaves spare bars"), and `world.hero_slot_position()` already
@@ -757,6 +1183,15 @@ pop-and-float feedback on change (`status_panel._float_delta()` is the
 reference implementation; lift it into a shared helper rather than copying it a
 third time).
 
+**That helper landed at step 5, not step 9**: `scripts/ui/currency_feedback.gd`,
+a static `RefCounted` with `pop(label)` and `float_delta(host, label, delta,
+positive_color)`, lifted verbatim from `status_panel` — which is refactored onto
+it in the same step, behaviour-preserving, so there is never a moment with two
+copies. `CurrencyPlate` is its second caller and step 9's forge is the third,
+which is the "don't copy it a third time" this section asked for. It lives in
+`scripts/ui/` rather than `scripts/hud/` because one of its two callers is a
+console node.
+
 ### 5.4 Not to be confused with `Upgrades`
 
 `scripts/autoload/upgrades.gd` is the **slot machine's** three run-scoped
@@ -786,9 +1221,38 @@ Layout, top to bottom:
   row or an empty-slot placeholder naming the slot;
 - **Carried** — every unequipped inventory item.
 
-`BonusStrip` is instanced under the header, exactly as `shop_modal.tscn`
-authors it: seeing what the party actually gains is what makes equipping a
-decision rather than a chore.
+`BonusStrip` is instanced under the header (from
+`scenes/console/bonus_strip.tscn`): seeing what the party actually gains is what
+makes equipping a decision rather than a chore. *`shop_modal.tscn` no longer
+authors one — it dropped its copy when the screen-corner `BonusPanel` landed —
+so this is the modal's own instance, not a mirror of the shop's; it self-wires
+(`bonus_strip.gd._ready()` binds `party_bonuses_changed` and paints from
+`GameState.party_bonuses()`), so the modal adds no code for it (step-6 Q9).*
+
+**Equipped is the field leader's three slots** — `active_party[0]`, which is the
+solo warrior for the whole of this pass (§4.5). The modal does not build a
+section per party member: that generalisation belongs with the mage and ranger's
+return (§15), and until then a per-hero layout is three columns of which two are
+always empty. `Carried` shows a dim "nothing carried" line when the filter comes
+back empty, rather than an empty box.
+
+**Opening pauses the tree.** `open()` sets `get_tree().paused = true`, exactly
+as `shop_modal.open()` does, and `close()` sets it back **first, on every exit
+path**, so a modal torn down unexpectedly can never strand the tree paused
+(`shop_modal`'s own rule). In town the pause is a no-op — nothing is running —
+but in the forest it has to freeze the fight: an unpaused inventory screen
+mid-expedition is a free "stop and think" and a heal-timing tool, which is the
+same argument §3.2 makes for disabling the button in `COMBAT` (step-6 Q8).
+`ModalLayer` is `PROCESS_MODE_ALWAYS`, so the modal's own tweens keep running
+while the world is frozen.
+
+What the modal does **not** copy from `shop_modal` is
+`owner.set_world_rendering(false)`. That call depends on `owner` being
+`MainLayout`, and this modal — a child of `Hud/ModalLayer`, not of `main.tscn` —
+never is. The scrim covers the frozen world on its own.
+
+The red X stays the only *required* close path (§15.4); `ui_cancel` is wired as
+the same optional desktop / Android-back nicety `shop_modal` carries.
 
 ### 6.2 `inventory_row.tscn` is a new scene, not a modified sell row
 
@@ -804,6 +1268,19 @@ from `shop_sell_row.gd` verbatim. Lift that `setup()` styling block into a
 shared `item_card_style.gd` static helper rather than copy-pasting it a third
 time — `shop_buy_card.gd` already carries a second copy.
 
+That helper is `scripts/ui/item_card_style.gd`, the "shared UI helper" bucket
+next to step 5's `currency_feedback.gd` — one of its three callers is a shop
+card and one an inventory row, so "modal" is the wrong bucket (step-6 Q3). It is
+a single static `ItemCardStyle.apply(face, glyph, item)` carrying exactly the
+block the two `setup()`s shared byte-for-byte: the duplicated panel stylebox
+with the rarity border and shadow, and the glyph's `ring_color` / `weapon_type`
+/ `kind`. Nothing else moves. The `name_label` / `subtitle_label` lines stay
+per-caller, because only the caller knows what belongs there — the buy card
+builds a modifier `VBox`, the sell row and the inventory row an "N modifiers"
+label — and so does the one-line subtitle colour override, which now reads
+`i.rarity_color()` directly since the local the lifted block used to compute
+went with it.
+
 The row's action area is two equal-width buttons side by side:
 
 | button | behaviour |
@@ -815,8 +1292,30 @@ The row's action area is two equal-width buttons side by side:
 of `active_party` — an item nobody on the field can wear says so by having no
 Equip button, rather than by having a button that silently fails.
 
+"Nobody on the field can wear it" is decided by the row's `_eligible_class()`:
+the first `active_party` member listed in `item.usable_by()`, or — for an item
+whose `usable_by()` is **empty**, §4.2's deferred universal path — the field
+leader. `&""` back means no Equip button.
+
+Compare is reachable **twice**: the button, and the same swipe-to-reveal gesture
+the shop cards use. That second path is why the row keeps `swipeable_face`'s
+`Stage / ActionLayer / Face` structure instead of collapsing to a plain
+`PanelContainer` once the Sell bar is gone.
+
 `equip_changed` rebuilds **both** sections, for the reason `shop_modal` already
 documents: equipping may have displaced a different row's item.
+
+Two ordering facts the build turned up, both worth keeping:
+
+- **`setup()` runs *after* `add_child()`.** The row's `@onready` references
+  resolve when it enters the tree, so the modal adds the row to its section and
+  *then* calls `row.setup(i)` — the same order `shop_modal` uses for its cards.
+  `setup()` on a detached instance null-derefs.
+- **Equipping from a carried row frees the row whose button was just pressed.**
+  `equip_changed` → `_rebuild()` → `queue_free()` on every row, that one
+  included. This is safe and deliberate: `queue_free` defers to frame end, so
+  the signal callback returns first — the same thing
+  `shop_modal._on_equip_changed()` → `_build_sell()` already relies on.
 
 ### 6.3 `CompareFlyout` needs the slot
 
@@ -960,10 +1459,25 @@ New scene. Needs a static background of a village mayor's office (§12.1).
 
 Three buttons, one per `QuestDef` in `res://resources/quests/`, each showing
 name, blurb, encounter count, and gold reward. Pressing one calls
-`GameState.start_expedition(quest)` and routes to `Place.QUEST`.
+`GameState.start_expedition(quest)`, then `SaveGame.save_profile()` — the
+expedition mark and the cleared street-sleep flag are profile state, and §2.4's
+"when to save" list names this caller — then routes to `Place.QUEST`. Back and
+`ui_cancel` route to `Place.TOWN`, and `_ready()` re-asserts
+`SceneRouter.place = Place.MAYOR` for direct launches (§3.1).
+
+The buttons are built in `_ready()` from an **authored** id list
+(`[&"easy", &"medium", &"hard"]`), not from `DirAccess` iteration order, so easy
+always sits at the top and a fourth tier is a one-line addition there rather
+than a filename-sorting accident.
 
 A quest is **always available**; there is no cooldown, no lockout, and no
 prerequisite. Difficulty is the gate.
+
+**The background is a placeholder until step 11** (step-8 Q4). §12.1 wants Meshy
+art here and §14 already schedules that pass, so step 8 ships the shape
+`inn.tscn` uses — a dark `ColorRect` behind a centred layout — and the generated
+background slots straight in behind it. No Meshy spend on the step whose point
+is that the loop closes.
 
 ---
 
@@ -994,6 +1508,17 @@ extends Resource
 @export var travel_durations: Array[float] = []
 ```
 
+`encounter_types` holds `EncounterDef.Type` ints, and its **last entry is always
+a COMBAT** — that is the boss, identified by position rather than by a fourth
+enum value (§8.2, step-8 Q7). `travel_durations` is read positionally and may be
+left short or empty; §8.3's fallback ramp covers the gap.
+
+`boss_drop_rarity_floor` defaults to **0** here and to **1** on `EncounterDef`
+(§8.3), and the asymmetry is deliberate: an unauthored `QuestDef` should
+guarantee nothing, while an encounter nobody set a floor on must still keep the
+endless boss's existing "never Common" behaviour. All three authored tiers set
+it, so the 0 is only ever a new-resource default.
+
 ### 8.2 The three quests
 
 `res://resources/quests/easy.tres`, `medium.tres`, `hard.tres`. Sequences are
@@ -1016,6 +1541,29 @@ The rarity floor is what gives hard a reason to exist beyond gold: a guaranteed
 Rare base item is the only cheap way to reach an Enhanced Rare, since forging a
 Common all the way costs 63 scrap and 250 gold.
 
+**"B" is not a fourth `EncounterDef.Type`** (step-8 Q7). The enum stays
+`{ COMBAT, LOOT, SHOP }`; the boss is the **last** COMBAT, identified by
+position. `encounter_types` stores the enum's ints, so the three sequences above
+are authored as:
+
+| | `encounter_types` |
+|---|---|
+| easy | `[0, 1, 0, 2, 0]` |
+| medium | `[0, 0, 1, 0, 0, 2, 0]` |
+| hard | `[0, 1, 0, 0, 0, 1, 2, 0, 0]` |
+
+`_build_quest_level()` flags the final entry `is_boss`, and §13.1's
+`test_quest_gen.gd` asserts that exactly one encounter carries the flag and that
+it is the last — which is what stops "the boss is last by convention" from
+quietly becoming "by accident".
+
+**`boss_pool` is an authoring choice per tier, not a derivation.** The table
+above pins the axes difficulty actually runs on: encounter count, `enemy_pool`,
+`enemy_count`, the drop floor and the reward. *Who* the boss is sits outside
+them — easy leads with one skeleton, medium with either of two, hard with any of
+three. A pool rather than a single id, so a tier does not open on the same
+silhouette every time.
+
 ### 8.3 `GameState.build_level()` dispatches on the quest
 
 ```gdscript
@@ -1033,6 +1581,39 @@ from `quest.enemy_pool` at `quest.enemy_count`, LOOT from
 marking the last encounter `is_boss` with its enemy list **led** by a
 `quest.boss_pool` pick — leading the list matters, because §7.3 puts the first
 enemy at the leftmost slot so the scaled-up boss body stays in frame.
+
+**Group size is one draw per combat** (step-8 Q8). `enemy_count` is an inclusive
+range while `_random_enemies(pool, count)` — the shared helper the endless
+builder already uses — wants a number, so each COMBAT encounter draws
+`RNG.randi_range(enemy_count.x, enemy_count.y)` once. A regular combat is then
+`_random_enemies(pool, clampi(count, 1, MAX_ENEMIES))`; the boss fight is
+`[boss_pool pick] + _random_enemies(pool, clampi(count - 1, 0, MAX_ENEMIES - 1))`,
+so the boss group's **total** is also `count`, and therefore also inside
+`enemy_count`. That is not tidiness: §13.1's "every combat group size within
+`enemy_count`" check does not exempt the boss row. Easy (2–2) fights the boss
+plus one add; hard (3–3), the boss plus two.
+
+**The drop floor rides down on the `EncounterDef`** (step-8 Q3). Nothing else
+carries a value from the `QuestDef` to where the drop is actually rolled, which
+is `battle_director.start_combat()`. So `EncounterDef` gains
+`boss_drop_rarity_floor: int = 1`, read only when `is_boss`;
+`_build_quest_level()` copies the quest's value onto the boss encounter;
+`RunController._arrive()` passes `def.boss_drop_rarity_floor` into
+`start_combat(ids, is_boss, boss_rarity_floor := 1)`, which forces
+`maxi(stats.drop_rarity_floor, maxi(1, boss_rarity_floor))` onto the boss-slot
+combatant in place of the bare `maxi(stats.drop_rarity_floor, 1)` it used to
+hardcode.
+
+**That default of 1 is load-bearing.** `_build_endless_level()` and
+`_build_whispering_wood_level()` never set the field, so their bosses keep
+exactly the "never Common" floor the hardcoded `1` gave them, and `test_drops.gd`
+— on §13.3's no-edit list, and it reconstructs the effective floor as
+`maxi(1, …)` — stays green untouched. Only `_build_quest_level()` raises it.
+
+**Travel durations fall back to a ramp.** `travel_durations` is authored per tier
+and read positionally; where it is short or empty, `_default_quest_travel(i, n)`
+gives 2s into the first encounter, 4s before the boss and 3s for everything
+between — the same shape the endless builder hardcodes.
 
 `endless_mode` and both existing builders stay, untouched, as the dev path.
 
@@ -1055,38 +1636,99 @@ is a shop that only sells you what you walked in with.
 
 ### 8.5 Victory and failure
 
-**Victory** — `_run_complete()`:
+**Neither ending is driven from `RunController`** (step-8 Q2). Read literally,
+the step lists below want an `await SceneRouter.go(...)` inside
+`_run_complete()` / `_game_over()` — and that cannot work. `go()` calls
+`change_scene_to_file()`, which **frees `main.tscn`**, and `RunController` is a
+node inside it: a coroutine that awaited `go()` from there resumes on a freed
+instance, so the `present()` on the next line never runs. The recovery buttons
+have the same problem in reverse — by the time the player presses "Rest at the
+Inn", `RunController` is long gone, so it cannot be what spends the gold and
+heals.
+
+The work therefore splits in two:
+
+- **`RunController`** does only the **synchronous** profile work — bank the
+  reward *or* `discard_expedition_loot()`, set `completed_quest`, null `quest`,
+  `SaveGame.save_profile()` — then `EventBus.quest_finished.emit(victory)` and
+  **returns**. Still after the existing jog-home tween / 1.0s battlefield hold,
+  and the endless / fixed `run_summary.present()` lines below those branches are
+  untouched.
+- **`QuestResult`** — a `Hud/ModalLayer` child, so it outlives every scene swap
+  — connects `quest_finished` in `_ready()` and does
+  `await SceneRouter.go(MAYOR|INN)` then `present(victory)`. It also owns the
+  recovery buttons' `GameState` + `SaveGame` calls, and the victory button's
+  route on dismiss (a `_dismiss_route` field, applied after `hide()`).
+
+The general rule worth carrying forward: **a scene node must not `await` its own
+removal.** Anything that has to run *after* a route lives on something the route
+does not free — an autoload, or a `Hud` child. It is the same reasoning §3.2 used
+to put the router in charge of `go()` rather than a hand-rolled add/remove: the
+thing that outlives both scenes is the only thing that can orchestrate a swap
+between them.
+
+**Victory** — `_run_complete()`, then `QuestResult`:
 
 1. `GameState.add_gold(quest.gold_reward)`.
-2. `GameState.quest = null`; `EventBus.quest_finished.emit(true)`;
-   `SaveGame.save_profile()`.
-3. `await SceneRouter.go(Place.MAYOR)`.
-4. `Hud.quest_result.present(true)` — the stats list gains a **Quest Reward**
-   row showing `gold_reward`, plus rows for expedition gold and scrap. Button
-   text is **"Retire for the evening"**.
+2. `GameState.completed_quest = quest`; `GameState.quest = null`;
+   `SaveGame.save_profile()`; `EventBus.quest_finished.emit(true)`; **return**.
+3. `QuestResult`: `await SceneRouter.go(Place.MAYOR)`.
+4. `present(true)` — the stats list gains a **Quest Reward** row showing
+   `gold_reward`, plus rows for expedition gold and scrap. Button text is
+   **"Retire for the evening"**.
 5. On dismiss: `SceneRouter.go(Place.INN)`.
 
-**Failure** — `_game_over()`:
+**Failure** — `_game_over()`, then `QuestResult`:
 
 1. Hold on the battlefield 1.0s (existing behaviour, §18.1).
 2. **Keep** profile gold and scrap, including everything banked this
    expedition. **Discard** every inventory item acquired during the expedition
-   that is not equipped. Equipped gear survives.
-3. `GameState.quest = null`; `EventBus.quest_finished.emit(false)`;
-   `SaveGame.save_profile()`.
-4. `await SceneRouter.go(Place.INN)`.
-5. `Hud.quest_result.present(false)` with **two** recovery buttons instead of
-   one dismiss:
-   - **Rest at the Inn — 50g** → full heal, spend gold, dismiss. Disabled when
-     unaffordable.
-   - **Sleep in the street — free** → heal
-     `ceili((max_hp - hp) * INN_STREET_HEAL_FRACTION)`, set
-     `street_sleep_used = true`, dismiss. **Disabled when `street_sleep_used`
-     is already true.**
+   that is not equipped, through `GameState.discard_expedition_loot()`. Equipped
+   gear survives.
+3. `GameState.completed_quest = quest`; `GameState.quest = null`;
+   `SaveGame.save_profile()`; `EventBus.quest_finished.emit(false)`; **return**.
+4. `QuestResult`: `await SceneRouter.go(Place.INN)`.
+5. `present(false)` with **two** recovery buttons instead of one dismiss:
+   - **Rest at the Inn** → spend the gold, `GameState.heal_party()`, save,
+     dismiss. The price is the inn's own
+     `INN_REST_COST_PER_HERO × active_party.size()` (§7.2), not a second
+     50-gold literal — one heal at one price, wherever it is bought. Disabled
+     and greyed when unaffordable.
+   - **Sleep in the street — free** → `GameState.street_sleep_recover()`, which
+     heals `ceili((max_hp - hp) * INN_STREET_HEAL_FRACTION)` per hero, revives
+     the dead among them, and sets `street_sleep_used = true`; then dismiss.
+     **Disabled when `street_sleep_used` is already true.**
+
+Both recovery operations are `GameState` methods rather than modal-local code
+(step-8 Q2): hero HP and the inventory are profile state (§2.1), and the modal is
+only the button that asks for them.
 
 That flag is §1.9's fix. `street_sleep_used` is cleared by
 `start_expedition()`, so the free half-heal is once per expedition, not once
 per press.
+
+**`present()` cannot read `quest`, and must not.** Step 2 above nulls it before
+the route, deliberately, so that anything in the destination scene's `_ready()`
+sees "not on a quest". `GameState.completed_quest` (§2.2) is what the modal reads
+instead: non-null means this was a quest ending — VICTORY or FAILURE rather than
+the endless RETRY mode — and it is the source of the Quest Reward row's number.
+`start_expedition()` clears it, which is what keeps the RETRY branch reachable on
+the dev path (step-8 Q1). `expedition_gold` / `expedition_scrap` need no
+equivalent: they already live on `GameState` and are not cleared until the *next*
+`start_expedition()`, so `present()` reads them directly.
+
+**Both expedition rows read 0 until step 9** (step-8 Q5). The pickups that fill
+them are §9. The rows are authored at step 8 regardless, because they are part of
+this modal and wiring them now means step 9 adds a faucet rather than reopening
+the scene. "0 scrap brought home" is honest in the meantime — nothing was picked
+up. The Quest Reward row has real data from step 8.
+
+**The reward is counted twice on screen, deliberately.** `add_gold()` bumps
+`run_stats["gold_earned"]`, so the "Gold earned" row includes the 200 / 400 / 600
+*and* the "Quest reward" row states it again. Read as "gold earned this
+expedition, of which N was the reward" it is not wrong, and `add_gold()` is the
+only sane way to credit it — it is what emits `gold_changed` for the HUD plate.
+Recorded here so it reads as a decision rather than a bug.
 
 **Tracking which items are expedition loot.** Rather than a timestamp or a flag
 on `Item`, `start_expedition()` snapshots the inventory size
@@ -1455,7 +2097,10 @@ generated image is baked pixels that lose runtime parametricity.
   reference as the existing set.
 - **Two static backgrounds**: a medieval blacksmith's forge and a village
   mayor's office, matching `inn-bg.png`'s treatment and painted for a 1080×1920
-  portrait crop.
+  portrait crop. Both scenes arrive before this pass with a dark `ColorRect` in
+  that slot and their layout centred on top (§7.5 at step 8, §7.3 at step 10),
+  so step 11 is a texture swap rather than a scene rebuild — which is why step 8
+  spent no credits here (step-8 Q4).
 
 ### 12.2 Meshy: no
 
@@ -1501,6 +2146,9 @@ is the only bug in this document that destroys player data.
 Its three equipped items are "of different slots" only from step 4 on; at step 2
 distinct `weapon_type` / `rarity` / `equipped_by` stand in, which exercises every
 serialized field without depending on an enum that does not exist yet (step-2 Q9).
+**Step 4 makes it honest**: all three move onto the warrior as one WEAPON, one
+ARMOR and one TRINKET — what a real solo-warrior profile looks like — with no new
+assertion, because `slot()` is derived rather than serialized (step-4 Q9, §13.2).
 
 **The suite must not clobber the dev's save.** `test_profile_save.gd` reads and
 writes the real `user://profile.save`, because `SaveGame.PATH` is a `const` and
@@ -1568,36 +2216,215 @@ anything.
   spent. This is §10.5's invariant, and it is the assertion most likely to catch
   a future well-meaning "let's recompute value properly" edit.
 
+Shipped at 35 checks. `run_stats["items_forged"]` incrementing per forge is
+folded into the ladder block. The acceptance pass (Acceptance Testing Spec A2)
+adds three more (38 total): `forge()` emits `EventBus.party_bonuses_changed`
+exactly once, and the forged modifier is then in `party_bonuses()` — the emit
+every other equipped-set mutation already made and this one did not.
+
+**`tests/test_loot_pickup.gd`** — added at **step 9** alongside `test_forge.gd`.
+§9's arc is a tween that needs a running battle to watch, but the arithmetic
+under it is a headless invariant: `LootPickup._split(value, count)` produces
+whole shares that sum back to `value` with the count capped at
+`LOOT_PICKUP_MAX_OBJECTS`; the no-battle-world award path credits both the
+profile total and the expedition bank (§8.4) by amounts inside
+`ENEMY_GOLD_DROP` / `ENEMY_SCRAP_DROP`; and `is_boss` multiplies both by
+`BOSS_LOOT_MULT` (§11.1). Five checks, headless. **Still wanting an eyeball:**
+the arc/spin/fade rendering in a live fight — the award and the counts are
+pinned, but the tween itself was only reasoned about, not watched. A `debug
+quest easy` run was attempted and blocked before combat by the editor pausing
+on a pre-existing confusable-local warning in `battle_vfx.gd` (`pm` / `grad`),
+unrelated to this step; retry it when step 10 is driving the forest anyway.
+
 **`tests/test_quest_gen.gd`**
 
-- each of the three `.tres` quests produces a `LevelDef` whose encounter type
-  sequence matches its `encounter_types` exactly;
-- exactly one encounter has `is_boss`, and it is the last;
+- each of the three `.tres` quests loads as a `QuestDef`, and every id in its
+  `enemy_pool` / `boss_pool` resolves to real `CombatantStats`;
+- each produces a `LevelDef` whose encounter type sequence matches its
+  `encounter_types` exactly;
+- exactly one encounter has `is_boss`, and it is the last — §8.2 identifies the
+  boss *by position*, and this is the check that keeps that convention from
+  decaying into an accident;
 - the boss's `enemy_stat_ids[0]` comes from `boss_pool` (leftmost slot, §7.3);
-- every combat encounter's enemy count is within `enemy_count`;
+- the boss encounter carries the quest's `boss_drop_rarity_floor` (§8.3);
+- every combat encounter's enemy count is within `enemy_count` — **including the
+  boss row**, which is why §8.3 spends the boss group's budget on `count - 1`
+  adds rather than a full `count`;
 - every enemy id in the level is in `enemy_pool` or `boss_pool`.
+
+Generation is random, so each of these runs over many rebuilds per tier rather
+than one; it shipped at 60 builds each, 24 checks.
+
+**`tests/test_quest_flow.gd`** — a **second** permanent test at step 8, beyond
+the one this section originally named (step-8 Q6). §8.5's *economy* is the part
+of the step §8.5 itself argues hardest for — a lost quest keeps banked gold and
+scrap, drops every unequipped item found this trip, keeps equipped gear and town
+gear; the free half-heal is `ceil(half missing)` and once per expedition — and
+unlike the scene-routing chain it reduces to cheap headless invariants.
+
+- `start_expedition()` snapshots `_expedition_inventory_mark` at the current
+  inventory size, and clears `completed_quest`;
+- `discard_expedition_loot()` keeps town gear and keeps *equipped* expedition
+  loot, and drops loose expedition loot;
+- `street_sleep_recover()` heals exactly `ceil(half missing)`, sets
+  `street_sleep_used`, and revives a downed hero;
+- `start_expedition()` clears `street_sleep_used`.
+
+Nine checks, headless.
+
+**Step 8's live chain has no permanent test, deliberately.** `quest_finished`
+→ `await go()` → `present()`, and the mayor's button population, need a full
+scene driven to assert anything; they were covered by a throwaway runtime smoke
+during the step, exactly as step 6's modal wiring was (step-6 Q7). §14 step 8
+records what that smoke drove.
+
+A driver for a smoke like that has to survive the swaps it triggers:
+`reparent.call_deferred(get_tree().root)` in its `_ready()` — deferred, because
+the tree is mid-build during `_ready()` — makes it a persistent sibling of
+`current_scene` under `/root`, after which it rides out every
+`change_scene_to_file()` the run performs. It is the same trick a permanent
+HUD-level test would need; whoever writes step 9's pickup smoke wants it too.
+
+**`tests/test_scene_router.gd`** — lands at **step 5**, on the same principle
+as steps 1—4's tests (step-1 Q5): a step that buys isolation and then ships no
+assertion of its own has spent the isolation and not collected. Step 5 is the
+first step whose acceptance is partly a *runtime* check, but these invariants
+are cheap to pin headless. Keep it to about ten checks — it shipped at **12**.
+
+- **totality**: every `Place` enum value has a `PATHS` key — `Place.size()` vs
+  `PATHS.size()`, and each key present by value. The failure mode is adding a
+  `Place` and forgetting its path, which crashes only when someone routes there;
+- **existence, for built places only**: `ResourceLoader.exists(PATHS[p])` for
+  `TOWN` and `QUEST` at step 5, widening to `INN` at step 7, `MAYOR` at step 8
+  and `BLACKSMITH` at step 10 (§3.1). Asserting all five at step 5 fails on
+  arrival — three of those scenes have not been built yet;
+- `SceneRouter` instantiates under a headless tree with no error pushed, and its
+  `_ready()` / `_init()` reference no sibling autoload — belt-and-braces over
+  §13.3's scene-autoload blind spot;
+- **§3.1's boot rule**: after `load_profile()` returns `false`, exactly one
+  `SaveGame.save_profile()` follows. This is the guard against "every launch
+  overwrites the player's file" regressing silently. Two halves, and the runtime
+  one is the stronger: assert directly that `new_profile()` alone writes no file
+  and that a `save_profile()` after it writes a *loadable* one; then, as a
+  source scan, that `boot.gd` contains exactly one call to each. **The source
+  scan must strip comments first** — `boot.gd`'s own header explains the
+  never-persists rule and so names `new_profile()` in prose, which makes a naive
+  `count("new_profile()") == 1` fail on a correct file.
+
+Written as built, that is: totality ×2, existence ×2, autoload liveness ×2,
+router lifecycle-lint ×1, boot rule ×5. `SceneRouter.Place.size()` and its keys
+read directly — a named GDScript enum is a `Dictionary` constant, so the
+totality check needs no `.values()` dance.
+
+Anything here that touches `user://profile.save` goes through
+`test_support.gd`'s `guard_user_file()`, the same as `test_profile_save.gd`.
+
+**`tests/test_forge_stock.gd`** — added by the acceptance pass (Acceptance
+Testing Spec C1), the permanent step-10 test the initiative shipped without.
+`generate_forge_stock()`'s shape, `forge_stock`'s persistence and the restock
+predicate are all pure headless invariants, and A1 (buying out the stock is a
+free refresh) and B2 (`FORGE_SHOP_SLOTS` was documented-only) would both have
+been caught here. House style; wrapped in `guard_user_file(SaveGame.PATH)`.
+
+- `generate_forge_stock().size() == Tuning.FORGE_SHOP_SLOTS`, and over ~400
+  stocks: no `ENHANCED` (forge-only, §7.4), every rarity `COMMON`..`RARE`
+  appears, every `slot()` is one of the three, every item `usable_by()` the
+  active party (slot-first, §4.4);
+- `generate_shop_stock()` still returns `SHOP_ITEMS_FOR_SALE` and the two
+  generators stay distinct (§7.4's "a new generator function, not a parameter");
+- **the restock predicate (A1)**: `needs_forge_restock()` is `true` after
+  `new_profile()`, `false` after a generation sets `forge_stock_generated`,
+  **still `false` once `forge_stock` is emptied item by item** — the A1
+  regression guard — and `false` after a reroll;
+- `forge_stock` round-trips field-for-field through `save_profile()` /
+  `load_profile()`; `forge_stock_generated` round-trips; a save dict with **no**
+  `forge_stock_generated` key loads with the derived default
+  (`not forge_stock.is_empty()`), not a bare `false`.
+
+Shipped at 15 checks.
+
+**Step 6 adds nothing to this list, deliberately** (step-6 Q7). Everything the
+inventory modal stands on is already pinned — `equip_item()`,
+`equipped_item(hero, slot)` and `equipped_set()` by `test_profile_expedition.gd`,
+`test_drops.gd` and `test_profile_save.gd`. What step 6 puts on top is scene
+instantiation, signal forwarding (`compare_requested` → flyout, `equip_changed`
+→ rebuild) and rebuild-on-signal: none of it reduces to a cheap headless
+invariant, and all of it needs a full scene driven to assert anything. Its
+verification is a throwaway headless smoke plus the rest of the suite staying
+green; §14 step 6 records what that smoke asserted. Step-1 Q5's "a step that
+ships no assertion has spent its isolation and not collected" is satisfied here
+by the smoke, not by a permanent file — the same call step 5 made for the
+runtime half of its own acceptance.
 
 ### 13.2 Edited
 
-- `test_drops.gd:23` — `droppable_classes() == GameState.active_party`.
-- `test_item_distribution.gd` — type-mix expectations re-derived for §4.4's
-  slot-first roll. **The mod-count assertion at line 68 does not change** and
-  must stay passing throughout.
-
-  While editing it, widen its `by_rarity`, `names` and `expected` arrays from
-  four entries to five (step-3 Q6). They are safe unedited at step 3 — weight 0
-  means `by_rarity[item.rarity]` is never indexed at 4 — but they are a
+- `test_drops.gd` — **four edits, all step 4** (step-4 Q2, Q11). An earlier
+  draft of this section named only line 23; the type-mix re-derivation it
+  attributed to `test_item_distribution.gd` belongs here, because D7 is the only
+  type-distribution assertion in the suite.
+  - **D2** (line 23): `droppable_classes() == GameState.active_party`.
+  - **D7** (lines 77–88) is re-derived. Its `check_between(pct, 16.0, 24.0)` on
+    every type's share cannot survive §4.4: slot-first with a solo warrior gives
+    axe and sword ≈ 16.7% each, the six armor/trinket types ≈ 11.1% each, and
+    bow / dagger / staff exactly 0%. Every one of those is outside the band, and
+    the loop iterates the renamed constant besides. The replacement keeps D7's
+    spirit — generation is evenly spread, no slot starved or flooded — pointed at
+    what §4.4 actually produces, over ~6000 samples:
+    - **slot share**: `item.slot()` is WEAPON / ARMOR / TRINKET 33.3% ± 3pp each;
+    - **within-slot uniformity**: among the types rolled in a slot, each is
+      `1 / n_types_in_slot` ± 3pp;
+    - **the §1.6 guarantee, asserted directly**: `bow`, `dagger` and `staff`
+      appear **exactly zero** times. This is the regression guard D7 was always
+      meant to be, now aimed at the thing slot-first generation is *for*.
+  - **D4 and D9** save / override / restore `active_party` and loop
+    `droppable_classes()` — §4.5 gives the reasoning.
+  - D1, D3, D5, D6 and D8 are **not** edited. D1/D3/D5/D6 pass an explicit class
+    to `generate_drop()`, which still works per-class for the mage and ranger
+    under §4.4's slot filter, so they keep looping `PARTY_ORDER` and stay green.
+- `test_item_distribution.gd` — **one edit**: widen its `by_rarity`, `names` and
+  `expected` arrays from four entries to five (step-3 Q6), so `[0, 0, 0, 0]`
+  becomes `[0, 0, 0, 0, 0]`, `names` gains `"Enhanced"`, `expected` gains `0.0`
+  and the report loop becomes `range(5)`. They are safe unedited at step 3 —
+  weight 0 means `by_rarity[item.rarity]` is never indexed at 4 — but they are a
   four-wide array indexed by a five-value enum, and the only thing standing
   between that and an out-of-bounds write is a weight this pass deliberately
   makes editable. Widening costs nothing and removes the trap.
+
+  It asserts **no** type mix (its rarity split is an informational `print`, not a
+  `check`), so nothing type-related changes here and no new distribution test is
+  added — that is D7's job. **The mod-count assertion at line 68 does not
+  change** and must stay passing throughout.
+- `test_profile_save.gd` — its three equipped items become one WEAPON, one ARMOR
+  and one TRINKET **on the warrior**, which is what §13.1 has always asked for
+  and what a real solo-warrior profile looks like; at step 2 distinct
+  `weapon_type` / `rarity` / `equipped_by` stood in (step-4 Q9). The fixture
+  assigns `weapon_type` directly after generation, so this is three literals
+  (`&"axe"` / `&"helm"` / `&"ring"`, all `equipped_by = &"warrior"`) and no new
+  assertion: `slot()` is **derived** from `weapon_type` and never serialized, so
+  the existing "every `@export`ed field round-trips" coverage already proves it
+  survives. `equipped_by`'s StringName round-trip stays covered by the
+  `&"warrior"` / `&""` pair, which is the boundary that matters.
 - `test_profile_expedition.gd` — edited **twice**, deliberately, and that is a
   feature rather than churn. It is the file that pins whichever seam each step
   moves, so an edit to it is the visible cost of moving one:
   - **step 2** re-points its `new_profile()` / `reset_run()` gold and scrap
     checks from `Tuning.STARTING_GOLD` to §11's `PROFILE_STARTING_GOLD` /
     `PROFILE_STARTING_SCRAP`, because §2.3 mandates the constant swap (step-2 Q3);
-  - **step 4** updates its "`active_party` still equals `PARTY_ORDER`" check when
-    §4.5 flips the party solo.
+  - **step 4** replaces its P6 "`active_party` still equals `PARTY_ORDER`" check
+    (line 123) with **two** checks when §4.5 flips the party solo (step-4 Q8):
+
+    ```gdscript
+    t.check(GameState.active_party == ([&"warrior"] as Array[StringName]),
+        "active_party is the solo warrior (got %s)" % [GameState.active_party])
+    t.check(GameState.PARTY_ORDER.size() == 3,
+        "PARTY_ORDER is untouched - the 3-hero roster still exists (spec 4.5)")
+    ```
+
+    The second line is the one worth having: §4.5 and §0.2 both say the flip is
+    `active_party`'s *value*, **not** a deletion of `PARTY_ORDER`, and without an
+    assertion a future tidy-up that trims the roster to match would go unnoticed
+    until the mage came back. P6 runs after `reset_run()` at P5, i.e. post-
+    `new_profile()`, so `[&"warrior"]` is the expected value.
 
   An edit here should always be traceable to a named section. An edit that is
   not is a regression wearing a test's clothes.
@@ -1613,21 +2440,57 @@ default-`true` on `GameState`, and only bypassed when `quest != null`. It calls
 `GameState.reset_run()` directly, which is why §2.3 keeps that function alive
 for the whole pass rather than deleting it.
 
+**`test_autoload_safety.gd` cannot see a scene autoload, and `Hud` is one.** The
+lint reads the script at `autoload/<Name>` and isolates the bodies of top-level
+`func _ready(` / `func _init(` lines. For `Hud` that path is `hud.tscn`;
+`FileAccess` opens it happily, finds no column-0 `func _ready(` in scene text,
+and scans an empty body — a vacuous pass, not coverage. `hud.gd`'s real
+`_ready()` is never scanned. Two consequences, both for step 5: keep
+sibling-autoload work out of `hud.gd`'s root `_ready()` on the honour system
+(`CurrencyPlate` binds its own `EventBus` signals in its own script — a child
+node, unscanned either way, and the right home for it regardless;
+`call_deferred` anything that genuinely needs a sibling at boot), and treat a
+`--headless --quit-after` boot of `boot.tscn` as the check that actually covers
+`Hud`. The test's `t.check(autoloads.size() >= 6)` still holds at 13, so it
+needs no edit — but do not mistake its green for coverage of the HUD.
+
 ### 13.4 Debug harness
 
 `scripts/autoload/debug.gd` gains verbs, in its existing one-line-per-command
 style:
 
 ```
-scrap <n>                   add scrap
-forge <weapon|armor|trinket>  forge the item in that slot once
-quest <easy|medium|hard>    start that quest from anywhere
-town                        route to town
-wipe                        delete the save file and start a new profile
+route <town|inn|blacksmith|mayor|quest>   SceneRouter.go(Place.<x>)         step 5
+wipe                                      delete the save, new profile      step 5
+quest <easy|medium|hard>                  start that quest from anywhere    step 8
+scrap <n>                                 add scrap                         step 9
+forge <weapon|armor|trinket>              forge that slot's item once       step 9
 ```
 
+`route` supersedes the bare `town` verb an earlier draft listed — one verb, all
+five destinations, and it is how a tester reaches the forest through the router
+before the mayor exists. **Its `quest` branch calls
+`GameState.start_expedition()` before routing**, standing in for §7.5 so the
+loaded profile survives the trip (§3.1); `route inn|blacksmith|mayor` refuses
+cleanly until those scenes exist, which is `go()`'s missing-path bail doing its
+job rather than a soft-lock. That call is **unconditional** — no `if level ==
+null` on the debug side. `route quest` twice just re-runs `start_expedition()`,
+which is a clean expedition reset and costs the profile nothing, and the verb
+stays a one-liner.
+
+`quest <easy|medium|hard>` lands at step 8 and is §7.5's accept path in one
+line: `load` that tier's `.tres`, `GameState.start_expedition(q)`,
+`go(Place.QUEST)`. It is how a quest is reached from the forest or the inn
+without walking the town, and it is the verb step 8's runtime smoke drives.
+
 `wipe` is the one a tester will reach for most and the one most easily
-forgotten.
+forgotten, and it becomes *meaningful* at step 5: this is the first step where a
+launch reads `user://profile.save`, so a stale dev save now actually changes
+what a run looks like.
+
+`route` and `wipe` land at step 5; the other three come with their own sections.
+All of them go in `debug.gd`'s `match verb` block (`debug.gd:38`) in the
+existing one-line style, with `_cmd_route` / `_cmd_wipe` alongside `_cmd_gold`.
 
 ---
 
@@ -1665,17 +2528,306 @@ previous is green.
    for. `test_enhanced_rarity.gd` (§13.1) is what makes that claim checkable.
 4. **§4 — three slots**: `Item.slot()`, `ITEM_TYPES`, the slot-aware
    `equipped_item()`, the `compare_flyout` fix, slot-first generation. Update
-   `test_drops.gd` and `test_item_distribution.gd`.
+   `test_drops.gd` and `test_item_distribution.gd`. The last invisible step, and
+   the one with the largest test surface in the pass. Its changeset, after the
+   step-4 questions were resolved:
+
+   - `scripts/data/item.gd` — the `Slot` enum and `slot()`; `usable_by()` reads
+     `ITEM_TYPES`; comments on `weapon_type` and on `kind` staying `WEAPON`
+     (§4.1). `type_initial()` is **not** touched (see §15).
+   - `scripts/autoload/itemizer.gd` — `WEAPON_TYPES` → `ITEM_TYPES` with a `slot`
+     on every entry plus the six new armor / trinket types (§4.2);
+     `types_for_slot()`, `_equippable_slots_for()`, `_roll_typed()`, and
+     `generate_item_with_rarity()` / `generate_drop()` rebuilt on them (§4.4);
+     `droppable_classes()` reads `active_party` (§4.5).
+   - `scripts/autoload/game_state.gd` — `equipped_item(hero, slot)` and
+     `equipped_set(hero)`; the slot lookups in `equip_item()` and
+     `_maybe_auto_equip()` (§4.3); **and the value flip** — `active_party`'s
+     initialiser *and* `new_profile()`'s assignment both become `[&"warrior"]`
+     (§4.5). That flip is the edit that actually does the work; the read swaps
+     without it change nothing.
+   - `scripts/modals/compare_flyout.gd` — the §6.3 one-liner.
+   - `scripts/autoload/debug.gd` — the `state` line via `equipped_set()` (§4.3).
+   - `scripts/autoload/save_game.gd` — **`VERSION` 1 → 2** (§2.4). The value flip
+     changes what `active_party` *means*, which is precisely the policy's bump
+     trigger; it lands here because it is §4.5 that invalidates the old saves.
+   - tests: `test_drops.gd` (D2, D7, D4/D9), `test_item_distribution.gd` (the
+     four-to-five widening), `test_profile_expedition.gd` (P6),
+     `test_profile_save.gd` (one item per slot) — all §13.2.
+
+   **What step 4 accepts, deliberately:** one modifier pool serves all three
+   slots, so a helm can roll `+7 Bolt Power` and a ring `+5 Fire Damage` (§15
+   defers per-slot pools). The six new types render as the generic gem glyph
+   until §12 at step 11, since `item_glyph.gd`'s `WEAPON_TEXTURES` has no entry
+   for them and `_draw()` falls through to `_draw_gem()` — which is correct for a
+   step that is invisible by design.
 5. **§3 — `SceneRouter` and `Hud`**, `boot.tscn`, `RunSummary` → `QuestResult`
-   moved into the HUD. The forest still starts, now via the router. **Read
-   §3.1's `RunController._start_run()` warning before starting this step** — it
-   is the step where a leftover `reset_run()` on the boot path stops being
-   harmless and starts destroying saved profiles.
-6. **§6 — the inventory modal** and `inventory_row.tscn`.
-7. **§7.1, §7.2 — town hub and inn**, wired to the router.
+   moved into the HUD. The forest still starts, now via the router. The first
+   player-visible step, and the first whose acceptance is partly a *runtime*
+   check rather than a headless one. **Read §3.1's
+   `RunController._start_run()` warning before starting this step** — it is the
+   step where a leftover `reset_run()` on the boot path stops being harmless and
+   starts destroying saved profiles. **Done.** §13.3's no-edit list plus the four
+   earlier-edited tests are still green, `test_scene_router.gd` (12 checks) is
+   new and green, a `--headless --quit-after` boot of `boot.tscn` reaches
+   `Place.TOWN` with no error, and a headless `debug route quest` takes
+   `place` `TOWN → QUEST`, makes `main.tscn` current, builds `GameState.level`
+   and leaves the loaded profile **unwiped** — which is the whole point of the
+   step. Its changeset, after the step-5 questions were resolved:
+
+   - `scenes/boot.tscn` + `scripts/boot.gd` — new. `load_profile()`, else
+     `new_profile()` + `save_profile()`; then the two zero-delta currency emits
+     (§3.1), so `CurrencyPlate` sees the profile it was built before; then
+     `await get_tree().process_frame` — the swap cannot run inside its own
+     scene's `_ready()` (§3.1) — and the first hop to `Place.TOWN` by direct
+     `change_scene_to_file`, not `go()`.
+   - `scripts/autoload/scene_router.gd` — new. `Place`, `PATHS`, `place`, and an
+     `await`able `go()` carrying **both** guards: re-entrancy, and the
+     missing-path bail that keeps `route inn` from soft-locking behind an opaque
+     rect (§3.1) — plus a `to == place` no-op and a `FADE_TIME` const that came
+     out of the build. Three of the five `PATHS` scenes do not exist yet; that is
+     expected, and is why the bail is not optional. `place` is assigned after the
+     swap settles, so it trails the incoming scene's `_ready()` — see §3.1.
+   - `scenes/hud/hud.tscn` + `scripts/hud/hud.gd` — new autoload. `CanvasLayer`
+     at layer 10: `InventoryButton` (visible, `disabled`, COMBAT rule already
+     wired, §3.2), `CurrencyPlate`, `ModalLayer` (`PROCESS_MODE_ALWAYS`) hosting
+     `QuestResult`, and `Transition` last and inert. A `quest_result` accessor,
+     because §8.5 reaches it by name.
+     - *Amendment (Acceptance Testing Spec E1):* `CurrencyPlate` was placed
+       top-right on top of the screen-corner `BonusPanel`, and the `Hud` layer
+       hid it. `scenes/overlay/bonus_panel.tscn` is moved down to
+       `offset_top = 130` / `offset_bottom = 160` to clear it. `CurrencyPlate`'s
+       bare-offset, single-viewport-width positioning is accepted as-is. See
+       §3.2's **Position** note.
+     - *Amendment (Acceptance Testing Spec B1, folded from step 11):*
+       `CurrencyPlate` gains an `OrnateFrame` child (reused `ornate_frame.gd`,
+       inspector props only) plus a `StyleBoxEmpty` panel override, so it wears
+       §5.3's carved-frame treatment like `status_panel`'s `GoldPlate`.
+   - `scripts/hud/currency_plate.gd` — new. Reads `GameState.gold` / `scrap`
+     directly for its first paint, then trusts `gold_changed` / `scrap_changed`.
+     The scrap half stays silent until step 9 gives it a source.
+   - `scripts/ui/currency_feedback.gd` — new, and `scripts/console/status_panel.gd`
+     refactored onto it. §5.3's shared pop-and-float helper lands **here, not at
+     step 9**: `CurrencyPlate` is its second caller, so this is the step where
+     the third copy would otherwise have been written.
+   - `scenes/modals/run_summary.{tscn,gd,gd.uid}` → `quest_result.*` — `git mv`
+     all three, node + signal rename, reparented under `Hud/ModalLayer` (§3.2).
+     `RunController`'s `var run_summary` keeps its name.
+   - `scenes/main.tscn` — the `RunSummary` node and its `ext_resource` removed
+     (`:8`, `:90`); `ModalLayer/ShopModal` stays exactly where it is.
+   - `scripts/run/run_controller.gd` — `_start_run()` guarded on
+     `GameState.level == null`, with the retry reset moved into `_on_retry()`
+     (§3.1); the `run_summary` references at `:21`, `:33`, `:46`, `:276`, `:285`
+     repointed at `Hud.quest_result` with `dismissed` for `retry_pressed`
+     (§3.2); one line **first** in `_ready()` asserting `SceneRouter.place =
+     Place.QUEST` — ahead of the `main.get_node()` lookups, so a failure there
+     still leaves `place` honest.
+   - `scripts/autoload/event_bus.gd` — all five §3.3 signals in one edit, with
+     `quest_started` untyped until `QuestDef` exists at step 8.
+   - `scripts/console/console.gd:8` — one stale `run_summary.gd` reference.
+   - `scripts/autoload/debug.gd` — `route` and `wipe` (§13.4).
+   - `project.godot`, **via `set_project_setting` only** — `main_scene` →
+     `boot.tscn`; autoloads `SceneRouter` then `Hud`, both after `SaveGame`, so
+     `Hud` (the heavier one, and the one `SceneRouter` calls into) is freed last.
+   - `tests/test_scene_router.gd` + `.tscn` — new (§13.1).
+
+   **What step 5 accepts, deliberately:** `play_scene` and F5 now land in a town
+   with dead buttons until step 7 — every "run the game" reflex, human and MCP,
+   goes there instead of the forest, which is what `route quest` is for. The
+   inventory button is on screen and does nothing until step 6, and wears no
+   icon until step 11. And `Hud`'s headless inertness is **not** covered by
+   `test_autoload_safety.gd` (§13.3): a `--headless --quit-after` boot of
+   `boot.tscn` reaching `Place.TOWN` clean is part of this step's green bar, not
+   an optional extra.
+
+   **One workflow footgun, for whoever reviews this step in the editor:** after
+   the two autoloads are registered, a *running* Godot editor still reports
+   `Compile Error: Identifier not found: SceneRouter` / `Hud` for every file
+   that names them, and `reload_project` does not clear it — the editor reads
+   the autoload table only at start. Restart the editor once. Every `--headless`
+   run is a fresh process and never sees this, which is why the suite can be
+   green while the Errors panel is red. It recurred verbatim at step 6 — a
+   `play_scene` of a scratch scene naming `Hud` failed to compile in the
+   running editor while the same scene ran clean headless — so treat one editor
+   restart as part of the cost of any step that adds or renames an autoload,
+   and run that step's verification headless.
+
+   **Step 8 found the headless half of the same footgun** (step-8 Q10). A
+   `godot --headless res://tests/<x>.tscn` run does **not** rebuild
+   `.godot/global_script_class_cache.cfg`, so once `scripts/data/quest_def.gd`
+   added `class_name QuestDef` the whole suite failed with `Could not find type
+   "QuestDef" in the current scope` and, downstream, `game_state.gd does not
+   inherit from 'Node'` — because `game_state.gd` now names `QuestDef` as a type
+   and could not resolve it. One `godot --headless --editor --quit-after 20`
+   pass rebuilds the cache (`update_scripts_classes | QuestDef` in its log),
+   after which every headless run resolves the class. Generalised, and the same
+   family as step-5 I8 / step-6 N2: **adding a `class_name` or an autoload costs
+   one `--editor --headless` pass — and, for an autoload, one restart of any
+   running editor — before the suite means anything.**
+6. **§6 — the inventory modal** and `inventory_row.tscn`. Unblocked by step 5's
+   `Hud/ModalLayer` and `SceneRouter`; three hazards are already visible from
+   there. The `InventoryButton` `pressed` handler is the one line step 5
+   deliberately left out — step 6 adds `Hud.inventory_modal.open()` and deletes
+   the `or true` from `hud.gd`, and nothing else about the button changes.
+   §6.2's shared `item_card_style.gd` has to be lifted from **two** existing
+   copies (`shop_sell_row.gd` and `shop_buy_card.gd`), not one. And moving
+   `CompareFlyout` into `Hud/ModalLayer` (§3.2's end-state list) collides with
+   the shop's own instance: step 6 has to decide whether that is one shared node
+   or two, and §6.3's slot fix lands on whichever it is. **Done.** The three
+   hazards resolved as: `hud.gd` gains a `_ready()` that connects the button and
+   `_process()` drops the `or true`; `item_card_style.gd` lifts only the
+   rarity-tint + glyph block the two `setup()`s share byte-for-byte, into
+   `scripts/ui/` next to `currency_feedback.gd`; and `CompareFlyout` stays
+   **two** instances — the inventory modal carries its own as its last child,
+   exactly as the shop does, since the flyout must be the last child of whatever
+   opened it and the two modals never coexist (§6.3's fix is in
+   `compare_flyout.gd` itself, so both inherit it). Its changeset, after the
+   step-6 questions were resolved:
+
+   - `scripts/ui/item_card_style.gd` — new. Static `apply(face, glyph, item)`.
+     `shop_sell_row.gd` / `shop_buy_card.gd` refactored onto it,
+     behaviour-preserving — the `name`/`subtitle`/modifier lines stay per-caller
+     (the buy card builds a modifier list, the sell row a count).
+   - `scenes/modals/inventory_row.tscn` + `scripts/modals/inventory_row.gd` —
+     new (§6.2). Reuses `swipeable_face` (and the Stage/ActionLayer/Face
+     structure it needs), `item_glyph`, `shop_buy_stage`, the rarity frame via
+     `ItemCardStyle`. Two equal-width buttons — Compare, Equip/Unequip — plus
+     the swipe-revealed Compare lane; emits `compare_requested(item)` and a
+     local `equip_changed()`. Equip hidden when no `active_party` member can
+     wield the item.
+   - `scenes/modals/inventory_modal.tscn` + `scripts/modals/inventory_modal.gd`
+     — new (§6.1). Header (title, gold+scrap, red X), `BonusStrip` (instanced
+     from `scenes/console/bonus_strip.tscn` — `shop_modal.tscn` dropped its own
+     copy, so §6.1's "exactly as shop_modal authors it" is now "under the
+     header"), scrolled Body with **Equipped** (one row or an empty-slot
+     placeholder per `Item.Slot`) and **Carried** (every unequipped item), and
+     its own `CompareFlyout` last child. `open()` pauses the tree; `close()`
+     unpauses first on every path; any row's `equip_changed` rebuilds both
+     sections. No sell action (§6.4).
+   - `scripts/hud/hud.gd` + `scenes/hud/hud.tscn` — `_ready()` connects
+     `inventory_button.pressed` → `inventory_modal.open`; `_process()` drops
+     `or true`; `InventoryModal` instanced under `Hud/ModalLayer`.
+   - `scripts/autoload/game_state.gd` — `equip_item()` emits
+     `EventBus.item_equipped(item, hero_class, int(item.slot()))` (§3.3's
+     step-6 signal); `_maybe_auto_equip()` stays silent.
+   - `scripts/data/item.gd` — `type_initial()` deleted (§15; zero callers
+     remain, the spec-17.2 chip that used it is already gone).
+   - no test file (§13.1): verification is a headless smoke — populate a
+     profile, open the modal, assert **3** Equipped rows and **2** Carried,
+     equip the spare weapon, assert both sections rebuilt with the weapon slot
+     displaced (Equipped still 3, the displaced Axe now among the 2 Carried),
+     then `close()` and assert `not visible` and `not get_tree().paused` — plus
+     the full §13.3 no-edit list and the six §13.1 / §13.2 tests
+     (`test_enhanced_rarity`, `test_profile_save`, `test_profile_expedition`,
+     `test_drops`, `test_item_distribution`, `test_scene_router`) staying
+     green.
+
+   **What step 6 accepts, deliberately:** Equipped is the field leader's three
+   slots rather than one section per hero (§6.1, and §15's mage-and-ranger
+   bullet, which now names this as its third seam); an item nobody on the field
+   can wield says so by having *no* Equip button rather than by explaining
+   itself; and the six armor / trinket types still render as the generic gem
+   glyph until step 11, so a full Equipped section is three differently
+   coloured gems until §12 lands.
+7. **§7.1, §7.2 — town hub and inn**, wired to the router. **Done.** The
+   changeset:
+
+   - `scenes/town/tavern.tscn` → `inn.tscn` (`git mv`), root node `Tavern` →
+     `Inn`, `+ scripts/town/inn.gd`. The authored `inn-bg.png` and the
+     fire/dust particles are kept; a centred `Layout` VBox adds the two action
+     buttons, a flavour `Label`, and a Back button.
+   - `scripts/town/inn.gd` — new (§7.2). **Rest for the night** —
+     `INN_REST_COST_PER_HERO × active_party.size()`, `spend_gold()` then
+     `GameState.heal_party()` then `SaveGame.save_profile()`; disabled + greyed
+     when unaffordable, re-evaluated on `gold_changed` (`upgrade_button.gd`'s
+     pattern). **Sit by the fire** — flavour text only, no heal. Back /
+     `ui_cancel` route to `Place.TOWN`. `_ready()` re-asserts
+     `SceneRouter.place = Place.INN` (§3.1).
+   - `scenes/town/town.tscn` + `scripts/town/town.gd` — new script. `TavernButton`
+     → `InnButton` (text "Inn"), new `MayorButton`; `_ready()` connects the three
+     `pressed` signals to `SceneRouter.go()` and re-asserts `place = Place.TOWN`.
+     `BlacksmithButton` / `MayorButton` route to scenes that arrive at steps 10 /
+     8 — `go()`'s missing-path bail covers that.
+   - `scripts/autoload/game_state.gd` — `heal_party()`: `_reset_hero_runtime(true)`,
+     i.e. `new_profile()`'s full-heal branch without the wipe. Profile-scoped
+     state, so GameState owns the heal.
+   - `scripts/autoload/tuning.gd` — `INN_REST_COST_PER_HERO := 50` (§11). The
+     other §11 constants stay with their own steps.
+   - `scripts/autoload/scene_router.gd` / `debug.gd` — comments updated (`inn.tscn`
+     now exists; only `blacksmith` / `mayor` still hit the bail).
+   - `tests/test_scene_router.gd` — the INN existence check widened in (§13.1).
+     Full suite green; a `play_scene` of `boot.tscn` routed
+     town → inn → rest (G 150 → 100, "every wound closed") → back.
 8. **§8 — `QuestDef`, the three `.tres` files, `_build_quest_level()`**, and the
    victory/failure flows. The loop closes here: this is the first commit where
-   the game is the game this document describes.
+   the game is the game this document describes. **Done.** A `debug quest easy`
+   from `boot.tscn` routed town → mayor → forest (`GameState.quest` set, a
+   5-encounter level built), a simulated victory banked the 200 gold and routed
+   to the mayor's office with `QuestResult` up, and "Retire for the evening"
+   routed on to the inn - the full §8.5 victory chain, driven headless.
+   `test_quest_gen` (24 checks) and `test_quest_flow` (9) are new and green; the
+   whole §13.3 no-edit list plus `test_scene_router` (now 14, MAYOR widened in)
+   still pass. Its changeset, after the step-8 questions were resolved:
+
+   - `scripts/data/quest_def.gd` — new `QuestDef` (§8.1). `encounter_types`
+     (`EncounterDef.Type` ints), `enemy_pool` / `enemy_count` / `boss_pool` /
+     `boss_drop_rarity_floor`, `gold_reward`, `travel_durations`.
+   - `resources/quests/{easy,medium,hard}.tres` — the three authored tiers
+     (§8.2): 5 / 7 / 9 encounters, `enemy_count` 2-2 / 2-3 / 3-3, boss drop floor
+     1 / 2 / 3, reward 200 / 400 / 600. Pools are `ENDLESS_EARLY_POOL` / early+mid
+     / `ENDLESS_MID_POOL` as §8.2's table gives them.
+   - `scripts/data/encounter_def.gd` — `boss_drop_rarity_floor: int = 1`
+     (default preserves the endless / fixed boss's "never Common" floor
+     untouched; the quest builder raises it - Q3).
+   - `scripts/autoload/game_state.gd` — `build_level()` branches on `quest` ahead
+     of `endless_mode` (§8.3); `_build_quest_level()` + `_default_quest_travel()`;
+     `completed_quest` (read by `QuestResult` after `quest` is nulled - Q1);
+     `start_expedition(q: QuestDef = null)` clears `completed_quest`, emits
+     `quest_started` when `q != null`; `discard_expedition_loot()` and
+     `street_sleep_recover()` (§8.5, owned by GameState - Q2).
+   - `scripts/battle/battle_director.gd` — `start_combat()` gains
+     `boss_rarity_floor := 1`, applied as `maxi(stats.drop_rarity_floor,
+     maxi(1, boss_rarity_floor))` on the boss slot.
+   - `scripts/run/run_controller.gd` — `_next_encounter()` calls `_run_complete()`
+     when `quest != null` and the encounters run out (§8.3); `_arrive()` passes
+     `def.boss_drop_rarity_floor`; `_run_complete()` / `_game_over()` do the
+     synchronous profile work (bank reward / discard loot, null `quest`, save)
+     then emit `quest_finished` and **return** - they do not route or present,
+     because `SceneRouter.go()` frees `main.tscn` and a coroutine that awaited it
+     from here would resume on a freed `RunController` (Q2). The endless / fixed
+     `run_summary.present()` paths and the `_on_retry` wiring are untouched.
+   - `scripts/modals/quest_result.gd` + `.tscn` — three modes (RETRY / VICTORY /
+     FAILURE). Listens for `EventBus.quest_finished`, does
+     `await SceneRouter.go(MAYOR|INN)` then `present()` (Q2). New rows
+     `QuestReward` (win only) / `ExpeditionGold` / `ExpeditionScrap` (shown on a
+     quest ending; the last two read 0 until step 9's pickups - Q5). Buttons are
+     a `PrimaryButton` + `SecondaryButton` HBox: "RETRY" / "Retire for the
+     evening" (routes to the inn on dismiss) / the two recovery buttons with
+     §8.5's affordability gates. Rest and street-sleep run
+     `GameState` + `SaveGame` here, since `RunController` is gone by then (Q2).
+   - `scenes/town/mayor_office.tscn` + `scripts/town/mayor_office.gd` — new
+     (§7.5). One button per `res://resources/quests/*.tres` in easy→hard order,
+     built in `_ready()`; press → `start_expedition(q)` + `save_profile()` +
+     `go(QUEST)`. Back / `ui_cancel` → `TOWN`. Placeholder background until §12
+     (Q4).
+   - `scripts/autoload/tuning.gd` — `INN_STREET_HEAL_FRACTION := 0.5` (§11).
+   - `scripts/autoload/event_bus.gd` — `quest_started` tightened to
+     `(quest: QuestDef)`; comment updated to name the step-8 emitters.
+   - `scripts/autoload/debug.gd` — `quest <easy|medium|hard>` (§13.4).
+   - `scripts/autoload/scene_router.gd`, `scripts/town/town.gd` — comments: only
+     `blacksmith` still hits the missing-path bail.
+   - `tests/test_quest_gen.{gd,tscn}` — new (§13.1). `tests/test_quest_flow.{gd,tscn}`
+     — new, the §8.5 keep/drop/heal economy (Q6). `tests/test_scene_router.gd` —
+     MAYOR existence check widened in (§13.1 / §13.4).
+
+   **What step 8 accepts, deliberately:** `boss_pool` per tier is an authoring
+   choice, not derived - easy leads with one skeleton, hard with three; the
+   difficulty axis §8.2 actually pins is the encounter count, `enemy_count` and
+   the drop floor. The mayor's office is a room the player only passes through
+   (§8.5's observation). `ExpeditionGold` / `ExpeditionScrap` always read 0 until
+   step 9. And the live `quest_finished` → route → `present()` chain has no
+   headless invariant test - it was covered by a throwaway runtime smoke during
+   the step, exactly as step 6's modal wiring was (step-6 Q7).
 9. **§5, §9 — scrap and the pickups**, and with them **§10.2, §10.3 and
    `test_forge.gd`** (step-3 Q1). `GameState.add_scrap` / `spend_scrap` and the
    `scrap_changed` emission are born here, which is what `forge()` has been
@@ -1684,12 +2836,165 @@ previous is green.
    `FORGE_COSTS` / `FORGE_ENHANCED_MULT` come with them. Order within the step:
    the currency API first, then `forge()`, then `test_forge.gd` — the test's
    "insufficient scrap spends neither" and arbitrage assertions are meaningless
-   against anything less than real spending.
-10. **§7.3, §7.4 — the blacksmith**, forge and expanded shop.
-11. **§12 — art**: Meshy icons and the two backgrounds.
+   against anything less than real spending. **Done.** `test_forge` (35 checks)
+   and `test_loot_pickup` (5) are new and green; the whole §13.3 no-edit list
+   plus every earlier-edited test still pass. A headless boot of `boot.tscn`
+   comes up clean. Its changeset:
+
+   - `scripts/autoload/game_state.gd` — `add_scrap()` / `spend_scrap()` mirroring
+     the gold pair, each emitting `scrap_changed`; `add_expedition_gold()` /
+     `add_expedition_scrap()`, which credit the profile via `add_gold` /
+     `add_scrap` **and** tally the expedition bank (§8.4) — kept apart from
+     `add_gold()` so the quest reward and slot payouts never land in the
+     "brought home" row; `run_stats["items_forged"]` added to the dict (§5.4), so
+     `start_expedition()`'s reset loop clears it for free.
+   - `scripts/autoload/itemizer.gd` — `forge()` exactly as §10.2 lists it, plus
+     `_modifier_pool_excluding()` (the no-duplicate-id rule, surviving forging)
+     and `_roll_modifier()` (§10.3 — same ids, doubled roll, `enhanced: true`
+     marker). The refund branch is defensive: the pre-check catches every
+     affordable-then-not case single-threaded, but a half-charged forge is the
+     worst bug this screen could have.
+   - `scripts/autoload/tuning.gd` — §11's `FORGE_COSTS` / `FORGE_ENHANCED_MULT`
+     and the ten `LOOT_*` / `ENEMY_*_DROP` / `BOSS_LOOT_MULT` pickup constants.
+   - `scripts/battle/loot_pickup.gd` — new. A `class_name LootPickup` static
+     helper in the `BattleVfx` mould: `spawn_for(origin, is_boss)` rolls gold and
+     scrap (§9.3), `_split()` divides each into whole shares that sum back
+     exactly, and each share rides a computed ballistic arc — `tween_method`
+     along a parabola, independent spin, no `RigidBody3D` (§9.2) — then, at the
+     end of its settle-and-fade, awards its share via `add_expedition_*` (§9.4).
+     No battle world (headless) → award straight through, same instalments.
+   - `scripts/battle/battle_director.gd` — `_on_combatant_died()` calls
+     `LootPickup.spawn_for(c.hit_world_position(), _boss_fight and c == enemies[0])`
+     concurrently with the corpse hold (§9.1). Only the scaled-up boss unit
+     triples (§11.1).
+   - `scripts/modals/compare_flyout.gd`, `scripts/modals/shop_buy_card.gd`,
+     `scripts/modals/inventory_row.gd` — §10.3's one-line tint: a modifier line
+     (or the inventory row's count) with `enhanced: true` draws in
+     `RARITY_COLORS[Item.Rarity.ENHANCED]`. `_fill_changes()` needs no edit — it
+     keys by id.
+   - `scripts/autoload/event_bus.gd` — the `scrap_changed` / `item_forged`
+     comment updated to name their step-9 emitters.
+   - `scripts/autoload/debug.gd` — `scrap <n>` (additive) and
+     `forge <weapon|armor|trinket>` (§13.4).
+   - `tests/test_forge.{gd,tscn}` — new (§13.1). `tests/test_loot_pickup.{gd,tscn}`
+     — new: the pickup arc is a tween and wants a running battle, but `_split()`'s
+     sum-to-value invariant, the headless award path and the boss multiplier all
+     reduce to cheap headless checks, so they get a permanent file rather than
+     only a throwaway smoke.
+
+   **What step 9 accepts, deliberately:** the pickup meshes are flat-shaded
+   boxes, not modelled coins or scrap — §12's art pass is step 11, and at 0.16
+   units for 0.9s they read as "loot" regardless. The optional §9.4 fly-to-plate
+   2D polish is not built. `CurrencyPlate`'s scrap half needed no wiring — step 5
+   already bound `scrap_changed`; step 9 only gave it a faucet. And the forge
+   itself has no screen yet: `forge()` exists and is tested, but the only way to
+   reach it before step 10's blacksmith is the `forge` debug verb.
+10. **§7.3, §7.4 — the blacksmith**, forge and expanded shop. **Done** (commit
+    `6b46877`, jointly with step 11). The blacksmith is a routed town scene with
+    a two-tab `TabContainer` mirroring the shop: **Forge** lists
+    `equipped_set()` — the field leader's three slots, an empty-slot placeholder
+    row where a slot is unfilled — each row walking its item one rarity step via
+    `Itemizer.forge()`, every forge saving the profile and flashing the new
+    modifier line; **Buy** shows `FORGE_SHOP_SLOTS` cards from
+    `Itemizer.generate_forge_stock()`, cached on `GameState.forge_stock`,
+    rerolled only by the refresh button (`SHOP_REFRESH_COST` gold). No Sell tab
+    (§6.4). Changeset:
+
+    - `scenes/town/blacksmith.tscn` + `scripts/town/blacksmith.gd` — new. Two
+      tabs, `_build_forge()` / `_build_buy()`, empty-slot placeholder rows,
+      cached `forge_stock`, refresh button with its affordability gate, Back /
+      `ui_cancel` → `TOWN`, `_ready()` re-asserts `SceneRouter.place =
+      Place.BLACKSMITH` (§3.1).
+    - `scenes/modals/forge_row.tscn` + `scripts/modals/forge_row.gd` — new. The
+      shared rarity-tinted card (`ItemCardStyle`) plus a single FORGE button
+      that names the destination rarity and spells out any shortfall; a static
+      "Fully forged" plate at `ENHANCED`; `flash_new_modifier()` for §7.3's
+      rarity-coloured flash.
+    - `scripts/autoload/itemizer.gd` — `generate_forge_stock()` /
+      `_generate_in_bucket()` reuse: two cards per bucket across three buckets
+      (cheap / average / dear), `ENHANCED` never present (weight 0). A **new**
+      generator, deliberately not a parameter on `generate_shop_stock()`, whose
+      shape `test_economy.gd` pins (§7.4).
+    - `scripts/autoload/game_state.gd` — `forge_stock: Array[Item]`,
+      profile-scoped, cleared by `new_profile()`.
+    - `scripts/autoload/save_game.gd` — the `forge_stock` key, **with the
+      deliberate no-`VERSION`-bump reasoning at `save_game.gd:49-51`** (§2.4:
+      bump on a meaning change, never merely to add a key).
+    - `scripts/autoload/tuning.gd` — `SHOP_REFRESH_COST := 100`,
+      `FORGE_SHOP_SLOTS := 6`.
+    - `scripts/autoload/scene_router.gd`, `scripts/town/town.gd`,
+      `scripts/autoload/debug.gd` — `blacksmith.tscn` now exists, so `route`'s
+      missing-path bail no longer covers it; comments updated.
+    - `tests/test_scene_router.gd` — the BLACKSMITH existence check widened in
+      (§13.1 / §3.1), so all five `PATHS` scenes are now asserted present.
+
+    **What step 10 accepts, deliberately:** the acceptance pass (Acceptance
+    Testing Spec) found two real bugs this changeset shipped — **A1**, buying out
+    all six cards read as "never generated" and gave a free reroll (fixed with
+    `GameState.forge_stock_generated` + `needs_forge_restock()`); and **A2**,
+    `forge()` never emitted `party_bonuses_changed`, so a forge at the
+    blacksmith left the inventory modal's BonusStrip stale for the session.
+    `FORGE_SHOP_SLOTS` was also documented-only (**B2**) — the generator now
+    derives its per-bucket draw as `FORGE_SHOP_SLOTS / 3`. All three are fixed
+    and pinned by `tests/test_forge_stock.gd` and `test_forge.gd`'s new checks.
+
+11. **§12 — art**: Meshy icons and the two backgrounds. **Done** (commit
+    `6b46877`, jointly with step 10). Changeset:
+
+    - `assets/icons/weapon_{helm,mail,shield,ring,amulet,idol}.png` — the six
+      armor / trinket glyphs, same matte-clay-on-teal style as the five weapon
+      icons; `scripts/modals/item_glyph.gd`'s `WEAPON_TEXTURES` gains an entry
+      for each, so `WEAPON_TEXTURES` now covers **all eleven** `ITEM_TYPES` keys.
+    - `assets/icons/ui_backpack.png` — the inventory button's icon;
+      `scenes/hud/hud.tscn`'s `InventoryButton` wears it (`expand_icon`).
+    - `assets/blacksmith-bg.png` — the forge background + darkening `Vignette`
+      scrim, authored in `blacksmith.tscn`.
+    - `assets/mayor-bg.png` — `mayor_office.tscn`'s placeholder background
+      swapped for the real art (§8 step 8's Q4 deferral, resolved here).
+    - `scripts/battle/battle_vfx.gd`, `scripts/battle/overworld_field.gd` —
+      **rode along**, not step 11 work: a `BattleVfx._acquire()` fix for pooled
+      effect nodes freed with the previous quest's scene across a
+      `SceneRouter` swap (`_pool_free` is static and kept dangling refs). An
+      independent bug fix that should not have been committed under a
+      town/art-pass message.
+
+    **What step 11 accepts, deliberately:** with `WEAPON_TEXTURES` now total,
+    `item_glyph.gd`'s per-type procedural weapon builders (`_draw_blade`,
+    `_draw_axe`, `_draw_bow`, `_draw_staff`) became **unreachable** — the
+    acceptance pass (**D3**) removed them, keeping only the `_draw_gem` fallback
+    for a bare `Item.new()` (`weapon_type == &""`). `_draw_axe` in particular is
+    CLAUDE.md's cautionary tale for hand-written coordinate geometry; it is gone.
+    The HUD's `CurrencyPlate` also shipped without the `OrnateFrame` treatment
+    §5.3 asks for (**B1**) — added by the acceptance pass, reusing
+    `ornate_frame.gd` in `hud.tscn`.
 
 Steps 1–4 are all invisible to the player and all individually testable. Step 8
 is the one worth demoing.
+
+### 14.1 Completion criterion
+
+The town initiative is finished when:
+
+- **The green bar holds.** All 19 test scenes `RESULT PASS` via the Acceptance
+  Testing Spec §0.4 command (the original 18 plus `test_forge_stock`), §13.3's
+  eight no-edit tests are unedited, and a `--headless --quit-after 120` boot of
+  `boot.tscn` prints nothing but the engine banner.
+- **The loop closes end to end**, driven in one runtime pass: boot → town →
+  mayor → accept easy → forest → victory → mayor's office with `QuestResult` up
+  → "Retire for the evening" → inn → rest → town → blacksmith → forge a slot →
+  open the inventory modal and see the new bonus totals.
+- **The acceptance pass is discharged.** Every A/B/C/D finding in the Acceptance
+  Testing Spec is fixed or has an amendment here; every **E-series** finding is
+  resolved: **E1** (the `CurrencyPlate` / `BonusPanel` collision) is recorded in
+  §3.2's **Position** note and §14 step 5's changeset — the 130px `BonusPanel`
+  move is confirmed and the plate's single-viewport positioning accepted;
+  **E2** (abandoning a quest), **E3** (selling items in town, via a future
+  blacksmith Sell tab) and **E4** (an economy-balancing pass verifying §11.1)
+  are recorded in §15 as deferred.
+
+The Acceptance Testing Spec is the step-10/11 questions pass, run late (there is
+no separate `Town Spec - Step 10 Questions.md` / `Step 11`); its A/B/C/D answers
+are folded back into §13 and §14 here, exactly as steps 1–8 folded theirs.
 
 ---
 
@@ -1702,10 +3007,38 @@ Recorded so they are decisions rather than omissions.
 - **The mage and ranger returning.** The seam is `active_party` plus armor and
   trinket rows in `ITEM_TYPES` carrying their class ids. Drop coverage
   (`DROP_CATCHUP`, `next_drop_class`) is untouched and waiting for them — do
-  not delete it.
+  not delete it. The inventory modal is the third seam: its Equipped section
+  lists `active_party[0]`'s three slots and its rows equip for the first
+  eligible party member (§6.1, §6.2), so a returning party wants either a hero
+  selector in the header or one Equipped section each — a layout decision, not
+  a data one.
+
+- **`party_bonuses()` counts gear worn by heroes who are not on the field.** It
+  gates on `equipped_by != &""` and never consults `active_party` or
+  `hero_runtime`, so an item equipped by the retired mage or ranger keeps feeding
+  `dmg_flat` / `slot_purse` / the rest. Harmless in normal play after §4.4 —
+  generation is `active_party`-gated on both paths, so no mage or ranger item can
+  enter the inventory — but reachable *today* through §13.4's
+  `additem <rarity> <class>` verb, since `_maybe_auto_equip()` iterates
+  `usable_by()` without an `active_party` check either. Observed: `additem rare
+  ranger` yields `equipped warrior=[]` beside a non-zero `bonuses` line, a bonus
+  with no visible source.
+
+  Deliberately **not** fixed in this pass. The one-line filter (skip items whose
+  `equipped_by` is not in `active_party`) changes what the slot machine reads,
+  and §0.2 fences the reels off from this document; it also wants deciding
+  alongside the mage and ranger's return, when "off the field" starts meaning
+  benched rather than deleted. Until then §2.4's `VERSION` bump is what stops a
+  stale save from creating the state without a debug verb.
 - **Armor and trinket modifiers of their own.** Right now every slot draws from
   the same eight-modifier pool, so a helm can roll "+7 Bolt Power". Per-slot
   pools are the obvious next step and want their own balance pass.
+- ~~**`Item.type_initial()`'s letter collisions.**~~ **Resolved at step 6:
+  deleted.** It fed only the spec 17.2 inventory chip, which §6's modal
+  supersedes; `grep` at step 6 found zero callers (the chip scene was already
+  gone), so the function went with it rather than growing a second exception
+  table. Step 4 had left it alone as "a widget on its way out"; step 6 is where
+  it left.
 - **Fly-to-counter pickup polish** (§9.4).
 - **More than one town.** `SceneRouter.Place` is an enum for a reason; a second
   town is a second set of entries.
@@ -1715,3 +3048,32 @@ Recorded so they are decisions rather than omissions.
   and the slot payouts were balanced for a 75-gold single run; a player who
   walks into a quest with 900 banked gold is in a different economy. Worth a
   pass once the loop is playable and there are real numbers to look at.
+- **Abandoning a quest.** (Acceptance Testing Spec E2.) In `Place.QUEST` the HUD
+  carries the inventory button and nothing else — no Back button, no `ui_cancel`
+  handler — so the forest's only exits are victory (§8.5) and a party wipe. That
+  is deliberate for this pass: a free walk-out would let a player bank an
+  expedition's pickups and skip the boss, the exact arbitrage §8.5's discard
+  rule exists to prevent. A future abandon mechanic wants to carry §8.5's
+  failure cost (keep gold and scrap, lose loose items) or a stiffer one, and a
+  confirm step, so leaving is a real decision rather than a risk-free reset.
+- **Selling items at the blacksmith.** (Acceptance Testing Spec E3.) Selling
+  today exists only at a quest's shop encounter, so a player back from a hard
+  quest with nine unequipped items can neither sell nor scrap them in town, and
+  the Carried section grows monotonically for the life of a profile (§5.1 bars
+  the junk-to-scrap route outright). §6.4's "an always-available sell button in
+  a modal reachable mid-expedition is a gold faucet" argument does **not** apply
+  in town, where no expedition is running — so the future home for a town sell
+  action is a blacksmith **Sell** tab (which contradicts `blacksmith.gd`'s
+  current header, "selling stays at the quest shop where a merchant is
+  standing"; that header changes when this lands). Wants deciding alongside the
+  slot-economy repricing bullet above and E4's economy pass.
+- **An economy-balancing pass.** (Acceptance Testing Spec E4.) §11.1's
+  loop-closes arithmetic — ~+198 gold / +32 scrap per easy quest, ~+676 / +84
+  per hard, against 189 scrap / 750 gold for a full three-slot forge, "roughly
+  six runs" easy and "two or three" hard — was never checked against the
+  shipped, tunable numbers (`ENEMY_GOLD_DROP`, `ENEMY_SCRAP_DROP`,
+  `BOSS_LOOT_MULT`, the three `gold_reward`s, `INN_REST_COST_PER_HERO`,
+  `FORGE_COSTS`). §11.1 is explicitly starting numbers. The pass wants a
+  headless economy-projection check (simulate N easy and N hard quests through
+  the real drop rolls, assert the per-quest gold/scrap yield lands within a band
+  of §11.1's figures) plus a playtest, run once the loop has been exercised.

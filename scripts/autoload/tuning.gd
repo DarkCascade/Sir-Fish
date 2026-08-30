@@ -95,10 +95,15 @@ const PARTY_ANCHOR := Vector3(-1.6, 0.0, 3.4)
 ## numbers, not a formula - and because it is expressed in RUN_DIR's frame it
 ## rotates with the run axis for free.
 const PARTY_FORMATION := [
-	Vector2(-0.5, 1.0),                   # mage - back rank, left
-	Vector2(0.5, 1.0),                    # ranger        - back rank, right
-	Vector2(0.0, 0.0),                    # warrior       - front rank, on the axis
+	Vector2(0, 0),
+	Vector2(-0.5, 1.0),
+	Vector2(0.5, 1.0)
 ]
+#const PARTY_FORMATION := [
+	#Vector2(-0.5, 1.0),                   # mage - back rank, left
+	#Vector2(0.5, 1.0),                    # ranger        - back rank, right
+	#Vector2(0.0, 0.0),                    # warrior       - front rank, on the axis
+#]
 ## The floor both sit at is silhouette overlap - the mage's hat is about 1.2
 ## units across and the warrior's cape about 1.0, so anything under ~2.0
 ## between neighbours has them intersecting on screen. Both are pushed well
@@ -185,6 +190,55 @@ const SHOP_ITEMS_FOR_SALE := 3
 ## nothing. new_profile() (spec 2.3) uses THESE for the genuine no-save fallback.
 const PROFILE_STARTING_GOLD := 150
 const PROFILE_STARTING_SCRAP := 0
+
+## [town] The blacksmith's shop (spec 7.4). Its stock is FORGE_SHOP_SLOTS cards -
+## a cheap third, an average third, a dear third - rerolled only by the refresh
+## button, which spends SHOP_REFRESH_COST gold. generate_forge_stock() draws
+## FORGE_SHOP_SLOTS / 3 from each of its three buckets, so this must stay a
+## multiple of three (B2).
+const SHOP_REFRESH_COST := 100
+const FORGE_SHOP_SLOTS := 6
+
+## [town] The inn's paid full heal (spec 7.2), multiplied by active_party.size()
+## - 50 with a solo warrior. The free "Sit by the fire" option costs nothing and
+## deliberately does not heal.
+const INN_REST_COST_PER_HERO := 50
+
+## [town] Fraction of a hero's MISSING hp restored by spec 8.5's free "Sleep in
+## the street" on a failed quest. Half - and once per expedition (street_sleep_used),
+## because half of half repeated converges on a full heal (spec 1.9).
+const INN_STREET_HEAL_FRACTION := 0.5
+
+# --- [town] The forge (spec 11) ----------------------------------------------
+## [scrap, gold] to raise an item FROM rarity index i to i + 1. Indexed by the
+## item's CURRENT rarity, so the array is one shorter than Item.Rarity - there
+## is no step out of ENHANCED (spec 10.2).
+const FORGE_COSTS := [
+	[5, 20],      # Common   -> Uncommon
+	[10, 40],     # Uncommon -> Magic
+	[18, 70],     # Magic    -> Rare
+	[30, 120],    # Rare     -> Enhanced
+]
+## The final rung's modifier rolls at double magnitude, and carries an
+## `enhanced: true` marker the UI tints (spec 10.3).
+const FORGE_ENHANCED_MULT := 2
+
+# --- [town] Combat pickups (spec 9) ----------------------------------------------
+## VALUE rolled per kill, NOT an object count (spec 9.3): spawn
+## mini(value, LOOT_PICKUP_MAX_OBJECTS) meshes to represent it and split the
+## value across them. Floors of 3 / 2 (not 0) so every kill pays something.
+const ENEMY_GOLD_DROP := Vector2i(3, 9)
+const ENEMY_SCRAP_DROP := Vector2i(2, 6)
+const BOSS_LOOT_MULT := 3
+const LOOT_PICKUP_MAX_OBJECTS := 5
+const LOOT_ARC_TIME := 0.45
+const LOOT_ARC_HEIGHT := 0.9               # world units at the apex
+const LOOT_SCATTER_RADIUS := 0.7
+const LOOT_SETTLE_TIME := 0.20
+const LOOT_FADE_TIME := 0.25               # 0.45 + 0.20 + 0.25 = 0.90s total, which
+										   # fits inside the corpse hold + fade
+										   # (0.75s) plus the front of
+										   # ENCOUNTER_RESOLVE_PAUSE (spec 9.1).
 
 # --- enemy drops --------------------------------------------------------------
 ## How strongly a class that is behind on drops is favoured by the next roll:

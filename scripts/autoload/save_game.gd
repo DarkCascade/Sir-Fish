@@ -13,7 +13,21 @@ extends Node
 ##     godot --headless --path "C:/Projects/Godot/Sir Fish" res://tests/test_profile_save.tscn
 
 const PATH := "user://profile.save"
-const VERSION := 1
+
+## Bumped 1 -> 2 at spec 4.5, which changed what `active_party` MEANS: it was
+## "the authored three-hero roster", it is now "the solo warrior". That is
+## exactly the trigger spec 2.4's VERSION policy names ("bump when the meaning
+## of an existing key changes"; adding a key alone never needs one).
+##
+## Spec 2.4 originally waived this bump, arguing nothing writes a save until
+## boot.tscn at step 5. That was wrong - _notification() below writes on window
+## close and has been live since step 2, so any dev who played and closed the
+## window between steps 2 and 4 has a version-1 save holding the three-hero
+## roster and possibly mage/ranger-equipped items. load_profile()'s gate is an
+## exact match, so this bump discards those saves and boot.tscn falls back to
+## new_profile() - rather than resurrecting a party 4.5 just retired, with
+## orphaned gear still feeding party_bonuses().
+const VERSION := 2
 
 ## Every profile mutation in town saves (spec 2.4's "When to save" list); this
 ## is also called from GameState.new_profile(), from start_expedition() and the
@@ -31,6 +45,15 @@ func save_profile() -> void:
 		"street_sleep_used": GameState.street_sleep_used,
 		"heroes": GameState.hero_runtime,
 		"inventory": GameState.inventory.map(func(i: Item) -> Dictionary: return i.to_dict()),
+		# [town] spec 7.4: the blacksmith's cached stock. Joins the dict here, at
+		# step 10 - no VERSION bump, because a save written before this key existed
+		# loads cleanly under load_profile()'s d.get(key, default) (spec 2.4's
+		# VERSION policy: bump on a meaning change, never merely to add a key).
+		"forge_stock": GameState.forge_stock.map(func(i: Item) -> Dictionary: return i.to_dict()),
+		# [town] spec 7.4 / A1: distinct from forge_stock being non-empty, so that
+		# buying out the stock does not present as "never generated" on next load.
+		# No VERSION bump - same rule as forge_stock above (spec 2.4).
+		"forge_stock_generated": GameState.forge_stock_generated,
 	}))
 
 ## Returns false when there is no save, or it is unreadable, or its version is
@@ -71,6 +94,15 @@ func load_profile() -> bool:
 	for raw: Variant in d.get("inventory", []):
 		inv.append(Item.from_dict(raw))
 	GameState.inventory = inv
+
+	var stock: Array[Item] = []
+	for raw: Variant in d.get("forge_stock", []):
+		stock.append(Item.from_dict(raw))
+	GameState.forge_stock = stock
+	# A1: a save written before this key existed, but holding real stock, must not
+	# present as never-generated - derive the default from the stock it carries.
+	GameState.forge_stock_generated = bool(d.get("forge_stock_generated",
+		not stock.is_empty()))
 
 	return true
 

@@ -1,0 +1,166 @@
+[gd_scene load_steps=9 format=3]
+
+[ext_resource type="Script" path="res://scripts/modals/inventory_row.gd" id="1_row"]
+[ext_resource type="Script" path="res://scripts/modals/item_glyph.gd" id="2_glyph"]
+[ext_resource type="Script" path="res://scripts/modals/shop_buy_stage.gd" id="3_stage"]
+[ext_resource type="Script" path="res://scripts/modals/swipeable_face.gd" id="4_swipe"]
+
+; [town] spec 6.2. Same card frame as the shop's rows (icon medallion + info,
+; Compare behind the shared swipe gesture), but the primary action area is two
+; equal-width buttons - Compare and Equip/Unequip - not a Sell bar. Styleboxes
+; are a per-scene duplicate set, this project's own convention (see
+; shop_sell_row.tscn's header).
+[sub_resource type="StyleBoxFlat" id="face_style"]
+content_margin_left = 26.0
+content_margin_top = 20.0
+content_margin_right = 26.0
+content_margin_bottom = 20.0
+bg_color = Color(0.043137, 0.117647, 0.109804, 1)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0.5, 0.5, 0.5, 1)
+corner_radius_top_left = 18
+corner_radius_top_right = 18
+corner_radius_bottom_right = 18
+corner_radius_bottom_left = 18
+shadow_color = Color(0.5, 0.5, 0.5, 0)
+shadow_size = 0
+
+[sub_resource type="StyleBoxFlat" id="action_normal"]
+bg_color = Color(0.078431, 0.254902, 0.498039, 1)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0.247059, 0.662745, 0.909804, 1)
+corner_radius_top_right = 18
+corner_radius_bottom_right = 18
+
+[sub_resource type="StyleBoxFlat" id="action_hover"]
+bg_color = Color(0.109804, 0.32549, 0.6, 1)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0.74902, 0.933333, 1, 1)
+corner_radius_top_right = 18
+corner_radius_bottom_right = 18
+
+[sub_resource type="StyleBoxFlat" id="action_pressed"]
+bg_color = Color(0.054902, 0.152941, 0.278431, 1)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0.156863, 0.4, 0.6, 1)
+corner_radius_top_right = 18
+corner_radius_bottom_right = 18
+
+[node name="InventoryRow" type="PanelContainer"]
+custom_minimum_size = Vector2(880, 0)
+offset_right = 880.0
+offset_bottom = 220.0
+clip_contents = true
+mouse_filter = 1
+script = ExtResource("1_row")
+
+[node name="Stage" type="Control" parent="."]
+layout_mode = 2
+mouse_filter = 1
+script = ExtResource("3_stage")
+
+[node name="ActionLayer" type="Control" parent="Stage"]
+layout_mode = 1
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="ActionButton" type="Button" parent="Stage/ActionLayer"]
+layout_mode = 1
+anchor_left = 1.0
+anchor_top = 0.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -184.0
+grow_horizontal = 0
+grow_vertical = 2
+mouse_filter = 0
+theme_override_colors/font_color = Color(0.858824, 0.945098, 1, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
+theme_override_colors/font_pressed_color = Color(0.74902, 0.933333, 1, 1)
+theme_override_font_sizes/font_size = 30
+theme_override_styles/normal = SubResource("action_normal")
+theme_override_styles/hover = SubResource("action_hover")
+theme_override_styles/pressed = SubResource("action_pressed")
+text = "Compare"
+autowrap_mode = 2
+
+[node name="Face" type="PanelContainer" parent="Stage"]
+layout_mode = 1
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 1
+theme_override_styles/panel = SubResource("face_style")
+script = ExtResource("4_swipe")
+
+[node name="FaceLayout" type="VBoxContainer" parent="Stage/Face"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="TopRow" type="HBoxContainer" parent="Stage/Face/FaceLayout"]
+layout_mode = 2
+theme_override_constants/separation = 20
+
+[node name="Glyph" type="Control" parent="Stage/Face/FaceLayout/TopRow"]
+custom_minimum_size = Vector2(104, 104)
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+script = ExtResource("2_glyph")
+
+[node name="Info" type="VBoxContainer" parent="Stage/Face/FaceLayout/TopRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+theme_override_constants/separation = 4
+
+[node name="NameLabel" type="Label" parent="Stage/Face/FaceLayout/TopRow/Info"]
+layout_mode = 2
+theme_type_variation = &"DisplayLabel"
+theme_override_colors/font_color = Color(0.94902, 0.913725, 0.815686, 1)
+theme_override_font_sizes/font_size = 42
+
+[node name="SubtitleLabel" type="Label" parent="Stage/Face/FaceLayout/TopRow/Info"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+
+[node name="ModsLabel" type="Label" parent="Stage/Face/FaceLayout/TopRow/Info"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.611765, 0.686275, 0.643137, 1)
+theme_override_font_sizes/font_size = 26
+
+[node name="Actions" type="HBoxContainer" parent="Stage/Face/FaceLayout"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="CompareButton" type="Button" parent="Stage/Face/FaceLayout/Actions"]
+custom_minimum_size = Vector2(0, 84)
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 0
+theme_type_variation = &"SecondaryButton"
+text = "Compare"
+
+[node name="EquipButton" type="Button" parent="Stage/Face/FaceLayout/Actions"]
+custom_minimum_size = Vector2(0, 84)
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 0
+theme_type_variation = &"SecondaryButton"
+text = "Equip"

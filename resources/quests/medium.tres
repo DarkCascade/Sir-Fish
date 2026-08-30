@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="QuestDef" format=3 uid="uid://cq0quest0med00"]
+
+[ext_resource type="Script" path="res://scripts/data/quest_def.gd" id="1_qd"]
+
+[resource]
+script = ExtResource("1_qd")
+id = &"medium"
+display_name = "The Deep Wood"
+blurb = "Past the shallows the bones walk. A longer road, and something older at the end of it."
+encounter_types = Array[int]([0, 0, 1, 0, 0, 2, 0])
+gold_reward = 400
+enemy_pool = Array[StringName]([&"shadow_monster", &"skeleton_minion", &"skeleton_warrior", &"skeleton_mage", &"skeleton_rogue", &"sporecap"])
+enemy_count = Vector2i(2, 3)
+boss_pool = Array[StringName]([&"skeleton_warrior", &"skeleton_rogue"])
+boss_drop_rarity_floor = 2
+travel_durations = Array[float]([2.0, 3.0, 3.0, 3.0, 3.0, 3.0, 4.0])

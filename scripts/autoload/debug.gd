@@ -44,11 +44,16 @@ func _run(line: String) -> void:
 		"slot": _cmd_slot(args)
 		"shop": _cmd_shop(args)
 		"gold": _cmd_gold(args)
+		"scrap": _cmd_scrap(args)
+		"forge": _cmd_forge(args)
 		"upgrade": _cmd_upgrade(args)
 		"additem": _cmd_additem(args)
 		"drops": _cmd_drops(args)
 		"equip": _cmd_equip(args)
 		"parallax": _cmd_parallax(args)
+		"route": _cmd_route(args)
+		"wipe": _cmd_wipe()
+		"quest": _cmd_quest(args)
 		"lightning": _cmd_lightning()
 		"bone": _cmd_bone(args)
 		"state": _cmd_state()
@@ -220,6 +225,44 @@ func _cmd_gold(args: Array) -> void:
 	EventBus.gold_changed.emit(GameState.gold, delta)
 	_log("gold -> %d" % GameState.gold)
 
+## [town] spec 13.4. Adds scrap, the forge's currency (spec 5). Additive, unlike
+## `gold` which sets an absolute - scrap has no "spend down to N" use.
+func _cmd_scrap(args: Array) -> void:
+	if args.is_empty():
+		_log("scrap -> needs <n>")
+		return
+	var n := maxi(0, int(String(args[0])))
+	GameState.add_scrap(n)
+	_log("scrap -> %d (+%d)" % [GameState.scrap, n])
+
+## [town] spec 13.4. Forges the field leader's item in the named slot once (spec
+## 10.2) - the harness route to an ENHANCED item. Fails cleanly on an empty slot,
+## a maxed rarity, or too little scrap / gold.
+func _cmd_forge(args: Array) -> void:
+	if args.is_empty():
+		_log("forge -> needs <weapon|armor|trinket>")
+		return
+	var slots := {
+		"weapon": Item.Slot.WEAPON,
+		"armor": Item.Slot.ARMOR,
+		"trinket": Item.Slot.TRINKET,
+	}
+	var key := String(args[0]).to_lower()
+	if not slots.has(key):
+		_log("forge -> unknown slot '%s'" % args[0])
+		return
+	var leader: StringName = GameState.active_party[0] if not GameState.active_party.is_empty() else &""
+	var item: Item = GameState.equipped_item(leader, slots[key])
+	if item == null:
+		_log("forge -> nothing equipped in %s" % key)
+		return
+	var before := item.rarity_name()
+	if Itemizer.forge(item):
+		_log("forge -> %s: %s -> %s (forge_count %d, value %d)" % [
+			item.display_name, before, item.rarity_name(), item.forge_count, item.value])
+	else:
+		_log("forge -> failed (rarity maxed, or not enough scrap/gold)")
+
 func _cmd_upgrade(args: Array) -> void:
 	if args.size() < 2:
 		_log("upgrade -> needs <id> <level>")
@@ -293,6 +336,60 @@ func _cmd_equip(args: Array) -> void:
 		hero_class = classes[0]
 	GameState.equip_item(item, hero_class)
 	_log("equip -> '%s' equipped by %s" % [item.display_name, hero_class])
+
+## [town] spec 13.4. Routes to any Place through SceneRouter. `route quest`
+## calls start_expedition() before routing, standing in for the mayor (spec 7.5,
+## step 8) so the loaded profile survives the trip into the forest (spec 3.1).
+## All five Places have a real scene as of step 10. Supersedes an earlier bare
+## `town` verb.
+func _cmd_route(args: Array) -> void:
+	if args.is_empty():
+		_log("route -> needs <town|inn|blacksmith|mayor|quest>")
+		return
+	var places := {
+		"town": SceneRouter.Place.TOWN,
+		"inn": SceneRouter.Place.INN,
+		"blacksmith": SceneRouter.Place.BLACKSMITH,
+		"mayor": SceneRouter.Place.MAYOR,
+		"quest": SceneRouter.Place.QUEST,
+	}
+	var key := String(args[0]).to_lower()
+	if not places.has(key):
+		_log("route -> unknown place '%s'" % args[0])
+		return
+	if key == "quest":
+		GameState.start_expedition()
+	SceneRouter.go(places[key])
+	_log("route -> %s" % key)
+
+## [town] spec 13.4. Starts one of the three authored quests from anywhere,
+## standing in for the mayor's office (spec 7.5). start_expedition() is
+## unconditional here - `route quest` twice just re-runs a clean expedition reset
+## and costs the profile nothing.
+func _cmd_quest(args: Array) -> void:
+	if args.is_empty():
+		_log("quest -> needs <easy|medium|hard>")
+		return
+	var key := String(args[0]).to_lower()
+	var path := "res://resources/quests/%s.tres" % key
+	if not ResourceLoader.exists(path):
+		_log("quest -> unknown quest '%s'" % key)
+		return
+	var q := load(path) as QuestDef
+	GameState.start_expedition(q)
+	SceneRouter.go(SceneRouter.Place.QUEST)
+	_log("quest -> started %s (%d encounters, %d gold)" % [
+		key, q.encounter_types.size(), q.gold_reward])
+
+## [town] spec 13.4. Deletes the save and starts a fresh profile. Meaningful
+## from step 5 on: this is the first step where a launch reads
+## user://profile.save, so a stale dev save now actually changes what a run
+## looks like. reset_run() is, from this step, a dev path that wipes the profile.
+func _cmd_wipe() -> void:
+	if FileAccess.file_exists(SaveGame.PATH):
+		DirAccess.remove_absolute(ProjectSettings.globalize_path(SaveGame.PATH))
+	GameState.reset_run()
+	_log("wipe -> save deleted, new profile (%d gold, %d scrap)" % [GameState.gold, GameState.scrap])
 
 ## [v3] Advances every parallax layer by <units> world units at its own speed
 ## multiplier, wrapping normally, without touching scroll_speed or the run
@@ -384,13 +481,16 @@ func _cmd_state() -> void:
 	var levels: Array[String] = []
 	for id: StringName in Upgrades.DEFS.keys():
 		levels.append("%s=%d" % [id, Upgrades.level(id)])
+	# [town] spec 4.3: both loops walk active_party - `state` is a report about
+	# who is on the field, not about loot targeting (droppable_classes()). Under
+	# a solo warrior the two are equal; this keeps the line honest if they diverge.
 	var drop_bits: Array[String] = []
-	for c: StringName in Itemizer.droppable_classes():
+	for c: StringName in GameState.active_party:
 		drop_bits.append("%s=%d" % [c, GameState.drop_count(c)])
 	var equip_bits: Array[String] = []
-	for c: StringName in Itemizer.droppable_classes():
-		var equipped := GameState.equipped_item(c)
-		equip_bits.append("%s=%s" % [c, equipped.display_name if equipped != null else "none"])
+	for c: StringName in GameState.active_party:
+		equip_bits.append("%s=[%s]" % [c, ", ".join(GameState.equipped_set(c).map(
+			func(i: Item) -> String: return i.display_name))])
 	_log("state -> run=%s encounter=%d gold=%d | %s | upgrades %s | drops %s | equipped %s | bonuses %s" % [
 		run_state, GameState.current_encounter_index, GameState.gold,
 		", ".join(hp_bits), ", ".join(levels), ", ".join(drop_bits), ", ".join(equip_bits),

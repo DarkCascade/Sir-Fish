@@ -25,12 +25,25 @@ var _prop = null
 var _running: bool = false
 
 func _ready() -> void:
+	# spec 3.2 / step-5 Q8: cover direct-scene launches (F5, MCP play_scene) too,
+	# not just the routed path - go() sets this, but a bare main.tscn launch
+	# would leave it defaulting to TOWN and drive Hud's InventoryButton rule off
+	# a lie.
+	SceneRouter.place = SceneRouter.Place.QUEST
+	# D1: hand Hud a direct reference so _combat_locked() stops running a
+	# recursive whole-tree find_child() every frame. Hud drops it when `place`
+	# leaves QUEST and guards it with is_instance_valid() (go() frees this node).
+	Hud.register_run_controller(self)
+
 	var main := get_parent()
 	world = main.get_node("BattleView/BattleViewport/BattleWorld")
 	overlay = main.get_node("BattleOverlay")
 	console = main.get_node("Console")
 	shop_modal = main.get_node("ModalLayer/ShopModal")
-	run_summary = main.get_node("ModalLayer/RunSummary")
+	# spec 3.2 / step-5 Q2: the result modal moved to Hud/ModalLayer and was
+	# renamed QuestResult. Step 5 is a reference swap plus a signal rename;
+	# spec 8.5 rewires the actual victory/failure flow at step 8.
+	run_summary = Hud.quest_result
 
 	# As early as possible, so the shader-variant compiles it forces land
 	# before the party is even moving rather than on the first real cast
@@ -43,7 +56,7 @@ func _ready() -> void:
 	add_child(director)
 
 	EventBus.combat_ended.connect(_on_combat_ended)
-	run_summary.retry_pressed.connect(_on_retry)
+	run_summary.dismissed.connect(_on_retry)
 
 	console.bind_director(director)
 	_start_run()
@@ -55,7 +68,16 @@ func _process(delta: float) -> void:
 # --- run lifecycle ----------------------------------------------------------
 
 func _start_run() -> void:
-	GameState.reset_run()
+	# spec 3.1 / step-5 Q1: guard, do not drop. Once main.tscn is a routed
+	# destination rather than the main scene, an unconditional reset_run() here
+	# wipes the profile boot.tscn just loaded. Guarded on `level == null` (not
+	# `quest == null`): that is what lets a dev path opt out of the wipe by
+	# calling start_expedition() itself - which is exactly what debug `route
+	# quest` does at step 5, before the mayor (spec 7.5) exists. Every step-5
+	# path into RunController still arrives with `level` null, so today this is
+	# byte-for-byte the old behaviour.
+	if GameState.level == null:
+		GameState.reset_run()
 	director.spawn_party()
 	state = RunState.BOOT
 	_running = true
@@ -65,6 +87,13 @@ func _start_run() -> void:
 func _next_encounter() -> void:
 	GameState.current_encounter_index += 1
 	if GameState.current_encounter_index >= GameState.level.encounters.size():
+		# [town] spec 8.3: a quest is a BOUNDED expedition - when its encounters
+		# run out the party has won, so _run_complete() (previously dead code,
+		# reachable only with endless_mode off) fires. Checked ahead of
+		# endless_mode, which stays default-true even during a quest.
+		if GameState.quest != null:
+			_run_complete()
+			return
 		if not GameState.endless_mode:
 			_run_complete()
 			return
@@ -116,7 +145,7 @@ func _arrive(def: EncounterDef) -> void:
 	match def.type:
 		EncounterDef.Type.COMBAT:
 			state = RunState.COMBAT
-			director.start_combat(def.enemy_stat_ids, def.is_boss)
+			director.start_combat(def.enemy_stat_ids, def.is_boss, def.boss_drop_rarity_floor)
 		EncounterDef.Type.LOOT:
 			state = RunState.LOOT
 			_run_loot(def)
@@ -273,7 +302,22 @@ func _run_complete() -> void:
 		hero.set_running(false)
 	_running = false
 	EventBus.run_completed.emit()
-	run_summary.present(true)
+
+	# [town] spec 8.5 victory. RunController does the synchronous profile work
+	# and emits; QuestResult (a persistent Hud child, unlike this scene) does the
+	# await SceneRouter.go(MAYOR) -> present(true). It CANNOT be driven from here:
+	# go() frees main.tscn, so a coroutine that awaited it would resume on a
+	# freed RunController.
+	if GameState.quest != null:
+		var q := GameState.quest
+		GameState.add_gold(q.gold_reward)
+		GameState.completed_quest = q
+		GameState.quest = null
+		SaveGame.save_profile()
+		EventBus.quest_finished.emit(true)
+		return
+
+	run_summary.present(true)     # endless_mode = false dev path, unchanged
 
 func _game_over() -> void:
 	state = RunState.GAME_OVER
@@ -282,7 +326,19 @@ func _game_over() -> void:
 	await get_tree().create_timer(1.0).timeout
 	_running = false
 	EventBus.game_over.emit()
-	run_summary.present(false)
+
+	# [town] spec 8.5 failure: keep banked gold and scrap, drop every unequipped
+	# item found this trip, then hand off to QuestResult exactly as victory does
+	# (see _run_complete()'s comment for why the route is not driven from here).
+	if GameState.quest != null:
+		GameState.discard_expedition_loot()
+		GameState.completed_quest = GameState.quest
+		GameState.quest = null
+		SaveGame.save_profile()
+		EventBus.quest_finished.emit(false)
+		return
+
+	run_summary.present(false)    # endless / fixed dev path, unchanged
 
 # --- retry (spec 18.3) ------------------------------------------------------
 
@@ -299,4 +355,8 @@ func _on_retry() -> void:
 	world.set_scroll_speed(0.0)
 	world.parallax.reset_tiles()
 	await get_tree().process_frame
+	# spec 3.1 / step-5 Q1: endless retry wants the full wipe, explicitly. The
+	# guard in _start_run() would otherwise skip it - `level` is still non-null
+	# from the dead run - and respawn onto stale state.
+	GameState.reset_run()
 	_start_run()

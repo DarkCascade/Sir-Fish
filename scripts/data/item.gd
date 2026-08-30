@@ -10,16 +10,39 @@ extends Resource
 enum Rarity { COMMON, UNCOMMON, MAGIC, RARE, ENHANCED }
 enum Kind { WEAPON, POTION, RELIC }
 
+## [town] Which of the hero's three equipment slots this item occupies (spec
+## 4.1). A separate axis from `kind` (WEAPON/POTION/RELIC), which is left alone -
+## overloading `kind` to carry a slot would break item_glyph.gd's kind-based
+## fallback. DERIVED from weapon_type via Itemizer.ITEM_TYPES (slot()), never
+## stored, for the reason usable_by() derives its classes the same way: a second
+## copy of the mapping is a second thing to drift.
+enum Slot { WEAPON, ARMOR, TRINKET }
+
 @export var display_name: String = ""         # generated, e.g. "Fat Knife"
+## Every generated item - armor and trinkets included - keeps Kind.WEAPON
+## (spec 4.1, step-4 Q7). Three derivations read it: usable_by() early-returns
+## empty unless kind == WEAPON, type_name()'s "Helm" comes off the same branch,
+## and the shop rows feed it to the glyph. Until POTION / RELIC generation
+## exists (spec 15) `kind` effectively means "was generated" and slot() carries
+## the real classification.
 @export var kind: Kind = Kind.WEAPON
 @export var rarity: Rarity = Rarity.COMMON
-@export var weapon_type: StringName = &""     # axe|sword|bow|dagger|staff ; empty if not a weapon
+## The item's type id, keying Itemizer.ITEM_TYPES. Named `weapon_type` for
+## history; since [town] it also names armor and trinket types. The table it
+## keys is what decides which slot the item fills (slot()). Empty if not a
+## generated item.
+@export var weapon_type: StringName = &""
 @export var modifiers: Array[Dictionary] = [] # [{ "id": &"dmg_flat", "label": "+4 Damage", "value_mult": 0.42 }, ...]
 @export var value: int = 0                    # computed intrinsic gold value
 ## Which hero currently has this equipped, or &"" if none. A StringName rather
-## than a bool because equipping is per-hero (one item per hero, GameState.
-## equip_item()) - a shared-usable_by() type still needs to say WHICH of its
-## eligible classes actually holds it, not just that it is held.
+## than a bool because equipping is per-hero - a shared-usable_by() type still
+## needs to say WHICH of its eligible classes actually holds it, not just that
+## it is held.
+##
+## [town] A hero now wears one item per Item.Slot (spec 4.3), not one item
+## total. This field deliberately does NOT record the slot: it is recoverable
+## from the item's own type via slot(), so an item can never be ambiguous about
+## which slot it fills - which is why three slots needed no new field here.
 @export var equipped_by: StringName = &""
 
 ## [town] How many times this item has been through the forge (spec 10.2, 10.4).
@@ -82,16 +105,23 @@ func subtitle() -> String:
 ## exist.
 ##
 ## Built by iteration rather than returned straight from the table because
-## WEAPON_TYPES' inline arrays are untyped Array, which GDScript will not
+## ITEM_TYPES' inline arrays are untyped Array, which GDScript will not
 ## assign to an Array[StringName] return.
 func usable_by() -> Array[StringName]:
 	var out: Array[StringName] = []
 	if kind != Kind.WEAPON or weapon_type == &"":
 		return out
-	var entry: Dictionary = Itemizer.WEAPON_TYPES.get(weapon_type, {})
+	var entry: Dictionary = Itemizer.ITEM_TYPES.get(weapon_type, {})
 	for c: StringName in entry.get("classes", []):
 		out.append(c)
 	return out
+
+## [town] Which equipment slot this item fills, from its type's ITEM_TYPES
+## entry (spec 4.1). Defaults to WEAPON for an unknown / empty type so a
+## malformed item still answers sensibly rather than erroring.
+func slot() -> Slot:
+	var entry: Dictionary = Itemizer.ITEM_TYPES.get(weapon_type, {})
+	return entry.get("slot", Slot.WEAPON) as Slot
 
 ## "Warrior", or "Warrior / Ranger" for a shared type. "Anyone" when nothing
 ## restricts the item - which is what an unrestricted kind should read as, not
@@ -105,8 +135,14 @@ func class_label() -> String:
 		names.append(String(c).capitalize())
 	return " / ".join(names)
 
+## The name of an arbitrary rarity index - so a caller that needs the name of a
+## rarity OTHER than this item's own (e.g. forge_row.gd naming the step's
+## destination, rarity + 1) has one owner for the array instead of a copy (D4).
+static func rarity_name_for(r: int) -> String:
+	return ["Common", "Uncommon", "Magic", "Rare", "Enhanced"][r]
+
 func rarity_name() -> String:
-	return ["Common", "Uncommon", "Magic", "Rare", "Enhanced"][rarity]
+	return rarity_name_for(rarity)
 
 func type_name() -> String:
 	# Weapons read as their weapon type ("Sword"); the deferred kinds fall back
@@ -123,11 +159,3 @@ func buy_price() -> int:
 
 func sell_price() -> int:
 	return int(round(float(value) * Tuning.SHOP_SELL_RATE))
-
-## Single letter used by the inventory chip (spec 17.2).
-func type_initial() -> String:
-	if weapon_type == &"":
-		return "?"
-	if weapon_type == &"staff":
-		return "T"
-	return String(weapon_type).substr(0, 1).to_upper()
