@@ -45,6 +45,11 @@ func save_profile() -> void:
 		"street_sleep_used": GameState.street_sleep_used,
 		"heroes": GameState.hero_runtime,
 		"inventory": GameState.inventory.map(func(i: Item) -> Dictionary: return i.to_dict()),
+		# [town] spec 7.4: the blacksmith's cached stock. Joins the dict here, at
+		# step 10 - no VERSION bump, because a save written before this key existed
+		# loads cleanly under load_profile()'s d.get(key, default) (spec 2.4's
+		# VERSION policy: bump on a meaning change, never merely to add a key).
+		"forge_stock": GameState.forge_stock.map(func(i: Item) -> Dictionary: return i.to_dict()),
 	}))
 
 ## Returns false when there is no save, or it is unreadable, or its version is
@@ -85,6 +90,11 @@ func load_profile() -> bool:
 	for raw: Variant in d.get("inventory", []):
 		inv.append(Item.from_dict(raw))
 	GameState.inventory = inv
+
+	var stock: Array[Item] = []
+	for raw: Variant in d.get("forge_stock", []):
+		stock.append(Item.from_dict(raw))
+	GameState.forge_stock = stock
 
 	return true
 

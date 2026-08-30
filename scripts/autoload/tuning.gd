@@ -95,10 +95,15 @@ const PARTY_ANCHOR := Vector3(-1.6, 0.0, 3.4)
 ## numbers, not a formula - and because it is expressed in RUN_DIR's frame it
 ## rotates with the run axis for free.
 const PARTY_FORMATION := [
-	Vector2(-0.5, 1.0),                   # mage - back rank, left
-	Vector2(0.5, 1.0),                    # ranger        - back rank, right
-	Vector2(0.0, 0.0),                    # warrior       - front rank, on the axis
+	Vector2(0, 0),
+	Vector2(-0.5, 1.0),
+	Vector2(0.5, 1.0)
 ]
+#const PARTY_FORMATION := [
+	#Vector2(-0.5, 1.0),                   # mage - back rank, left
+	#Vector2(0.5, 1.0),                    # ranger        - back rank, right
+	#Vector2(0.0, 0.0),                    # warrior       - front rank, on the axis
+#]
 ## The floor both sit at is silhouette overlap - the mage's hat is about 1.2
 ## units across and the warrior's cape about 1.0, so anything under ~2.0
 ## between neighbours has them intersecting on screen. Both are pushed well
@@ -185,6 +190,13 @@ const SHOP_ITEMS_FOR_SALE := 3
 ## nothing. new_profile() (spec 2.3) uses THESE for the genuine no-save fallback.
 const PROFILE_STARTING_GOLD := 150
 const PROFILE_STARTING_SCRAP := 0
+
+## [town] The blacksmith's shop (spec 7.4). Its stock is six cards - two cheap,
+## two average, two dear - rerolled only by the refresh button, which spends
+## SHOP_REFRESH_COST gold. FORGE_SHOP_SLOTS is the card count; generate_forge_stock()
+## fills it two-per-bucket across three buckets.
+const SHOP_REFRESH_COST := 100
+const FORGE_SHOP_SLOTS := 6
 
 ## [town] The inn's paid full heal (spec 7.2), multiplied by active_party.size()
 ## - 50 with a solo warrior. The free "Sit by the fire" option costs nothing and

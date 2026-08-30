@@ -26,18 +26,28 @@ extends Control
 const C_DISC := Color(0.043137, 0.117647, 0.109804, 1)   # matches compare_flyout's "well"
 const C_GLYPH := Color(0.94902, 0.913725, 0.815686, 1)    # C_TEXT
 
-## [meshy-experiment] Meshy-generated flat icons, one per weapon type
+## [meshy-experiment] Meshy-generated flat icons, one per item type
 ## (res://assets/icons/weapon_*.png) - square images with their own dark teal
 ## backdrop, so they are inset only as far as the disc's INSCRIBED square (see
 ## _draw()): sized so their corners just touch the disc's circle rather than
 ## poke past it. Potions/relics have no generated art yet and fall back to
 ## the procedural vector shapes below.
+##
+## [town] spec 12.1 (step 11): the six armor / trinket types join the five
+## weapons here - same style pass, same matte-clay-on-teal treatment - so a full
+## Equipped section reads as icons rather than the generic gem fallback.
 const WEAPON_TEXTURES := {
 	&"sword": preload("res://assets/icons/weapon_sword.png"),
 	&"axe": preload("res://assets/icons/weapon_axe.png"),
 	&"bow": preload("res://assets/icons/weapon_bow.png"),
 	&"dagger": preload("res://assets/icons/weapon_dagger.png"),
 	&"staff": preload("res://assets/icons/weapon_staff.png"),
+	&"helm": preload("res://assets/icons/weapon_helm.png"),
+	&"mail": preload("res://assets/icons/weapon_mail.png"),
+	&"shield": preload("res://assets/icons/weapon_shield.png"),
+	&"ring": preload("res://assets/icons/weapon_ring.png"),
+	&"amulet": preload("res://assets/icons/weapon_amulet.png"),
+	&"idol": preload("res://assets/icons/weapon_idol.png"),
 }
 
 func _draw() -> void:

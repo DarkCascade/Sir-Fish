@@ -1,9 +1,10 @@
-[gd_scene load_steps=5 format=3 uid="uid://b0hudsirfish05"]
+[gd_scene load_steps=6 format=3 uid="uid://b0hudsirfish05"]
 
 [ext_resource type="Script" path="res://scripts/hud/hud.gd" id="1_hud"]
 [ext_resource type="Script" path="res://scripts/hud/currency_plate.gd" id="2_plate"]
 [ext_resource type="PackedScene" path="res://scenes/modals/quest_result.tscn" id="3_qr"]
 [ext_resource type="PackedScene" path="res://scenes/modals/inventory_modal.tscn" id="4_inv"]
+[ext_resource type="Texture2D" path="res://assets/icons/ui_backpack.png" id="5_bag"]
 
 [node name="Hud" type="CanvasLayer"]
 layer = 10
@@ -16,7 +17,8 @@ offset_right = 128.0
 offset_bottom = 128.0
 disabled = true
 theme_override_font_sizes/font_size = 30
-text = "Bag"
+icon = ExtResource("5_bag")
+expand_icon = true
 
 [node name="CurrencyPlate" type="PanelContainer" parent="."]
 offset_left = 724.0

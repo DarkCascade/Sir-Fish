@@ -1,0 +1,85 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/modals/forge_row.gd" id="1_row"]
+[ext_resource type="Script" path="res://scripts/modals/item_glyph.gd" id="2_glyph"]
+
+; [town] spec 7.3. One equipped item on the Forge tab: the shared rarity-tinted
+; card frame (ItemCardStyle duplicates this "panel" stylebox and recolours its
+; border to the item's rarity) plus a single full-width FORGE button. Values
+; mirror inventory_row.tscn's face_style - this project authors a per-scene
+; stylebox set rather than sharing one resource.
+[sub_resource type="StyleBoxFlat" id="face_style"]
+content_margin_left = 26.0
+content_margin_top = 20.0
+content_margin_right = 26.0
+content_margin_bottom = 20.0
+bg_color = Color(0.043137, 0.117647, 0.109804, 1)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0.5, 0.5, 0.5, 1)
+corner_radius_top_left = 18
+corner_radius_top_right = 18
+corner_radius_bottom_right = 18
+corner_radius_bottom_left = 18
+shadow_color = Color(0.5, 0.5, 0.5, 0)
+shadow_size = 0
+
+[node name="ForgeRow" type="PanelContainer"]
+custom_minimum_size = Vector2(880, 0)
+offset_right = 880.0
+offset_bottom = 240.0
+theme_override_styles/panel = SubResource("face_style")
+script = ExtResource("1_row")
+
+[node name="VBox" type="VBoxContainer" parent="."]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="TopRow" type="HBoxContainer" parent="VBox"]
+layout_mode = 2
+theme_override_constants/separation = 20
+
+[node name="Glyph" type="Control" parent="VBox/TopRow"]
+custom_minimum_size = Vector2(96, 96)
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+script = ExtResource("2_glyph")
+
+[node name="Info" type="VBoxContainer" parent="VBox/TopRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+theme_override_constants/separation = 4
+
+[node name="NameLabel" type="Label" parent="VBox/TopRow/Info"]
+layout_mode = 2
+theme_type_variation = &"DisplayLabel"
+theme_override_colors/font_color = Color(0.94902, 0.913725, 0.815686, 1)
+theme_override_font_sizes/font_size = 40
+
+[node name="SubtitleLabel" type="Label" parent="VBox/TopRow/Info"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 26
+
+[node name="Modifiers" type="VBoxContainer" parent="VBox"]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="ForgeButton" type="Button" parent="VBox"]
+custom_minimum_size = Vector2(0, 88)
+layout_mode = 2
+theme_override_font_sizes/font_size = 30
+text = "FORGE"
+
+[node name="FullyForged" type="Label" parent="VBox"]
+visible = false
+custom_minimum_size = Vector2(0, 88)
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 0.419608, 0.290196, 1)
+theme_override_font_sizes/font_size = 30
+text = "Fully forged"
+horizontal_alignment = 1
+vertical_alignment = 1

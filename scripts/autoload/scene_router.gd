@@ -14,9 +14,9 @@ extends Node
 
 enum Place { TOWN, INN, BLACKSMITH, MAYOR, QUEST }
 
-## Every Place must have an entry (test_scene_router.gd asserts totality).
-## blacksmith.tscn (step 10) does not exist yet - which is why go() keeps a
-## missing-path bail rather than trusting the table.
+## Every Place must have an entry (test_scene_router.gd asserts totality). All
+## five scenes exist as of step 10; go()'s missing-path bail stays anyway - a
+## typo'd path would otherwise soft-lock behind an opaque rect (spec 3.1).
 const PATHS := {
 	Place.TOWN:       "res://scenes/town/town.tscn",
 	Place.INN:        "res://scenes/town/inn.tscn",

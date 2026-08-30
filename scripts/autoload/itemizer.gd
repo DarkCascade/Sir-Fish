@@ -300,3 +300,24 @@ func _generate_in_bucket(bucket: Array) -> Item:
 	for r: int in bucket:
 		weights.append(int(RARITY_WEIGHTS[r]))
 	return generate_item_with_rarity(int(bucket[RNG.weighted_index(weights)]))
+
+# --- the blacksmith's expanded shop (spec 7.4) --------------------------------
+
+## [town] The blacksmith's six-card stock: two cheap, two average, two dear.
+## Same bucket technique as generate_shop_stock() at twice the width - a SEPARATE
+## function rather than a parameter on that one, because test_economy.gd pins
+## generate_shop_stock()'s shape (always SHOP_ITEMS_FOR_SALE items, a fixed
+## bucket spread) and this stock has different guarantees. ENHANCED never appears
+## here - it is forge-only (weight 0, spec 10.1). The result count is
+## Tuning.FORGE_SHOP_SLOTS (2 per bucket x 3 buckets).
+func generate_forge_stock() -> Array[Item]:
+	var stock: Array[Item] = []
+	for bucket: Array in [
+		[Item.Rarity.COMMON,   Item.Rarity.UNCOMMON],   # cheap
+		[Item.Rarity.UNCOMMON, Item.Rarity.MAGIC],      # average
+		[Item.Rarity.MAGIC,    Item.Rarity.RARE],       # dear
+	]:
+		stock.append(_generate_in_bucket(bucket))
+		stock.append(_generate_in_bucket(bucket))
+	stock.shuffle()
+	return stock

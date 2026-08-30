@@ -339,10 +339,9 @@ func _cmd_equip(args: Array) -> void:
 
 ## [town] spec 13.4. Routes to any Place through SceneRouter. `route quest`
 ## calls start_expedition() before routing, standing in for the mayor (spec 7.5,
-## step 8) so the loaded profile survives the trip into the forest (spec 3.1);
-## `route blacksmith|mayor` refuses cleanly until those scenes exist (step 10 /
-## step 8), which is go()'s missing-path bail doing its job. Supersedes an
-## earlier bare `town` verb.
+## step 8) so the loaded profile survives the trip into the forest (spec 3.1).
+## All five Places have a real scene as of step 10. Supersedes an earlier bare
+## `town` verb.
 func _cmd_route(args: Array) -> void:
 	if args.is_empty():
 		_log("route -> needs <town|inn|blacksmith|mayor|quest>")

@@ -157,9 +157,21 @@ static func _pool_parent() -> Node3D:
 ## (colour, alpha, scale...) before use, since a reused node still carries
 ## whatever end state its last use tweened it to.
 static func _acquire(kind: String, builder: Callable) -> Node:
+	# A dead pool root means main.tscn was swapped out from under us (quest ->
+	# town, and back into a new quest). Its pooled nodes were freed with it, but
+	# _pool_free still holds refs to them - drop the whole stale dict before
+	# touching a free list. Without this the loop below reaches list.pop_back(),
+	# and assigning a freed instance to a typed local throws
+	# "Trying to assign invalid previously freed instance" *before*
+	# is_instance_valid() gets a chance to reject it.
+	if not is_instance_valid(_pool_root):
+		_pool_root = null
+		_pool_free.clear()
 	var list: Array = _pool_free.get(kind, [])
 	while not list.is_empty():
-		var n: Node = list.pop_back()
+		# Untyped: a per-entry freed node (a live pool that lost one node) must be
+		# vettable by is_instance_valid() without a typed assignment tripping first.
+		var n: Variant = list.pop_back()
 		if is_instance_valid(n):
 			return n
 	var made: Node = builder.call()
@@ -262,18 +274,20 @@ static func _burst(pos: Vector3, count: int, color_a: Color,
 		var particles := GPUParticles3D.new()
 		particles.one_shot = true
 		particles.explosiveness = 1.0
-		var pm := ParticleProcessMaterial.new()
-		pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
-		pm.emission_sphere_radius = 0.12
-		pm.direction = Vector3(0, 1, 0)
-		pm.spread = 180.0
-		pm.scale_min = 0.6
-		pm.scale_max = 1.2
-		var grad := Gradient.new()
+		# Named apart from the outer pm/grad below so GDScript's confusable-local
+		# lint stays quiet - the closure runs only on a pool miss.
+		var seed_mat := ParticleProcessMaterial.new()
+		seed_mat.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
+		seed_mat.emission_sphere_radius = 0.12
+		seed_mat.direction = Vector3(0, 1, 0)
+		seed_mat.spread = 180.0
+		seed_mat.scale_min = 0.6
+		seed_mat.scale_max = 1.2
+		var seed_ramp := Gradient.new()
 		var gt := GradientTexture1D.new()
-		gt.gradient = grad
-		pm.color_ramp = gt
-		particles.process_material = pm
+		gt.gradient = seed_ramp
+		seed_mat.color_ramp = gt
+		particles.process_material = seed_mat
 		particles.material_override = _unshaded(Color.WHITE)
 		return particles) as GPUParticles3D
 

@@ -1,6 +1,7 @@
-[gd_scene format=3 uid="uid://wc6ntd4tlgi8"]
+[gd_scene load_steps=3 format=3 uid="uid://wc6ntd4tlgi8"]
 
 [ext_resource type="Script" path="res://scripts/town/mayor_office.gd" id="1_mayor"]
+[ext_resource type="Texture2D" path="res://assets/mayor-bg.png" id="2_bg"]
 
 [node name="MayorOffice" type="Control"]
 layout_mode = 3
@@ -11,7 +12,7 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_mayor")
 
-[node name="Background" type="ColorRect" parent="."]
+[node name="Background" type="TextureRect" parent="."]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -19,22 +20,20 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-color = Color(0.043137, 0.101961, 0.098039, 1)
+texture = ExtResource("2_bg")
+expand_mode = 1
+stretch_mode = 6
+metadata/_edit_lock_ = true
 
 [node name="Vignette" type="ColorRect" parent="Background"]
 layout_mode = 1
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -430.0
-offset_top = -760.0
-offset_right = 430.0
-offset_bottom = 760.0
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-color = Color(0.078431, 0.164706, 0.152941, 1)
+mouse_filter = 2
+color = Color(0.023529, 0.043137, 0.043137, 0.46)
 
 [node name="Layout" type="VBoxContainer" parent="."]
 layout_mode = 1

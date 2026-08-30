@@ -339,7 +339,7 @@ func _build_archway() -> void:
 	root.transform = xform
 	add_child(root)
 
-	var stone := _archway_stone_material()
+	#var stone := _archway_stone_material()
 	#for entry: Dictionary in _palette(ARCH_PROP, "Env_Arch"):
 		#var mesh: Mesh = entry["mesh"]
 		#var mi := MeshInstance3D.new()

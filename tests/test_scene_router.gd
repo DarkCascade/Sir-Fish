@@ -28,12 +28,14 @@ func _ready() -> void:
 	t.check(all_keyed, "every Place enum value is a PATHS key")
 
 	# --- existence, for BUILT places only (spec 13.1) ---------------------
-	# TOWN and QUEST exist at step 5; INN widened in at step 7, MAYOR at step 8;
-	# BLACKSMITH at 10 is still absent. Asserting all five here fails on arrival.
+	# TOWN and QUEST exist at step 5; INN widened in at step 7, MAYOR at step 8,
+	# BLACKSMITH at step 10 - all five are now built.
 	t.check(ResourceLoader.exists(SceneRouter.PATHS[SceneRouter.Place.TOWN]),
 		"town.tscn exists")
 	t.check(ResourceLoader.exists(SceneRouter.PATHS[SceneRouter.Place.INN]),
 		"inn.tscn exists (Place.INN, widened in at step 7)")
+	t.check(ResourceLoader.exists(SceneRouter.PATHS[SceneRouter.Place.BLACKSMITH]),
+		"blacksmith.tscn exists (Place.BLACKSMITH, widened in at step 10)")
 	t.check(ResourceLoader.exists(SceneRouter.PATHS[SceneRouter.Place.MAYOR]),
 		"mayor_office.tscn exists (Place.MAYOR, widened in at step 8)")
 	t.check(ResourceLoader.exists(SceneRouter.PATHS[SceneRouter.Place.QUEST]),

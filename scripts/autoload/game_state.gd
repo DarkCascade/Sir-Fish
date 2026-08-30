@@ -113,6 +113,13 @@ var street_sleep_used: bool = false
 ## here rather than left to be rediscovered.
 var _expedition_inventory_mark: int = 0
 
+## [town] The blacksmith's cached Buy-tab stock (spec 7.4). Profile-scoped and
+## saved with the profile: generated once on the first blacksmith visit, rerolled
+## ONLY by the refresh button, and a purchase erases the bought item from it.
+## Walking out of the blacksmith and back in must not reroll - the same rule the
+## quest shop follows via EncounterDef.cached_shop_items. Cleared by new_profile().
+var forge_stock: Array[Item] = []
+
 var _stats_cache: Dictionary = {}   # StringName -> CombatantStats
 
 func _ready() -> void:
@@ -613,6 +620,7 @@ func new_profile() -> void:
 	gold = Tuning.PROFILE_STARTING_GOLD
 	scrap = Tuning.PROFILE_STARTING_SCRAP
 	inventory.clear()
+	forge_stock.clear()          # the blacksmith regenerates on first visit (spec 7.4)
 	active_party = [&"warrior"] as Array[StringName]
 	street_sleep_used = false
 	_reset_hero_runtime(true)     # full heal - a new profile starts whole

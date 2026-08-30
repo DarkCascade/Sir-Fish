@@ -8,8 +8,8 @@ extends Control
 ## A quest is always available - no cooldown, no lockout, no prerequisite.
 ## Difficulty is the gate (spec 7.5).
 ##
-## The background is a placeholder until §12 (step 11) supplies the Meshy art;
-## the layout below is what the real background slots behind.
+## The background (assets/mayor-bg.png) and its darkening Vignette scrim are
+## authored in mayor_office.tscn - the Meshy art pass, spec 12.1 (step 11).
 
 const QUEST_DIR := "res://resources/quests/"
 ## Authored order rather than DirAccess iteration order, so easy always sits top.
