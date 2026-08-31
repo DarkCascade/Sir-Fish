@@ -33,6 +33,15 @@ func _ready() -> void:
 	var env := world_environment.environment
 	env.fog_depth_begin = Tuning.FOG_DEPTH_BEGIN
 	env.fog_depth_end = Tuning.FOG_DEPTH_END
+	# [web delivery / perf spec 3.2] Glow is a downsample/upsample blit chain -
+	# several extra full-viewport passes every frame, which a tile-based mobile
+	# GPU feels far more than the desktop editor preview this was tuned in. The
+	# cel shader's banding and the emissive materials carry most of the look on
+	# their own, so this is dropped on web only - desktop/mobile-app exports are
+	# untouched. Revisit if the on-device look reads as flat without it (open
+	# question Q7 in the perf spec questions doc).
+	if OS.has_feature("web"):
+		env.glow_enabled = false
 
 func _process(delta: float) -> void:
 	if _shake_time <= 0.0:

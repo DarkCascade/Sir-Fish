@@ -3,11 +3,9 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://c28xrva2b2vjb"
-path.s3tc="res://.godot/imported/knight_knight_texture.png-7e1f8389baa47d1c326cdcabaa65d288.s3tc.ctex"
-path.etc2="res://.godot/imported/knight_knight_texture.png-7e1f8389baa47d1c326cdcabaa65d288.etc2.ctex"
+path="res://.godot/imported/knight_knight_texture.png-7e1f8389baa47d1c326cdcabaa65d288.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc", "etc2_astc"],
-"vram_texture": true
+"vram_texture": false
 }
 generator_parameters={
 "md5": "af4707185c3e9844f7ed166c1a2e24f8"
@@ -16,11 +14,11 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/meshes/knight_knight_texture.png"
-dest_files=["res://.godot/imported/knight_knight_texture.png-7e1f8389baa47d1c326cdcabaa65d288.s3tc.ctex", "res://.godot/imported/knight_knight_texture.png-7e1f8389baa47d1c326cdcabaa65d288.etc2.ctex"]
+dest_files=["res://.godot/imported/knight_knight_texture.png-7e1f8389baa47d1c326cdcabaa65d288.ctex"]
 
 [params]
 
-compress/mode=2
+compress/mode=0
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
@@ -28,7 +26,7 @@ compress/rdo_quality_loss=0.0
 compress/hdr_compression=1
 compress/normal_map=0
 compress/channel_pack=0
-mipmaps/generate=true
+mipmaps/generate=false
 mipmaps/limit=-1
 roughness/mode=0
 roughness/src_normal=""
@@ -41,5 +39,5 @@ process/premult_alpha=false
 process/normal_map_invert_y=false
 process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
-process/size_limit=0
+process/size_limit=64
 detect_3d/compress_to=0
