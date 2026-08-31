@@ -3,11 +3,9 @@
 importer="texture"
 type="CompressedTexture2D"
 uid="uid://d0k4uc6dbhqub"
-path.s3tc="res://.godot/imported/rogue_rogue_texture.png-0cd193e7cc8d15c6ae6e82662d5b8308.s3tc.ctex"
-path.etc2="res://.godot/imported/rogue_rogue_texture.png-0cd193e7cc8d15c6ae6e82662d5b8308.etc2.ctex"
+path="res://.godot/imported/rogue_rogue_texture.png-0cd193e7cc8d15c6ae6e82662d5b8308.ctex"
 metadata={
-"imported_formats": ["s3tc_bptc", "etc2_astc"],
-"vram_texture": true
+"vram_texture": false
 }
 generator_parameters={
 "md5": "5b6fbb4d6c67e8c66dd2dffbb40f8812"
@@ -16,11 +14,11 @@ generator_parameters={
 [deps]
 
 source_file="res://assets/meshes/rogue_rogue_texture.png"
-dest_files=["res://.godot/imported/rogue_rogue_texture.png-0cd193e7cc8d15c6ae6e82662d5b8308.s3tc.ctex", "res://.godot/imported/rogue_rogue_texture.png-0cd193e7cc8d15c6ae6e82662d5b8308.etc2.ctex"]
+dest_files=["res://.godot/imported/rogue_rogue_texture.png-0cd193e7cc8d15c6ae6e82662d5b8308.ctex"]
 
 [params]
 
-compress/mode=2
+compress/mode=0
 compress/high_quality=false
 compress/lossy_quality=0.7
 compress/uastc_level=0
@@ -28,7 +26,7 @@ compress/rdo_quality_loss=0.0
 compress/hdr_compression=1
 compress/normal_map=0
 compress/channel_pack=0
-mipmaps/generate=true
+mipmaps/generate=false
 mipmaps/limit=-1
 roughness/mode=0
 roughness/src_normal=""
@@ -41,5 +39,5 @@ process/premult_alpha=false
 process/normal_map_invert_y=false
 process/hdr_as_srgb=false
 process/hdr_clamp_exposure=false
-process/size_limit=0
+process/size_limit=64
 detect_3d/compress_to=0
