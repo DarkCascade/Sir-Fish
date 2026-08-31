@@ -1,0 +1,108 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/modals/stat_chip.gd" id="1_chip"]
+
+[sub_resource type="StyleBoxFlat" id="plate_default"]
+bg_color = Color(0.054902, 0.043137, 0.086275, 1)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0.545098, 0.360784, 0.964706, 1)
+corner_radius_top_left = 16
+corner_radius_top_right = 16
+corner_radius_bottom_right = 16
+corner_radius_bottom_left = 16
+shadow_color = Color(0.545098, 0.360784, 0.964706, 0.32)
+shadow_size = 6
+
+[sub_resource type="StyleBoxFlat" id="badge_pill"]
+content_margin_left = 8.0
+content_margin_top = 1.0
+content_margin_right = 8.0
+content_margin_bottom = 1.0
+bg_color = Color(0.054902, 0.043137, 0.086275, 0.94)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.298039, 0.113725, 0.584314, 1)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+
+[node name="StatChip" type="VBoxContainer"]
+custom_minimum_size = Vector2(116, 0)
+offset_right = 116.0
+offset_bottom = 140.0
+size_flags_horizontal = 4
+alignment = 1
+theme_override_constants/separation = 8
+script = ExtResource("1_chip")
+
+[node name="Plate" type="Control" parent="."]
+custom_minimum_size = Vector2(104, 104)
+layout_mode = 2
+size_flags_horizontal = 4
+
+[node name="IconClip" type="Control" parent="Plate"]
+clip_contents = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="Bg" type="PanelContainer" parent="Plate/IconClip"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("plate_default")
+
+[node name="Icon" type="TextureRect" parent="Plate/IconClip"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 6
+
+[node name="Badge" type="PanelContainer" parent="Plate"]
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -60.0
+offset_top = -14.0
+offset_right = 12.0
+offset_bottom = 26.0
+grow_horizontal = 0
+mouse_filter = 2
+theme_override_styles/panel = SubResource("badge_pill")
+
+[node name="Label" type="Label" parent="Plate/Badge"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.960784, 0.945098, 0.894118, 1)
+theme_override_font_sizes/font_size = 24
+text = "+0"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Caption" type="Label" parent="."]
+custom_minimum_size = Vector2(116, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.960784, 0.945098, 0.894118, 1)
+theme_override_font_sizes/font_size = 22
+text = "Stat"
+horizontal_alignment = 1
+autowrap_mode = 2

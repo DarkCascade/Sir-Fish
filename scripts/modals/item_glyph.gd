@@ -23,8 +23,8 @@ extends Control
 		ring_color = v
 		queue_redraw()
 
-const C_DISC := Color(0.043137, 0.117647, 0.109804, 1)   # matches compare_flyout's "well"
-const C_GLYPH := Color(0.94902, 0.913725, 0.815686, 1)    # C_TEXT
+const C_DISC := Tuning.C_RELIQUARY_STONE_DARK   # the reliquary's recessed plum-black
+const C_GLYPH := Tuning.C_TEXT
 
 ## [meshy-experiment] Meshy-generated flat icons, one per item type
 ## (res://assets/icons/weapon_*.png) - square images with their own dark teal
@@ -76,10 +76,12 @@ func _draw() -> void:
 
 	draw_arc(c, r * 0.94, 0.0, TAU, 40, ring_color, r * 0.09, true)
 
+## Fallback for a textureless item (a bare Item.new()): a cut amethyst rather
+## than the old pale gem, so even the fallback sits inside the reliquary look.
 func _draw_gem(c: Vector2, g: float) -> void:
 	draw_colored_polygon(PackedVector2Array([
 		c + Vector2(0, -g), c + Vector2(g, 0), c + Vector2(0, g), c + Vector2(-g, 0),
-	]), C_GLYPH)
+	]), Tuning.C_CRYSTAL)
 	draw_colored_polygon(PackedVector2Array([
 		c + Vector2(0, -g * 0.4), c + Vector2(g * 0.4, 0), c + Vector2(0, g * 0.4), c + Vector2(-g * 0.4, 0),
-	]), Color(1, 1, 1, 0.6))
+	]), Tuning.C_CRYSTAL_BRIGHT)

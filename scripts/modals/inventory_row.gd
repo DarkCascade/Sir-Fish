@@ -40,11 +40,10 @@ func _ready() -> void:
 
 func setup(i: Item) -> void:
 	item = i
-	ItemCardStyle.apply(face, glyph, i)
+	ItemCardStyle.apply(face, glyph, i, name_label, subtitle_label)
 
 	name_label.text = i.display_name
 	subtitle_label.text = i.subtitle()
-	subtitle_label.add_theme_color_override("font_color", i.rarity_color())
 	mods_label.text = "%d modifier%s" % [i.modifiers.size(),
 		"" if i.modifiers.size() == 1 else "s"]
 	# [town] spec 10.3: this row shows a count, not per-modifier lines, so the

@@ -47,11 +47,10 @@ func _ready() -> void:
 
 func setup(i: Item) -> void:
 	item = i
-	ItemCardStyle.apply(face, glyph, i)
+	ItemCardStyle.apply(face, glyph, i, name_label, subtitle_label)
 
 	name_label.text = i.display_name
 	subtitle_label.text = i.subtitle()
-	subtitle_label.add_theme_color_override("font_color", i.rarity_color())
 	for child: Node in modifiers_box.get_children():
 		child.queue_free()
 	for mod: Dictionary in i.modifiers:
