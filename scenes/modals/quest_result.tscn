@@ -1,7 +1,36 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=5 format=3]
 
 [ext_resource type="Script" path="res://scripts/modals/quest_result.gd" id="1_sum"]
 [ext_resource type="PackedScene" uid="uid://46oh8n83yecw" path="res://scenes/console/sir_fish_tank.tscn" id="2_fish"]
+[ext_resource type="Shader" path="res://assets/shaders/reliquary_mist.gdshader" id="3_mist"]
+[ext_resource type="PackedScene" path="res://scenes/modals/reliquary_frame.tscn" id="4_frame"]
+[ext_resource type="Texture2D" path="res://assets/ui/reliquary/fleuron.png" id="5_fleuron"]
+
+[sub_resource type="ShaderMaterial" id="mist_mat"]
+shader = ExtResource("3_mist")
+shader_parameter/fog_color = Color(0.545, 0.361, 0.965, 1.0)
+shader_parameter/deep_color = Color(0.141, 0.082, 0.239, 1.0)
+shader_parameter/density = 0.34
+shader_parameter/drift_speed = 0.045
+shader_parameter/scale = 2.4
+
+; [reliquary] Plum-black panel, inlined per scene (the Godot editor overwrites
+; out-of-editor edits to a shared theme.tres).
+[sub_resource type="StyleBoxFlat" id="rel_panel"]
+content_margin_left = 72.0
+content_margin_top = 48.0
+content_margin_right = 72.0
+content_margin_bottom = 52.0
+bg_color = Color(0.101961, 0.082353, 0.14902, 1)
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
+border_color = Color(0.227451, 0.227451, 0.282353, 1)
+corner_radius_top_left = 22
+corner_radius_top_right = 22
+corner_radius_bottom_right = 22
+corner_radius_bottom_left = 22
 
 ; [move-elements-to-editor] Two things were built in code here and are authored
 ; now. Sir Fish (SummaryFish) was instanced and move_child'd to the top of the
@@ -26,7 +55,17 @@ layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-color = Color(0.011765, 0.035294, 0.058824, 0.82)
+color = Color(0.141176, 0.094118, 0.196078, 0.82)
+
+[node name="Mist" type="ColorRect" parent="."]
+material = SubResource("mist_mat")
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
 
 [node name="Panel" type="PanelContainer" parent="."]
 layout_mode = 1
@@ -41,6 +80,7 @@ offset_right = 450.0
 offset_bottom = 590.0
 grow_horizontal = 2
 grow_vertical = 2
+theme_override_styles/panel = SubResource("rel_panel")
 
 [node name="Layout" type="VBoxContainer" parent="Panel"]
 layout_mode = 2
@@ -68,6 +108,31 @@ layout_mode = 2
 theme_override_colors/font_color = Color(0.611765, 0.686275, 0.643137, 1)
 theme_override_font_sizes/font_size = 36
 horizontal_alignment = 1
+
+; [reliquary] rule - fleuron - rule. Meshy ornament (assets/ui/reliquary/
+; fleuron.png); the two HSeparators carry the split until it exists.
+[node name="Divider" type="HBoxContainer" parent="Panel/Layout"]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="RuleL" type="HSeparator" parent="Panel/Layout/Divider"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+
+[node name="Fleuron" type="TextureRect" parent="Panel/Layout/Divider"]
+custom_minimum_size = Vector2(220, 96)
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+texture = ExtResource("5_fleuron")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="RuleR" type="HSeparator" parent="Panel/Layout/Divider"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
 
 [node name="Stats" type="VBoxContainer" parent="Panel/Layout"]
 layout_mode = 2
@@ -363,3 +428,18 @@ size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 40
 text = "Sleep in the street — free"
 visible = false
+
+; [reliquary] Corner ornaments, as a sibling overlaying the panel exactly so
+; the PanelContainer content margin does not inset them off the panel edge.
+[node name="Frame" parent="." instance=ExtResource("4_frame")]
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -450.0
+offset_top = -590.0
+offset_right = 450.0
+offset_bottom = 590.0
+grow_horizontal = 2
+grow_vertical = 2

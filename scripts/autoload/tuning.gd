@@ -441,6 +441,32 @@ const C_PARCHMENT := Color("C7C4B5")
 const C_PARCHMENT_SHADE := Color("A4A294")  # lower half of the card's gradient
 const C_TEXT_GOLD := Color("F0D588")        # headings and numerals on dark stone
 
+# --- 6.1e Reliquary (modal chrome) [scoped exception] -----------------------
+## The modal layer ONLY. Opening a popup should feel like opening a warded
+## reliquary: a plum-black stone tablet in pewter corner-brackets, amethyst
+## crystal clusters at the joints, black thorn-vines over the frame, floating
+## in violet mist. This is the ONE place violet leads - loot and the arcane are
+## its subject, so the promotion is thematically earned here and nowhere else.
+##
+## §6.1's rule ("COOL BLUE IS THE LIGHT, GREEN IS THE GROUND, GOLD IS THE UI")
+## is UNCHANGED for the world, the console, the HUD and the battle overlay.
+## Nothing outside scripts/modals/ + item_card_style.gd + the modal scenes may
+## read a C_RELIQUARY_* / C_CRYSTAL* / C_THORN* const, or the two halves of the
+## game stop separating (verification step 5 greps for exactly this).
+##
+## Still cold, never warm: a modal that reads brown or dusty-mauve is as wrong
+## as a brown forest. Every hue below is pulled toward blue-violet.
+const C_RELIQUARY_MIST := Color("241832")        # scrim / drifting fog base
+const C_RELIQUARY_STONE := Color("1A1526")       # modal panel fill, plum-black
+const C_RELIQUARY_STONE_LIT := Color("2C2440")   # top-lit carved edge
+const C_RELIQUARY_STONE_DARK := Color("0E0B16")  # underside of an edge / recessed wells
+const C_CRYSTAL := Color("8B5CF6")               # crystal body, chip accent, name glow
+const C_CRYSTAL_BRIGHT := Color("D8B4FE")        # lit facet, heading text on plum stone
+const C_CRYSTAL_DEEP := Color("4C1D95")          # shadowed facet, well borders
+const C_THORN := Color("1E1A2E")                 # thorn-vine art tint reference
+const C_THORN_DARK := Color("0F0D18")            # its shadowed side
+const C_RELIQUARY_TRIM := Color("3A3A48")        # pewter corner-bracket art tint reference
+
 # --- storm mood (M9) ---------------------------------------------------------
 ## The palette above is the fair-weather art direction and stays as authored.
 ## The storm is a TRANSFORM of it, not a second copy: `storm_tint()` darkens

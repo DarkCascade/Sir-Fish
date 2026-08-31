@@ -31,18 +31,22 @@ const ADJECTIVES := [
 	"Radiant", "Sodden", "Hasty", "Bold", "Weeping", "Jagged", "Plucky",
 ]
 
+# `caption` / `pct` are for the compare flyout's stat chips ([reliquary] pass):
+# the chip's corner badge is "+%d" or "+%d%%" of the roll, and `caption` is the
+# short label under it. `label` stays the source of truth for every text
+# renderer (inventory row count, the change list); the two new keys are additive.
 const MODIFIERS := [
 	# Hero-damage modifiers
-	{ "id": &"dmg_flat",   "label": "+%d Damage",        "roll": [2, 9],   "value_mult": [0.28, 0.55] },
-	{ "id": &"dmg_pct",    "label": "+%d%% Damage",      "roll": [5, 18],  "value_mult": [0.30, 0.60] },
-	{ "id": &"elem_fire",  "label": "+%d Fire Damage",   "roll": [3, 11],  "value_mult": [0.35, 0.70] },
-	{ "id": &"elem_ice",   "label": "+%d Ice Damage",    "roll": [3, 11],  "value_mult": [0.35, 0.70] },
-	{ "id": &"elem_light", "label": "+%d Lightning Dmg", "roll": [3, 11],  "value_mult": [0.35, 0.70] },
+	{ "id": &"dmg_flat",   "label": "+%d Damage",        "caption": "Damage",        "pct": false, "roll": [2, 9],   "value_mult": [0.28, 0.55] },
+	{ "id": &"dmg_pct",    "label": "+%d%% Damage",      "caption": "Damage",        "pct": true,  "roll": [5, 18],  "value_mult": [0.30, 0.60] },
+	{ "id": &"elem_fire",  "label": "+%d Fire Damage",   "caption": "Fire Damage",   "pct": false, "roll": [3, 11],  "value_mult": [0.35, 0.70] },
+	{ "id": &"elem_ice",   "label": "+%d Ice Damage",    "caption": "Ice Damage",    "pct": false, "roll": [3, 11],  "value_mult": [0.35, 0.70] },
+	{ "id": &"elem_light", "label": "+%d Lightning Dmg", "caption": "Lightning Dmg", "pct": false, "roll": [3, 11],  "value_mult": [0.35, 0.70] },
 	# Slot modifiers [v2] - these are what make the initial vision's core loop
 	# real: finding items in the world makes the slot machine pay bigger.
-	{ "id": &"slot_bolt",  "label": "+%d Bolt Power",    "roll": [2, 8],   "value_mult": [0.40, 0.75] },
-	{ "id": &"slot_purse", "label": "+%d Coin Yield",    "roll": [3, 10],  "value_mult": [0.38, 0.72] },
-	{ "id": &"slot_mend",  "label": "+%d%% Mend Power",  "roll": [3, 9],   "value_mult": [0.40, 0.75] },
+	{ "id": &"slot_bolt",  "label": "+%d Bolt Power",    "caption": "Bolt Power",    "pct": false, "roll": [2, 8],   "value_mult": [0.40, 0.75] },
+	{ "id": &"slot_purse", "label": "+%d Coin Yield",    "caption": "Coin Yield",    "pct": false, "roll": [3, 10],  "value_mult": [0.38, 0.72] },
+	{ "id": &"slot_mend",  "label": "+%d%% Mend Power",  "caption": "Mend Power",    "pct": true,  "roll": [3, 9],   "value_mult": [0.40, 0.75] },
 ]
 
 # 13.2 Rarity: weight, modifier count, value multiplier range.
@@ -120,6 +124,8 @@ func _generate_typed(wtype: StringName, rarity_index: int) -> Item:
 		mods.append({
 			"id": def["id"],
 			"label": (def["label"] as String) % roll,
+			"caption": def["caption"],
+			"pct": def["pct"],
 			# The raw roll is stored alongside the formatted label: v2 modifiers have
 			# gameplay effects (spec 13.5), so the magnitude must be recoverable, and
 			# a formatted string alone does not allow that.
@@ -200,6 +206,8 @@ func _roll_modifier(pool: Array, enhanced: bool) -> Dictionary:
 	return {
 		"id": def["id"],
 		"label": (def["label"] as String) % roll,
+		"caption": def["caption"],
+		"pct": def["pct"],
 		"roll": roll,
 		"value_mult": RNG.randf_range(float(def["value_mult"][0]), float(def["value_mult"][1])),
 		"enhanced": enhanced,

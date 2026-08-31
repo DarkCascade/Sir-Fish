@@ -1,0 +1,78 @@
+[gd_scene load_steps=2 format=3]
+
+; [reliquary] The crystal-cluster + thorn corner ornament (Meshy,
+; assets/ui/reliquary/frame_corner.png) placed at all four corners of a modal
+; panel, flipped into each. Instanced as the last child of a modal's Panel so
+; it draws on top of the fill; every TextureRect ignores the mouse. The art's
+; plum-black ground matches Tuning.C_RELIQUARY_STONE, so it blends into the
+; panel with no visible seam.
+
+[ext_resource type="Texture2D" path="res://assets/ui/reliquary/frame_corner.png" id="1_corner"]
+
+[node name="ReliquaryFrame" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="TL" type="TextureRect" parent="."]
+custom_minimum_size = Vector2(76, 76)
+layout_mode = 1
+offset_right = 64.0
+offset_bottom = 64.0
+mouse_filter = 2
+texture = ExtResource("1_corner")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="TR" type="TextureRect" parent="."]
+custom_minimum_size = Vector2(76, 76)
+layout_mode = 1
+anchors_preset = 1
+anchor_left = 1.0
+anchor_right = 1.0
+offset_left = -64.0
+offset_bottom = 64.0
+grow_horizontal = 0
+mouse_filter = 2
+texture = ExtResource("1_corner")
+flip_h = true
+expand_mode = 1
+stretch_mode = 5
+
+[node name="BL" type="TextureRect" parent="."]
+custom_minimum_size = Vector2(76, 76)
+layout_mode = 1
+anchors_preset = 2
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_top = -64.0
+offset_right = 64.0
+grow_vertical = 0
+mouse_filter = 2
+texture = ExtResource("1_corner")
+flip_v = true
+expand_mode = 1
+stretch_mode = 5
+
+[node name="BR" type="TextureRect" parent="."]
+custom_minimum_size = Vector2(76, 76)
+layout_mode = 1
+anchors_preset = 3
+anchor_left = 1.0
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = -64.0
+offset_top = -64.0
+grow_horizontal = 0
+grow_vertical = 0
+mouse_filter = 2
+texture = ExtResource("1_corner")
+flip_h = true
+flip_v = true
+expand_mode = 1
+stretch_mode = 5

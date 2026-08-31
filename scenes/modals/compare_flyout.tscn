@@ -1,5 +1,13 @@
 [gd_scene load_steps=4 format=3]
 
+; [reliquary] Re-dressed from the teal/gold "well" look to the modal layer's
+; arcane-reliquary chrome: a plum-black panel under a crystal/thorn corner
+; frame overlay, recessed amethyst-trimmed wells, a crystal-rimmed X, and
+; violet fog drifting behind the scrim. The panel / well / close styleboxes are
+; inlined per scene, matching this project's existing convention (see
+; inventory_modal.tscn) - the Godot editor keeps a shared theme.tres cached and
+; overwrites out-of-editor edits to it, so per-scene is the safe home.
+
 ; [ui-project-longshot] Was a 560 x 460 stack of labels - "Equipped" above
 ; "This Item", read top to bottom, dismissed only by tapping the scrim. It is
 ; reached by a deliberate button press now (shop_buy_card / shop_sell_row's
@@ -9,45 +17,65 @@
 ; each modifier would undergo spelled out underneath.
 
 [ext_resource type="Script" path="res://scripts/modals/compare_flyout.gd" id="1_flyout"]
+[ext_resource type="Shader" path="res://assets/shaders/reliquary_mist.gdshader" id="2_mist"]
+[ext_resource type="PackedScene" path="res://scenes/modals/reliquary_frame.tscn" id="3_frame"]
+[ext_resource type="Texture2D" path="res://assets/ui/reliquary/fleuron.png" id="4_fleuron"]
 
-; The same dark stone disc with a gold rim the shop's own X wears
-; (shop_modal.tscn) - one close affordance, one look, wherever it appears.
-[sub_resource type="StyleBoxFlat" id="close_style"]
-content_margin_left = 0.0
-content_margin_top = 0.0
-content_margin_right = 0.0
-content_margin_bottom = 0.0
-bg_color = Color(0.027451, 0.098039, 0.094118, 1)
-border_width_left = 3
-border_width_top = 3
-border_width_right = 3
-border_width_bottom = 3
-border_color = Color(0.831373, 0.658824, 0.262745, 1)
-corner_radius_top_left = 36
-corner_radius_top_right = 36
-corner_radius_bottom_right = 36
-corner_radius_bottom_left = 36
+[sub_resource type="ShaderMaterial" id="mist_mat"]
+shader = ExtResource("2_mist")
+shader_parameter/fog_color = Color(0.545, 0.361, 0.965, 1.0)
+shader_parameter/deep_color = Color(0.141, 0.082, 0.239, 1.0)
+shader_parameter/density = 0.34
+shader_parameter/drift_speed = 0.045
+shader_parameter/scale = 2.4
 
-; A recessed well, one step darker than the modal's own glass, so the two items
-; read as two separate things being held up next to each other rather than as
-; one continuous column of text. Deliberately trimmed in the DIM gold the
-; unselected tab uses, not the bright rim: nothing inside a compare window is
-; an action, and a bright gold box asks to be pressed.
-[sub_resource type="StyleBoxFlat" id="well"]
+; Tuning.C_RELIQUARY_STONE fill, pewter trim. Content margin clears the Meshy
+; corner-frame art drawn on top.
+[sub_resource type="StyleBoxFlat" id="rel_panel"]
+content_margin_left = 72.0
+content_margin_top = 48.0
+content_margin_right = 72.0
+content_margin_bottom = 52.0
+bg_color = Color(0.101961, 0.082353, 0.14902, 1)
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
+border_color = Color(0.227451, 0.227451, 0.282353, 1)
+corner_radius_top_left = 22
+corner_radius_top_right = 22
+corner_radius_bottom_right = 22
+corner_radius_bottom_left = 22
+
+; Recessed well, one step darker than the panel, trimmed in deep amethyst.
+[sub_resource type="StyleBoxFlat" id="rel_well"]
 content_margin_left = 20.0
 content_margin_top = 16.0
 content_margin_right = 20.0
 content_margin_bottom = 16.0
-bg_color = Color(0.043137, 0.117647, 0.109804, 1)
+bg_color = Color(0.054902, 0.043137, 0.086275, 1)
 border_width_left = 2
 border_width_top = 2
 border_width_right = 2
 border_width_bottom = 2
-border_color = Color(0.278431, 0.211765, 0.078431, 1)
+border_color = Color(0.298039, 0.113725, 0.584314, 1)
 corner_radius_top_left = 14
 corner_radius_top_right = 14
 corner_radius_bottom_right = 14
 corner_radius_bottom_left = 14
+
+; The round crystal-rimmed X. Same disc every modal's close button wears.
+[sub_resource type="StyleBoxFlat" id="rel_close"]
+bg_color = Color(0.054902, 0.043137, 0.086275, 1)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0.545098, 0.360784, 0.964706, 1)
+corner_radius_top_left = 36
+corner_radius_top_right = 36
+corner_radius_bottom_right = 36
+corner_radius_bottom_left = 36
 
 [node name="CompareFlyout" type="Control"]
 visible = false
@@ -67,7 +95,20 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-color = Color(0.011765, 0.035294, 0.058824, 0.72)
+color = Color(0.141176, 0.094118, 0.196078, 0.72)
+
+; Drifting violet fog, procedural (assets/shaders/reliquary_mist.gdshader) - no
+; generated art needed. Sits above the flat scrim, below the panel.
+[node name="Mist" type="ColorRect" parent="."]
+material = SubResource("mist_mat")
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(1, 1, 1, 1)
 
 [node name="Panel" type="PanelContainer" parent="."]
 layout_mode = 1
@@ -83,6 +124,7 @@ offset_bottom = 450.0
 grow_horizontal = 2
 grow_vertical = 2
 pivot_offset = Vector2(470, 450)
+theme_override_styles/panel = SubResource("rel_panel")
 
 [node name="Layout" type="VBoxContainer" parent="Panel"]
 layout_mode = 2
@@ -96,7 +138,7 @@ theme_override_constants/separation = 16
 [node name="Title" type="Label" parent="Panel/Layout/Header"]
 layout_mode = 2
 theme_type_variation = &"DisplayLabel"
-theme_override_colors/font_color = Color(0.941176, 0.835294, 0.533333, 1)
+theme_override_colors/font_color = Color(0.847059, 0.705882, 0.996078, 1)
 theme_override_font_sizes/font_size = 48
 text = "COMPARE"
 vertical_alignment = 1
@@ -116,10 +158,12 @@ custom_minimum_size = Vector2(72, 72)
 layout_mode = 2
 size_flags_vertical = 4
 theme_override_colors/font_color = Color(0.94902, 0.913725, 0.815686, 1)
+theme_override_colors/font_hover_color = Color(0.847059, 0.705882, 0.996078, 1)
+theme_override_colors/font_pressed_color = Color(0.545098, 0.360784, 0.964706, 1)
 theme_override_font_sizes/font_size = 40
-theme_override_styles/normal = SubResource("close_style")
-theme_override_styles/pressed = SubResource("close_style")
-theme_override_styles/hover = SubResource("close_style")
+theme_override_styles/normal = SubResource("rel_close")
+theme_override_styles/hover = SubResource("rel_close")
+theme_override_styles/pressed = SubResource("rel_close")
 text = "X"
 
 [node name="Columns" type="HBoxContainer" parent="Panel/Layout"]
@@ -130,7 +174,7 @@ theme_override_constants/separation = 18
 [node name="Equipped" type="PanelContainer" parent="Panel/Layout/Columns"]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_styles/panel = SubResource("well")
+theme_override_styles/panel = SubResource("rel_well")
 
 [node name="Body" type="VBoxContainer" parent="Panel/Layout/Columns/Equipped"]
 layout_mode = 2
@@ -162,9 +206,10 @@ layout_mode = 2
 theme_override_font_sizes/font_size = 26
 autowrap_mode = 3
 
-[node name="Mods" type="VBoxContainer" parent="Panel/Layout/Columns/Equipped/Body"]
+[node name="Mods" type="HFlowContainer" parent="Panel/Layout/Columns/Equipped/Body"]
 layout_mode = 2
-theme_override_constants/separation = 2
+theme_override_constants/h_separation = 16
+theme_override_constants/v_separation = 16
 
 [node name="NoneLabel" type="Label" parent="Panel/Layout/Columns/Equipped/Body"]
 layout_mode = 2
@@ -175,7 +220,7 @@ text = "Nothing equipped"
 [node name="Candidate" type="PanelContainer" parent="Panel/Layout/Columns"]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_styles/panel = SubResource("well")
+theme_override_styles/panel = SubResource("rel_well")
 
 [node name="Body" type="VBoxContainer" parent="Panel/Layout/Columns/Candidate"]
 layout_mode = 2
@@ -184,7 +229,7 @@ theme_override_constants/separation = 6
 
 [node name="Header" type="Label" parent="Panel/Layout/Columns/Candidate/Body"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.941176, 0.835294, 0.533333, 1)
+theme_override_colors/font_color = Color(0.847059, 0.705882, 0.996078, 1)
 theme_override_font_sizes/font_size = 24
 text = "THIS ITEM"
 
@@ -204,16 +249,40 @@ layout_mode = 2
 theme_override_font_sizes/font_size = 26
 autowrap_mode = 3
 
-[node name="Mods" type="VBoxContainer" parent="Panel/Layout/Columns/Candidate/Body"]
+[node name="Mods" type="HFlowContainer" parent="Panel/Layout/Columns/Candidate/Body"]
 layout_mode = 2
-theme_override_constants/separation = 2
+theme_override_constants/h_separation = 16
+theme_override_constants/v_separation = 16
 
-[node name="Divider" type="HSeparator" parent="Panel/Layout"]
+; rule - fleuron - rule, matching the reference's identity/stats divider. The
+; centre ornament is Meshy (assets/ui/reliquary/fleuron.png); until it exists
+; the two HSeparators still read as a clean split.
+[node name="Divider" type="HBoxContainer" parent="Panel/Layout"]
 layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="RuleL" type="HSeparator" parent="Panel/Layout/Divider"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+
+[node name="Fleuron" type="TextureRect" parent="Panel/Layout/Divider"]
+custom_minimum_size = Vector2(220, 96)
+layout_mode = 2
+size_flags_horizontal = 4
+size_flags_vertical = 4
+texture = ExtResource("4_fleuron")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="RuleR" type="HSeparator" parent="Panel/Layout/Divider"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
 
 [node name="ChangeHeader" type="Label" parent="Panel/Layout"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.941176, 0.835294, 0.533333, 1)
+theme_override_colors/font_color = Color(0.847059, 0.705882, 0.996078, 1)
 theme_override_font_sizes/font_size = 26
 text = "IF YOU EQUIP THIS"
 
@@ -221,3 +290,18 @@ text = "IF YOU EQUIP THIS"
 custom_minimum_size = Vector2(0, 190)
 layout_mode = 2
 theme_override_constants/separation = 4
+
+; [reliquary] Corner ornaments, as a sibling overlaying the panel exactly so
+; the PanelContainer content margin does not inset them off the panel edge.
+[node name="Frame" parent="." instance=ExtResource("3_frame")]
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -470.0
+offset_top = -450.0
+offset_right = 470.0
+offset_bottom = 450.0
+grow_horizontal = 2
+grow_vertical = 2

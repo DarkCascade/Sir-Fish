@@ -25,10 +25,9 @@ var item: Item = null
 
 func setup(i: Item) -> void:
 	item = i
-	ItemCardStyle.apply(self, glyph, i)
+	ItemCardStyle.apply(self, glyph, i, name_label, subtitle_label)
 	name_label.text = i.display_name
 	subtitle_label.text = i.subtitle()
-	subtitle_label.add_theme_color_override("font_color", i.rarity_color())
 	_fill_modifiers()
 
 	var maxed := i.rarity >= Item.Rarity.ENHANCED

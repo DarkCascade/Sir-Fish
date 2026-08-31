@@ -1,23 +1,44 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://scripts/modals/inventory_modal.gd" id="1_modal"]
 [ext_resource type="PackedScene" path="res://scenes/modals/compare_flyout.tscn" id="2_compare"]
 [ext_resource type="PackedScene" path="res://scenes/console/bonus_strip.tscn" id="3_bonus"]
+[ext_resource type="Shader" path="res://assets/shaders/reliquary_mist.gdshader" id="4_mist"]
+[ext_resource type="PackedScene" path="res://scenes/modals/reliquary_frame.tscn" id="5_frame"]
 
-; The same dark stone disc with a gold rim the shop's X wears (shop_modal.tscn /
-; compare_flyout.tscn each carry their own copy - this project duplicates
-; identical close styleboxes per scene).
-[sub_resource type="StyleBoxFlat" id="close_style"]
-content_margin_left = 0.0
-content_margin_top = 0.0
-content_margin_right = 0.0
-content_margin_bottom = 0.0
-bg_color = Color(0.027451, 0.098039, 0.094118, 1)
+[sub_resource type="ShaderMaterial" id="mist_mat"]
+shader = ExtResource("4_mist")
+shader_parameter/fog_color = Color(0.545, 0.361, 0.965, 1.0)
+shader_parameter/deep_color = Color(0.141, 0.082, 0.239, 1.0)
+shader_parameter/density = 0.34
+shader_parameter/drift_speed = 0.045
+shader_parameter/scale = 2.4
+
+; [reliquary] Plum-black panel + crystal-rimmed X, inlined per scene (the Godot
+; editor overwrites out-of-editor edits to a shared theme.tres).
+[sub_resource type="StyleBoxFlat" id="rel_panel"]
+content_margin_left = 72.0
+content_margin_top = 48.0
+content_margin_right = 72.0
+content_margin_bottom = 52.0
+bg_color = Color(0.101961, 0.082353, 0.14902, 1)
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
+border_color = Color(0.227451, 0.227451, 0.282353, 1)
+corner_radius_top_left = 22
+corner_radius_top_right = 22
+corner_radius_bottom_right = 22
+corner_radius_bottom_left = 22
+
+[sub_resource type="StyleBoxFlat" id="rel_close"]
+bg_color = Color(0.054902, 0.043137, 0.086275, 1)
 border_width_left = 3
 border_width_top = 3
 border_width_right = 3
 border_width_bottom = 3
-border_color = Color(0.831373, 0.658824, 0.262745, 1)
+border_color = Color(0.545098, 0.360784, 0.964706, 1)
 corner_radius_top_left = 36
 corner_radius_top_right = 36
 corner_radius_bottom_right = 36
@@ -39,7 +60,17 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-color = Color(0.011765, 0.035294, 0.058824, 0.76)
+color = Color(0.141176, 0.094118, 0.196078, 0.76)
+
+[node name="Mist" type="ColorRect" parent="."]
+material = SubResource("mist_mat")
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
 
 [node name="Panel" type="PanelContainer" parent="."]
 layout_mode = 0
@@ -48,6 +79,7 @@ offset_top = 300.0
 offset_right = 1020.0
 offset_bottom = 1620.0
 pivot_offset = Vector2(480, 660)
+theme_override_styles/panel = SubResource("rel_panel")
 
 [node name="Layout" type="VBoxContainer" parent="Panel"]
 layout_mode = 2
@@ -62,7 +94,7 @@ theme_override_constants/separation = 20
 layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"DisplayLabel"
-theme_override_colors/font_color = Color(0.941176, 0.835294, 0.533333, 1)
+theme_override_colors/font_color = Color(0.847059, 0.705882, 0.996078, 1)
 theme_override_font_sizes/font_size = 56
 text = "INVENTORY"
 vertical_alignment = 1
@@ -93,10 +125,12 @@ custom_minimum_size = Vector2(72, 72)
 layout_mode = 2
 size_flags_vertical = 4
 theme_override_colors/font_color = Color(0.94902, 0.913725, 0.815686, 1)
+theme_override_colors/font_hover_color = Color(0.847059, 0.705882, 0.996078, 1)
+theme_override_colors/font_pressed_color = Color(0.545098, 0.360784, 0.964706, 1)
 theme_override_font_sizes/font_size = 40
-theme_override_styles/normal = SubResource("close_style")
-theme_override_styles/pressed = SubResource("close_style")
-theme_override_styles/hover = SubResource("close_style")
+theme_override_styles/normal = SubResource("rel_close")
+theme_override_styles/hover = SubResource("rel_close")
+theme_override_styles/pressed = SubResource("rel_close")
 text = "X"
 
 [node name="BonusStrip" parent="Panel/Layout" instance=ExtResource("3_bonus")]
@@ -118,7 +152,7 @@ theme_override_constants/separation = 16
 [node name="EquippedHeader" type="Label" parent="Panel/Layout/Scroll/Body"]
 layout_mode = 2
 theme_type_variation = &"DisplayLabel"
-theme_override_colors/font_color = Color(0.941176, 0.835294, 0.533333, 1)
+theme_override_colors/font_color = Color(0.847059, 0.705882, 0.996078, 1)
 theme_override_font_sizes/font_size = 34
 text = "Equipped"
 
@@ -129,7 +163,7 @@ theme_override_constants/separation = 12
 [node name="CarriedHeader" type="Label" parent="Panel/Layout/Scroll/Body"]
 layout_mode = 2
 theme_type_variation = &"DisplayLabel"
-theme_override_colors/font_color = Color(0.941176, 0.835294, 0.533333, 1)
+theme_override_colors/font_color = Color(0.847059, 0.705882, 0.996078, 1)
 theme_override_font_sizes/font_size = 34
 text = "Carried"
 
@@ -142,6 +176,17 @@ layout_mode = 2
 theme_override_colors/font_color = Color(0.611765, 0.686275, 0.643137, 1)
 theme_override_font_sizes/font_size = 32
 text = "Nothing carried."
+
+; [reliquary] Corner ornaments, as a sibling overlaying the panel exactly so
+; the PanelContainer content margin does not inset them off the panel edge.
+[node name="Frame" parent="." instance=ExtResource("5_frame")]
+anchors_preset = 0
+anchor_right = 0.0
+anchor_bottom = 0.0
+offset_left = 60.0
+offset_top = 300.0
+offset_right = 1020.0
+offset_bottom = 1620.0
 
 [node name="CompareFlyout" parent="." instance=ExtResource("2_compare")]
 layout_mode = 1

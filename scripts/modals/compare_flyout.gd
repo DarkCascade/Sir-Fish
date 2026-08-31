@@ -25,15 +25,18 @@ extends Control
 @onready var equipped_rule: ColorRect = $Panel/Layout/Columns/Equipped/Body/Rule
 @onready var equipped_name: Label = $Panel/Layout/Columns/Equipped/Body/NameLabel
 @onready var equipped_subtitle: Label = $Panel/Layout/Columns/Equipped/Body/SubtitleLabel
-@onready var equipped_mods: VBoxContainer = $Panel/Layout/Columns/Equipped/Body/Mods
+@onready var equipped_mods: HFlowContainer = $Panel/Layout/Columns/Equipped/Body/Mods
 @onready var equipped_none: Label = $Panel/Layout/Columns/Equipped/Body/NoneLabel
 
 @onready var candidate_rule: ColorRect = $Panel/Layout/Columns/Candidate/Body/Rule
 @onready var candidate_name: Label = $Panel/Layout/Columns/Candidate/Body/NameLabel
 @onready var candidate_subtitle: Label = $Panel/Layout/Columns/Candidate/Body/SubtitleLabel
-@onready var candidate_mods: VBoxContainer = $Panel/Layout/Columns/Candidate/Body/Mods
+@onready var candidate_mods: HFlowContainer = $Panel/Layout/Columns/Candidate/Body/Mods
 
 @onready var change_list: VBoxContainer = $Panel/Layout/ChangeList
+
+## [reliquary] Each modifier is now a chip tile rather than a text line.
+const StatChipScene := preload("res://scenes/modals/stat_chip.tscn")
 
 const MOD_FONT_SIZE := 26
 ## An em dash standing in for a modifier the item on that side simply does not
@@ -69,14 +72,16 @@ func show_for(item: Item) -> void:
 	if equipped != null:
 		equipped_rule.color = equipped.rarity_color()
 		equipped_name.text = equipped.display_name
+		equipped_name.add_theme_color_override("font_color", equipped.rarity_color())
 		equipped_subtitle.text = equipped.subtitle()
-		equipped_subtitle.add_theme_color_override("font_color", equipped.rarity_color())
+		equipped_subtitle.add_theme_color_override("font_color", Tuning.C_TEXT_DIM)
 		_fill_mods(equipped_mods, equipped)
 
 	candidate_rule.color = item.rarity_color()
 	candidate_name.text = item.display_name
+	candidate_name.add_theme_color_override("font_color", item.rarity_color())
 	candidate_subtitle.text = item.subtitle()
-	candidate_subtitle.add_theme_color_override("font_color", item.rarity_color())
+	candidate_subtitle.add_theme_color_override("font_color", Tuning.C_TEXT_DIM)
 	_fill_mods(candidate_mods, item)
 
 	_fill_changes(equipped, item)
@@ -124,7 +129,7 @@ func _on_scrim_input(event: InputEvent) -> void:
 	if tapped:
 		close()
 
-func _fill_mods(container: VBoxContainer, item: Item) -> void:
+func _fill_mods(container: HFlowContainer, item: Item) -> void:
 	for child: Node in container.get_children():
 		child.queue_free()
 	if item.modifiers.is_empty():
@@ -132,11 +137,14 @@ func _fill_mods(container: VBoxContainer, item: Item) -> void:
 		return
 	for mod: Dictionary in item.modifiers:
 		# [town] spec 10.3: an Enhanced modifier (last forge rung, doubled roll)
-		# draws in the ENHANCED rarity colour so it reads as its own thing rather
-		# than as a lucky roll of the normal range.
-		var color: Color = Tuning.RARITY_COLORS[Item.Rarity.ENHANCED] \
-			if mod.get("enhanced", false) else Tuning.C_TEXT
-		container.add_child(_line(String(mod["label"]), color))
+		# tints the whole chip in the ENHANCED rarity colour so it reads as its
+		# own thing rather than as a lucky roll of the normal range; every other
+		# modifier's chip takes the item's own rarity colour.
+		var tint: Color = Tuning.RARITY_COLORS[Item.Rarity.ENHANCED] \
+			if mod.get("enhanced", false) else item.rarity_color()
+		var chip := StatChipScene.instantiate()
+		container.add_child(chip)
+		chip.setup(mod, tint)
 
 # --- the change list --------------------------------------------------------
 
