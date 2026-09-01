@@ -397,6 +397,32 @@ func living_hero_count() -> int:
 			n += 1
 	return n
 
+## [town] spec 3.2 party panel: the active party's HP for display, one entry per
+## active_party member in roster order - {stats_id, display_name, current_hp,
+## max_hp, alive, color}. Reads hero_runtime where it has been built
+## (new_profile / start_expedition / any heal all run _reset_hero_runtime), and
+## falls back to a full-HP synthetic entry for a profile loaded from a save that
+## predates the "heroes" key: an un-run profile's heroes ARE whole, so that is
+## the honest thing to show.
+func party_status() -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	for id: StringName in active_party:
+		var s := get_stats(id)
+		if s == null:
+			continue
+		var entry := hero_entry(id)
+		var cur: int = int(entry.get("current_hp", s.max_hp))
+		var top: int = int(entry.get("max_hp", s.max_hp))
+		out.append({
+			"stats_id": id,
+			"display_name": s.display_name,
+			"current_hp": cur,
+			"max_hp": top,
+			"alive": bool(entry.get("alive", cur > 0)),
+			"color": s.accent_color,
+		})
+	return out
+
 # --- run lifecycle ----------------------------------------------------------
 
 ## Dispatches on endless_mode (spec: Endless Mode). This is the seam spec
