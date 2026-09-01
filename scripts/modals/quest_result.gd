@@ -83,9 +83,12 @@ func _apply_heading(is_quest: bool) -> void:
 		Tuning.C_GOLD if _victory else Tuning.C_DANGER)
 
 	if is_quest:
+		# Quest names already lead with "The" ("The Shallow Wood"), so the
+		# failure line takes the same "%s — ..." shape as the victory one rather
+		# than prefixing a second article.
 		var qname: String = GameState.completed_quest.display_name
 		subtitle.text = ("%s — the road home" % qname) if _victory \
-			else ("The %s expedition is lost" % qname)
+			else ("%s — the expedition is lost" % qname)
 		return
 
 	if _victory:
