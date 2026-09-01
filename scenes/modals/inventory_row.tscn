@@ -59,8 +59,8 @@ corner_radius_top_right = 18
 corner_radius_bottom_right = 18
 
 [node name="InventoryRow" type="PanelContainer"]
-custom_minimum_size = Vector2(880, 0)
-offset_right = 880.0
+custom_minimum_size = Vector2(800, 0)
+offset_right = 800.0
 offset_bottom = 220.0
 clip_contents = true
 mouse_filter = 1
