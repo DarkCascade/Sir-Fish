@@ -34,22 +34,44 @@ extends SubViewportContainer
 ## nobody notices, which is the exact cost this pass is trying to claw back.
 const REFRESH_HZ := 20.0
 
+## [perf] How long after _ready() the tank is allowed to draw its first frame.
+##
+## This scene comes up as part of the console, which means its first render
+## would otherwise land on the single heaviest frame in the game: the one where
+## main.tscn is instantiated, the party spawns, and - on a cold GPU program
+## cache - dozens of shader programs link. Adding a SECOND 3D world to that
+## frame (own_world_3d, its own camera, light and render target) is the one
+## cost here that is pure decoration, so it waits for the expensive frames to
+## pass. Half a second is comfortably past them and far too short to notice on
+## an ornament that idles at REFRESH_HZ anyway.
+const FIRST_RENDER_DELAY := 0.5
+
 @onready var viewport: SubViewport = $FishViewport
 
+## False until FIRST_RENDER_DELAY has elapsed. The refresh timer starts ticking
+## immediately (at 20 Hz its first tick is only 50 ms away, nowhere near enough
+## deferral on its own), so the gate has to live in the tick, not in the timer.
+var _armed: bool = false
+
 func _ready() -> void:
-	# UPDATE_ONCE renders exactly one frame and then reverts itself to
-	# disabled (Godot's own behaviour), so the timer below is the only thing
-	# keeping the tank moving - not a fallback for some other update mode.
-	viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
+	# Starts DISABLED rather than UPDATE_ONCE - see FIRST_RENDER_DELAY.
+	viewport.render_target_update_mode = SubViewport.UPDATE_DISABLED
 	var timer := Timer.new()
 	timer.wait_time = 1.0 / REFRESH_HZ
 	timer.autostart = true
 	add_child(timer)
 	timer.timeout.connect(_on_refresh_tick)
 
+	await get_tree().create_timer(FIRST_RENDER_DELAY).timeout
+	_armed = true
+
 func _on_refresh_tick() -> void:
 	# Skipping the re-render while the container itself isn't visible (e.g. a
 	# modal covering the console) means a covered tank costs nothing at all,
 	# not even the throttled rate.
-	if is_visible_in_tree():
+	#
+	# UPDATE_ONCE renders exactly one frame and then reverts itself to disabled
+	# (Godot's own behaviour), so this tick is the only thing keeping the tank
+	# moving - not a fallback for some other update mode.
+	if _armed and is_visible_in_tree():
 		viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
