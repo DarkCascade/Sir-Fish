@@ -3,18 +3,19 @@ extends Control
 ## at step 5 and reparented into Hud/ModalLayer so it can present over a town
 ## scene it was never a child of.
 ##
-## Step 8 wired the quest flow. Three modes:
-##   - RETRY    - endless / fixed dev path. One "RETRY" button; `dismissed` is
-##                what RunController._on_retry binds.
-##   - VICTORY  - a quest was completed. "Retire for the evening"; dismiss routes
-##                to the inn (spec 8.5).
-##   - FAILURE  - a quest was lost. Two recovery buttons (rest at the inn /
-##                sleep in the street) instead of one dismiss; the flow has
-##                already routed to the inn before this presents.
+## Step 8 wired the quest flow; the day/night pass (§4.2, §7.2) simplified it.
+## Three modes:
+##   - RETRY   - endless / fixed dev path. One "RETRY" button; `dismissed` is
+##               what RunController._on_retry binds.
+##   - VICTORY / FAILURE - a quest ended, won or lost. They now differ ONLY in
+##               heading, subtitle and stat rows - both show one "Make camp"
+##               button and dismiss into NightModal, which owns the night
+##               choice (day/night spec §4). No routing from here any more: the
+##               stats screen shows over the battlefield tableau, and the
+##               night's 1.5 s fade is the route home.
 ##
-## The route + present is driven HERE, off EventBus.quest_finished, not from
-## RunController: SceneRouter.go() frees main.tscn, and a coroutine that awaited
-## it from RunController would resume on a freed node (spec 8.5).
+## present() is driven HERE, off EventBus.quest_finished, not from RunController,
+## because it must outlive main.tscn (spec 8.5) - but it no longer routes first.
 ##
 ## [move-elements-to-editor] The whole screen is authored in quest_result.tscn -
 ## Sir Fish at the top and one named row per statistic, each carrying its caption
@@ -35,9 +36,6 @@ enum Mode { RETRY, VICTORY, FAILURE }
 
 var _mode: Mode = Mode.RETRY
 var _victory: bool = false
-## Where _dismiss() routes after hiding, or -1 for none (spec 8.5: only the
-## victory screen routes on dismiss; failure has already routed to the inn).
-var _dismiss_route: int = -1
 
 func _ready() -> void:
 	primary_button.pressed.connect(_on_primary_pressed)
@@ -46,9 +44,9 @@ func _ready() -> void:
 	EventBus.quest_finished.connect(_on_quest_finished)
 	hide()
 
-## spec 8.5 steps 3-5 for both endings: route home first, THEN present over it.
+## [day-night] §4.2: present over the battlefield tableau - NO route first.
+## NightModal takes over when this dismisses.
 func _on_quest_finished(victory: bool) -> void:
-	await SceneRouter.go(SceneRouter.Place.MAYOR if victory else SceneRouter.Place.INN)
 	present(victory)
 
 func present(victory: bool) -> void:
@@ -102,55 +100,30 @@ func _apply_heading(is_quest: bool) -> void:
 			subtitle.text = "Reached encounter %d of %d" % \
 				[shown_index, GameState.level.encounters.size()]
 
-## RETRY uses PrimaryButton alone. VICTORY and FAILURE now converge on the same
-## night choice (day/night spec §4): both show the inn / street pair, both call
-## GameState.resolve_night(). (This is the interim wiring of build-order steps
-## 2-5; §7.2 / step 6 collapses these to one "Make camp" button that hands off
-## to the NightModal.)
+## RETRY -> "RETRY". VICTORY / FAILURE -> one "Make camp" button that dismisses
+## into NightModal (day/night spec §7.2). SecondaryButton is hidden in all three
+## modes - it stays in the scene as authored chrome for the next two-button
+## modal.
 func _configure_buttons() -> void:
-	_dismiss_route = -1
 	secondary_button.visible = false
-	secondary_button.disabled = false
 	primary_button.disabled = false
 	primary_button.modulate = Color.WHITE
-	secondary_button.modulate = Color.WHITE
 
 	match _mode:
 		Mode.RETRY:
 			primary_button.text = "RETRY"
 		Mode.VICTORY, Mode.FAILURE:
-			var cost: int = GameState.night_inn_cost()
-			primary_button.text = "Stay at the Inn  —  %d G" % cost
-			var can_rest: bool = GameState.gold >= cost
-			primary_button.disabled = not can_rest
-			if not can_rest:
-				primary_button.modulate = Color(0.68, 0.65, 0.6, 1.0)
-
-			secondary_button.visible = true
-			secondary_button.text = "Sleep in the street  —  free"
+			primary_button.text = "Make camp"
 
 func _on_primary_pressed() -> void:
-	if _mode != Mode.RETRY:
-		# Stay at the inn (day/night spec §3.5). resolve_night() charges and
-		# heals atomically, or returns [] unaffordable - leave the button live.
-		if GameState.resolve_night(GameState.NightChoice.INN).is_empty():
-			return
-		SaveGame.save_profile()
 	_dismiss()
 
 func _on_secondary_pressed() -> void:
-	# Sleep in the street: the free half-heal (day/night spec §3.2).
-	GameState.resolve_night(GameState.NightChoice.STREET)
-	SaveGame.save_profile()
-	_dismiss()
+	pass   # SecondaryButton is hidden in every mode (§7.2); kept for the future.
 
 func _dismiss() -> void:
 	hide()
 	dismissed.emit()
-	if _dismiss_route != -1:
-		var to: int = _dismiss_route
-		_dismiss_route = -1
-		SceneRouter.go(to)
 
 ## Fills in the authored rows and plays them in one at a time. The three quest
 ## rows (QuestReward / ExpeditionGold / ExpeditionScrap) are shown only on a

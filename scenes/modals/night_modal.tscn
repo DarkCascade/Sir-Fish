@@ -1,0 +1,170 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://scripts/modals/night_modal.gd" id="1_night"]
+[ext_resource type="Shader" path="res://assets/shaders/reliquary_mist.gdshader" id="2_mist"]
+[ext_resource type="PackedScene" path="res://scenes/modals/reliquary_frame.tscn" id="3_frame"]
+
+[sub_resource type="ShaderMaterial" id="mist_mat"]
+shader = ExtResource("2_mist")
+shader_parameter/fog_color = Color(0.545, 0.361, 0.965, 1.0)
+shader_parameter/deep_color = Color(0.141, 0.082, 0.239, 1.0)
+shader_parameter/density = 0.34
+shader_parameter/drift_speed = 0.045
+shader_parameter/scale = 2.4
+
+; [reliquary] Plum-black panel, inlined per scene (the Godot editor overwrites
+; out-of-editor edits to a shared theme.tres).
+[sub_resource type="StyleBoxFlat" id="rel_panel"]
+content_margin_left = 72.0
+content_margin_top = 52.0
+content_margin_right = 72.0
+content_margin_bottom = 56.0
+bg_color = Color(0.101961, 0.082353, 0.14902, 1)
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
+border_color = Color(0.227451, 0.227451, 0.282353, 1)
+corner_radius_top_left = 22
+corner_radius_top_right = 22
+corner_radius_bottom_right = 22
+corner_radius_bottom_left = 22
+
+[node name="NightModal" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("1_night")
+
+[node name="Scrim" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0.117647, 0.0784314, 0.164706, 0.92)
+
+[node name="Mist" type="ColorRect" parent="."]
+material = SubResource("mist_mat")
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="ChoicePanel" type="PanelContainer" parent="."]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -450.0
+offset_top = -560.0
+offset_right = 450.0
+offset_bottom = 560.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("rel_panel")
+
+[node name="V" type="VBoxContainer" parent="ChoicePanel"]
+layout_mode = 2
+theme_override_constants/separation = 26
+
+[node name="Title" type="Label" parent="ChoicePanel/V"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.831, 0.659, 0.263, 1)
+theme_override_font_sizes/font_size = 60
+text = "NIGHTFALL"
+horizontal_alignment = 1
+
+[node name="DayLine" type="Label" parent="ChoicePanel/V"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.611765, 0.686275, 0.643137, 1)
+theme_override_font_sizes/font_size = 30
+text = "Day 1"
+horizontal_alignment = 1
+
+[node name="Rows" type="VBoxContainer" parent="ChoicePanel/V"]
+custom_minimum_size = Vector2(0, 80)
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="Spacer" type="Control" parent="ChoicePanel/V"]
+custom_minimum_size = Vector2(0, 12)
+layout_mode = 2
+
+[node name="PrimaryButton" type="Button" parent="ChoicePanel/V"]
+custom_minimum_size = Vector2(0, 116)
+layout_mode = 2
+theme_override_font_sizes/font_size = 38
+text = "Stay at the Inn  —  50 G"
+
+[node name="SecondaryButton" type="Button" parent="ChoicePanel/V"]
+custom_minimum_size = Vector2(0, 116)
+layout_mode = 2
+theme_override_font_sizes/font_size = 38
+text = "Sleep in the street  —  free"
+
+[node name="Frame" parent="ChoicePanel" instance=ExtResource("3_frame")]
+layout_mode = 2
+
+[node name="ResultPanel" type="PanelContainer" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -450.0
+offset_top = -520.0
+offset_right = 450.0
+offset_bottom = 520.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("rel_panel")
+
+[node name="V" type="VBoxContainer" parent="ResultPanel"]
+layout_mode = 2
+theme_override_constants/separation = 24
+
+[node name="Title" type="Label" parent="ResultPanel/V"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.831, 0.659, 0.263, 1)
+theme_override_font_sizes/font_size = 60
+text = "MORNING"
+horizontal_alignment = 1
+
+[node name="Subtitle" type="Label" parent="ResultPanel/V"]
+custom_minimum_size = Vector2(0, 70)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.611765, 0.686275, 0.643137, 1)
+theme_override_font_sizes/font_size = 28
+text = "You wake with the dawn, every wound closed."
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 3
+
+[node name="Rows" type="VBoxContainer" parent="ResultPanel/V"]
+custom_minimum_size = Vector2(0, 80)
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="Spacer" type="Control" parent="ResultPanel/V"]
+custom_minimum_size = Vector2(0, 12)
+layout_mode = 2
+
+[node name="PrimaryButton" type="Button" parent="ResultPanel/V"]
+custom_minimum_size = Vector2(0, 116)
+layout_mode = 2
+theme_override_font_sizes/font_size = 38
+text = "Good morning"
+
+[node name="Frame" parent="ResultPanel" instance=ExtResource("3_frame")]
+layout_mode = 2

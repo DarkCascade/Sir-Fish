@@ -51,6 +51,14 @@ func _ready() -> void:
 	SceneRouter.place = SceneRouter.Place.TOWN
 	get_tree().change_scene_to_file(SceneRouter.PATHS[SceneRouter.Place.TOWN])
 
+	# [day-night] §8.2: the resume hook, emitted once the town swap is queued so
+	# night_modal presents the choice over the town screen rather than the boot
+	# bar. If this profile was saved with a night owed (T2 writes NIGHT_PENDING
+	# to disk before the stats screen appears), night_modal.gd catches this and
+	# shows ChoicePanel. A signal emit, NOT a save - boot.gd keeps exactly one
+	# save_profile() call (test_scene_router.gd's boot.gd code check).
+	EventBus.profile_ready.emit()
+
 ## Advances the bar. Driven by a signal rather than polled because each step is
 ## one blocking program link - the whole point of the yield in ShaderWarmup.run()
 ## is that this gets a frame to actually paint between them.

@@ -351,6 +351,11 @@ func _game_over() -> void:
 # --- retry (spec 18.3) ------------------------------------------------------
 
 func _on_retry() -> void:
+	# [day-night] The quest path's QuestResult dismissal is consumed by
+	# NightModal (day/night spec §4.2), not by a retry - completed_quest is
+	# non-null exactly then. Only the endless / fixed dev path retries here.
+	if GameState.completed_quest != null:
+		return
 	director.stop_combat()
 	director.clear_enemies()
 	director.clear_party()

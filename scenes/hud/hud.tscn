@@ -1,4 +1,4 @@
-[gd_scene load_steps=10 format=3 uid="uid://b0hudsirfish05"]
+[gd_scene load_steps=11 format=3 uid="uid://b0hudsirfish05"]
 
 [ext_resource type="Script" path="res://scripts/hud/hud.gd" id="1_hud"]
 [ext_resource type="Script" path="res://scripts/hud/currency_plate.gd" id="2_plate"]
@@ -8,6 +8,7 @@
 [ext_resource type="Script" path="res://scripts/console/ornate_frame.gd" id="6_frame"]
 [ext_resource type="PackedScene" path="res://scenes/modals/party_modal.tscn" id="7_party"]
 [ext_resource type="Texture2D" path="res://assets/icons/bonus_meal.png" id="8_meal"]
+[ext_resource type="PackedScene" path="res://scenes/modals/night_modal.tscn" id="9_night"]
 
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_plate"]
 
@@ -107,6 +108,10 @@ visible = false
 layout_mode = 1
 
 [node name="QuestResult" parent="ModalLayer" instance=ExtResource("3_qr")]
+visible = false
+layout_mode = 1
+
+[node name="NightModal" parent="ModalLayer" instance=ExtResource("9_night")]
 visible = false
 layout_mode = 1
 

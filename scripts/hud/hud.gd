@@ -20,6 +20,9 @@ extends CanvasLayer
 @onready var inventory_modal = $ModalLayer/InventoryModal   # InventoryModal (untyped: custom API)
 ## spec 3.2: party HP readout, opened by the heal-glyph button.
 @onready var party_modal = $ModalLayer/PartyModal   # PartyModal (untyped: custom API)
+## [day-night] the post-quest night choice + result (day/night spec §5). Binds
+## its own hooks in its own _ready() (QuestResult.dismissed, profile_ready).
+@onready var night_modal = $ModalLayer/NightModal   # NightModal (untyped: custom API)
 ## spec 8.5 reaches the result modal as `Hud.quest_result`.
 @onready var quest_result = $ModalLayer/QuestResult
 @onready var transition: ColorRect = $Transition
