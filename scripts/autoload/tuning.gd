@@ -200,14 +200,41 @@ const SHOP_REFRESH_COST := 100
 const FORGE_SHOP_SLOTS := 6
 
 ## [town] The inn's paid full heal (spec 7.2), multiplied by active_party.size()
-## - 50 with a solo warrior. The free "Sit by the fire" option costs nothing and
-## deliberately does not heal.
+## - 50 with a solo warrior. Its caller moved to resolve_night() in the
+## day/night pass; the constant, its name and its value did not.
 const INN_REST_COST_PER_HERO := 50
 
-## [town] Fraction of a hero's MISSING hp restored by spec 8.5's free "Sleep in
-## the street" on a failed quest. Half - and once per expedition (street_sleep_used),
-## because half of half repeated converges on a full heal (spec 1.9).
+## [town] Fraction of a hero's MISSING hp restored by the free "Sleep in the
+## street" night option. Half - and once per night, which the day/night state
+## machine now enforces structurally (day/night spec §2.2: resolve_night() only
+## fires from NIGHT_PENDING, and there is no transition that reaches it twice
+## without a quest between). Repeated application converges on a full heal, which
+## is why a second sleep must be unreachable.
 const INN_STREET_HEAL_FRACTION := 0.5
+
+# --- [day-night] The night (day/night spec §3, §6) -------------------------
+## The night's fade-to-black - the "time passed" beat, and the scene change
+## home (§4.2). Long on purpose: the only place in the game where the screen is
+## deliberately empty, and what stops the loop reading as "quest, quest, quest".
+const NIGHT_FADE_OUT := 1.5
+## Coming back is not the same beat as leaving, and 1.5 s of waiting to see a
+## town you have already seen is dead time. Half, and no more.
+const NIGHT_FADE_IN := 0.75
+
+## NightResult's bar choreography (§5.2). Hold, then fill, staggered per hero.
+const NIGHT_BAR_HOLD := 0.35
+const NIGHT_BAR_FILL := 0.9
+const NIGHT_BAR_STAGGER := 0.12
+
+# --- [day-night] The meal (day/night spec §9) ----------------------------------
+## Percent added to every hero's damage for one expedition. A round number on
+## purpose: the player is told "+10% damage" and that is exactly what the
+## multiplier does - no hidden diminishing curve, no per-class variation.
+const MEAL_DAMAGE_PCT := 10
+## Per hero, like the bed. 30 against the bed's 50: a night and a meal together
+## are 80 G of the easy quest's 200 G reward, so a fed, rested run of the
+## cheapest quest still profits - but not by much, and not on a loss (§9.2).
+const MEAL_COST_PER_HERO := 30
 
 # --- [town] The forge (spec 11) ----------------------------------------------
 ## [scrap, gold] to raise an item FROM rarity index i to i + 1. Indexed by the
@@ -390,6 +417,12 @@ const C_WOOD := Color("7A4E28")           # slightly darkened for the night mood
 const C_WOOD_DARK := Color("5A3419")
 const C_PANEL_BORDER := Color("2E5A4E")   # inner border, one step off the panel fill
 const C_FIRE := Color("FF7A1A")           # [v2] fire-modifier damage numbers, unchanged
+## [day-night] The meal glyph's tint (day/night spec §9.7). Warm roast orange -
+## the one gap in the bonus strip's five existing glyph colours
+## (steel/red/blue/gold/green). Deliberately close to C_FIRE without being it:
+## the fire ELEMENT chip is drawn as a filled circle, never a textured glyph, so
+## a warm steak and a warm circle are never confusable even on the same strip.
+const C_MEAL := Color("D9793A")
 const C_ICE := Color("5BC8F5")            # [v2] ice-modifier damage numbers, unchanged
 const C_FISH_SCALE := Color("4A9BE8")     # [v2] Sir Fish body
 const C_FISH_FIN := Color("3B6FD4")       # [v2] Sir Fish fins

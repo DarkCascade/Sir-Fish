@@ -102,8 +102,11 @@ func _apply_heading(is_quest: bool) -> void:
 			subtitle.text = "Reached encounter %d of %d" % \
 				[shown_index, GameState.level.encounters.size()]
 
-## RETRY / VICTORY use PrimaryButton alone; FAILURE shows both recovery buttons
-## with the affordability gates spec 8.5 spells out.
+## RETRY uses PrimaryButton alone. VICTORY and FAILURE now converge on the same
+## night choice (day/night spec §4): both show the inn / street pair, both call
+## GameState.resolve_night(). (This is the interim wiring of build-order steps
+## 2-5; §7.2 / step 6 collapses these to one "Make camp" button that hands off
+## to the NightModal.)
 func _configure_buttons() -> void:
 	_dismiss_route = -1
 	secondary_button.visible = false
@@ -115,12 +118,9 @@ func _configure_buttons() -> void:
 	match _mode:
 		Mode.RETRY:
 			primary_button.text = "RETRY"
-		Mode.VICTORY:
-			primary_button.text = "Retire for the evening"
-			_dismiss_route = SceneRouter.Place.INN
-		Mode.FAILURE:
-			var cost: int = _inn_cost()
-			primary_button.text = "Rest at the Inn  —  %d G" % cost
+		Mode.VICTORY, Mode.FAILURE:
+			var cost: int = GameState.night_inn_cost()
+			primary_button.text = "Stay at the Inn  —  %d G" % cost
 			var can_rest: bool = GameState.gold >= cost
 			primary_button.disabled = not can_rest
 			if not can_rest:
@@ -128,26 +128,19 @@ func _configure_buttons() -> void:
 
 			secondary_button.visible = true
 			secondary_button.text = "Sleep in the street  —  free"
-			var slept: bool = GameState.street_sleep_used
-			secondary_button.disabled = slept
-			if slept:
-				secondary_button.modulate = Color(0.68, 0.65, 0.6, 1.0)
-
-func _inn_cost() -> int:
-	return Tuning.INN_REST_COST_PER_HERO * maxi(GameState.active_party.size(), 1)
 
 func _on_primary_pressed() -> void:
-	if _mode == Mode.FAILURE:
-		# Rest at the inn: spend, full heal, save, then close.
-		if not GameState.spend_gold(_inn_cost()):
+	if _mode != Mode.RETRY:
+		# Stay at the inn (day/night spec §3.5). resolve_night() charges and
+		# heals atomically, or returns [] unaffordable - leave the button live.
+		if GameState.resolve_night(GameState.NightChoice.INN).is_empty():
 			return
-		GameState.heal_party()
 		SaveGame.save_profile()
 	_dismiss()
 
 func _on_secondary_pressed() -> void:
-	# FAILURE only: the free half-heal (spec 8.5 / 1.9).
-	GameState.street_sleep_recover()
+	# Sleep in the street: the free half-heal (day/night spec §3.2).
+	GameState.resolve_night(GameState.NightChoice.STREET)
 	SaveGame.save_profile()
 	_dismiss()
 

@@ -66,6 +66,14 @@ horizontal_alignment = 1
 vertical_alignment = 1
 autowrap_mode = 3
 
+[node name="FedLine" type="Label" parent="Layout"]
+visible = false
+layout_mode = 2
+theme_override_colors/font_color = Color(0.851, 0.475, 0.227, 1)
+theme_override_font_sizes/font_size = 28
+text = "The party is well fed. +10% damage."
+horizontal_alignment = 1
+
 [node name="QuestList" type="VBoxContainer" parent="Layout"]
 layout_mode = 2
 size_flags_vertical = 3

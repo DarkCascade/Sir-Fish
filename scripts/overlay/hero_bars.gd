@@ -152,3 +152,38 @@ func set_dead() -> void:
 func set_alive() -> void:
 	_dead = false
 	modulate = Color.WHITE
+
+# --- [day-night] detached mode (day/night spec §5.4) -----------------------
+## Draw this card from profile data instead of a live Combatant, for the night
+## modals in town. `combatant` stays null, so refresh() keeps early-returning
+## and NOTHING on the battle path changes: poll_health is false, no _process
+## reads it, and party_bars.gd never sees one of these.
+func setup_detached(stats: CombatantStats) -> void:
+	combatant = null
+	base_fill_color = CLASS_BAR_COLORS.get(stats.id, stats.accent_color)
+	chip.color = base_fill_color
+	health_fill.color = base_fill_color
+	var has_glyph: bool = stats.id in KNOWN_ICON_CLASSES
+	chip_glyph.set_kind(stats.id if has_glyph else &"")
+	chip_label.text = stats.display_name.substr(0, 1).to_upper()
+	chip_label.visible = not has_glyph
+	buff_shield.visible = false
+
+## Snap. Seeds the "before" picture in both night modals.
+func show_hp(current: int, maximum: int) -> void:
+	_last_hp_shown = current
+	hp_text.text = "DEAD" if current <= 0 else "%d" % current
+	set_health_fraction(float(current) / float(maxi(maximum, 1)))
+	modulate = Color(0.45, 0.45, 0.52) if current <= 0 else Color.WHITE
+
+## Fill. `hp_text` counts up in step with the bar rather than snapping at the
+## end - the number and the fill are one statement (this file's own rule).
+func tween_hp(target: int, maximum: int, duration: float) -> void:
+	var from: int = _last_hp_shown
+	_last_hp_shown = target
+	_dead = false
+	tween_health_fraction(float(target) / float(maxi(maximum, 1)), true, duration)
+	var tw := create_tween().set_parallel(true)
+	tw.tween_method(func(v: int) -> void: hp_text.text = "%d" % v,
+		from, target, duration)
+	tw.tween_property(self, "modulate", Color.WHITE, duration)

@@ -45,6 +45,13 @@ signal item_forged(item: Item, new_rarity: int)
 signal quest_started(quest: QuestDef)
 signal quest_finished(victory: bool)
 
+# [day-night] Emitted by boot.gd after it has loaded (or minted) the profile and
+# nudged the currency plate - the hook night_modal.gd uses to present the night
+# choice on a resume into DayPhase.NIGHT_PENDING (day/night spec §8.2). A signal
+# emit, NOT a save: boot.gd must keep exactly one save_profile() call
+# (test_scene_router.gd's boot.gd code check, §0.3).
+signal profile_ready()
+
 # --- Console ---
 signal slot_spin_started()
 signal slot_spin_stopped(symbols: Array)       # Array[int] of 3 Tuning.Sym values

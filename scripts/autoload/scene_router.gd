@@ -35,7 +35,13 @@ var _routing: bool = false
 ## Fades out, swaps to `to`, fades back in. Ignored (not queued) if a route is
 ## already in flight - go() is called from await-ing flows (spec 8.5) and a
 ## second call mid-transition must not stack.
-func go(to: Place) -> void:
+##
+## [day-night] `fade_out` / `fade_in` override the FADE_TIME default per call -
+## the night's 1.5 s fade IS the route home (day/night spec §6.3). `force` skips
+## the `to == place` early-out, which the §8.2 resume path needs: it routes
+## TOWN -> TOWN to get the fade, and without `force` that fade is dropped.
+func go(to: Place, fade_out: float = FADE_TIME, fade_in: float = FADE_TIME,
+		force: bool = false) -> void:
 	if _routing:
 		return
 	# Missing-path bail (spec 3.1): change_scene_to_file() on an absent path
@@ -46,16 +52,16 @@ func go(to: Place) -> void:
 	if target.is_empty() or not ResourceLoader.exists(target):
 		push_warning("SceneRouter.go(): no scene for Place %d (%s) - staying put" % [to, target])
 		return
-	if to == place:
+	if to == place and not force:
 		return
 
 	_routing = true
 	var rect: ColorRect = Hud.transition
 	rect.mouse_filter = Control.MOUSE_FILTER_STOP
 
-	var fade_in := create_tween()
-	fade_in.tween_property(rect, "modulate:a", 1.0, FADE_TIME)
-	await fade_in.finished
+	var fade_out_tw := create_tween()
+	fade_out_tw.tween_property(rect, "modulate:a", 1.0, fade_out)
+	await fade_out_tw.finished
 
 	get_tree().change_scene_to_file(target)
 	await get_tree().tree_changed        # the swap is deferred to frame end
@@ -67,9 +73,9 @@ func go(to: Place) -> void:
 	# by the time the screen is visible again.
 	place = to
 
-	var fade_out := create_tween()
-	fade_out.tween_property(rect, "modulate:a", 0.0, FADE_TIME)
-	await fade_out.finished
+	var fade_in_tw := create_tween()
+	fade_in_tw.tween_property(rect, "modulate:a", 0.0, fade_in)
+	await fade_in_tw.finished
 
 	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_routing = false

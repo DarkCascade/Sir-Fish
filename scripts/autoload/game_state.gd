@@ -96,10 +96,51 @@ var completed_quest: QuestDef = null
 var expedition_gold: int = 0
 var expedition_scrap: int = 0
 
-## [town] Whether the free half-heal has been used since this expedition
-## started. Inert until the inn's recovery flow exists; declared now so
-## start_expedition() has something real to clear.
-var street_sleep_used: bool = false
+## [day-night] Where the party is in the day/night loop (day/night spec §2.2).
+## This enum is the whole enforcement mechanism for "one quest per day, one
+## night per quest": resolve_night() is reachable ONLY from NIGHT_PENDING, and
+## NIGHT_PENDING is reachable ONLY from QUEST, so two nights in a row is not a
+## rule anybody has to check - it is a transition that does not exist.
+##
+## Replaces street_sleep_used, which was a flag guarding the same property by
+## hand (§1.3). The HEAL that flag was guarding is unchanged.
+enum DayPhase {
+	DAY,            # in town. Shop, forge, eat, talk to the mayor. No quest run yet today.
+	QUEST,          # an expedition is in flight. GameState.quest is non-null.
+	NIGHT_PENDING,  # the quest ended; the night has not been chosen yet.
+}
+
+## The two recovery options resolve_night() takes (day/night spec §3.5).
+enum NightChoice { INN, STREET }
+
+## Profile-scoped, saved (§8.1). A loaded profile that predates this field
+## defaults to DAY, which is correct - a save written before this pass could
+## only ever have been written in town.
+var day_phase: DayPhase = DayPhase.DAY
+
+## [day-night] Days elapsed, 1-based, incremented by resolve_night(). Display
+## only: printed on both night modals so the run reads as a campaign (§1.6).
+## NOTHING may branch on this value - see §0.2.
+var day_number: int = 1
+
+## [day-night] What the last night restored, captured by resolve_night() BEFORE
+## it heals, so NightResult can draw the bars as they were and then fill them
+## (§4.3). One entry per hero, in hero_runtime order:
+##   {stats_id, before_hp, after_hp, max_hp, was_dead}
+## Not saved: it is presentation state with a lifetime of one modal.
+var last_night_report: Array = []
+
+## [day-night] The meal buff (day/night spec §9). Percent added to every hero's
+## damage for the current or next expedition; 0 when the party is unfed.
+## Profile-scoped and SAVED, because a meal bought before a quit must still be
+## there after it.
+var meal_pct: int = 0
+
+## [day-night] Whether today's meal has been eaten. Cleared by resolve_night(),
+## the same call that advances day_number - so the rhythm is one bed, one meal,
+## one quest, and the buff cannot be stacked five times before leaving town
+## (§9.4).
+var meal_eaten_today: bool = false
 
 ## [town] Inventory size at the moment the current expedition started, so a
 ## failed quest can later tell "brought from town" apart from "found this
@@ -296,6 +337,9 @@ func party_bonuses() -> Dictionary:
 	var out := {
 		"dmg_flat": 0,
 		"dmg_pct": 0,
+		# [day-night] §9.5 - NOT from an item, and NOT summed into dmg_pct: it is
+		# a separate multiplier (combatant.gd) and a separate strip glyph (§9.6).
+		"meal_pct": meal_pct,
 		"element": &"",
 		"slot_bolt": 0,
 		"slot_purse": 0,
@@ -665,7 +709,11 @@ func new_profile() -> void:
 	forge_stock.clear()          # the blacksmith regenerates on first visit (spec 7.4)
 	forge_stock_generated = false
 	active_party = [&"warrior"] as Array[StringName]
-	street_sleep_used = false
+	# [day-night] a fresh profile starts a fresh first day, unfed, no night owed.
+	day_phase = DayPhase.DAY
+	day_number = 1
+	meal_pct = 0
+	meal_eaten_today = false
 	_reset_hero_runtime(true)     # full heal - a new profile starts whole
 
 ## [town] Everything an EXPEDITION owns, and nothing a profile owns. Called from
@@ -678,6 +726,14 @@ func new_profile() -> void:
 func start_expedition(q: QuestDef = null) -> void:
 	quest = q
 	completed_quest = null
+	# [day-night] T1: DAY -> QUEST (day/night spec §2.2). Guarded on q != null and
+	# this is NOT cosmetic: reset_run() and debug.gd's `route quest` call this
+	# with no argument for the endless path, whose quest-end blocks (where T2
+	# lives) are inside `if GameState.quest != null`. An unguarded T1 would push
+	# the endless path into QUEST and strand it there - no T2, no T3, and the
+	# mayor's §2.3 guard then locks the player out of quests permanently.
+	if q != null:
+		day_phase = DayPhase.QUEST
 	current_encounter_index = -1
 	# Must precede build_level() - _build_endless_level() reads it. Spec 2.3's
 	# listing omits this line; without it a retry regenerates at the depth the
@@ -685,7 +741,6 @@ func start_expedition(q: QuestDef = null) -> void:
 	endless_level_number = 1
 	expedition_gold = 0
 	expedition_scrap = 0
-	street_sleep_used = false
 	_expedition_inventory_mark = inventory.size()
 	drops_by_class.clear()
 	Upgrades.reset()
@@ -757,10 +812,11 @@ func discard_expedition_loot() -> void:
 			inventory.remove_at(i)
 	EventBus.party_bonuses_changed.emit(party_bonuses())
 
-## [town] spec 8.5's free "Sleep in the street": every hero heals ceil(half its
-## missing HP) - the dead among them revived to that - and street_sleep_used is
-## set so the button cannot be pressed twice. start_expedition() clears the flag,
-## so the free half-heal is once per expedition, not once per press (spec 1.9).
+## The free "Sleep in the street" night option: every hero heals ceil(half its
+## missing HP), the dead among them revived to that. Arithmetic byte-for-byte
+## as it was (day/night spec §3.2); only the guard changed - it used to set
+## street_sleep_used, now the day/night state machine makes a second call
+## unreachable (§2.2). Called by resolve_night(NightChoice.STREET).
 func street_sleep_recover() -> void:
 	for entry: Dictionary in hero_runtime:
 		var missing: int = int(entry["max_hp"]) - int(entry["current_hp"])
@@ -768,7 +824,72 @@ func street_sleep_recover() -> void:
 			entry["current_hp"] = int(entry["current_hp"]) \
 				+ ceili(float(missing) * Tuning.INN_STREET_HEAL_FRACTION)
 		entry["alive"] = int(entry["current_hp"]) > 0
-	street_sleep_used = true
+
+# --- [day-night] the night and the meal (day/night spec §3.5, §9) -----------
+
+## The price of a full-heal night: INN_REST_COST_PER_HERO x party size. Moved
+## here so inn.gd and quest_result.gd stop each owning a copy of this arithmetic
+## (day/night spec §3.1).
+func night_inn_cost() -> int:
+	return Tuning.INN_REST_COST_PER_HERO * maxi(active_party.size(), 1)
+
+## [day-night] The one and only heal in the game outside combat (§2.2 T3).
+## Charges for the inn, applies the chosen recovery, advances the day, and
+## returns the report NightResult replays (§4.3).
+##
+## Returns [] - and mutates NOTHING - if no night is owed, or if the inn was
+## chosen and cannot be paid for. The caller checks for the empty array and
+## leaves its buttons live; there is no partial application to unwind.
+func resolve_night(choice: NightChoice) -> Array:
+	if day_phase != DayPhase.NIGHT_PENDING:
+		return []
+
+	# Snapshot BEFORE any mutation - this is what the bars start at (§4.3).
+	var report: Array = []
+	for entry: Dictionary in hero_runtime:
+		report.append({
+			"stats_id": entry["stats_id"],
+			"before_hp": int(entry["current_hp"]),
+			"after_hp": int(entry["current_hp"]),   # rewritten below
+			"max_hp": int(entry["max_hp"]),
+			"was_dead": int(entry["current_hp"]) <= 0,
+		})
+
+	if choice == NightChoice.INN:
+		if not spend_gold(night_inn_cost()):
+			return []                      # unaffordable: no charge, no heal
+		heal_party()                       # town spec §7.2, unchanged
+	else:
+		street_sleep_recover()             # §3.2, unchanged
+
+	for i: int in range(report.size()):
+		report[i]["after_hp"] = int(hero_runtime[i]["current_hp"])
+
+	day_phase = DayPhase.DAY
+	day_number += 1
+	meal_eaten_today = false               # a new day, a new meal (§9.4)
+	last_night_report = report
+	return report
+
+## [day-night] The inn's meal (§9.3). One per day, in town only. Returns false
+## and spends nothing if the guard or the gold check fails - the caller leaves
+## its button live rather than unwinding a partial purchase.
+func buy_meal() -> bool:
+	if day_phase != DayPhase.DAY or meal_eaten_today:
+		return false
+	if not spend_gold(meal_cost()):
+		return false
+	meal_pct = Tuning.MEAL_DAMAGE_PCT      # assigned, never accumulated
+	meal_eaten_today = true
+	EventBus.party_bonuses_changed.emit(party_bonuses())   # §9.5
+	return true
+
+func meal_cost() -> int:
+	return Tuning.MEAL_COST_PER_HERO * maxi(active_party.size(), 1)
+
+## The meal as a multiplier, for combatant.gd. 1.0 when unfed.
+func meal_multiplier() -> float:
+	return 1.0 + float(meal_pct) / 100.0
 
 ## The endless-mode entry point: the one caller that wants BOTH halves.
 ## RunController on boot and on retry, and test_endless_level_gen.gd directly,

@@ -43,9 +43,10 @@ func _ready() -> void:
 	t.check(int(GameState.hero_runtime[0]["current_hp"]) == want,
 		"street sleep heals ceil(half missing) (got %d, want %d)"
 			% [int(GameState.hero_runtime[0]["current_hp"]), want])
-	t.check(GameState.street_sleep_used, "street sleep sets the once-per-expedition flag")
+	# [day-night] The once-per-night guarantee street_sleep_used used to hold is
+	# now asserted against the state machine in test_day_night.gd assertion 6
+	# (a second resolve_night() in the same phase returns [] and heals nothing).
 	GameState.start_expedition(q)
-	t.check(not GameState.street_sleep_used, "start_expedition clears street_sleep_used")
 
 	# --- a dead hero is revived by the free heal ------------------------------
 	GameState.hero_runtime[0]["current_hp"] = 0

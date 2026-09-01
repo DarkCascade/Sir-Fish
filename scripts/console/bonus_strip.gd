@@ -26,9 +26,11 @@ const PAD := 26.0
 const FONT_SIZE := 34
 
 ## sword (dmg_flat), chevron (dmg_pct), bolt (slot_bolt), coin (slot_purse),
-## plus (slot_mend). Order is fixed so the strip does not reshuffle as it fills.
+## plus (slot_mend), ribeye (meal_pct). Order is fixed so the strip does not
+## reshuffle as it fills - the meal joins LAST among the numerics (day/night
+## spec §9.6) so the five existing glyphs never move sideways mid-run.
 const ROWS: Array[StringName] = [
-	&"dmg_flat", &"dmg_pct", &"slot_bolt", &"slot_purse", &"slot_mend",
+	&"dmg_flat", &"dmg_pct", &"slot_bolt", &"slot_purse", &"slot_mend", &"meal_pct",
 ]
 
 ## [meshy-experiment] Flat Meshy-generated icons, one per numeric glyph -
@@ -42,6 +44,8 @@ const TEX_CHEVRON := preload("res://assets/icons/bonus_chevron.png")
 const TEX_BOLT := preload("res://assets/icons/bonus_bolt.png")
 const TEX_PURSE := preload("res://assets/icons/bonus_purse.png")
 const TEX_HEAL := preload("res://assets/icons/glyph_heal.png")
+## [day-night] The meal glyph - a bone-in ribeye (day/night spec §9.7).
+const TEX_MEAL := preload("res://assets/icons/bonus_meal.png")
 
 ## [screen-corner variant] When true, entries stack top-to-bottom (glyph then
 ## text, left-aligned) instead of the default centred horizontal row. Used by
@@ -160,8 +164,8 @@ func _visible_entries() -> Array[Dictionary]:
 	return out
 
 func _format(id: StringName, value: int) -> String:
-	# dmg_pct and slot_mend are percentages; the rest are flat.
-	if id == &"dmg_pct" or id == &"slot_mend":
+	# dmg_pct, slot_mend and meal_pct are percentages; the rest are flat.
+	if id == &"dmg_pct" or id == &"slot_mend" or id == &"meal_pct":
 		return "+%d%%" % value
 	return "+%d" % value
 
@@ -194,6 +198,8 @@ func _draw_glyph(id: String, origin: Vector2, color: Color = Tuning.C_TEXT_DIM) 
 			draw_texture_rect(TEX_PURSE, box, false, Tuning.C_GOLD)
 		"slot_mend":
 			draw_texture_rect(TEX_HEAL, box, false, Tuning.C_HEAL)
+		"meal_pct":
+			draw_texture_rect(TEX_MEAL, box, false, Tuning.C_MEAL)
 		"element":
 			# A 20px filled circle in the element's colour with a 2px ink ring
 			# (spec 17.6) - kept as a plain colour swatch rather than an icon:

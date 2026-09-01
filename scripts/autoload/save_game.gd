@@ -42,7 +42,14 @@ func save_profile() -> void:
 		"gold": GameState.gold,
 		"scrap": GameState.scrap,
 		"active_party": GameState.active_party,
-		"street_sleep_used": GameState.street_sleep_used,
+		# [day-night] four additive keys, no VERSION bump (town spec §2.4:
+		# bump on a meaning change, never merely to add a key). A save written
+		# before this pass loads with all four at their defaults, which is right
+		# - it could only ever have been written in town, unfed, no night owed.
+		"day_phase": int(GameState.day_phase),
+		"day_number": GameState.day_number,
+		"meal_pct": GameState.meal_pct,
+		"meal_eaten_today": GameState.meal_eaten_today,
 		"heroes": GameState.hero_runtime,
 		"inventory": GameState.inventory.map(func(i: Item) -> Dictionary: return i.to_dict()),
 		# [town] spec 7.4: the blacksmith's cached stock. Joins the dict here, at
@@ -83,7 +90,11 @@ func load_profile() -> bool:
 	if not party.is_empty():
 		GameState.active_party = party
 
-	GameState.street_sleep_used = bool(d.get("street_sleep_used", false))
+	# [day-night] §8.1: all four default to a legacy save's only possible state.
+	GameState.day_phase = int(d.get("day_phase", GameState.DayPhase.DAY)) as GameState.DayPhase
+	GameState.day_number = int(d.get("day_number", 1))
+	GameState.meal_pct = int(d.get("meal_pct", 0))
+	GameState.meal_eaten_today = bool(d.get("meal_eaten_today", false))
 
 	var heroes: Array = []
 	for entry: Variant in d.get("heroes", []):

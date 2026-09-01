@@ -122,16 +122,21 @@ func _build() -> void:
 			"%s is missing required animation '%s'" % [stats.id, n])
 
 ## Heroes carry the party-wide item bonus pool (spec 13.5). Enemies never do.
-## The party damage buff multiplies on top of dmg_pct, which is why 17.3 divides
-## its multiplier back out rather than resetting to 1.0.
+## `damage_multiplier` = the meal buff (GameState) x the item dmg_pct share; the
+## two are kept apart in `_item_pct_multiplier` so neither wipes the other.
 func apply_party_bonuses() -> void:
 	if not is_hero:
 		return
 	var b := GameState.party_bonuses()
-	var buff: float = damage_multiplier / _item_pct_multiplier
 	bonus_flat_damage = int(b["dmg_flat"])
 	_item_pct_multiplier = 1.0 + float(b["dmg_pct"]) / 100.0
-	damage_multiplier = buff * _item_pct_multiplier
+	# [day-night] §9.5: recomputed from GameState every time, NEVER from the
+	# previous value of damage_multiplier. The old round-trip (dividing the
+	# stored multiplier by _item_pct_multiplier to recover the external buff)
+	# compounded the meal on every party_bonuses_changed emit (battle_director)
+	# and every spawn - a fed party's multiplier walked 1.10 -> 1.21 -> 1.33
+	# across a few equip changes.
+	damage_multiplier = GameState.meal_multiplier() * _item_pct_multiplier
 
 # --- queries ----------------------------------------------------------------
 
