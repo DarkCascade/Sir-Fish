@@ -49,7 +49,7 @@ func _populate() -> void:
 		var button := Button.new()
 		button.custom_minimum_size = Vector2(0, 210)
 		button.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		button.add_theme_font_size_override("font_size", 30)
+		button.add_theme_font_size_override("font_size", 45)
 		button.text = "%s\n%s\n%d encounters   ·   %d gold" % [
 			q.display_name, q.blurb, q.encounter_types.size(), q.gold_reward,
 		]
