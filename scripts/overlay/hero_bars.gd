@@ -61,6 +61,13 @@ const CLASS_BAR_COLORS := {
 
 var _dead: bool = false
 
+## [day-night] Detached rows live in the night modal's full-width VBox, not the
+## console's fixed right-hand strip, so the track is re-anchored to fill that
+## width and the fill is driven by an anchor ratio instead of the fixed-pixel
+## HERO_FILL_WIDTH. Battle/console rows never set this and are untouched.
+var _detached_stretch: bool = false
+var _last_fraction: float = 1.0
+
 ## Smoothness pass: refresh() used to run the "%d / %d"-style format and
 ## reassign hp_text.text every frame regardless of whether current_hp had
 ## moved - a fresh String allocated per hero per frame purely to compare equal
@@ -152,3 +159,83 @@ func set_dead() -> void:
 func set_alive() -> void:
 	_dead = false
 	modulate = Color.WHITE
+
+# --- [day-night] detached mode (day/night spec §5.4) -----------------------
+## Draw this card from profile data instead of a live Combatant, for the night
+## modals in town. `combatant` stays null, so refresh() keeps early-returning
+## and NOTHING on the battle path changes: poll_health is false, no _process
+## reads it, and party_bars.gd never sees one of these.
+func setup_detached(stats: CombatantStats) -> void:
+	combatant = null
+	base_fill_color = CLASS_BAR_COLORS.get(stats.id, stats.accent_color)
+	chip.color = base_fill_color
+	health_fill.color = base_fill_color
+	var has_glyph: bool = stats.id in KNOWN_ICON_CLASSES
+	chip_glyph.set_kind(stats.id if has_glyph else &"")
+	chip_label.text = stats.display_name.substr(0, 1).to_upper()
+	chip_label.visible = not has_glyph
+	buff_shield.visible = false
+	_stretch_to_row_width()
+
+## [day-night] §5.4: the night modal wants this bar to span the panel, not sit
+## at its 307 px console width. Anchor the outline and the empty track to the
+## row's right edge; the fill then follows via the anchor_right ratio the two
+## fraction methods below drive (rather than base set_health_fraction's fixed
+## HERO_FILL_WIDTH * fraction). One-time, detached rows only.
+func _stretch_to_row_width() -> void:
+	_detached_stretch = true
+	# Fill switches to a pure ratio: right edge = anchor_right * track width.
+	health_fill.anchor_right = clampf(_last_fraction, 0.0, 1.0)
+	health_fill.offset_right = 0.0
+	# The row is inside a Container, so its own width is only known after a
+	# layout pass; the two tracks re-anchor once it is.
+	await get_tree().process_frame
+	if not is_inside_tree():
+		return
+	health_border.anchor_right = 1.0
+	health_border.offset_right = -8.0
+	health_bg.anchor_right = 1.0
+	health_bg.offset_right = -3.0
+
+## Snap. Seeds the "before" picture in both night modals.
+func show_hp(current: int, maximum: int) -> void:
+	_last_hp_shown = current
+	hp_text.text = "DEAD" if current <= 0 else "%d" % current
+	set_health_fraction(float(current) / float(maxi(maximum, 1)))
+	modulate = Color(0.45, 0.45, 0.52) if current <= 0 else Color.WHITE
+
+## Fill. `hp_text` counts up in step with the bar rather than snapping at the
+## end - the number and the fill are one statement (this file's own rule).
+func tween_hp(target: int, maximum: int, duration: float) -> void:
+	var from: int = _last_hp_shown
+	_last_hp_shown = target
+	_dead = false
+	tween_health_fraction(float(target) / float(maxi(maximum, 1)), true, duration)
+	var tw := create_tween().set_parallel(true)
+	tw.tween_method(func(v: int) -> void: hp_text.text = "%d" % v,
+		from, target, duration)
+	tw.tween_property(self, "modulate", Color.WHITE, duration)
+
+# --- fraction: fixed-pixel on the battle path, anchor ratio when stretched ---
+
+func set_health_fraction(fraction: float) -> void:
+	_last_fraction = clampf(fraction, 0.0, 1.0)
+	if _detached_stretch:
+		health_fill.anchor_right = _last_fraction
+		health_fill.offset_right = 0.0
+	else:
+		super.set_health_fraction(fraction)
+
+func tween_health_fraction(fraction: float, heal_flash: bool = true,
+		duration: float = 0.25) -> void:
+	if not _detached_stretch:
+		super.tween_health_fraction(fraction, heal_flash, duration)
+		return
+	_last_fraction = clampf(fraction, 0.0, 1.0)
+	create_tween().tween_property(health_fill, "anchor_right", _last_fraction, duration) \
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	if not heal_flash:
+		return
+	var flash := create_tween()
+	flash.tween_property(health_fill, "color", Tuning.C_HEAL, 0.15)
+	flash.tween_property(health_fill, "color", base_fill_color, 0.15)

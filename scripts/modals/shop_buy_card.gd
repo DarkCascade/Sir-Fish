@@ -44,6 +44,13 @@ static var _taught_this_run: bool = false
 
 func _ready() -> void:
 	face.action_triggered.connect(func() -> void: compare_requested.emit(item))
+	# ShopModal.open() builds both tabs while the modal is still hidden, so the
+	# VBoxContainer never lays card 0 out and play_entrance()'s frame wait reads
+	# the 800-wide scene minimum for its scale-in pivot. Once show() stretches the
+	# card to the real column width that stale pivot makes the entrance tween bulge
+	# the card past the column before it snaps back. Re-centre on every layout pass
+	# so the pivot is correct whenever that pass lands.
+	resized.connect(func() -> void: pivot_offset = size * 0.5)
 
 func setup(i: Item) -> void:
 	item = i

@@ -54,6 +54,7 @@ func _run(line: String) -> void:
 		"route": _cmd_route(args)
 		"wipe": _cmd_wipe()
 		"quest": _cmd_quest(args)
+		"night": _cmd_night(args)
 		"lightning": _cmd_lightning()
 		"bone": _cmd_bone(args)
 		"state": _cmd_state()
@@ -391,6 +392,36 @@ func _cmd_wipe() -> void:
 	GameState.reset_run()
 	_log("wipe -> save deleted, new profile (%d gold, %d scrap)" % [GameState.gold, GameState.scrap])
 
+## [day-night] `night [hp] [win|lose]` - force a NIGHT_PENDING state with the
+## party wounded to <hp> (default 24), so the post-quest night flow can be
+## inspected without playing a full quest through (day/night spec §11.3). With a
+## win/lose arg it presents QuestResult first (the "Make camp" screen); with no
+## such arg it jumps straight to NightModal's ChoicePanel.
+func _cmd_night(args: Array) -> void:
+	var hp := 24
+	var ending := ""
+	for a: String in args:
+		if a == "win" or a == "lose":
+			ending = a
+		elif a.is_valid_int():
+			hp = int(a)
+	var q: QuestDef = load("res://resources/quests/easy.tres")
+	GameState.start_expedition(q)
+	for entry: Dictionary in GameState.hero_runtime:
+		entry["current_hp"] = mini(hp, int(entry["max_hp"]))
+		entry["alive"] = int(entry["current_hp"]) > 0
+	GameState.completed_quest = q
+	GameState.quest = null
+	GameState.meal_pct = 0
+	GameState.day_phase = GameState.DayPhase.NIGHT_PENDING
+	SaveGame.save_profile()   # so `night` + relaunch exercises the §8.2 resume
+	if ending != "":
+		Hud.quest_result.present(ending == "win")
+		_log("night -> NIGHT_PENDING, party at %d hp, QuestResult (%s) up" % [hp, ending])
+	else:
+		Hud.quest_result.dismissed.emit()
+		_log("night -> NIGHT_PENDING, party at %d hp, ChoicePanel up" % hp)
+
 ## [v3] Advances every parallax layer by <units> world units at its own speed
 ## multiplier, wrapping normally, without touching scroll_speed or the run
 ## state. Exists because a tile boundary on layer 1 sits far enough off-screen
@@ -491,8 +522,12 @@ func _cmd_state() -> void:
 	for c: StringName in GameState.active_party:
 		equip_bits.append("%s=[%s]" % [c, ", ".join(GameState.equipped_set(c).map(
 			func(i: Item) -> String: return i.display_name))])
-	_log("state -> run=%s encounter=%d gold=%d | %s | upgrades %s | drops %s | equipped %s | bonuses %s" % [
-		run_state, GameState.current_encounter_index, GameState.gold,
+	# [day-night] §10.4: the meal already rides in via party_bonuses(); day_phase
+	# and day_number are added here so the loop state is legible on the dev path.
+	var phase_names := ["DAY", "QUEST", "NIGHT_PENDING"]
+	_log("state -> run=%s day=%d/%s encounter=%d gold=%d | %s | upgrades %s | drops %s | equipped %s | bonuses %s" % [
+		run_state, GameState.day_number, phase_names[int(GameState.day_phase)],
+		GameState.current_encounter_index, GameState.gold,
 		", ".join(hp_bits), ", ".join(levels), ", ".join(drop_bits), ", ".join(equip_bits),
 		str(GameState.party_bonuses()),
 	])

@@ -19,7 +19,7 @@ func _ready() -> void:
 		"new_profile() sets gold to PROFILE_STARTING_GOLD (got %d)" % GameState.gold)
 	t.check(GameState.scrap == Tuning.PROFILE_STARTING_SCRAP, "new_profile() sets scrap to PROFILE_STARTING_SCRAP")
 	t.check(GameState.inventory.is_empty(), "new_profile() empties the inventory")
-	t.check(not GameState.street_sleep_used, "new_profile() clears street_sleep_used")
+	t.check(GameState.day_phase == GameState.DayPhase.DAY, "new_profile() starts in DAY")
 	t.check(GameState.hero_runtime.size() == GameState.active_party.size(),
 		"new_profile() builds one hero_runtime entry per active_party member")
 	var all_full := true

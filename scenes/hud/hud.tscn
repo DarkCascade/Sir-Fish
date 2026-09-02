@@ -1,4 +1,4 @@
-[gd_scene load_steps=8 format=3 uid="uid://b0hudsirfish05"]
+[gd_scene load_steps=11 format=3 uid="uid://b0hudsirfish05"]
 
 [ext_resource type="Script" path="res://scripts/hud/hud.gd" id="1_hud"]
 [ext_resource type="Script" path="res://scripts/hud/currency_plate.gd" id="2_plate"]
@@ -6,6 +6,9 @@
 [ext_resource type="PackedScene" path="res://scenes/modals/inventory_modal.tscn" id="4_inv"]
 [ext_resource type="Texture2D" path="res://assets/icons/ui_backpack.png" id="5_bag"]
 [ext_resource type="Script" path="res://scripts/console/ornate_frame.gd" id="6_frame"]
+[ext_resource type="PackedScene" path="res://scenes/modals/party_modal.tscn" id="7_party"]
+[ext_resource type="Texture2D" path="res://assets/icons/bonus_meal.png" id="8_meal"]
+[ext_resource type="PackedScene" path="res://scenes/modals/night_modal.tscn" id="9_night"]
 
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_plate"]
 
@@ -21,6 +24,16 @@ offset_bottom = 128.0
 disabled = true
 theme_override_font_sizes/font_size = 30
 icon = ExtResource("5_bag")
+expand_icon = true
+
+[node name="PartyButton" type="Button" parent="."]
+offset_left = 140.0
+offset_top = 24.0
+offset_right = 244.0
+offset_bottom = 128.0
+disabled = true
+theme_override_font_sizes/font_size = 30
+icon = ExtResource("8_meal")
 expand_icon = true
 
 [node name="CurrencyPlate" type="PanelContainer" parent="."]
@@ -90,7 +103,15 @@ mouse_filter = 2
 visible = false
 layout_mode = 1
 
+[node name="PartyModal" parent="ModalLayer" instance=ExtResource("7_party")]
+visible = false
+layout_mode = 1
+
 [node name="QuestResult" parent="ModalLayer" instance=ExtResource("3_qr")]
+visible = false
+layout_mode = 1
+
+[node name="NightModal" parent="ModalLayer" instance=ExtResource("9_night")]
 visible = false
 layout_mode = 1
 

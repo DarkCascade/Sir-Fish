@@ -90,7 +90,7 @@ func _empty_slot_row(s: Item.Slot) -> Control:
 	var l := Label.new()
 	l.text = "Your %s slot is empty — nothing to forge." % SLOT_NAMES[s]
 	l.custom_minimum_size = Vector2(0, 120)
-	l.add_theme_font_size_override("font_size", 28)
+	l.add_theme_font_size_override("font_size", 42)
 	l.add_theme_color_override("font_color", Tuning.C_TEXT_DIM)
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER

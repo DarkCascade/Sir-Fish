@@ -313,6 +313,10 @@ func _run_complete() -> void:
 		GameState.add_gold(q.gold_reward)
 		GameState.completed_quest = q
 		GameState.quest = null
+		# [day-night] T2: QUEST -> NIGHT_PENDING, win or loss (day/night spec
+		# §2.2). meal_pct is spent HERE - the expedition it paid for is over.
+		GameState.day_phase = GameState.DayPhase.NIGHT_PENDING
+		GameState.meal_pct = 0
 		SaveGame.save_profile()
 		EventBus.quest_finished.emit(true)
 		return
@@ -334,6 +338,10 @@ func _game_over() -> void:
 		GameState.discard_expedition_loot()
 		GameState.completed_quest = GameState.quest
 		GameState.quest = null
+		# [day-night] T2: QUEST -> NIGHT_PENDING on a loss too (day/night spec
+		# §2.2). A lost quest still eats the meal it was bought for.
+		GameState.day_phase = GameState.DayPhase.NIGHT_PENDING
+		GameState.meal_pct = 0
 		SaveGame.save_profile()
 		EventBus.quest_finished.emit(false)
 		return
@@ -343,6 +351,11 @@ func _game_over() -> void:
 # --- retry (spec 18.3) ------------------------------------------------------
 
 func _on_retry() -> void:
+	# [day-night] The quest path's QuestResult dismissal is consumed by
+	# NightModal (day/night spec §4.2), not by a retry - completed_quest is
+	# non-null exactly then. Only the endless / fixed dev path retries here.
+	if GameState.completed_quest != null:
+		return
 	director.stop_combat()
 	director.clear_enemies()
 	director.clear_party()

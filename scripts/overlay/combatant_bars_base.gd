@@ -93,9 +93,15 @@ func set_health_fraction(fraction: float) -> void:
 
 ## Healing tweens up instead, and flashes green (spec 11.2). A polled party bar
 ## losing health tweens the same way but must not flash green about it.
-func tween_health_fraction(fraction: float, heal_flash: bool = true) -> void:
+##
+## [day-night] `duration` defaults to the combat-paced 0.25 s (every existing
+## call site unchanged); NightResult passes NIGHT_BAR_FILL for a fill that reads
+## as a night's rest rather than a hit (§5.4). The green flash pair stays at
+## 0.15 + 0.15 - it is punctuation, not a fill.
+func tween_health_fraction(fraction: float, heal_flash: bool = true,
+		duration: float = 0.25) -> void:
 	var tw := create_tween()
-	tw.tween_property(health_fill, "size:x", _fill_width * clampf(fraction, 0.0, 1.0), 0.25) \
+	tw.tween_property(health_fill, "size:x", _fill_width * clampf(fraction, 0.0, 1.0), duration) \
 		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	if not heal_flash:
 		return
