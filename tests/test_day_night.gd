@@ -244,6 +244,19 @@ func _ready() -> void:
 	t.check(GameState.meal_pct == 0, "23: legacy -> meal_pct 0")
 	t.check(not GameState.meal_eaten_today, "23: legacy -> meal_eaten_today false")
 
+	# 24. A QUEST-phase profile on disk is an interrupted expedition - a quit
+	# between mayor_office._accept()'s save and RunController's T2. load_profile()
+	# normalises it to DAY so the player is not stranded in town behind the
+	# mayor's §2.3 guard (the §10.4 soft-lock, reached via a real quest).
+	GameState.new_profile()
+	GameState.day_phase = DP.QUEST
+	GameState.quest = q
+	SaveGame.save_profile()
+	GameState.day_phase = DP.NIGHT_PENDING
+	t.check(SaveGame.load_profile(), "24: interrupted-QUEST payload loads")
+	t.check(GameState.day_phase == DP.DAY, "24: QUEST on disk -> recovered to DAY")
+	t.check(GameState.quest == null, "24: recovery clears the dangling quest")
+
 	GameState.quest = null
 	GameState.completed_quest = null
 	t.finish(get_tree(), "test_day_night")

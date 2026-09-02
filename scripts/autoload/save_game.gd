@@ -92,6 +92,19 @@ func load_profile() -> bool:
 
 	# [day-night] §8.1: all four default to a legacy save's only possible state.
 	GameState.day_phase = int(d.get("day_phase", GameState.DayPhase.DAY)) as GameState.DayPhase
+	# A QUEST-phase profile on disk is an interrupted expedition: mayor_office
+	# ._accept() persists DAY -> QUEST before main.tscn loads (town §2.4), and a
+	# quit or crash before RunController reaches T2 (QUEST -> NIGHT_PENDING)
+	# leaves that state saved with no run scene to resume into. §8.2's resume
+	# only re-presents NIGHT_PENDING, so a QUEST load would strand the player in
+	# town behind the mayor's §2.3 guard with every quest locked and no night to
+	# pass - the exact soft-lock §10.4 guards the endless path against, reached
+	# by a real quest instead. Normalise to DAY and drop the dangling quest: the
+	# interrupted day simply did not happen.
+	if GameState.day_phase == GameState.DayPhase.QUEST:
+		push_warning("load_profile(): QUEST-phase profile (interrupted expedition) - recovering to DAY")
+		GameState.day_phase = GameState.DayPhase.DAY
+		GameState.quest = null
 	GameState.day_number = int(d.get("day_number", 1))
 	GameState.meal_pct = int(d.get("meal_pct", 0))
 	GameState.meal_eaten_today = bool(d.get("meal_eaten_today", false))
