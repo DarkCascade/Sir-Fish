@@ -44,13 +44,21 @@ static var _taught_this_run: bool = false
 
 func _ready() -> void:
 	face.action_triggered.connect(func() -> void: compare_requested.emit(item))
-	# ShopModal.open() builds both tabs while the modal is still hidden, so the
-	# VBoxContainer never lays card 0 out and play_entrance()'s frame wait reads
-	# the 800-wide scene minimum for its scale-in pivot. Once show() stretches the
-	# card to the real column width that stale pivot makes the entrance tween bulge
-	# the card past the column before it snaps back. Re-centre on every layout pass
-	# so the pivot is correct whenever that pass lands.
-	resized.connect(func() -> void: pivot_offset = size * 0.5)
+	resized.connect(_on_card_resized)
+
+## The Buy/Sell tabs are built while their container is still hidden (ShopModal
+## opens hidden then show()s; the blacksmith's Buy tab starts visible = false).
+## With no layout pass, Face - a PanelContainer anchored full-rect inside the
+## plain-Control Stage - balloons to its own content minimum and Godot bakes a
+## stale offset_right into it that survives the tab being shown, leaving the
+## first card's Face and BUY bar spilling past the column. Re-assert Face's
+## full-rect offsets, and recentre the scale-in pivot, on every layout pass.
+func _on_card_resized() -> void:
+	pivot_offset = size * 0.5
+	face.offset_left = 0.0
+	face.offset_top = 0.0
+	face.offset_right = 0.0
+	face.offset_bottom = 0.0
 
 func setup(i: Item) -> void:
 	item = i
