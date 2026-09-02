@@ -1,106 +1,23 @@
-[gd_scene format=3]
+[gd_scene load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scripts/battle/shop_building.gd" id="1_shop"]
-[ext_resource type="Shader" path="res://assets/shaders/cel_shade.gdshader" id="2_cel"]
-[ext_resource type="Shader" path="res://assets/shaders/outline.gdshader" id="3_outline"]
+[ext_resource type="PackedScene" uid="uid://dik8qyahy2yd1" path="res://assets/meshes/shop_building.glb" id="2_model"]
 
-; The building's parts are authored here rather than built in _ready(): every
-; mesh, colour and offset below is inspector-editable, so the shop can be
-; re-proportioned without touching shop_building.gd. The four materials are the
-; same cel + ink-outline pair CelMaterials.cel() produces in code (albedo is the
-; only thing that differs between them); outline_color is Tuning.C_INK.
-
-[sub_resource type="ShaderMaterial" id="outline_mat"]
-shader = ExtResource("3_outline")
-shader_parameter/outline_color = Color(0.141176, 0.117647, 0.078431, 1)
-shader_parameter/outline_width = 0.018
-shader_parameter/alpha = 1.0
-
-[sub_resource type="ShaderMaterial" id="walls_mat"]
-next_pass = SubResource("outline_mat")
-shader = ExtResource("2_cel")
-shader_parameter/albedo = Color(0.431373, 0.352941, 0.658824, 1)
-shader_parameter/band_count = 3.0
-shader_parameter/shadow_tint = Color(0.45, 0.52, 0.78, 1)
-shader_parameter/rim_amount = 0.35
-shader_parameter/rim_color = Color(1, 1, 1, 1)
-shader_parameter/emission_color = Color(0, 0, 0, 1)
-shader_parameter/emission_strength = 0.0
-shader_parameter/alpha = 1.0
-
-[sub_resource type="ShaderMaterial" id="roof_mat"]
-next_pass = SubResource("outline_mat")
-shader = ExtResource("2_cel")
-shader_parameter/albedo = Color(0.752941, 0.2, 0.247059, 1)
-shader_parameter/band_count = 3.0
-shader_parameter/shadow_tint = Color(0.45, 0.52, 0.78, 1)
-shader_parameter/rim_amount = 0.35
-shader_parameter/rim_color = Color(1, 1, 1, 1)
-shader_parameter/emission_color = Color(0, 0, 0, 1)
-shader_parameter/emission_strength = 0.0
-shader_parameter/alpha = 1.0
-
-[sub_resource type="ShaderMaterial" id="wood_mat"]
-next_pass = SubResource("outline_mat")
-shader = ExtResource("2_cel")
-shader_parameter/albedo = Color(0.478431, 0.305882, 0.156863, 1)
-shader_parameter/band_count = 3.0
-shader_parameter/shadow_tint = Color(0.45, 0.52, 0.78, 1)
-shader_parameter/rim_amount = 0.35
-shader_parameter/rim_color = Color(1, 1, 1, 1)
-shader_parameter/emission_color = Color(0, 0, 0, 1)
-shader_parameter/emission_strength = 0.0
-shader_parameter/alpha = 1.0
-
-[sub_resource type="ShaderMaterial" id="gold_mat"]
-next_pass = SubResource("outline_mat")
-shader = ExtResource("2_cel")
-shader_parameter/albedo = Color(0.831373, 0.658824, 0.262745, 1)
-shader_parameter/band_count = 3.0
-shader_parameter/shadow_tint = Color(0.45, 0.52, 0.78, 1)
-shader_parameter/rim_amount = 0.35
-shader_parameter/rim_color = Color(1, 1, 1, 1)
-shader_parameter/emission_color = Color(0, 0, 0, 1)
-shader_parameter/emission_strength = 0.0
-shader_parameter/alpha = 1.0
-
-[sub_resource type="BoxMesh" id="walls_mesh"]
-size = Vector3(2, 1.6, 1.4)
-
-[sub_resource type="PrismMesh" id="roof_mesh"]
-size = Vector3(2.4, 1, 1.6)
-
-[sub_resource type="BoxMesh" id="door_mesh"]
-size = Vector3(0.6, 1, 0.1)
-
-[sub_resource type="BoxMesh" id="sign_mesh"]
-size = Vector3(0.9, 0.4, 0.06)
+; [refinement-pass-3] The shop is a Meshy model now (assets/meshes/shop_building
+; .glb - purple plaster hut, crimson shingle roof, a hanging "SHOP" sign on a
+; wrought bracket), replacing the BoxMesh + PrismMesh blockout and its four
+; cel/outline ShaderMaterials. It carries its own baked material, the same way
+; the bioluminescent-forest env props do. It faces +Z (door and sign toward the
+; battle camera); the sign juts along -X. WindowGlow keeps a warm point light
+; just inside the front window. shop_building.gd only animates the whole node.
 
 [node name="ShopBuilding" type="Node3D"]
 script = ExtResource("1_shop")
 
-[node name="Walls" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.8, 0)
-mesh = SubResource("walls_mesh")
-material_override = SubResource("walls_mat")
-
-[node name="Roof" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.1, 0)
-mesh = SubResource("roof_mesh")
-material_override = SubResource("roof_mat")
-
-[node name="Door" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0.72)
-mesh = SubResource("door_mesh")
-material_override = SubResource("wood_mat")
-
-[node name="Sign" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.35, 0.76)
-mesh = SubResource("sign_mesh")
-material_override = SubResource("gold_mat")
+[node name="Model" parent="." instance=ExtResource("2_model")]
 
 [node name="WindowGlow" type="OmniLight3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.6, 1, 0.6)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.55, 1.05, 1.15)
 light_color = Color(0.831373, 0.658824, 0.262745, 1)
 light_energy = 2.0
 omni_range = 2.5

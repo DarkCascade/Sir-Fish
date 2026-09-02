@@ -217,7 +217,10 @@ func _award_drops() -> void:
 func _run_shop(def: EncounterDef) -> void:
 	var building = SHOP_SCENE.instantiate()
 	world.prop_root.add_child(building)
-	building.position = world.prop_position(3.4)
+	# [refinement-pass-3] Up-run and lifted, so the Meshy hut sits centred in the
+	# gap above the party instead of down on the front rank's line.
+	building.position = world.prop_position(Tuning.SHOP_PROP_DISTANCE) \
+		+ Vector3.UP * Tuning.SHOP_PROP_LIFT
 	_prop = building
 	building.pop_in()
 

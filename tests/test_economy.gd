@@ -109,6 +109,10 @@ func _ready() -> void:
 	var probe := Itemizer.generate_item()
 	t.check(probe.buy_price() == int(round(float(probe.value) * 1.5)), "buy price is value x 1.5")
 	t.check(probe.sell_price() == int(round(float(probe.value) * 0.5)), "sell price is value x 0.5")
+	# [refinement-pass-3] Scrapping at the blacksmith reclaims a quarter of the
+	# gold sell price as scrap - a 100 G item becomes 25 scrap.
+	t.check(probe.scrap_value() == int(round(float(probe.sell_price()) * 0.25)),
+		"scrap value is sell price x 0.25")
 
 	t.finish(get_tree(), "test_economy")
 

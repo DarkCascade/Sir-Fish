@@ -1,10 +1,10 @@
 extends Node3D
 ## The shop encounter's building (spec 14.3). Same pop-in tween as the chest.
 ##
-## [move-elements-to-editor] Walls / Roof / Door / Sign / WindowGlow are
-## authored in shop_building.tscn, not built in _ready(). Their meshes, cel
-## materials and offsets are all inspector-editable there - the code that
-## remains only animates the whole building.
+## [refinement-pass-3] The building is a Meshy model now (Model, instancing
+## assets/meshes/shop_building.glb) with WindowGlow as its one authored light -
+## see shop_building.tscn's header. This script only ever animated the whole
+## node's scale, so the art swap left it untouched.
 
 func pop_in() -> void:
 	scale = Vector3.ZERO

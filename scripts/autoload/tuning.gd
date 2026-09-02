@@ -22,6 +22,12 @@ const ENCOUNTER_RESOLVE_PAUSE := 0.8      # beat between "cleared" and travel st
 ## [overworld prototype] How long a shop encounter holds on the building when
 ## the UI is hidden and there is no modal to open (RunController._run_shop).
 const SHOP_SKIP_HOLD := 1.8
+## [refinement-pass-3] Where the expedition shop building stands. Further up-run
+## than a chest (prop_position(3.2)) and lifted clear of the ground, so the
+## redesigned hut reads as centred in the empty band above the party rather
+## than crowding the front rank. RunController._run_shop().
+const SHOP_PROP_DISTANCE := 7.4
+const SHOP_PROP_LIFT := 0.15
 const AOE_STAGGER := 0.06                 # [v2] gap between per-target resolutions of any AoE
 const DAMAGE_NUMBER_SPREAD := 46.0        # [v2] px offset per concurrent number (spec 11.4)
 
@@ -179,6 +185,10 @@ const MAGIC_BOLT_ARC := 0.9               # how high above the straight line it 
 const STARTING_GOLD := 75                 # [v2] was 50 (spec 5.4 / Q23)
 const SHOP_BUY_MARKUP := 1.5              # buy price  = round(value x 1.5)
 const SHOP_SELL_RATE := 0.5               # sell price = round(value x 0.5)
+## [town] Scrapping an item at the blacksmith reclaims scrap at a quarter of
+## what the same item would fetch in gold: scrap = round(sell_price x 0.25), so
+## a 100 G item yields 25 scrap.
+const SCRAP_RECLAIM_RATE := 0.25
 const LOOT_ITEMS_PER_CHEST := 2
 const SHOP_ITEMS_FOR_SALE := 3
 

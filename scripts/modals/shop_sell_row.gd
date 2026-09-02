@@ -7,6 +7,15 @@ extends PanelContainer
 ## behind the same swipe-to-reveal gesture Face already provides
 ## (swipeable_face.gd, shared with the Buy card), and Sell becomes the one
 ## full-width primary bar.
+##
+## [refinement-pass-3] The blacksmith's Sell tab reuses this row verbatim
+## (Mode.SELL); its Scrap tab reuses it in Mode.SCRAP, where the primary bar
+## reclaims scrap instead of gold at Item.scrap_value() and everything else -
+## the frame, equip, compare, the equipped-item lock - is identical.
+
+## Which resource the primary bar pays out. Only the blacksmith's Scrap tab
+## passes SCRAP; the shop and the blacksmith's Sell tab leave it at SELL.
+enum Mode { SELL, SCRAP }
 
 signal sold(item: Item, row: Control)
 signal compare_requested(item: Item)
@@ -19,6 +28,7 @@ const ItemCardStyle := preload("res://scripts/ui/item_card_style.gd")
 
 var item: Item = null
 var _hero_class: StringName = &""
+var _mode: int = Mode.SELL
 
 @onready var face = $Stage/Face   # SwipeableFace (untyped: custom API)
 @onready var glyph = $Stage/Face/FaceLayout/TopRow/Glyph   # ItemGlyph (untyped: custom API)
@@ -56,8 +66,9 @@ func _on_row_resized() -> void:
 	face.offset_right = 0.0
 	face.offset_bottom = 0.0
 
-func setup(i: Item) -> void:
+func setup(i: Item, mode: int = Mode.SELL) -> void:
 	item = i
+	_mode = mode
 	ItemCardStyle.apply(face, glyph, i, name_label, subtitle_label)
 
 	name_label.text = i.display_name
@@ -65,7 +76,12 @@ func setup(i: Item) -> void:
 	mods_label.text = "%d modifier%s" % [i.modifiers.size(),
 		"" if i.modifiers.size() == 1 else "s"]
 
-	amount_label.text = str(i.sell_price())
+	if _mode == Mode.SCRAP:
+		sell_label.text = "SCRAP"
+		locked_label.text = "Must Unequip to Scrap"
+		amount_label.text = str(i.scrap_value())
+	else:
+		amount_label.text = str(i.sell_price())
 	sell_bar.pressed.connect(_on_sell)
 	sell_bar.button_down.connect(_on_sell_button_down)
 	sell_bar.button_up.connect(_on_sell_button_up)
@@ -136,10 +152,13 @@ func _is_equipped() -> bool:
 
 func _refresh_sell_state() -> void:
 	var locked := _is_equipped()
+	# The gold coin glyph and its divider only make sense next to a gold price;
+	# the Scrap bar shows "SCRAP  N" with no coin.
+	var show_coin := not locked and _mode == Mode.SELL
 	sell_bar.disabled = locked
 	sell_label.visible = not locked
-	divider.visible = not locked
-	coin_glyph.visible = not locked
+	divider.visible = show_coin
+	coin_glyph.visible = show_coin
 	amount_label.visible = not locked
 	locked_label.visible = locked
 
@@ -165,9 +184,12 @@ func _on_sell() -> void:
 	# occluding the ActionLayer behind it partway through and let "Compare"
 	# bleed through. Locking it closed hides that layer outright.
 	face.lock_closed()
-	GameState.add_gold(item.sell_price())
+	if _mode == Mode.SCRAP:
+		GameState.add_scrap(item.scrap_value())
+	else:
+		GameState.add_gold(item.sell_price())
+		GameState.run_stats["items_sold"] = int(GameState.run_stats["items_sold"]) + 1
 	GameState.remove_item(item)
-	GameState.run_stats["items_sold"] = int(GameState.run_stats["items_sold"]) + 1
 	sold.emit(item, self)
 	var tw := create_tween().set_parallel(true)
 	tw.tween_property(self, "custom_minimum_size:y", 0.0, 0.25)

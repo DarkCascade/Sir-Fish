@@ -129,6 +129,72 @@ text = "Nothing in stock. Refresh for new wares."
 horizontal_alignment = 1
 vertical_alignment = 1
 
+[node name="Scrap" type="Control" parent="Layout/Tabs"]
+visible = false
+layout_mode = 2
+metadata/_tab_index = 2
+
+[node name="ScrapScroll" type="ScrollContainer" parent="Layout/Tabs/Scrap"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+horizontal_scroll_mode = 0
+scroll_deadzone = 24
+
+[node name="ScrapList" type="VBoxContainer" parent="Layout/Tabs/Scrap/ScrapScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 16
+
+[node name="ScrapEmpty" type="Label" parent="Layout/Tabs/Scrap"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(0.611765, 0.686275, 0.643137, 1)
+theme_override_font_sizes/font_size = 45
+text = "Nothing to scrap."
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Sell" type="Control" parent="Layout/Tabs"]
+visible = false
+layout_mode = 2
+metadata/_tab_index = 3
+
+[node name="SellScroll" type="ScrollContainer" parent="Layout/Tabs/Sell"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+horizontal_scroll_mode = 0
+scroll_deadzone = 24
+
+[node name="SellList" type="VBoxContainer" parent="Layout/Tabs/Sell/SellScroll"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 16
+
+[node name="SellEmpty" type="Label" parent="Layout/Tabs/Sell"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_colors/font_color = Color(0.611765, 0.686275, 0.643137, 1)
+theme_override_font_sizes/font_size = 45
+text = "Nothing to sell."
+horizontal_alignment = 1
+vertical_alignment = 1
+
 [node name="BackButton" type="Button" parent="Layout"]
 custom_minimum_size = Vector2(0, 96)
 layout_mode = 2
