@@ -315,8 +315,16 @@ func unequip_item(item: Item) -> void:
 ## request 2). Picks the first of the item's eligible classes whose matching
 ## slot is empty; in practice every generated item has exactly one eligible
 ## class today, so there is no real ambiguity to resolve.
+##
+## Only a class in active_party is a candidate. Generation is already party-
+## gated (Itemizer._roll_typed passes active_party), so a non-party item can
+## only reach here via the Debug harness - but without this guard it would
+## still be silently equipped onto a hero who is not on the run, which locks it
+## out of the Sell UI and feeds party_bonuses() a modifier no one is wearing.
 func _maybe_auto_equip(item: Item) -> void:
 	for hero_class: StringName in item.usable_by():
+		if hero_class not in active_party:
+			continue
 		if equipped_item(hero_class, item.slot()) == null:
 			item.equipped_by = hero_class
 			return

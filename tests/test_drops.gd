@@ -25,6 +25,24 @@ func _ready() -> void:
 	t.check(Itemizer.droppable_classes() == GameState.active_party,
 		"droppable_classes() equals active_party (got %s)" % [Itemizer.droppable_classes()])
 
+	# --- D2b: add_item() never auto-equips an item onto a class that is not
+	# on the run. Generation is party-gated so this is Debug-only in practice,
+	# but the guard keeps a forced non-party item sellable and out of the pool.
+	var d2b_party := GameState.active_party
+	var d2b_inv := GameState.inventory
+	GameState.active_party = [&"warrior"] as Array[StringName]
+	GameState.inventory = []
+	var outsider := Itemizer.generate_drop(&"mage")
+	GameState.add_item(outsider)
+	t.check(outsider.equipped_by == &"",
+		"add_item() leaves a non-party (mage) item unequipped (got %s)" % [outsider.equipped_by])
+	var warrior_item := Itemizer.generate_drop(&"warrior")
+	GameState.add_item(warrior_item)
+	t.check(warrior_item.equipped_by == &"warrior",
+		"add_item() still auto-equips a party item into its empty slot (got %s)" % [warrior_item.equipped_by])
+	GameState.inventory = d2b_inv
+	GameState.active_party = d2b_party
+
 	# --- D3: no generated item (drop, chest, shop) has an empty usable_by() -
 	var d3_empty := 0
 	for hero_class: StringName in GameState.PARTY_ORDER:

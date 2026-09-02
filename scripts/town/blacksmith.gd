@@ -41,8 +41,10 @@ const SLOT_NAMES := {
 @onready var _refresh_button: Button = $Layout/Tabs/Buy/BuyHeader/RefreshButton
 @onready var _scrap_list: VBoxContainer = $Layout/Tabs/Scrap/ScrapScroll/ScrapList
 @onready var _scrap_empty: Label = $Layout/Tabs/Scrap/ScrapEmpty
+@onready var _scrap_all_button: Button = $Layout/Tabs/Scrap/ScrapHeader/ScrapAllCommonButton
 @onready var _sell_list: VBoxContainer = $Layout/Tabs/Sell/SellScroll/SellList
 @onready var _sell_empty: Label = $Layout/Tabs/Sell/SellEmpty
+@onready var _sell_all_button: Button = $Layout/Tabs/Sell/SellHeader/SellAllCommonButton
 @onready var _back_button: Button = $Layout/BackButton
 @onready var _compare_flyout = $CompareFlyout   # CompareFlyout (untyped: custom API)
 
@@ -54,6 +56,8 @@ func _ready() -> void:
 	SceneRouter.place = SceneRouter.Place.BLACKSMITH
 	_back_button.pressed.connect(SceneRouter.go.bind(SceneRouter.Place.TOWN))
 	_refresh_button.pressed.connect(_on_refresh)
+	_scrap_all_button.pressed.connect(_on_scrap_all_common)
+	_sell_all_button.pressed.connect(_on_sell_all_common)
 	EventBus.gold_changed.connect(_on_currency_changed)
 	EventBus.scrap_changed.connect(_on_currency_changed)
 
@@ -215,6 +219,46 @@ func _build_item_rows(list: VBoxContainer, empty: Label, mode: int,
 		row.equip_changed.connect(_on_equip_changed)
 		row.play_entrance(index)
 		index += 1
+	_refresh_bulk_buttons()
+
+## The unequipped Common items - what "Sell/Scrap All Common" would act on.
+## Equipped Commons are skipped for the same reason a row locks them: a bulk
+## button should not strip a hero's gear.
+func _loose_commons() -> Array[Item]:
+	var out: Array[Item] = []
+	for item: Item in GameState.inventory:
+		if item.rarity == Item.Rarity.COMMON and item.equipped_by == &"":
+			out.append(item)
+	return out
+
+func _refresh_bulk_buttons() -> void:
+	var none := _loose_commons().is_empty()
+	_scrap_all_button.disabled = none
+	_sell_all_button.disabled = none
+
+func _on_scrap_all_common() -> void:
+	_bulk_dispose(true)
+
+func _on_sell_all_common() -> void:
+	_bulk_dispose(false)
+
+## En-masse counterpart to shop_sell_row.gd's _on_sell(): same per-item payout
+## and inventory removal, applied to every loose Common at once, then one save
+## and one rebuild of both tabs.
+func _bulk_dispose(as_scrap: bool) -> void:
+	var commons := _loose_commons()
+	if commons.is_empty():
+		return
+	for item: Item in commons:
+		if as_scrap:
+			GameState.add_scrap(item.scrap_value())
+		else:
+			GameState.add_gold(item.sell_price())
+			GameState.run_stats["items_sold"] = int(GameState.run_stats["items_sold"]) + 1
+		GameState.remove_item(item)
+	SaveGame.save_profile()
+	_build_scrap()
+	_build_sell()
 
 ## Selling and scrapping both shrink the inventory, so the sibling tab is
 ## rebuilt to drop the same row. The acting tab lets its own row animate out.
