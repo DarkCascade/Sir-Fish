@@ -630,7 +630,7 @@ func _crystal_material() -> StandardMaterial3D:
 	var mat := StandardMaterial3D.new()
 	mat.albedo_color = Tuning.C_ARCANE_DEEP
 	mat.emission_enabled = true
-	mat.emission = Tuning.C_ARCANE
+	mat.emission = Tuning.C_ARCANE_VIOLET
 	mat.emission_energy_multiplier = Tuning.CRYSTAL_EMISSION_ENERGY
 	mat.roughness = 0.18
 	mat.metallic = 0.25

@@ -597,7 +597,7 @@ const CRYSTAL_EMISSION_ENERGY := 1.15
 ## crystals read as the light source. Left at the .glb's authored green, the
 ## canopy lights up to the same value as the crystals and the whole frame
 ## flattens into one bright mint field.
-const TREE_TINT := 0.62
+const TREE_TINT := 0.52
 
 # --- 5.8c The path and the archway [ui-project-longshot] --------------------
 ## Two features the concept has and the old field did not, and between them
