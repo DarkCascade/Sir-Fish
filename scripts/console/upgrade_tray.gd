@@ -22,9 +22,8 @@ const BUTTON_BOTTOM_MARGIN := 8.0
 
 var _buttons: Array[Control] = []
 
-## [presentation redesign] The bonus strip moved out of here, through
-## status_panel.tscn, to a top-right screen overlay (bonus_panel.gd). See
-## bonus_strip.gd's own header for what it shows.
+## [slot phase 2] The bonus strip that used to sit here is gone - item effects
+## are slot icons now, read per-hero in the party modal (party_modal.gd).
 func _ready() -> void:
 	for child: Node in get_children():
 		if child is Control:

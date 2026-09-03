@@ -135,9 +135,8 @@ func _diamond(c: Vector2, r: float) -> PackedVector2Array:
 	])
 
 ## Per-upgrade medallion, arcane disc with a gold ring. quick_reels gets three
-## small dots (a reel's blank/blank/blank readout); overcharge and fat_purse
-## reuse the slot's own bolt/star glyphs, since they ARE the same effect the
-## card is describing.
+## small dots (a reel's blank/blank/blank readout); overcharge reuses the slot's
+## bolt glyph; polish draws a reel cell being wiped clear (§6).
 ## Sized off the Icon node's own box rather than a constant, so resizing the
 ## medallion in the editor actually resizes the medallion.
 func _draw_icon() -> void:
@@ -155,11 +154,13 @@ func _draw_icon() -> void:
 			for p: Vector2 in SlotSymbol.BOLT:
 				poly.append(c + (p - Vector2(0.5, 0.5)) * d * 0.62)
 			_icon.draw_colored_polygon(poly, Tuning.C_ARCANE_BRIGHT)
-		&"fat_purse":
-			var poly := PackedVector2Array()
-			for p: Vector2 in SlotSymbol.STAR:
-				poly.append(c + (p - Vector2(0.5, 0.5)) * d * 0.68)
-			_icon.draw_colored_polygon(poly, Tuning.C_GOLD_BRIGHT)
+		&"polish":
+			# [slot phase 2] "Remove blanks from the reel": an empty reel cell
+			# being wiped clear - a dark rounded token with a bright sweep.
+			var s := d * 0.30
+			_icon.draw_rect(Rect2(c - Vector2.ONE * s, Vector2.ONE * s * 2.0), Tuning.C_ARCANE_DEEP)
+			_icon.draw_rect(Rect2(c - Vector2.ONE * s, Vector2.ONE * s * 2.0), Tuning.C_GOLD, false, 3.0)
+			_icon.draw_line(c + Vector2(-s, s), c + Vector2(s, -s), Tuning.C_GOLD_BRIGHT, 4.0)
 		_:   # quick_reels
 			for i: int in range(3):
 				var dc := c + Vector2((float(i) - 1.0) * d * 0.24, 0.0)

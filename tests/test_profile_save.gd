@@ -158,6 +158,45 @@ func _ready() -> void:
 	_write_raw(path, var_to_str({"version": 1, "gold": 5}).substr(0, 12))   # truncated
 	t.check(not SaveGame.load_profile(), "load_profile() rejects a truncated payload")
 
+	# --- S6: [slot phase 2] a save carrying a retired `slot_purse` modifier ---
+	# `slot_purse` left Itemizer.MODIFIERS with slot gold (§5). Items on disk
+	# still hold it; from_dict reads it verbatim and it must resolve to NO icon
+	# and never crash, warn in a loop, or fail the load. No VERSION bump.
+	var legacy := {
+		"version": SaveGame.VERSION, "gold": 42, "scrap": 3,
+		"active_party": [&"warrior"], "heroes": [],
+		"inventory": [{
+			"display_name": "Rusty Signet", "kind": int(Item.Kind.WEAPON),
+			"rarity": int(Item.Rarity.MAGIC), "weapon_type": &"ring", "value": 60,
+			"equipped_by": &"warrior", "forge_count": 0,
+			"modifiers": [
+				{ "id": &"slot_purse", "label": "+7 Coin Yield", "caption": "Coin Yield",
+					"pct": false, "roll": 7, "value_mult": 0.5 },
+				{ "id": &"dmg_flat", "label": "+5 Damage", "caption": "Damage",
+					"pct": false, "roll": 5, "value_mult": 0.4 },
+			],
+		}],
+	}
+	_write_raw(path, var_to_str(legacy))
+	t.check(SaveGame.load_profile(), "S6: a save with a legacy slot_purse modifier still loads")
+	var legacy_item: Item = GameState.inventory[0] if not GameState.inventory.is_empty() else null
+	t.check(legacy_item != null and legacy_item.modifiers.size() == 2,
+		"S6: the legacy item keeps both modifiers verbatim")
+	# party_bonuses() must not choke on the unknown id, and must not count it.
+	var lb := GameState.party_bonuses()
+	t.check(not lb.has("slot_purse"), "S6: party_bonuses() no longer has a slot_purse key")
+	t.check(int(lb["dmg_flat"]) == 5, "S6: the legit dmg_flat still aggregates (got %d)" % int(lb["dmg_flat"]))
+	t.check(SlotIcon.from_modifier(legacy_item.modifiers[0]).is_empty(),
+		"S6: slot_purse maps to no board icon")
+	t.check(not SlotIcon.from_modifier(legacy_item.modifiers[1]).is_empty(),
+		"S6: dmg_flat still maps to a board icon")
+	var reel := GameState.hero_reel_icons(&"warrior")
+	var purse_in_reel := false
+	for ic: Dictionary in reel["icons"]:
+		if StringName(ic.get("id", &"")) == &"slot_purse":
+			purse_in_reel = true
+	t.check(not purse_in_reel, "S6: the party modal's reel readout skips slot_purse")
+
 	# Clean up so the next headless run starts fresh.
 	if FileAccess.file_exists(path):
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(path))

@@ -24,7 +24,7 @@ signal combatant_attacked(attacker: Node, target: Node, amount: int)
 signal combatant_damaged(target: Node, amount: int, previous_hp: int, new_hp: int)
 signal combatant_healed(target: Node, amount: int)
 signal combatant_died(c: Node)
-signal hero_damage_dealt(amount: int)          # feeds the slot's rolling 3-hit buffer
+signal hero_damage_dealt(amount: int)          # [slot phase 2] no console consumer now; kept for future use
 
 # --- Economy / items ---
 signal gold_changed(new_total: int, delta: int)
@@ -54,6 +54,10 @@ signal profile_ready()
 
 # --- Console ---
 signal slot_spin_started()
-signal slot_spin_stopped(symbols: Array)       # Array[int] of 3 Tuning.Sym values
-signal slot_payout(kind: String, count: int)   # kind in "lightning"|"gold"|"heal"
+signal slot_spin_stopped(icon_ids: Array)       # [slot phase 2] the 9 board icon ids, row-major
+## [slot phase 2] Redefined for per-icon resolution. `kind` is
+## "jackpot" | "damage" | "heal"; `magnitude` is the spin's total damage or heal.
+## Emitted once per paying spin. sir_fish.gd reacts off it (jackpot -> smug,
+## anything else -> cheer).
+signal slot_payout(kind: String, magnitude: int)
 signal upgrade_purchased(id: StringName, new_level: int)   # [v2] spec 17.6

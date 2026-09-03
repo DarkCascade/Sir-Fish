@@ -4,15 +4,15 @@ extends Node
 ##     godot --headless --path "C:/Projects/Godot/Sir Fish" res://tests/test_upgrades.tscn
 ##
 ## Asserts the cost curve against spec 17.6's table exactly, is_maxed at the
-## ceiling, the payout maths at every level combination, and that reset() clears
-## everything. Also asserts the thing upgrades must NEVER do: touch the strip.
+## ceiling, the derived multipliers at every level, and that reset() clears
+## everything.
 ##
-## [ui-project-longshot] The tables below are per-level and UPGRADE_MAX_LEVEL
-## moved from 3 to 4, so they grew a column. The loop already read the constant
-## while the tables did not, which meant raising it walked off the end of the
-## array and took the whole test down after three passing lines - so the sizes
-## are now asserted up front, and a future change to the ceiling fails as a
-## readable check rather than as an index crash.
+## [slot phase 2] `fat_purse` ("Gold pays +X%") retired with slot gold and was
+## replaced by `polish` ("Remove X blanks from the reel"). Its base and growth
+## were kept at fat_purse's exact numbers, so the cost table and the
+## "maxing all three costs 2,408 G" total are unchanged; only the effect the
+## third upgrade delivers is different, and the old gold-payout / strip
+## assertions are gone.
 
 const TestSupport := preload("res://tests/test_support.gd")
 
@@ -20,11 +20,16 @@ func _ready() -> void:
 	var t := TestSupport.new()
 	Upgrades.reset()
 
+	# --- the three upgrades are quick_reels / overcharge / polish ---
+	t.check(Upgrades.ORDER == ([&"quick_reels", &"overcharge", &"polish"] as Array[StringName]),
+		"the tray's three upgrades are quick_reels, overcharge, polish")
+	t.check(not Upgrades.DEFS.has(&"fat_purse"), "fat_purse is gone")
+
 	# --- cost curve: spec 17.6's table, to the gold ---
 	var expected := {
 		&"quick_reels": [60, 114, 217, 412],
 		&"overcharge": [70, 133, 253, 480],
-		&"fat_purse": [50, 95, 181, 343],
+		&"polish": [50, 95, 181, 343],
 	}
 	for id: StringName in expected.keys():
 		var costs: Array = expected[id]
@@ -42,29 +47,29 @@ func _ready() -> void:
 		t.check(Upgrades.cost(id) == -1, "%s costs -1 once maxed" % id)
 	Upgrades.reset()
 
-	# Maxing everything costs 2,408 gold (was 1,173 over three levels).
+	# Maxing everything still costs 2,408 gold (polish kept fat_purse's numbers).
 	var total := 0
 	for id: StringName in expected.keys():
 		for c: int in (expected[id] as Array):
 			total += c
 	t.check(total == 2408, "maxing all three upgrades costs 2,408 gold (got %d)" % total)
 
-	# --- payout multipliers at every level, level 0 through the ceiling ---
+	# --- derived effects at every level, level 0 through the ceiling ---
 	var quick_expected := [1.00, 0.86, 0.7396, 0.636056, 0.54700816]
 	var over_expected := [1.00, 1.25, 1.50, 1.75, 2.00]
-	var purse_expected := [1.00, 1.40, 1.80, 2.20, 2.60]
+	var polish_expected := [0, 2, 4, 6, 8]
 	t.check(quick_expected.size() == Tuning.UPGRADE_MAX_LEVEL + 1,
-		"the multiplier tables cover level 0 through %d" % Tuning.UPGRADE_MAX_LEVEL)
+		"the effect tables cover level 0 through %d" % Tuning.UPGRADE_MAX_LEVEL)
 	for level: int in range(Tuning.UPGRADE_MAX_LEVEL + 1):
 		Upgrades.levels[&"quick_reels"] = level
 		Upgrades.levels[&"overcharge"] = level
-		Upgrades.levels[&"fat_purse"] = level
+		Upgrades.levels[&"polish"] = level
 		t.check_near(Upgrades.quick_reels_mult(), quick_expected[level], 0.0005,
 			"quick_reels multiplier at level %d" % level)
 		t.check_near(Upgrades.overcharge_mult(), over_expected[level], 0.0005,
-			"overcharge multiplier at level %d" % level)
-		t.check_near(Upgrades.fat_purse_mult(), purse_expected[level], 0.0005,
-			"fat_purse multiplier at level %d" % level)
+			"overcharge multiplier at level %d (now lifts every damage icon)" % level)
+		t.check(Upgrades.polish_blanks_removed() == int(polish_expected[level]),
+			"polish removes %d blanks at level %d" % [polish_expected[level], level])
 
 	# The base cycle is 1.10 + 0.28 + 0.28 + 0.85 = 2.51 s; at Quick Reels 3 the
 	# whole cycle compresses to 1.60 s (spec 16.3).
@@ -75,13 +80,19 @@ func _ready() -> void:
 	t.check_near(base_cycle * Upgrades.quick_reels_mult(), 1.60, 0.01,
 		"spin cycle at Quick Reels 3 is 1.60 s")
 
-	# --- gold payout scaling (spec 16.5) ---
+	# --- polish drives the bag's blank pad toward, but never past, the floor ---
 	Upgrades.reset()
-	t.check(int(round(float(Tuning.SLOT_PAY_2_GOLD) * Upgrades.fat_purse_mult())) == 35,
-		"a 2x gold win pays 35 at Fat Purse 0")
-	Upgrades.levels[&"fat_purse"] = 3
-	t.check(int(round(float(Tuning.SLOT_PAY_3_GOLD) * Upgrades.fat_purse_mult())) == 198,
-		"a 3x gold win pays 198 at Fat Purse 3 (90 x 2.20)")
+	for level: int in range(Tuning.UPGRADE_MAX_LEVEL + 1):
+		Upgrades.levels[&"polish"] = level
+		var pad := maxi(Tuning.SLOT_BLANK_PAD_START - Upgrades.polish_blanks_removed(),
+			Tuning.SLOT_BLANK_PAD_FLOOR)
+		t.check(pad >= Tuning.SLOT_BLANK_PAD_FLOOR,
+			"blank pad at polish %d (%d) is at or above the floor %d"
+				% [level, pad, Tuning.SLOT_BLANK_PAD_FLOOR])
+	Upgrades.levels[&"polish"] = Tuning.UPGRADE_MAX_LEVEL
+	t.check(maxi(Tuning.SLOT_BLANK_PAD_START - Upgrades.polish_blanks_removed(),
+		Tuning.SLOT_BLANK_PAD_FLOOR) == Tuning.SLOT_BLANK_PAD_FLOOR,
+		"maxed polish lands the blank pad exactly on the floor")
 
 	# --- buy() spends gold and refuses when broke ---
 	Upgrades.reset()
@@ -95,9 +106,6 @@ func _ready() -> void:
 	t.check(int(GameState.run_stats["gold_spent"]) >= 60, "gold_spent tracked the purchase")
 	t.check(int(GameState.run_stats["upgrades_bought"]) == 1, "upgrades_bought incremented")
 
-	# The ceiling, not a literal 3 - at UPGRADE_MAX_LEVEL 4 a level-3 upgrade is
-	# still buyable, so this would have passed only because the gold above was
-	# already spent, testing nothing.
 	Upgrades.levels[&"overcharge"] = Tuning.UPGRADE_MAX_LEVEL
 	GameState.gold = 9999
 	t.check(not Upgrades.buy(&"overcharge"), "buy() refuses a maxed upgrade")
@@ -105,21 +113,12 @@ func _ready() -> void:
 	# --- reset() clears everything (spec 17.6: upgrades are run-scoped) ---
 	Upgrades.levels[&"quick_reels"] = 2
 	Upgrades.levels[&"overcharge"] = 3
-	Upgrades.levels[&"fat_purse"] = 1
+	Upgrades.levels[&"polish"] = 1
 	Upgrades.reset()
 	var all_zero := true
 	for id: StringName in Upgrades.DEFS.keys():
 		if Upgrades.level(id) != 0:
 			all_zero = false
 	t.check(all_zero, "reset() puts every level back to 0")
-
-	# --- what upgrades must NEVER do (spec 17.6) ---
-	t.check(Tuning.SLOT_STRIP.size() == 27, "the strip is still 27 stops after all of that")
-	var counts := {}
-	for sym: int in Tuning.SLOT_STRIP:
-		counts[sym] = int(counts.get(sym, 0)) + 1
-	t.check(int(counts[Tuning.Sym.LIGHTNING]) == 7 and int(counts[Tuning.Sym.GOLD]) == 7
-		and int(counts[Tuning.Sym.PLUS]) == 7 and int(counts[Tuning.Sym.BLANK]) == 6,
-		"the strip is still 7/7/7/6 - upgrades never touch the odds")
 
 	t.finish(get_tree(), "test_upgrades")

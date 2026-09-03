@@ -19,19 +19,16 @@ color = Color(0.031373, 0.078431, 0.070588, 1)
 
 [node name="CellAbove" parent="." unique_id=1018099280 instance=ExtResource("1_symbol")]
 anchors_preset = 0
-symbol = 0
 
 [node name="CellPayline" parent="." unique_id=717166062 instance=ExtResource("1_symbol")]
 anchors_preset = 0
 offset_top = 240.0
 offset_bottom = 480.0
-symbol = 1
 
 [node name="CellBelow" parent="." unique_id=365437346 instance=ExtResource("1_symbol")]
 anchors_preset = 0
 offset_top = 480.0
 offset_bottom = 720.0
-symbol = 2
 
 [node name="Payline" type="ColorRect" parent="." unique_id=942100977]
 layout_mode = 0

@@ -93,9 +93,11 @@ func _burst_bubbles() -> void:
 
 # --- reactions --------------------------------------------------------------
 
-func _on_slot_payout(_kind: String, count: int) -> void:
-	# A pair makes him cheer; a triple makes him smug.
-	play(&"smug" if count >= 3 else &"cheer")
+func _on_slot_payout(kind: String, _magnitude: int) -> void:
+	# [slot phase 2] Any paying spin makes him cheer; a payline jackpot (three of
+	# a kind on the centre row) makes him smug. A fuller board means more of
+	# these fire per fight, so he is MORE expressive, not less.
+	play(&"smug" if kind == "jackpot" else &"cheer")
 
 func _on_upgrade_purchased(_id: StringName, _level: int) -> void:
 	play(&"smug")

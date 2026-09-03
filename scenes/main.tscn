@@ -8,9 +8,6 @@
 [ext_resource type="Script" uid="uid://c3xbq35shguud" path="res://scripts/run/run_controller.gd" id="7_run"]
 [ext_resource type="Script" uid="uid://dvddxwaocx4rn" path="res://scripts/run/main_layout.gd" id="8_layout"]
 [ext_resource type="Shader" uid="uid://cj1ouykw11gwc" path="res://assets/shaders/vignette.gdshader" id="9_vignette"]
-[ext_resource type="PackedScene" uid="uid://dfic85ketg3l1" path="res://scenes/overlay/bonus_panel.tscn" id="10_a8y0u"]
-[ext_resource type="Script" uid="uid://bwut72okvld1h" path="res://scripts/console/ornate_frame.gd" id="12_jbj1t"]
-[ext_resource type="PackedScene" path="res://scenes/console/bonus_strip.tscn" id="13_muem4"]
 
 [sub_resource type="ShaderMaterial" id="vignette_mat"]
 shader = ExtResource("9_vignette")
@@ -88,24 +85,3 @@ layout_mode = 1
 
 [node name="RunController" type="Node" parent="." unique_id=940384693]
 script = ExtResource("7_run")
-
-[node name="BonusPanel" parent="." unique_id=1821307716 instance=ExtResource("10_a8y0u")]
-layout_mode = 1
-
-[node name="Frame2" type="Control" parent="BonusPanel" unique_id=854837255]
-anchors_preset = 0
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-mouse_filter = 2
-script = ExtResource("12_jbj1t")
-border = 8.0
-corner_radius = 12.0
-edge_diamonds = false
-
-[node name="BonusStrip2" parent="BonusPanel" unique_id=1549312681 instance=ExtResource("13_muem4")]
-custom_minimum_size = Vector2(190, 30)
-anchors_preset = 0
-offset_right = 190.0
-vertical = true

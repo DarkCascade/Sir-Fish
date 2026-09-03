@@ -3,71 +3,67 @@ extends Node
 ##
 ##     godot --headless --path "C:/Projects/Godot/Sir Fish" res://tests/test_economy.tscn
 ##
-## NOTE ON THE GOLD ASSERTION [v3, V10 - ratified, stated literally in spec
-## 19.3 rather than as an implementer deviation from v2]. A naive reading of
-## "14 pre-shop spins puts gold on hand in [150, 260]" as a single-sample
-## assertion is a defect: the EXPECTED value is exactly what spec 5.4 predicts
-## - 75 + 14 x 6.80 = 170 - but a single 14-spin sample has enormous variance.
-## Gold lands on only ~16.7% of spins, so a run with no gold wins at all is
-## entirely ordinary and finishes on 75, well below the floor. A literal
-## single-sample implementation fails the gate at random, which teaches the
-## next author to ignore red - worse than not having the test.
+## [slot phase 2] The slot no longer produces gold in ANY form (§5). Gold now
+## comes only from enemy drops (Tuning.ENEMY_GOLD_DROP, BOSS_LOOT_MULT), item
+## sales, and quest rewards. That removed roughly half the run's income, so
+## ENEMY_GOLD_DROP was re-tuned upward and this test's pre-shop model changed
+## from "14 slot spins" to "the kills of the two combats before the encounter-3
+## shop".
 ##
-## The general rule spec 19.3 establishes: an assertion on a random quantity
-## states the statistic AND the sample size. This test asserts the MEAN over
-## 1,000 simulated runs, and separately reports the single-run distribution
-## (min / p25 / median / p75 / max) as informational output so the spread
-## stays visible and nobody re-derives the same wrong conclusion from the mean
-## alone.
+## NOTE ON THE GOLD ASSERTION [v3, V10 - ratified]. An assertion on a random
+## quantity states the statistic AND the sample size (spec 19.3). This test
+## asserts the MEAN over 1,000 simulated runs and separately reports the
+## single-run distribution as informational output so the spread stays visible.
 
 const TestSupport := preload("res://tests/test_support.gd")
 
 const RUNS := 1000
-const PRE_SHOP_SPINS := 14
 const SHOP_TRIALS := 1000
+
+## The endless layout up to the encounter-3 shop: COMBAT, LOOT, COMBAT, SHOP.
+## Two combats, each _build_endless_level(1)'s enemy_count = mini(2 + 1/3, 3) = 2
+## grunts. The LOOT chest pays items, not gold, so it does not feed this.
+const PRE_SHOP_COMBATS := 2
+const ENEMIES_PER_COMBAT := 2
 
 func _ready() -> void:
 	var t := TestSupport.new()
 	Upgrades.reset()
 
-	# --- expected gold per spin (spec 5.4's arithmetic) ---
-	var p_two := 3.0 * 7.0 * 7.0 * 20.0 / 19683.0     # exactly 2 of a given symbol
-	var p_three := 7.0 * 7.0 * 7.0 / 19683.0          # exactly 3
-	t.check_near(p_two, 0.14937, 0.0001, "P(exactly 2 of a given symbol) = 0.14937")
-	t.check_near(p_three, 0.01743, 0.0001, "P(exactly 3 of a given symbol) = 0.01743")
-	var per_spin := p_two * float(Tuning.SLOT_PAY_2_GOLD) + p_three * float(Tuning.SLOT_PAY_3_GOLD)
-	t.check_near(per_spin, 6.80, 0.02, "expected gold per spin at the v2 payouts")
+	t.check(Tuning.STARTING_GOLD == 75, "STARTING_GOLD is 75 (the economy baseline)")
 
-	t.check(Tuning.STARTING_GOLD == 75, "STARTING_GOLD is 75")
-	t.check(Tuning.SLOT_PAY_2_GOLD == 35, "SLOT_PAY_2_GOLD is 35")
-	t.check(Tuning.SLOT_PAY_3_GOLD == 90, "SLOT_PAY_3_GOLD is 90")
-
-	# --- simulated pre-shop gold ---
+	# --- simulated pre-shop gold: two combats of grunt kills ---
 	var totals: Array[int] = []
 	var sum := 0
 	for _r: int in range(RUNS):
 		var gold := Tuning.STARTING_GOLD
-		for _s: int in range(PRE_SHOP_SPINS):
-			gold += _simulate_spin_gold()
+		for _c: int in range(PRE_SHOP_COMBATS):
+			for _e: int in range(ENEMIES_PER_COMBAT):
+				gold += _simulate_kill_gold(false)
 		totals.append(gold)
 		sum += gold
 	totals.sort()
 	var mean := float(sum) / float(RUNS)
-	# Explicit percentile report (spec 19.3): the mean alone hides how wide the
-	# single-run spread actually is.
 	@warning_ignore("integer_division")
 	var p25 := totals[RUNS / 4]
 	@warning_ignore("integer_division")
 	var p75 := totals[RUNS * 3 / 4]
-	print(("gold on hand after %d spins over %d runs: " +
-		"min %d, p25 %d, median %d, p75 %d, mean %.1f, max %d")
-		% [PRE_SHOP_SPINS, RUNS, totals[0], p25, totals[RUNS / 2], p75, mean, totals[RUNS - 1]])
+	print(("gold on hand at the encounter-3 shop over %d runs " +
+		"(%d start + %d grunt kills): min %d, p25 %d, median %d, p75 %d, mean %.1f, max %d")
+		% [RUNS, Tuning.STARTING_GOLD, PRE_SHOP_COMBATS * ENEMIES_PER_COMBAT,
+			totals[0], p25, totals[RUNS / 2], p75, mean, totals[RUNS - 1]])
 	t.check_between(mean, 150.0, 260.0,
 		"mean gold on hand at the encounter-3 shop over %d runs" % RUNS)
 
-	# Across a full six-encounter run the slot pays roughly 300 gold (spec 5.4).
-	t.check_between(per_spin * 44.0, 250.0, 350.0,
-		"a full run's ~44 spins pay roughly 300 gold")
+	# A boss kill still pays BOSS_LOOT_MULT x a grunt's range.
+	var boss_lo := Tuning.ENEMY_GOLD_DROP.x * Tuning.BOSS_LOOT_MULT
+	var boss_hi := Tuning.ENEMY_GOLD_DROP.y * Tuning.BOSS_LOOT_MULT
+	var boss_ok := true
+	for _i: int in range(2000):
+		var g := _simulate_kill_gold(true)
+		if g < boss_lo or g > boss_hi:
+			boss_ok = false
+	t.check(boss_ok, "a boss kill pays inside [%d, %d]" % [boss_lo, boss_hi])
 
 	# --- shop stock always offers something buyable (spec 13.6) ---
 	var affordable_runs := 0
@@ -109,25 +105,13 @@ func _ready() -> void:
 	var probe := Itemizer.generate_item()
 	t.check(probe.buy_price() == int(round(float(probe.value) * 1.5)), "buy price is value x 1.5")
 	t.check(probe.sell_price() == int(round(float(probe.value) * 0.5)), "sell price is value x 0.5")
-	# [refinement-pass-3] Scrapping at the blacksmith reclaims a quarter of the
-	# gold sell price as scrap - a 100 G item becomes 25 scrap.
 	t.check(probe.scrap_value() == int(round(float(probe.sell_price()) * 0.25)),
 		"scrap value is sell price x 0.25")
 
 	t.finish(get_tree(), "test_economy")
 
-## One spin's gold contribution, using the real strip and the real win rule.
-func _simulate_spin_gold() -> int:
-	var symbols: Array[int] = []
-	for _i: int in range(3):
-		symbols.append(Tuning.SLOT_STRIP[RNG.randi_range(0, Tuning.SLOT_REEL_STOPS - 1)])
-	var counts := {}
-	for s: int in symbols:
-		if s == Tuning.Sym.BLANK:
-			continue
-		counts[s] = int(counts.get(s, 0)) + 1
-	if int(counts.get(Tuning.Sym.GOLD, 0)) >= 3:
-		return int(round(float(Tuning.SLOT_PAY_3_GOLD) * Upgrades.fat_purse_mult()))
-	if int(counts.get(Tuning.Sym.GOLD, 0)) >= 2:
-		return int(round(float(Tuning.SLOT_PAY_2_GOLD) * Upgrades.fat_purse_mult()))
-	return 0
+## One kill's gold contribution, using the real drop range and the real
+## boss multiplier (mirrors loot_pickup.gd).
+func _simulate_kill_gold(is_boss: bool) -> int:
+	var mult := Tuning.BOSS_LOOT_MULT if is_boss else 1
+	return RNG.randi_range(Tuning.ENEMY_GOLD_DROP.x, Tuning.ENEMY_GOLD_DROP.y) * mult

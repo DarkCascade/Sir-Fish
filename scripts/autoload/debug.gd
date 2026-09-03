@@ -5,7 +5,7 @@ extends Node
 ## set_game_node_property can set a property but cannot call a function. So the
 ## harness exposes ONE string property whose setter parses and executes:
 ##
-##   set_game_node_property("/root/Debug", "command", "slot 0 0 0")
+##   set_game_node_property("/root/Debug", "command", "slot dmg_flat slot_bolt slot_mend")
 ##
 ## Every command writes exactly one "[DEBUG] ..." line to the output log, which
 ## get_output_log reads back. Inert in exported release builds.
@@ -19,8 +19,10 @@ var command: String = "":
 		if enabled and not value.is_empty():
 			_run(value)
 
-## Forced payline for the NEXT spin, or an empty array. Cleared once consumed.
-var slot_override: Array[int] = []
+## [slot phase 2] Forced BOARD contents for the NEXT spin - up to nine SlotIcon
+## dicts, row-major, padded with blanks to nine. Empty = draw from the bag
+## normally. Cleared once consumed by SlotMachine._draw_board().
+var slot_override: Array = []
 ## Forced buy prices for the next shop's three cards, or an empty array.
 var shop_price_override: Array[int] = []
 
@@ -170,19 +172,47 @@ func _cmd_kill(args: Array) -> void:
 	c.die()
 	_log("kill -> %s dead" % args[0])
 
+## Forces the next spin's 3x3 board. Each arg is an icon id, filled row-major:
+##   slot <id0> [id1] ... [id8]
+## Ids: dmg_flat dmg_pct elem_fire elem_ice elem_light slot_bolt slot_mend
+##      innate_dmg innate_heal   (blank / - / _ for an empty cell)
+## Missing cells are blanks. `slot clear` drops the override.
 func _cmd_slot(args: Array) -> void:
-	if args.size() < 3:
-		_log("slot -> needs <s0> <s1> <s2>")
+	if args.is_empty():
+		_log("slot -> needs <id0> [id1] ... [id8], or 'clear'")
 		return
-	slot_override = [
-		clampi(int(String(args[0])), 0, 3),
-		clampi(int(String(args[1])), 0, 3),
-		clampi(int(String(args[2])), 0, 3),
-	]
-	_log("slot -> next payline forced to %s" % str(slot_override))
+	if String(args[0]) == "clear":
+		slot_override = []
+		_log("slot -> board override cleared")
+		return
+	var board: Array = []
+	for i: int in range(mini(args.size(), Tuning.SLOT_BOARD_CELLS)):
+		board.append(_slot_icon_for(String(args[i])))
+	while board.size() < Tuning.SLOT_BOARD_CELLS:
+		board.append(SlotIcon.blank())
+	slot_override = board
+	_log("slot -> next board forced to %s" % str(board.map(
+		func(ic: Dictionary) -> StringName: return StringName(ic.get("id", &"")))))
+
+func _slot_icon_for(token: String) -> Dictionary:
+	var id := StringName(token)
+	match token:
+		"blank", "-", "_", "":
+			return SlotIcon.blank()
+		"innate_dmg":
+			return { "id": SlotIcon.INNATE_DAMAGE, "roll": Tuning.SLOT_INNATE_DAMAGE,
+				"enhanced": false, "innate": true }
+		"innate_heal":
+			return { "id": SlotIcon.INNATE_HEAL, "roll": Tuning.SLOT_INNATE_HEAL_PCT,
+				"enhanced": false, "innate": true }
+	if SlotIcon.KNOWN_MODIFIER_IDS.has(id):
+		# A mid roll for a forced icon - enough to see it land.
+		return { "id": id, "roll": 6, "enhanced": false }
+	_log("slot -> unknown icon id '%s', using blank" % token)
+	return SlotIcon.blank()
 
 ## Consumed by SlotMachine at the top of a spin; the override is one-shot.
-func take_slot_override() -> Array[int]:
+func take_slot_override() -> Array:
 	var out := slot_override
 	slot_override = []
 	return out

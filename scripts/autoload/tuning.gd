@@ -264,7 +264,12 @@ const FORGE_ENHANCED_MULT := 2
 ## VALUE rolled per kill, NOT an object count (spec 9.3): spawn
 ## mini(value, LOOT_PICKUP_MAX_OBJECTS) meshes to represent it and split the
 ## value across them. Floors of 3 / 2 (not 0) so every kill pays something.
-const ENEMY_GOLD_DROP := Vector2i(3, 9)
+## [slot phase 2] Bumped hard from Vector2i(3, 9). The slot no longer produces
+## gold in any form (§5), which removed roughly half the run's income; enemy
+## drops and item sales are now the whole faucet outside quest rewards. Re-tuned
+## against test_economy.gd until the encounter-3 shop's mean-gold band and the
+## 95%-affordable gate both pass again.
+const ENEMY_GOLD_DROP := Vector2i(22, 40)
 const ENEMY_SCRAP_DROP := Vector2i(2, 6)
 const BOSS_LOOT_MULT := 3
 const LOOT_PICKUP_MAX_OBJECTS := 5
@@ -300,32 +305,37 @@ const DROP_LABEL_LIFT := 1.2
 ## name AND the class, so it is roughly twice as wide as a chest label.
 const DROP_LABEL_FONT_SIZE := 34
 
-# --- 5.5 Slot machine -------------------------------------------------------
-enum Sym { LIGHTNING, GOLD, PLUS, BLANK }
-
-const SLOT_REEL_STOPS := 27
-
-## 27 stops: LIGHTNING 7, GOLD 7, PLUS 7, BLANK 6.
-## P(win) = 9849 / 19683 = 0.500381... (spec 16.2). Recompute if you edit this.
-const SLOT_STRIP: Array[int] = [
-	Sym.LIGHTNING, Sym.BLANK,     Sym.GOLD,      Sym.PLUS,      Sym.LIGHTNING,
-	Sym.GOLD,      Sym.PLUS,      Sym.BLANK,     Sym.LIGHTNING, Sym.GOLD,
-	Sym.PLUS,      Sym.LIGHTNING, Sym.BLANK,     Sym.GOLD,      Sym.PLUS,
-	Sym.LIGHTNING, Sym.GOLD,      Sym.PLUS,      Sym.BLANK,     Sym.LIGHTNING,
-	Sym.GOLD,      Sym.PLUS,      Sym.LIGHTNING, Sym.BLANK,     Sym.GOLD,
-	Sym.PLUS,      Sym.BLANK,
-]
+# --- 5.5 Slot machine — the icon bag [slot phase 2] -----------------------
+## The reel is a BAG rebuilt from the party, not a fixed 27-stop strip: one
+## icon per living hero (innate), one per equipped item modifier, plus
+## SLOT_BLANK_PAD blanks. Each spin draws nine icons WITHOUT replacement onto
+## the 3x3 board and every non-blank icon resolves its own effect independently
+## (spec: Slot Phase 2). The match-to-win payline survives only as a bonus -
+## three of a kind on the centre row resolve twice. Slot gold is gone entirely.
 
 const SLOT_SPIN_DURATION := 1.10          # reel 1 stop time
 const SLOT_REEL_STAGGER := 0.28           # reel 2 stops +0.28s, reel 3 stops +0.56s
 const SLOT_RESULT_HOLD := 0.85            # pause after reel 3 stops before the next spin
-const SLOT_PAY_2_GOLD := 35               # [v2] was 25
-const SLOT_PAY_3_GOLD := 90               # [v2] was 50
-const SLOT_HEAL_2_FRACTION := 0.25        # lowest-hp hero healed 25% of max
-const SLOT_HEAL_3_FRACTION := 0.25        # entire party healed 25% of max
-const SLOT_LIGHTNING_2_MULT := 1.0        # damage = avg(last 3 hero strikes) x 1.0
-const SLOT_LIGHTNING_3_MULT := 2.0        # x 2.0
-const SLOT_LIGHTNING_FALLBACK := 12       # used if fewer than 1 hero strike recorded
+
+## The nine scoring cells: _cells[1], _cells[2], _cells[3] on each of the three
+## reels (offsets -1 / 0 / +1 from the payline). _cells[0] / _cells[4] are
+## scroll bleed and are never scored.
+const SLOT_BOARD_CELLS := 9
+
+## Blanks mixed into the bag. Starts high so a fresh party's board is mostly
+## empty; the `polish` upgrade (§6) buys it down toward the floor, two blanks a
+## level. Draw-without-replacement over the bag is what keeps a cold streak
+## from ever leaving the party with no output at all.
+const SLOT_BLANK_PAD_START := 12
+const SLOT_BLANK_PAD_FLOOR := 4
+
+## Innate icons (§2): every living hero puts ONE icon in the bag regardless of
+## gear - a damage icon for the warrior and ranger, a heal icon for the mage.
+## They have no item behind them, so their magnitude is fixed here rather than
+## read off a modifier `roll`. This is the floor that reconnects party
+## composition to the slot and guarantees the bag is never empty of icons.
+const SLOT_INNATE_DAMAGE := 6            # flat, before the spin's dmg_pct / overcharge
+const SLOT_INNATE_HEAL_PCT := 8         # percent of max hp to the lowest-hp hero
 ## [v2] Attract mode (spec 16.6 / Q17): out of combat the reels drift instead of
 ## stopping. "Does nothing" means nothing that affects the game - not dead air.
 const SLOT_ATTRACT_SPEED := 0.15          # fraction of spin speed while drifting
@@ -362,7 +372,7 @@ const SLOT_CABINET_SCALE := 1.0
 ## This is the one change in the art pass that moves BALANCE and not just
 ## pixels, and it is worth stating plainly: a fourth level costs
 ## base x 1.9^3 = 6.9x the first, and every upgrade's ceiling effect rises one
-## step (Quick Reels to 0.86^4, Overcharge to +100%, Fat Purse to +160%).
+## step (Quick Reels to 0.86^4, Overcharge to +100%, Polish to -8 blanks).
 ## Drop it back to 3 and the cards draw three pips again with nothing else to
 ## undo.
 const UPGRADE_MAX_LEVEL := 4
@@ -372,10 +382,17 @@ const UPGRADE_QUICK_REELS_BASE := 60
 const UPGRADE_QUICK_REELS_STEP := 0.86    # spin-cycle multiplier per level (compounding)
 
 const UPGRADE_OVERCHARGE_BASE := 70
-const UPGRADE_OVERCHARGE_STEP := 0.25     # +25% lightning damage per level (additive)
+## [slot phase 2] Was "+X% Lightning damage". Lightning is gone; this now lifts
+## EVERY damage icon on the board by +25% per level (additive).
+const UPGRADE_OVERCHARGE_STEP := 0.25     # +25% to all damage icons per level (additive)
 
-const UPGRADE_FAT_PURSE_BASE := 50
-const UPGRADE_FAT_PURSE_STEP := 0.40      # +40% gold per level (additive)
+## [slot phase 2] Replaces `fat_purse` ("Gold pays +X%"), which retired with slot
+## gold. `polish` removes SLOT_POLISH_STEP blanks from the bag per level,
+## reducing SLOT_BLANK_PAD_START toward SLOT_BLANK_PAD_FLOOR (12 -> 4 over the
+## four levels). Base and growth kept at fat_purse's exact numbers so the tray's
+## cost curve and the "maxing all three costs 2,408 G" total are unchanged.
+const UPGRADE_POLISH_BASE := 50
+const UPGRADE_POLISH_STEP := 2           # blanks removed from the bag per level
 
 # --- 6.1 Palette -------------------------------------------------------------
 ## [ui-project-longshot] Bioluminescent night forest, retargeted to the new art
