@@ -478,6 +478,7 @@ outline_size = 0
 script = ExtResource("2_fish")
 
 [node name="Model" parent="FishViewport/SirFish" unique_id=882540503 instance=ExtResource("3_8mb4c")]
+transform = Transform3D(1.5, 0, 0, 0, 1.5, 0, 0, 0, 1.5, 0, 0, 0)
 
 [node name="SirFishRig2" type="Node3D" parent="FishViewport/SirFish/Model" unique_id=1371924556]
 

@@ -64,8 +64,14 @@ func _ready() -> void:
 	t.check(dupes == 0, "no item carries a duplicate modifier id (%d found)" % dupes)
 	t.check(missing_roll == 0, "every modifier stores its raw roll (%d missing)" % missing_roll)
 
-	# The pool is 8 entries in v2, so a Rare's three draws are comfortably distinct.
-	t.check(Itemizer.MODIFIERS.size() == 8, "the modifier pool has 8 entries")
+	# [slot phase 2] The pool dropped to 7 entries when `slot_purse` was removed
+	# with slot gold (§5) - still comfortably above RARITY_MOD_COUNT's max of 4.
+	t.check(Itemizer.MODIFIERS.size() == 7, "the modifier pool has 7 entries")
+	var has_purse := false
+	for def: Dictionary in Itemizer.MODIFIERS:
+		if def["id"] == &"slot_purse":
+			has_purse = true
+	t.check(not has_purse, "slot_purse is no longer in the modifier pool")
 
 	var wrong_count := 0
 	for item: Item in items:

@@ -1,8 +1,7 @@
-[gd_scene load_steps=6 format=3]
+[gd_scene load_steps=5 format=3]
 
 [ext_resource type="Script" path="res://scripts/modals/inventory_modal.gd" id="1_modal"]
 [ext_resource type="PackedScene" path="res://scenes/modals/compare_flyout.tscn" id="2_compare"]
-[ext_resource type="PackedScene" path="res://scenes/console/bonus_strip.tscn" id="3_bonus"]
 [ext_resource type="Shader" path="res://assets/shaders/reliquary_mist.gdshader" id="4_mist"]
 [ext_resource type="PackedScene" path="res://scenes/modals/reliquary_frame.tscn" id="5_frame"]
 
@@ -132,11 +131,6 @@ theme_override_styles/normal = SubResource("rel_close")
 theme_override_styles/hover = SubResource("rel_close")
 theme_override_styles/pressed = SubResource("rel_close")
 text = "X"
-
-[node name="BonusStrip" parent="Panel/Layout" instance=ExtResource("3_bonus")]
-custom_minimum_size = Vector2(0, 60)
-layout_mode = 2
-size_flags_horizontal = 3
 
 [node name="Scroll" type="ScrollContainer" parent="Panel/Layout"]
 layout_mode = 2

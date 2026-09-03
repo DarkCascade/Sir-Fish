@@ -1,44 +1,39 @@
 @tool
 class_name SlotSymbol
 extends Control
-## One reel cell. Draws an icon texture centred in a square that's a fixed
-## fraction of the cell's shorter side, so the reels can be resized without a
-## second set of hand-tuned numbers.
+## One reel cell. [slot phase 2] Draws the icon for whatever the bag dealt onto
+## this cell: a reliquary chip texture (assets/ui/reliquary/chip_*.png) centred
+## in a square that is a fixed fraction of the cell's shorter side, tinted per
+## element, with an accent ring for a forged (Enhanced) icon and an inner ring
+## for an innate one. A blank cell draws nothing - the recessed reel window
+## shows through.
 ##
 ## @tool so this redraws live in the editor - see scenes/console/
-## reel_layout_playground.tscn, a sandbox for eyeballing reel layout changes
-## without needing Play mode.
+## reel_layout_playground.tscn, a sandbox for eyeballing reel layout without
+## Play mode. In the editor the cell has no dealt icon, so `preview_id` stands
+## in for one.
 
-## How much of the cell's shorter side the glyph fills.
-##
-## [ui-project-longshot] Raised from 0.66 and ICON_ZOOM retired for the drawn
-## symbols. The zoom existed because the imported PNGs carried a lot of empty
-## margin, so the icon had to be blown up past its own box to read - which is
-## also why symbols were overlapping the payline and their neighbours. A
-## polygon has no baked margin, so one honest fraction now covers it.
+## How much of the cell's shorter side the chip fills.
 @export_range(0.1, 1.0, 0.01) var box_fraction: float = 0.78:
 	set(value):
 		box_fraction = value
 		queue_redraw()
 
+## Editor-only stand-in for a dealt icon (the reel overwrites `icon` every frame
+## in Play mode). One of SlotIcon's ids, e.g. &"dmg_flat", &"slot_bolt".
+@export var preview_id: StringName = &"":
+	set(value):
+		preview_id = value
+		queue_redraw()
+
+## The coin texture kept ONLY because coin_glyph.gd reuses it as the shared
+## "gold" glyph across the console. Nothing on the reel draws it any more.
 const TEX_GOLD := preload("res://assets/icons/slot_gold.png")
 
-## The coin keeps its texture: slot_gold.png reads correctly against the board
-## and is the one imported icon this pass did not need to replace. The other
-## two are drawn - see _draw_gem().
-##
-## Its old 1.75 zoom went with it and is now 1.0. That multiplier existed to
-## fight a much SHORTER reel cell (the console's old proportions gave the
-## cabinet ~77 px rows); against the current 121 px cells it drew a 165 px coin
-## into a 121 px cell, so the coin overhung its neighbours and crossed the
-## payline. Whatever else changes, this must stay at or under 1 / box_fraction.
-const GOLD_ZOOM := 1.0
-
 # PackedVector2Array literals are not constant expressions in GDScript, so these
-# glyph outlines are static vars. No longer drawn by this cell itself (see
-# _draw() below) but still shared, unmutated, by other UI glyphs that echo the
-# reel's iconography: coin_glyph.gd (STAR), status_icon.gd/class_icon_glyph.gd
-# (PLUS), bonus_strip.gd/upgrade_button.gd (BOLT, STAR).
+# glyph outlines are static vars. Not drawn by this cell any more, but still
+# shared, unmutated, by other UI glyphs that echo the reel's old iconography:
+# coin_glyph.gd (STAR), status_icon.gd (PLUS), upgrade_button.gd (BOLT, STAR).
 static var BOLT := PackedVector2Array([
 	Vector2(0.55, 0.05), Vector2(0.22, 0.55), Vector2(0.45, 0.55),
 	Vector2(0.30, 0.95), Vector2(0.78, 0.42), Vector2(0.52, 0.42),
@@ -59,123 +54,66 @@ static var STAR := PackedVector2Array([
 	Vector2(0.44, 0.44),
 ])
 
-@export var symbol: int = Tuning.Sym.BLANK
+## The icon this cell is currently showing: { id, roll, enhanced, innate? }, or
+## an empty dict for a blank. See SlotIcon.
+var icon: Dictionary = {}
 
-## Smoothness pass: a spinning reel redraws each cell roughly once per stop
-## change (~26/sec while spinning, x3 reels), and every _draw_gem() call used
-## to rebuild three PackedVector2Arrays from scratch even though the geometry
-## only actually depends on `symbol` and `size` - the cell's box_fraction and
-## shape data never change between redraws at a given size. Cached per symbol
-## so switching symbols on the same cell (the common case, every stop) is a
-## dictionary hit instead of a rebuild; only a genuine resize invalidates it.
-var _gem_cache: Dictionary = {}   # Tuning.Sym -> {size, box, pts, closed, facet}
+## Chip textures are loaded once, keyed by id, so a spinning reel swapping icons
+## every stop is a dictionary hit rather than a disk load.
+static var _tex_cache: Dictionary = {}
 
-func set_symbol(value: int) -> void:
-	if symbol == value:
+func set_icon(value: Dictionary) -> void:
+	# Cheap identity check: same id + roll + enhanced means nothing to redraw.
+	if icon.get("id", &"") == value.get("id", &"") \
+			and icon.get("enhanced", false) == value.get("enhanced", false):
+		icon = value
 		return
-	symbol = value
+	icon = value
 	queue_redraw()
 
-## [ui-project-longshot] The bolt and the cross are drawn, not textured.
-##
-## The imported PNGs they replace were neon-sign artwork - a violet bolt inside
-## a rune circle, and a green HEART - and the concept board wants neither: its
-## symbols are chunky cut gems with an ink outline, and its heal glyph is a
-## CROSS. Drawing them also puts their colour under Tuning, so the reel's bolt
-## and the party bar's blue are guaranteed to be the same blue instead of one
-## being whatever hue was baked into a file.
+func _effective_id() -> StringName:
+	if not icon.is_empty():
+		return StringName(icon.get("id", &""))
+	return preview_id
+
+static func _chip(id: StringName) -> Texture2D:
+	if _tex_cache.has(id):
+		return _tex_cache[id]
+	var tex := SlotIcon.chip_texture(id)
+	_tex_cache[id] = tex
+	return tex
+
 func _draw() -> void:
+	var id := _effective_id()
+	if id == SlotIcon.BLANK or SlotIcon.kind_of(id) == SlotIcon.Kind.BLANK:
+		return
+	var tex := _chip(id)
+	var box := minf(size.x, size.y) * box_fraction
 	var c := size * 0.5
-	match symbol:
-		Tuning.Sym.GOLD:
-			var box := minf(size.x, size.y) * box_fraction * GOLD_ZOOM
-			draw_texture_rect(TEX_GOLD,
-				Rect2(c - Vector2.ONE * box * 0.5, Vector2.ONE * box), false)
-		Tuning.Sym.LIGHTNING:
-			_draw_gem(BOLT, Tuning.C_LIGHTNING, Tuning.C_ARCANE_BRIGHT)
-		Tuning.Sym.PLUS:
-			_draw_gem(PLUS, Tuning.C_HEAL, Color("C8F5A8"))
-		# BLANK falls through: an empty space, the recessed reel window shows through
+	var rect := Rect2(c - Vector2.ONE * box * 0.5, Vector2.ONE * box)
 
-## One symbol as a cut gem: outer glow, body, lit facet, ink outline.
-##
-## The facet is the half that matters. A flat polygon in one colour reads as a
-## sticker no matter how much glow is piled around it; shrinking the same
-## outline toward its own centroid and lifting it gives a second, brighter face
-## whose edge follows the silhouette - which is what a cut stone looks like,
-## and it costs one extra polygon.
-##
-## The glow is stacked polylines rather than a shader because every other glyph
-## in this console is drawn the same way (coin_glyph, ornate_frame,
-## bonus_strip), and one blur shader for one symbol would be the only thing in
-## the file needing a material.
-func _draw_gem(shape: PackedVector2Array, body: Color, bright: Color) -> void:
-	var cached: Dictionary = _gem_cache.get(symbol, {})
-	var pts: PackedVector2Array
-	var closed: PackedVector2Array
-	var facet: PackedVector2Array
-	var box: float
-	if cached.get("size", Vector2.ZERO) == size:
-		pts = cached["pts"]
-		closed = cached["closed"]
-		facet = cached["facet"]
-		box = cached["box"]
+	var tint := Color.WHITE
+	match SlotIcon.element_of(id):
+		&"fire": tint = Tuning.C_FIRE
+		&"ice": tint = Tuning.C_ICE
+		&"light": tint = Tuning.C_LIGHTNING
+
+	# Innate icon: a soft inner ring in the party-gold, so the player can tell
+	# the one chip they cannot lose by unequipping from a geared one.
+	if bool(icon.get("innate", false)) or SlotIcon.is_innate(id):
+		draw_arc(c, box * 0.60, 0.0, TAU, 28, Color(Tuning.C_GOLD_BRIGHT, 0.5), 3.0)
+
+	if tex != null:
+		draw_texture_rect(tex, rect, false, tint)
 	else:
-		box = minf(size.x, size.y) * box_fraction
-		var origin := size * 0.5 - Vector2.ONE * box * 0.5
-		pts = PackedVector2Array()
-		var centroid := Vector2.ZERO
-		for p: Vector2 in shape:
-			var mapped := origin + p * box
-			pts.append(mapped)
-			centroid += mapped
-		centroid /= float(pts.size())
+		# Art missing: a plain rounded token so the board still reads as "an icon
+		# is here" rather than a blank.
+		draw_circle(c, box * 0.42, Color(tint, 0.85))
+		draw_arc(c, box * 0.42, 0.0, TAU, 24, Tuning.C_INK, 2.0)
 
-		closed = pts.duplicate()
-		closed.append(pts[0])
-
-		# The lit facet, pulled toward the centroid and lifted a little - the
-		# light in this console comes from above, the same direction OrnateFrame
-		# bevels.
-		facet = PackedVector2Array()
-		for p: Vector2 in pts:
-			facet.append(p.lerp(centroid, 0.34) - Vector2(0.0, box * 0.055))
-
-		_gem_cache[symbol] = {"size": size, "box": box, "pts": pts, "closed": closed, "facet": facet}
-
-	# Glow: widest and faintest first, so the passes build up toward the edge.
-	for i: int in range(3):
-		var t := float(i) / 2.0
-		draw_polyline(closed, Color(bright.r, bright.g, bright.b, lerpf(0.09, 0.34, t)),
-			box * lerpf(0.16, 0.045, t))
-
-	draw_colored_polygon(pts, body)
-	draw_colored_polygon(facet, Color(bright.r, bright.g, bright.b, 0.72))
-
-	draw_polyline(closed, Tuning.C_INK, maxf(box * 0.035, 2.0))
-
-static func label_for(sym: int) -> String:
-	match sym:
-		Tuning.Sym.LIGHTNING: return "LIGHTNING"
-		Tuning.Sym.GOLD: return "GOLD"
-		Tuning.Sym.PLUS: return "HEAL"
-		_: return "BLANK"
-
-static func result_text(sym: int, count: int) -> String:
-	match sym:
-		Tuning.Sym.LIGHTNING:
-			if count >= 3:
-				return "More Lightning"
-			else:
-				return "Lightning"
-		Tuning.Sym.GOLD:
-			if count >= 3:
-				return "More Gold"
-			else:
-				return "Gold"
-		Tuning.Sym.PLUS:
-			if count >= 3:
-				return "Heal All"
-			else:
-				return "Heal One"
-		_: return "BLANK"
+	# Enhanced (forged) icon: a forge-hot ring around the chip so it reads as its
+	# own thing on the board (§4).
+	if bool(icon.get("enhanced", false)):
+		var hot := Tuning.RARITY_COLORS[Item.Rarity.ENHANCED]
+		draw_arc(c, box * 0.52, 0.0, TAU, 32, hot, 4.0)
+		draw_arc(c, box * 0.52, 0.0, TAU, 32, Color(hot, 0.35), 8.0)

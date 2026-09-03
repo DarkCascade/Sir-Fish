@@ -102,7 +102,77 @@ func _member_row(h: Dictionary) -> Control:
 	bar.add_theme_stylebox_override("fill", _bar_fill(
 		Tuning.C_DANGER.lerp(Tuning.C_HEAL, ratio) if alive else Tuning.C_DANGER))
 	row.add_child(bar)
+
+	# [slot phase 2] The third element: this hero's contribution to the slot bag,
+	# directly under the health bar. Inherits the "the only place a player can
+	# see what their inventory is doing" duty from the retired bonus strip
+	# (§7.1). Composition only - what is in the bag and why - which is the
+	# question asked between fights, not what fired on the board this spin.
+	row.add_child(_reel_strip(h["stats_id"]))
 	return row
+
+## The hero's reel icons as a headed, wrapping strip of chips, each labelled with
+## its rolled magnitude. Duplicates show as separate chips; the innate icon is
+## marked. Drawn with the same assets/ui/reliquary/chip_*.png art the board uses.
+func _reel_strip(hero_class: StringName) -> Control:
+	var data: Dictionary = GameState.hero_reel_icons(hero_class)
+	var icons: Array = data["icons"]
+
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 4)
+
+	var head := Label.new()
+	head.add_theme_font_size_override("font_size", 24)
+	head.add_theme_color_override("font_color", Tuning.C_TEXT_DIM)
+	head.text = "Reel icons (%d)" % int(data["count"])
+	box.add_child(head)
+
+	var flow := HFlowContainer.new()
+	flow.add_theme_constant_override("h_separation", 12)
+	flow.add_theme_constant_override("v_separation", 6)
+	box.add_child(flow)
+	for ic: Dictionary in icons:
+		flow.add_child(_reel_chip(ic))
+	return box
+
+func _reel_chip(ic: Dictionary) -> Control:
+	var id: StringName = StringName(ic.get("id", &""))
+	var cell := VBoxContainer.new()
+	cell.add_theme_constant_override("separation", 2)
+	cell.alignment = BoxContainer.ALIGNMENT_CENTER
+
+	var icon := TextureRect.new()
+	icon.custom_minimum_size = Vector2(44, 44)
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icon.texture = SlotIcon.chip_texture(id)
+	match SlotIcon.element_of(id):
+		&"fire": icon.modulate = Tuning.C_FIRE
+		&"ice": icon.modulate = Tuning.C_ICE
+		&"light": icon.modulate = Tuning.C_LIGHTNING
+	cell.add_child(icon)
+
+	var lbl := Label.new()
+	lbl.add_theme_font_size_override("font_size", 22)
+	lbl.add_theme_color_override("font_color", Tuning.C_TEXT)
+	lbl.text = String(ic.get("label", ""))
+	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	cell.add_child(lbl)
+
+	var tag_text := ""
+	var tag_color := Tuning.C_GOLD_BRIGHT
+	if bool(ic.get("innate", false)):
+		tag_text = "innate"
+	elif bool(ic.get("enhanced", false)):
+		tag_text = "forged"
+		tag_color = Tuning.RARITY_COLORS[Item.Rarity.ENHANCED]
+	if tag_text != "":
+		var tag := Label.new()
+		tag.add_theme_font_size_override("font_size", 16)
+		tag.add_theme_color_override("font_color", tag_color)
+		tag.text = tag_text
+		tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		cell.add_child(tag)
+	return cell
 
 func _bar_bg() -> StyleBoxFlat:
 	var sb := StyleBoxFlat.new()

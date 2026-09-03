@@ -1,6 +1,6 @@
 extends Control
 ## [town] The blacksmith (spec 7.3, 7.4). A routed town scene like the inn and
-## the mayor's office, with two tabs mirroring the shop's TabContainer:
+## the mayor's office, with four tabs mirroring the shop's TabContainer:
 ##
 ##   - Forge: GameState.equipped_set(&"warrior") - the warrior's three equipped
 ##     items, one row each, an empty-slot placeholder where a slot is unfilled.
@@ -9,15 +9,24 @@ extends Control
 ##   - Buy: FORGE_SHOP_SLOTS cards from Itemizer.generate_forge_stock(), cached on
 ##     GameState.forge_stock and rerolled ONLY by the refresh button, which costs
 ##     SHOP_REFRESH_COST gold (spec 7.4). Walking out and back in never rerolls.
+##   - Scrap: [refinement-pass-3] one shop_sell_row per inventory item in
+##     Mode.SCRAP - the primary bar melts the item down for Item.scrap_value()
+##     scrap (a quarter of its gold sell price).
+##   - Sell: [refinement-pass-3] the same rows in Mode.SELL, identical to the
+##     expedition shop's Sell tab - the merchant at the quest shop is no longer
+##     the only place to offload loot.
 ##
-## No Sell tab - selling stays at the quest shop where a merchant is standing
-## (spec 6.4). The HUD's CurrencyPlate carries the gold/scrap readout, so this
-## scene keeps none of its own. The forge background (assets/blacksmith-bg.png)
-## and its darkening Vignette scrim are authored in blacksmith.tscn - the Meshy
-## art pass, spec 12.1 (step 11).
+## The HUD's CurrencyPlate carries the gold/scrap readout, so this scene keeps
+## none of its own. The forge background (assets/blacksmith-bg.png) and its
+## darkening Vignette scrim are authored in blacksmith.tscn - the Meshy art
+## pass, spec 12.1 (step 11).
 
 const BUY_CARD := preload("res://scenes/modals/shop_buy_card.tscn")
 const FORGE_ROW := preload("res://scenes/modals/forge_row.tscn")
+const SELL_ROW := preload("res://scenes/modals/shop_sell_row.tscn")
+## The row's own script, for its Mode enum - shop_sell_row.gd carries no
+## class_name, so the .tscn preload above cannot reach the constant.
+const SELL_ROW_SCRIPT := preload("res://scripts/modals/shop_sell_row.gd")
 
 const SLOT_NAMES := {
 	Item.Slot.WEAPON: "weapon",
@@ -30,6 +39,12 @@ const SLOT_NAMES := {
 @onready var _buy_list: VBoxContainer = $Layout/Tabs/Buy/BuyScroll/BuyList
 @onready var _buy_empty: Label = $Layout/Tabs/Buy/BuyEmpty
 @onready var _refresh_button: Button = $Layout/Tabs/Buy/BuyHeader/RefreshButton
+@onready var _scrap_list: VBoxContainer = $Layout/Tabs/Scrap/ScrapScroll/ScrapList
+@onready var _scrap_empty: Label = $Layout/Tabs/Scrap/ScrapEmpty
+@onready var _scrap_all_button: Button = $Layout/Tabs/Scrap/ScrapHeader/ScrapAllCommonButton
+@onready var _sell_list: VBoxContainer = $Layout/Tabs/Sell/SellScroll/SellList
+@onready var _sell_empty: Label = $Layout/Tabs/Sell/SellEmpty
+@onready var _sell_all_button: Button = $Layout/Tabs/Sell/SellHeader/SellAllCommonButton
 @onready var _back_button: Button = $Layout/BackButton
 @onready var _compare_flyout = $CompareFlyout   # CompareFlyout (untyped: custom API)
 
@@ -41,6 +56,8 @@ func _ready() -> void:
 	SceneRouter.place = SceneRouter.Place.BLACKSMITH
 	_back_button.pressed.connect(SceneRouter.go.bind(SceneRouter.Place.TOWN))
 	_refresh_button.pressed.connect(_on_refresh)
+	_scrap_all_button.pressed.connect(_on_scrap_all_common)
+	_sell_all_button.pressed.connect(_on_sell_all_common)
 	EventBus.gold_changed.connect(_on_currency_changed)
 	EventBus.scrap_changed.connect(_on_currency_changed)
 
@@ -55,6 +72,8 @@ func _ready() -> void:
 
 	_build_forge()
 	_build_buy()
+	_build_scrap()
+	_build_sell()
 	_refresh_refresh_button()
 	_tabs.current_tab = 0
 
@@ -106,6 +125,10 @@ func _on_forge_pressed(item: Item) -> void:
 	if _forge_rows.has(slot):
 		_forge_rows[slot].flash_new_modifier()
 	_refresh_forge_affordability()
+	# The forged item is worth more now, so its Scrap/Sell rows (shown but
+	# locked while equipped) must reprice.
+	_build_scrap()
+	_build_sell()
 
 func _refresh_forge_affordability() -> void:
 	for row: Variant in _forge_rows.values():
@@ -149,6 +172,10 @@ func _on_purchased(item: Item, _card: Control) -> void:
 	_buy_empty.visible = GameState.forge_stock.is_empty()
 	SaveGame.save_profile()
 	_build_forge()
+	# add_item() put the purchase in the inventory (or auto-equipped it) - either
+	# way it is now a Scrap/Sell candidate.
+	_build_scrap()
+	_build_sell()
 
 func _on_refresh() -> void:
 	if not GameState.spend_gold(Tuning.SHOP_REFRESH_COST):
@@ -162,6 +189,95 @@ func _refresh_refresh_button() -> void:
 	var affordable := GameState.gold >= Tuning.SHOP_REFRESH_COST
 	_refresh_button.disabled = not affordable
 	_refresh_button.modulate = Color.WHITE if affordable else Color(0.68, 0.65, 0.6, 1.0)
+
+# --- scrap / sell tabs ---------------------------------------------------------
+
+## [refinement-pass-3] Both tabs list the WHOLE inventory, equipped items
+## included - exactly as the shop's Sell tab does (shop_modal.gd's _build_sell).
+## An equipped row renders locked (shop_sell_row.gd's _refresh_sell_state), so
+## the player can still see and compare it without being able to melt it down
+## from under its hero.
+func _build_scrap() -> void:
+	_build_item_rows(_scrap_list, _scrap_empty, SELL_ROW_SCRIPT.Mode.SCRAP, _on_scrapped)
+
+func _build_sell() -> void:
+	_build_item_rows(_sell_list, _sell_empty, SELL_ROW_SCRIPT.Mode.SELL, _on_sold)
+
+func _build_item_rows(list: VBoxContainer, empty: Label, mode: int,
+		on_done: Callable) -> void:
+	for child: Node in list.get_children():
+		child.queue_free()
+	var items := GameState.inventory
+	empty.visible = items.is_empty()
+	var index := 0
+	for item: Item in items:
+		var row := SELL_ROW.instantiate()
+		list.add_child(row)
+		row.setup(item, mode)
+		row.sold.connect(on_done)
+		row.compare_requested.connect(_on_compare_requested)
+		row.equip_changed.connect(_on_equip_changed)
+		row.play_entrance(index)
+		index += 1
+	_refresh_bulk_buttons()
+
+## The unequipped Common items - what "Sell/Scrap All Common" would act on.
+## Equipped Commons are skipped for the same reason a row locks them: a bulk
+## button should not strip a hero's gear.
+func _loose_commons() -> Array[Item]:
+	var out: Array[Item] = []
+	for item: Item in GameState.inventory:
+		if item.rarity == Item.Rarity.COMMON and item.equipped_by == &"":
+			out.append(item)
+	return out
+
+func _refresh_bulk_buttons() -> void:
+	var none := _loose_commons().is_empty()
+	_scrap_all_button.disabled = none
+	_sell_all_button.disabled = none
+
+func _on_scrap_all_common() -> void:
+	_bulk_dispose(true)
+
+func _on_sell_all_common() -> void:
+	_bulk_dispose(false)
+
+## En-masse counterpart to shop_sell_row.gd's _on_sell(): same per-item payout
+## and inventory removal, applied to every loose Common at once, then one save
+## and one rebuild of both tabs.
+func _bulk_dispose(as_scrap: bool) -> void:
+	var commons := _loose_commons()
+	if commons.is_empty():
+		return
+	for item: Item in commons:
+		if as_scrap:
+			GameState.add_scrap(item.scrap_value())
+		else:
+			GameState.add_gold(item.sell_price())
+			GameState.run_stats["items_sold"] = int(GameState.run_stats["items_sold"]) + 1
+		GameState.remove_item(item)
+	SaveGame.save_profile()
+	_build_scrap()
+	_build_sell()
+
+## Selling and scrapping both shrink the inventory, so the sibling tab is
+## rebuilt to drop the same row. The acting tab lets its own row animate out.
+func _on_scrapped(_item: Item, _row: Control) -> void:
+	SaveGame.save_profile()
+	_build_sell()
+
+func _on_sold(_item: Item, _row: Control) -> void:
+	SaveGame.save_profile()
+	_build_scrap()
+
+## An equip/unequip may have unequipped a DIFFERENT row's item for the same
+## hero and it changes the Forge tab's equipped set, so everything downstream
+## of the inventory is rebuilt.
+func _on_equip_changed() -> void:
+	SaveGame.save_profile()
+	_build_forge()
+	_build_scrap()
+	_build_sell()
 
 # --- currency --------------------------------------------------------------
 

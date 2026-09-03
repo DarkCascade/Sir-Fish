@@ -315,8 +315,16 @@ func unequip_item(item: Item) -> void:
 ## request 2). Picks the first of the item's eligible classes whose matching
 ## slot is empty; in practice every generated item has exactly one eligible
 ## class today, so there is no real ambiguity to resolve.
+##
+## Only a class in active_party is a candidate. Generation is already party-
+## gated (Itemizer._roll_typed passes active_party), so a non-party item can
+## only reach here via the Debug harness - but without this guard it would
+## still be silently equipped onto a hero who is not on the run, which locks it
+## out of the Sell UI and feeds party_bonuses() a modifier no one is wearing.
 func _maybe_auto_equip(item: Item) -> void:
 	for hero_class: StringName in item.usable_by():
+		if hero_class not in active_party:
+			continue
 		if equipped_item(hero_class, item.slot()) == null:
 			item.equipped_by = hero_class
 			return
@@ -341,8 +349,12 @@ func party_bonuses() -> Dictionary:
 		# a separate multiplier (combatant.gd) and a separate strip glyph (§9.6).
 		"meal_pct": meal_pct,
 		"element": &"",
+		# [slot phase 2] slot_bolt / slot_mend are still aggregated here for the
+		# party modal's reel-icon readout and for display, NOT for a slot payout -
+		# every icon now resolves its own rolled value on the board. `slot_purse`
+		# is gone with slot gold; an item still carrying it just hits no branch
+		# below and contributes nothing.
 		"slot_bolt": 0,
-		"slot_purse": 0,
 		"slot_mend": 0,
 	}
 	# Elemental totals are kept apart rather than summed into one number, because
@@ -370,8 +382,6 @@ func party_bonuses() -> Dictionary:
 					elements[&"light"] = int(elements[&"light"]) + roll
 				&"slot_bolt":
 					out["slot_bolt"] = int(out["slot_bolt"]) + roll
-				&"slot_purse":
-					out["slot_purse"] = int(out["slot_purse"]) + roll
 				&"slot_mend":
 					out["slot_mend"] = int(out["slot_mend"]) + roll
 	var best: StringName = &""
@@ -466,6 +476,34 @@ func party_status() -> Array[Dictionary]:
 			"color": s.accent_color,
 		})
 	return out
+
+## [slot phase 2] What `hero_class` currently puts in the slot bag (§7.1): one
+## innate icon (flagged `innate`), plus one entry per equipped modifier that maps
+## to a board icon, across all three equipped items. Duplicates are kept as
+## separate entries so the list is literally a count of what the hero contributes
+## to the reel. Each entry is a SlotIcon dict with an added `label` ("+N" / "+N%%").
+## An unrecognised modifier id (e.g. a `slot_purse` from an old save) contributes
+## nothing, exactly as it does on the board. The party modal builds its per-hero
+## readout from this; it is a sibling of party_status() rather than a field on it
+## so combat's HP payload stays lean.
+func hero_reel_icons(hero_class: StringName) -> Dictionary:
+	var icons: Array = []
+	var innate := SlotIcon.innate(hero_class)
+	innate["label"] = _reel_icon_label(innate)
+	icons.append(innate)
+	for it: Item in equipped_set(hero_class):
+		for mod: Dictionary in it.modifiers:
+			var ic := SlotIcon.from_modifier(mod)
+			if ic.is_empty():
+				continue
+			ic["label"] = _reel_icon_label(ic)
+			icons.append(ic)
+	return { "icons": icons, "count": icons.size() }
+
+func _reel_icon_label(ic: Dictionary) -> String:
+	var id := StringName(ic.get("id", &""))
+	var roll := int(ic.get("roll", 0))
+	return ("+%d%%" % roll) if SlotIcon.is_percent(id) else ("+%d" % roll)
 
 # --- run lifecycle ----------------------------------------------------------
 

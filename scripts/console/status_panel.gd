@@ -16,9 +16,9 @@ extends PanelContainer
 ## ResourceRow, and depth is two labels (caption + numeral) instead of one
 ## string, so the two can carry different font sizes.
 ##
-## [screen-corner variant] The bonus row moved out of this panel entirely -
-## it now lives in scenes/overlay/bonus_panel.gd, docked to the top-right of
-## the screen instead of the console. See that file for the bonus display.
+## [slot phase 2] The bonus row is gone. Item effects are slot icons now, and
+## each hero's reel-icon contribution is shown in the party modal
+## (party_modal.gd), under that hero's health bar.
 
 ## [town] spec 5.3: the pop-and-float treatment lives in one shared place now,
 ## lifted out of this file so CurrencyPlate (and step 9's forge) reuse it rather

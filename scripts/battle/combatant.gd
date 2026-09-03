@@ -121,21 +121,20 @@ func _build() -> void:
 		assert(anim.has_animation(n),
 			"%s is missing required animation '%s'" % [stats.id, n])
 
-## Heroes carry the party-wide item bonus pool (spec 13.5). Enemies never do.
-## `damage_multiplier` = the meal buff (GameState) x the item dmg_pct share; the
-## two are kept apart in `_item_pct_multiplier` so neither wipes the other.
+## [slot phase 2] Equipped item modifiers NO LONGER buff a hero's melee damage -
+## their whole offensive contribution is board icons now (slot_machine.gd), each
+## resolving its own rolled value. Gear stopped adding numbers here and started
+## adding symbols to the reel. The only external buff still riding a hero's
+## damage is the meal (§9.5); `bonus_flat_damage` / `_item_pct_multiplier` stay
+## at their identity values so compute_damage() below needs no edit.
 func apply_party_bonuses() -> void:
 	if not is_hero:
 		return
-	var b := GameState.party_bonuses()
-	bonus_flat_damage = int(b["dmg_flat"])
-	_item_pct_multiplier = 1.0 + float(b["dmg_pct"]) / 100.0
-	# [day-night] §9.5: recomputed from GameState every time, NEVER from the
-	# previous value of damage_multiplier. The old round-trip (dividing the
-	# stored multiplier by _item_pct_multiplier to recover the external buff)
-	# compounded the meal on every party_bonuses_changed emit (battle_director)
-	# and every spawn - a fed party's multiplier walked 1.10 -> 1.21 -> 1.33
-	# across a few equip changes.
+	bonus_flat_damage = 0
+	_item_pct_multiplier = 1.0
+	# Recomputed from GameState every time, NEVER from the previous value of
+	# damage_multiplier - a stored round-trip compounded the meal on every
+	# party_bonuses_changed emit and every spawn (day/night §9.5).
 	damage_multiplier = GameState.meal_multiplier() * _item_pct_multiplier
 
 # --- queries ----------------------------------------------------------------

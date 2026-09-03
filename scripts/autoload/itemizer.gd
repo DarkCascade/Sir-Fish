@@ -43,9 +43,13 @@ const MODIFIERS := [
 	{ "id": &"elem_ice",   "label": "+%d Ice Damage",    "caption": "Ice Damage",    "pct": false, "roll": [3, 11],  "value_mult": [0.35, 0.70] },
 	{ "id": &"elem_light", "label": "+%d Lightning Dmg", "caption": "Lightning Dmg", "pct": false, "roll": [3, 11],  "value_mult": [0.35, 0.70] },
 	# Slot modifiers [v2] - these are what make the initial vision's core loop
-	# real: finding items in the world makes the slot machine pay bigger.
+	# real: finding items in the world adds icons to the reel.
+	# [slot phase 2] `slot_purse` ("+%d Coin Yield") was removed here - the slot
+	# no longer produces gold (§3/§5). The pool drops from 8 ids to 7, still
+	# comfortably above RARITY_MOD_COUNT's max of 4 distinct picks. Items on disk
+	# still carrying a `slot_purse` modifier load verbatim (Item.from_dict) and
+	# resolve to NO icon on the board - see slot_machine.gd's KNOWN_ICON_IDS.
 	{ "id": &"slot_bolt",  "label": "+%d Bolt Power",    "caption": "Bolt Power",    "pct": false, "roll": [2, 8],   "value_mult": [0.40, 0.75] },
-	{ "id": &"slot_purse", "label": "+%d Coin Yield",    "caption": "Coin Yield",    "pct": false, "roll": [3, 10],  "value_mult": [0.38, 0.72] },
 	{ "id": &"slot_mend",  "label": "+%d%% Mend Power",  "caption": "Mend Power",    "pct": true,  "roll": [3, 9],   "value_mult": [0.40, 0.75] },
 ]
 
@@ -162,7 +166,7 @@ func forge(item: Item) -> bool:
 		return false
 	var pool := _modifier_pool_excluding(item)
 	if pool.is_empty():
-		return false                       # unreachable: 8 modifiers, 4 slots
+		return false                       # unreachable: 7 modifiers, 4 slots
 	if not GameState.spend_scrap(int(cost[0])):
 		return false
 	if not GameState.spend_gold(int(cost[1])):
@@ -176,9 +180,9 @@ func forge(item: Item) -> bool:
 	GameState.run_stats["items_forged"] = int(GameState.run_stats["items_forged"]) + 1
 	# A2: forge() mutates an equipped item's modifier set (the Forge tab lists
 	# equipped_set() and nothing else), so it must announce the change like every
-	# other equipped-set mutation - or the inventory modal's BonusStrip keeps the
-	# pre-forge numbers for the session (spec 1.5, 3.3). Unconditional: a
-	# recompute on an unequipped item is a cheap no-op.
+	# other equipped-set mutation - or the party modal's reel-icon readout and
+	# the slot bag keep the pre-forge numbers for the session (spec 1.5, 3.3).
+	# Unconditional: a recompute on an unequipped item is a cheap no-op.
 	EventBus.party_bonuses_changed.emit(GameState.party_bonuses())
 	EventBus.item_forged.emit(item, item.rarity)
 	return true

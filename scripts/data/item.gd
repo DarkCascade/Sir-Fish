@@ -159,3 +159,9 @@ func buy_price() -> int:
 
 func sell_price() -> int:
 	return int(round(float(value) * Tuning.SHOP_SELL_RATE))
+
+## [town] What scrapping this item at the blacksmith yields, in scrap. A quarter
+## of its gold sell price (Tuning.SCRAP_RECLAIM_RATE) - a 100 G item becomes 25
+## scrap.
+func scrap_value() -> int:
+	return int(round(float(sell_price()) * Tuning.SCRAP_RECLAIM_RATE))
