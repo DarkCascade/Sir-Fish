@@ -1,0 +1,448 @@
+<title>Sir Fish Style Proof</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600&family=IBM+Plex+Mono:wght@400;500&family=EB+Garamond:wght@400;600&family=Cinzel:wght@900&family=Baloo+2:wght@600;800&display=swap">
+
+<style>
+/* ------------------------------------------------------------------
+   Deliberately single-theme. This page is a viewing booth: it is used
+   in a dark room at 25% screen brightness to judge three dark-ish game
+   palettes against each other. A light mode would destroy the viewer's
+   dark adaptation and invalidate the judgement the page exists for.
+   The surround is strictly neutral grey for the same reason — ISO 3664
+   requires a neutral surround for colour appraisal, and any hue here
+   would bias the eye toward whichever candidate shares it.
+   ------------------------------------------------------------------ */
+:root {
+  --void:      #0A0B0D;
+  --surround:  #131519;
+  --raised:    #1C1F25;
+  --rule:      #2A2E36;
+  --ink:       #E6E3DB;
+  --ink-mid:   #9DA3AD;
+  --ink-low:   #676D77;
+  --pass:      #6FA98A;
+  --fail:      #B5766E;
+
+  --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background: var(--void);
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 15px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+
+.wrap { max-width: 1100px; margin: 0 auto; padding: 20px 16px 64px; }
+
+/* ---------- header ---------- */
+header { border-bottom: 1px solid var(--rule); padding-bottom: 18px; margin-bottom: 20px; }
+.eyebrow {
+  font-family: var(--mono); font-size: 11px; font-weight: 500;
+  letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-low);
+  margin: 0 0 6px;
+}
+h1 { font-size: 26px; line-height: 1.15; margin: 0 0 10px; font-weight: 600; text-wrap: balance; }
+.lede { margin: 0; color: var(--ink-mid); max-width: 62ch; font-size: 14px; }
+
+/* ---------- test conditions ---------- */
+.conditions {
+  display: flex; flex-wrap: wrap; gap: 8px;
+  margin: 16px 0 0; padding: 0; list-style: none;
+}
+.conditions li {
+  font-family: var(--mono); font-size: 11.5px; color: var(--ink-mid);
+  background: var(--raised); border: 1px solid var(--rule);
+  padding: 5px 9px; border-radius: 3px;
+}
+.conditions b { color: var(--ink); font-weight: 500; }
+
+/* ---------- controls ---------- */
+.controls {
+  display: flex; flex-wrap: wrap; gap: 18px;
+  padding: 14px 0; margin-bottom: 18px;
+  border-bottom: 1px solid var(--rule);
+  position: sticky; top: 0; background: var(--void); z-index: 20;
+}
+.ctl { display: flex; flex-direction: column; gap: 6px; }
+.ctl-label {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--ink-low);
+}
+.seg { display: flex; border: 1px solid var(--rule); border-radius: 4px; overflow: hidden; }
+.seg button {
+  font-family: var(--mono); font-size: 12px;
+  background: var(--surround); color: var(--ink-mid);
+  border: 0; padding: 7px 12px; cursor: pointer;
+  border-right: 1px solid var(--rule);
+}
+.seg button:last-child { border-right: 0; }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--void); font-weight: 500; }
+.seg button:focus-visible { outline: 2px solid var(--ink); outline-offset: -2px; }
+
+/* ---------- proof grid ---------- */
+.proofs { display: grid; gap: 14px; }
+body[data-view="side"] .proofs { grid-template-columns: repeat(3, 1fr); }
+body[data-view="full"] .proofs { grid-template-columns: 1fr; max-width: 430px; margin: 0 auto; }
+
+.proof { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.proof-head { display: flex; align-items: baseline; gap: 7px; flex-wrap: wrap; }
+.proof-tag {
+  font-family: var(--mono); font-size: 10px; font-weight: 500;
+  letter-spacing: 0.1em; color: var(--ink-low);
+}
+.proof-name { font-size: 13px; font-weight: 600; letter-spacing: 0.01em; }
+body[data-view="side"] .proof-name { font-size: 12px; }
+
+/* The frame is the fixed-aspect window; .mock inside is authored at a
+   literal 1080 design px and scaled to fit, so every size in the mock
+   lands at exactly the CSS pixel size it would on the real device. */
+.mock-frame { width: 100%; overflow: hidden; border: 1px solid var(--rule); border-radius: 3px; }
+.mock { width: 1080px; height: 1500px; transform-origin: top left; position: relative; overflow: hidden; }
+
+/* ---------- mock internals (all sizes in design px) ---------- */
+.world { position: absolute; inset: 0 0 56% 0; }
+.band { position: absolute; left: 0; right: 0; }
+.trunk { position: absolute; bottom: 0; width: 74px; border-radius: 6px 6px 0 0; }
+
+.console {
+  position: absolute; left: 0; right: 0; bottom: 0; top: 44%;
+  padding: 26px;
+}
+.frame-outer { height: 100%; border-style: solid; border-radius: 26px; padding: 24px; }
+.panel { height: 100%; border-style: solid; border-radius: 18px; padding: 26px; display: flex; flex-direction: column; gap: 24px; }
+
+.row { display: flex; gap: 20px; align-items: stretch; }
+.plate { border-style: solid; border-radius: 12px; padding: 14px 20px; display: flex; align-items: baseline; gap: 12px; }
+.bars { display: flex; flex-direction: column; gap: 12px; flex: 1; }
+.bar-track { height: 34px; border-radius: 17px; overflow: hidden; border-style: solid; }
+.bar-fill { height: 100%; }
+.well { border-style: solid; border-radius: 14px; padding: 22px; flex: 1; display: flex; flex-direction: column; gap: 12px; justify-content: center; }
+.btn { border-style: solid; border-radius: 18px; padding: 20px; text-align: center; }
+
+.modal-scrim { position: absolute; inset: 0; }
+.modal-tab { position: absolute; left: 13%; right: 13%; top: 20%; border-style: solid; border-radius: 22px; padding: 30px; display: flex; flex-direction: column; gap: 16px; }
+
+/* ---------- data table ---------- */
+.section-head {
+  font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--ink-low);
+  margin: 40px 0 12px; padding-bottom: 8px; border-bottom: 1px solid var(--rule);
+}
+.tablewrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; min-width: 460px; }
+caption { text-align: left; color: var(--ink-mid); font-size: 12.5px; padding-bottom: 10px; }
+th, td { padding: 7px 10px; text-align: left; border-bottom: 1px solid var(--rule); }
+th {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.09em;
+  text-transform: uppercase; color: var(--ink-low); font-weight: 500;
+}
+td.num { font-family: var(--mono); text-align: right; font-variant-numeric: tabular-nums; }
+.v-fail { color: var(--fail); }
+.v-pass { color: var(--pass); }
+tbody tr:last-child td { border-bottom: 0; }
+
+/* ---------- notes ---------- */
+.notes { display: grid; gap: 18px; margin-top: 8px; }
+@media (min-width: 720px) { .notes { grid-template-columns: 1fr 1fr; } }
+.note h3 { font-size: 13.5px; margin: 0 0 6px; font-weight: 600; }
+.note p { margin: 0 0 8px; color: var(--ink-mid); font-size: 13.5px; }
+.note p:last-child { margin-bottom: 0; }
+.note code {
+  font-family: var(--mono); font-size: 12px;
+  background: var(--raised); padding: 1px 5px; border-radius: 3px; color: var(--ink);
+}
+
+@media (max-width: 560px) {
+  h1 { font-size: 21px; }
+  .controls { gap: 12px; }
+  .wrap { padding: 16px 12px 48px; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <p class="eyebrow">Sir Fish · art direction</p>
+    <h1>Style proof: current vs. Lantern vs. Storybook</h1>
+    <p class="lede">
+      Three candidate palettes on one screen, each rendered at 1080 design px and scaled
+      the way <code style="font-family:var(--mono);font-size:12px">canvas_items</code> stretch scales the real game — so type and borders
+      land at the size they actually land at on your phone.
+    </p>
+    <ul class="conditions">
+      <li><b>Dark room</b></li>
+      <li>Brightness <b>~25%</b></li>
+      <li><b>Arm's length</b></li>
+      <li>After <b>10pm</b></li>
+    </ul>
+  </header>
+
+  <div class="controls">
+    <div class="ctl">
+      <span class="ctl-label" id="lbl-view">View</span>
+      <div class="seg" role="group" aria-labelledby="lbl-view">
+        <button type="button" data-view-btn="side" aria-pressed="true">Side by side</button>
+        <button type="button" data-view-btn="full" aria-pressed="false">True size</button>
+      </div>
+    </div>
+    <div class="ctl">
+      <span class="ctl-label" id="lbl-type">Type &amp; borders</span>
+      <div class="seg" role="group" aria-labelledby="lbl-type">
+        <button type="button" data-type-btn="current" aria-pressed="true">As shipped</button>
+        <button type="button" data-type-btn="phase0" aria-pressed="false">Phase 0 ramp</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="proofs" id="proofs"></div>
+
+  <h2 class="section-head">Measured structural separation</h2>
+  <div class="tablewrap">
+    <table>
+      <caption>
+        Contrast ratio between surfaces that physically touch. Below ~1.5:1 an edge stops
+        existing at phone brightness — that is what you are looking for in the proofs above.
+      </caption>
+      <thead>
+        <tr>
+          <th scope="col">Adjacent surfaces</th>
+          <th scope="col" style="text-align:right">Current</th>
+          <th scope="col" style="text-align:right">A · Lantern</th>
+          <th scope="col" style="text-align:right">B · Storybook</th>
+        </tr>
+      </thead>
+      <tbody id="ratios"></tbody>
+    </table>
+  </div>
+
+  <h2 class="section-head">What this proof does and doesn't settle</h2>
+  <div class="notes">
+    <div class="note">
+      <h3>It settles the tonal question</h3>
+      <p>
+        Whether panel edges, wells and the world/frame boundary survive a dim screen is
+        purely a question of luminance relationships, and those are identical here and in
+        the engine. Your eye adapts within seconds, so judging three dark palettes
+        <em>sequentially</em> — loading three builds one after another — is unreliable.
+        Seeing them simultaneously is the only accurate comparison, and no set of Godot
+        builds can do that on one phone.
+      </p>
+    </div>
+    <div class="note">
+      <h3>It doesn't settle the render question</h3>
+      <p>
+        There is no 3D here: no cel shading, fog, glow, or ink outlines. Storybook in
+        particular is under-represented, because most of what makes it Storybook lives in
+        the render pass (§4 of its spec), not the palette. Treat B's swatch as its colour
+        argument only.
+      </p>
+      <p>Motion, animation and how the meshes actually read are out of scope entirely.</p>
+    </div>
+    <div class="note">
+      <h3>Type and palette are separated on purpose</h3>
+      <p>
+        The <b>Type &amp; borders</b> switch applies to all three proofs at once. That is
+        deliberate: if you compared Lantern-with-Phase-0 against current-as-shipped, you'd
+        credit the palette for what the type ramp did. Flip it and watch how much of the
+        improvement arrives before any colour changes.
+      </p>
+    </div>
+    <div class="note">
+      <h3>Recommended next step</h3>
+      <p>
+        Use this to eliminate, not to choose. If a style fails here it will fail in the
+        engine; if it survives, it earns a real build. Then spike the survivor's palette
+        only — <code>tuning.gd</code> §6.1 is one file — and push that to the style-test
+        itch project rather than implementing either spec in full.
+      </p>
+    </div>
+  </div>
+</div>
+
+<script>
+/* Each palette is the exact set of solved values from the specs — the same
+   hexes tools/palette_audit.py gates on. Nothing here is eyeballed. */
+const STYLES = [
+  {
+    tag: "AS SHIPPED", name: "Current", key: "current",
+    display: '"Cinzel", Georgia, serif', body: '"EB Garamond", Georgia, serif',
+    bodyWeight: 400,
+    sky:"#0B2C4E", far:"#0E3A52", mid:"#14584E", near:"#0A1C24",
+    ground:"#2F6B44", brush:"#0C2A2C",
+    bg:"#07171B", inset:"#0B1E1C", panel:"#0D2A2A", stone:"#3A4A3C", border:"#2E5A4E",
+    text:"#F5F1E4", dim:"#9CB0AC", gold:"#F0D588", goldFill:"#D4A843",
+    scrim:"#241832", tablet:"#1A1526", tabletInk:"#D8B4FE", tabletText:"#F5F1E4"
+  },
+  {
+    tag: "STYLE A", name: "Lantern", key: "lantern",
+    display: '"Cinzel", Georgia, serif', body: '"EB Garamond", Georgia, serif',
+    bodyWeight: 600,
+    sky:"#193152", far:"#2A586E", mid:"#2E7366", near:"#234B58",
+    ground:"#41905C", brush:"#3B826B",
+    bg:"#040709", inset:"#194341", panel:"#34756A", stone:"#668761", border:"#BFA864",
+    text:"#F5F1E6", dim:"#B5D2C8", gold:"#EFD694", goldFill:"#D8AF52",
+    scrim:"#251536", tablet:"#614984", tabletInk:"#DCC1F7", tabletText:"#F5F1E6"
+  },
+  {
+    tag: "STYLE B", name: "Storybook", key: "storybook",
+    display: '"Baloo 2", system-ui, sans-serif', body: '"Baloo 2", system-ui, sans-serif',
+    bodyWeight: 600,
+    sky:"#98DEFC", far:"#6AA4CC", mid:"#357E60", near:"#194838",
+    ground:"#8CC960", brush:"#44975F",
+    bg:"#487A9F", inset:"#46768D", panel:"#E8DCBE", stone:"#F5EEDF", border:"#2F2115",
+    text:"#2F2115", dim:"#685643", gold:"#7D5B1F", goldFill:"#DAA62C",
+    scrim:"#704F90", tablet:"#DFCFEB", tabletInk:"#7333AC", tabletText:"#2F2115"
+  }
+];
+
+/* Design-pixel sizes. "current" is what ships; "phase0" is the exploration
+   plan's ramp (40px floor) plus its 7px border floor. */
+const METRICS = {
+  current: { h1: 60, body: 34, small: 26, btn: 38, num: 90, bd: 3, bdThick: 4 },
+  phase0:  { h1: 78, body: 46, small: 40, btn: 46, num: 96, bd: 8, bdThick: 10 }
+};
+
+const RATIOS = [
+  ["Panel vs. screen behind it",      1.20, 3.75,  3.38],
+  ["Recessed well vs. its panel",     1.14, 2.03,  3.64],
+  ["Border vs. its own panel",        1.95, 2.31, 11.42],
+  ["Carved frame vs. screen",         1.94, 5.01,  3.99],
+  ["Modal tablet vs. its scrim",      1.06, 2.26,  4.44]
+];
+
+function px(n) { return n + "px"; }
+
+function buildMock(s, m) {
+  const bodyFont = `font-family:${s.body};font-weight:${s.bodyWeight};`;
+  const dispFont = `font-family:${s.display};font-weight:900;`;
+
+  // World: five stacked bands, then a few trunks in the near layer.
+  const bands = [
+    [s.sky,    0,   34],
+    [s.far,   30,   20],
+    [s.mid,   48,   22],
+    [s.brush, 68,   18],
+    [s.ground,84,   16]
+  ].map(([c, top, h]) =>
+    `<div class="band" style="top:${top}%;height:${h}%;background:${c}"></div>`
+  ).join("");
+
+  const trunks = [90, 300, 620, 880, 1000].map((x, i) =>
+    `<div class="trunk" style="left:${x}px;height:${180 + (i % 3) * 70}px;background:${s.near}"></div>`
+  ).join("");
+
+  return `
+  <div class="mock" style="background:${s.bg}">
+    <div class="world">${bands}${trunks}</div>
+
+    <div class="console">
+      <div class="frame-outer" style="background:${s.stone};border-width:${m.bdThick}px;border-color:${s.border}">
+        <div class="panel" style="background:${s.panel};border-width:${m.bd}px;border-color:${s.border}">
+
+          <div class="row">
+            <div class="plate" style="background:${s.inset};border-width:${m.bd}px;border-color:${s.border}">
+              <span style="${dispFont}font-size:${px(m.h1)};color:${s.gold};line-height:1">1,240</span>
+              <span style="${bodyFont}font-size:${px(m.small)};color:${s.dim}">G</span>
+            </div>
+            <div class="bars">
+              ${[[0.82, s.goldFill], [0.55, s.gold], [0.34, s.goldFill]].map(([f, c]) => `
+                <div class="bar-track" style="background:${s.inset};border-width:${m.bd}px;border-color:${s.border}">
+                  <div class="bar-fill" style="width:${f * 100}%;background:${c}"></div>
+                </div>`).join("")}
+            </div>
+          </div>
+
+          <div class="well" style="background:${s.inset};border-width:${m.bd}px;border-color:${s.border}">
+            <div style="${bodyFont}font-size:${px(m.body)};color:${s.text}">Sardine Blade</div>
+            <div style="${bodyFont}font-size:${px(m.small)};color:${s.dim}">+4 ATK &nbsp;·&nbsp; Rusted, but honest</div>
+          </div>
+
+          <div class="btn" style="background:${s.inset};border-width:${m.bdThick}px;border-color:${s.border}">
+            <span style="${dispFont}font-size:${px(m.btn)};color:${s.gold};letter-spacing:0.08em">DESCEND</span>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-scrim" style="background:${s.scrim};opacity:0.86"></div>
+    <div class="modal-tab" style="background:${s.tablet};border-width:${m.bdThick}px;border-color:${s.tabletInk}">
+      <div style="${dispFont}font-size:${px(m.h1)};color:${s.tabletInk};line-height:1.1">Relic Found</div>
+      <div style="${bodyFont}font-size:${px(m.body)};color:${s.tabletText}">A barnacled crown, three sizes too large.</div>
+      <div style="${bodyFont}font-size:${px(m.small)};color:${s.tabletInk}">Tap to keep it</div>
+    </div>
+  </div>`;
+}
+
+function render() {
+  const mode = document.body.dataset.type;
+  const m = METRICS[mode];
+  document.getElementById("proofs").innerHTML = STYLES.map(s => `
+    <div class="proof">
+      <div class="proof-head">
+        <span class="proof-tag">${s.tag}</span>
+        <span class="proof-name">${s.name}</span>
+      </div>
+      <div class="mock-frame">${buildMock(s, m)}</div>
+    </div>`).join("");
+  fit();
+}
+
+/* Scale each 1080px-wide mock down to its frame, so every design pixel maps
+   the way the engine's canvas_items stretch maps it on a real handset. */
+function fit() {
+  document.querySelectorAll(".mock-frame").forEach(frame => {
+    const mock = frame.firstElementChild;
+    if (!mock) return;
+    const scale = frame.clientWidth / 1080;
+    mock.style.transform = `scale(${scale})`;
+    frame.style.height = (1500 * scale) + "px";
+  });
+}
+
+function buildRatios() {
+  document.getElementById("ratios").innerHTML = RATIOS.map(([label, a, b, c]) => {
+    const cell = v => {
+      const cls = v < 1.5 ? "v-fail" : (v >= 2.0 ? "v-pass" : "");
+      return `<td class="num ${cls}">${v.toFixed(2)}:1</td>`;
+    };
+    return `<tr><th scope="row" style="font-family:var(--sans);font-size:13px;text-transform:none;letter-spacing:0;color:var(--ink);font-weight:400">${label}</th>${cell(a)}${cell(b)}${cell(c)}</tr>`;
+  }).join("");
+}
+
+document.querySelectorAll("[data-view-btn]").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.body.dataset.view = btn.dataset.viewBtn;
+    document.querySelectorAll("[data-view-btn]").forEach(b =>
+      b.setAttribute("aria-pressed", String(b === btn)));
+    fit();
+  });
+});
+
+document.querySelectorAll("[data-type-btn]").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.body.dataset.type = btn.dataset.typeBtn;
+    document.querySelectorAll("[data-type-btn]").forEach(b =>
+      b.setAttribute("aria-pressed", String(b === btn)));
+    render();
+  });
+});
+
+window.addEventListener("resize", fit);
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(fit);
+
+document.body.dataset.view = "side";
+document.body.dataset.type = "current";
+buildRatios();
+render();
+</script>

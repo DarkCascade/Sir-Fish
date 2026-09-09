@@ -261,6 +261,30 @@ The whole point is a judgement that can only be made on the actual device in
 the actual conditions, so the exploration is built around getting builds onto
 the phone rather than around screenshots.
 
+**Start on the proof sheets, not in the engine.** Two static pages in this
+folder render the candidate palettes at true on-device scale, and they exist
+because of a flaw in the obvious approach: your eye adapts within seconds, so
+judging dark palettes *sequentially* — loading one build after another — compares
+a live impression against a memory formed under different adaptation. Two builds
+cannot be open at once on one phone, so the itch route is inherently sequential
+for exactly the judgement that most needs simultaneity.
+
+| File | Compares | Settles |
+|---|---|---|
+| `Sir Fish - Proof 1 - Style Comparison.html` | current / Lantern / Storybook | whether each style's structure survives a dim screen; how much of the win is the Phase 0 type ramp alone |
+| `Sir Fish - Proof 2 - Lantern Hues.html` | Lantern in teal / purple / green / red | which console hue collides with an existing signal colour |
+
+Open them straight off disk on the phone. Both are self-contained apart from
+Google Fonts, and both scale a literal 1080-design-px mock the way
+`canvas_items` stretch scales the real game, so type and borders land at the
+size they land at on device.
+
+**Use the proofs to eliminate, not to choose.** A style that fails there will
+fail in the engine. What they cannot show is the render pass — no cel shading,
+fog, glow or ink outlines — so Storybook is under-represented by construction
+and must not be dropped on aesthetics at this stage, only on whether its
+structure reads.
+
 ### 3.1 Getting each style onto the phone
 
 `.github/workflows/deploy-itch.yml` already exports the `Web` preset and pushes
@@ -310,15 +334,22 @@ as a deliberate accessibility feature, once one style is the committed default.
 
 | Step | Work | Gate |
 |---|---|---|
-| 0 | Phase 0 — type ramp, body weight, border weight (§1) | type + border sections of the audit clean; every screen re-fitted |
-| 1 | Branch `art/lantern`, implement Spec A | `--profile lantern --strict` passes |
-| 2 | Branch `art/storybook`, implement Spec B | `--profile storybook --strict` passes |
-| 3 | Push all three to the style-test itch project (§3.1) | three playable builds |
-| 4 | Night test (§3.2) | one style chosen |
-| 5 | Merge the winner to `main`; leave the loser's spec in place | audit gate added to CI |
+| 0 | Read the proof sheets on the phone at night (§3) | at least one style eliminated, or both confirmed worth building |
+| 1 | Phase 0 — type ramp, body weight, border weight (§1) | type + border sections of the audit clean; every screen re-fitted |
+| 2 | Branch `art/lantern`, implement Spec A | `--profile lantern --strict` passes |
+| 3 | Branch `art/storybook`, implement Spec B | `--profile storybook --strict` passes |
+| 4 | Push the survivors to the style-test itch project (§3.1) | playable builds |
+| 5 | Night test (§3.2) | one style chosen |
+| 6 | Merge the winner to `main`; leave the loser's spec in place | audit gate added to CI |
 
-Steps 1 and 2 are independent and can be done in either order, or in parallel on
-separate branches. Neither depends on the other's outcome.
+Step 0 is free and can happen tonight; it exists to avoid spending steps 2 and 3
+on a style the proof would have ruled out. Steps 2 and 3 are independent and can
+be done in either order, or in parallel on separate branches — but implementing
+*both* in full before deciding is the expensive mistake this sequence is arranged
+to prevent. Prefer a palette-only spike of the survivor (`tuning.gd` §6.1 is one
+file) over a full implementation, with the caveat that Storybook needs at least
+its §4.1 environment changes to get a fair hearing — a poster palette rendered
+with fog, glow and filmic tonemap still on will look wrong and lose unfairly.
 
 ## 5. Risks
 

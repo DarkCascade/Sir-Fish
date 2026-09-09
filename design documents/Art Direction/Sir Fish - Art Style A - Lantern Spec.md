@@ -239,3 +239,53 @@ things without solving them, and `Art Style B — Storybook` is the answer.
 Palette rewrite is an afternoon. §5's six derived-colour files are the real
 work — call it two sessions with device checks between. §3 and §4 are small but
 must be done on device, not in the editor.
+
+---
+
+## 9. Appendix — the console hue is a free variable
+
+§2 specifies Lantern in teal, because that is where the shipped palette already
+lives. It does not have to be. **Every value in this spec except four console
+constants is hue-independent**, so switching the lantern's colour is a
+four-line change, not a re-spec.
+
+The reason is §0.3: what was load-bearing was luminance, not hue. Solving the
+same target luminances at a different hue produces a palette that clears the
+`lantern` profile identically. Verified across all four below — chrome edges
+2.03–2.09:1, world 2.07:1, text 3.72–3.77:1, where the spread is 8-bit rounding
+and nothing else.
+
+| Variant | `C_CONSOLE_BG` | `C_CONSOLE_INSET` | `C_CONSOLE_PANEL` | `C_CONSOLE_STONE` |
+|---|---|---|---|---|
+| **Teal** (§2, spec'd) | `040709` | `194341` | `34756A` | `668761` |
+| **Amethyst** (purple) | `09060C` | `4C2E67` | `8359A1` | `90759D` |
+| **Verdigris** (green) | `030805` | `1C4329` | `397844` | `6B865E` |
+| **Ember** (red) | `0A0604` | `5C3027` | `975B48` | `937967` |
+
+Target luminances, identical in every column: 0.0020 / 0.0450 / 0.1450 / 0.2100.
+`C_PANEL_BORDER` stays `BFA864` throughout — §6.1's *gold is the UI* is the one
+relationship no variant breaks.
+
+`Sir Fish - Proof 2 - Lantern Hues.html` renders all four side by side.
+
+### 9.1 Hue collisions — what actually decides it
+
+Since legibility is identical, the decision is semantic: whether the console
+shares a hue with a colour that already *means* something. Angular distance on
+the colour wheel, where under 35° reads as "the same colour" at a glance:
+
+| Variant | Collides with | Severity |
+|---|---|---|
+| Teal | `C_ARCANE` 33°, `C_GROUND` 30° | **Low** — both already lived with, and Lantern separates them by luminance. |
+| Amethyst | `C_CRYSTAL` 17°, `C_FLOWER` 20° | **High** — spends §6.1e's scoped exception. The modal stops reading as a different place. |
+| Verdigris | `C_GROUND` 9°, `C_HEAL` 16° | **High** — puts the frame in the world's colour, directly against §6.1's organising rule. |
+| Ember | `C_FIRE` 11°, `C_DANGER` 17°, `C_DEFEND` 29° | **High** — mutes the game's most time-critical feedback. |
+
+**Recommendation: teal, unless there is a reason to spend the collision.**
+Amethyst is viable only if the reliquary layer moves to another hue, which
+reopens a decision the presentation redesign settled. Ember survives only by
+moving `C_DANGER` toward magenta.
+
+One caveat that does not apply to teal: **Ember needs the gold rim re-tested.**
+A warm rim on a warm panel loses its edge, and the 2.31:1 border-vs-panel figure
+in §2.1 is a luminance ratio that does not capture a hue clash.

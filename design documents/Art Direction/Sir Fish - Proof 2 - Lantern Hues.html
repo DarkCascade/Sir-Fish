@@ -1,0 +1,394 @@
+<title>Lantern Hue Variants</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600&family=IBM+Plex+Mono:wght@400;500&family=EB+Garamond:wght@600&family=Cinzel:wght@900&display=swap">
+
+<style>
+/* Same viewing booth as the first style proof: single dark theme, strictly
+   neutral surround, no chromatic accent anywhere in the chrome. Here that
+   discipline matters more than ever — this sheet compares four hues, and any
+   hue in the page furniture would bias the eye toward whichever one it shares. */
+:root {
+  --void:      #0A0B0D;
+  --surround:  #131519;
+  --raised:    #1C1F25;
+  --rule:      #2A2E36;
+  --ink:       #E6E3DB;
+  --ink-mid:   #9DA3AD;
+  --ink-low:   #676D77;
+  --pass:      #6FA98A;
+  --fail:      #B5766E;
+  --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--void); color: var(--ink);
+  font-family: var(--sans); font-size: 15px; line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+}
+.wrap { max-width: 1180px; margin: 0 auto; padding: 20px 16px 64px; }
+
+header { border-bottom: 1px solid var(--rule); padding-bottom: 18px; margin-bottom: 18px; }
+.eyebrow {
+  font-family: var(--mono); font-size: 11px; font-weight: 500; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--ink-low); margin: 0 0 6px;
+}
+h1 { font-size: 26px; line-height: 1.15; margin: 0 0 10px; font-weight: 600; text-wrap: balance; }
+.lede { margin: 0; color: var(--ink-mid); max-width: 64ch; font-size: 14px; }
+
+/* The finding sits above the proofs because it reframes what you're looking for. */
+.finding {
+  margin: 16px 0 0; padding: 13px 15px;
+  background: var(--surround); border: 1px solid var(--rule);
+  border-left: 3px solid var(--pass); border-radius: 3px;
+}
+.finding p { margin: 0; font-size: 13.5px; color: var(--ink-mid); }
+.finding b { color: var(--ink); font-weight: 600; }
+
+.controls {
+  display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-end;
+  padding: 14px 0; margin-bottom: 16px; border-bottom: 1px solid var(--rule);
+  position: sticky; top: 0; background: var(--void); z-index: 20;
+}
+.ctl { display: flex; flex-direction: column; gap: 6px; }
+.ctl-label {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.12em;
+  text-transform: uppercase; color: var(--ink-low);
+}
+.seg { display: flex; border: 1px solid var(--rule); border-radius: 4px; overflow: hidden; }
+.seg button {
+  font-family: var(--mono); font-size: 12px; background: var(--surround);
+  color: var(--ink-mid); border: 0; padding: 7px 12px; cursor: pointer;
+  border-right: 1px solid var(--rule);
+}
+.seg button:last-child { border-right: 0; }
+.seg button[aria-pressed="true"] { background: var(--ink); color: var(--void); font-weight: 500; }
+.seg button:focus-visible { outline: 2px solid var(--ink); outline-offset: -2px; }
+
+.proofs { display: grid; gap: 14px; }
+body[data-view="side"] .proofs { grid-template-columns: repeat(2, 1fr); }
+@media (min-width: 620px) { body[data-view="side"] .proofs { grid-template-columns: repeat(4, 1fr); } }
+body[data-view="full"] .proofs { grid-template-columns: 1fr; max-width: 430px; margin: 0 auto; }
+
+.proof { display: flex; flex-direction: column; gap: 7px; min-width: 0; }
+.proof-head { display: flex; align-items: baseline; gap: 7px; flex-wrap: wrap; }
+.proof-name { font-size: 13px; font-weight: 600; }
+.proof-hex { font-family: var(--mono); font-size: 10.5px; color: var(--ink-low); }
+.mock-frame { width: 100%; overflow: hidden; border: 1px solid var(--rule); border-radius: 3px; }
+.mock { width: 1080px; height: 1500px; transform-origin: top left; position: relative; overflow: hidden; }
+
+/* mock internals — every length below is a literal game design pixel */
+.world { position: absolute; inset: 0 0 56% 0; }
+.band { position: absolute; left: 0; right: 0; }
+.trunk { position: absolute; bottom: 0; width: 74px; border-radius: 6px 6px 0 0; }
+.console { position: absolute; left: 0; right: 0; bottom: 0; top: 44%; padding: 26px; }
+.frame-outer { height: 100%; border-style: solid; border-radius: 26px; padding: 24px; }
+.panel { height: 100%; border-style: solid; border-radius: 18px; padding: 26px; display: flex; flex-direction: column; gap: 24px; }
+.row { display: flex; gap: 20px; }
+.plate { border-style: solid; border-radius: 12px; padding: 14px 20px; display: flex; align-items: baseline; gap: 12px; }
+.bars { display: flex; flex-direction: column; gap: 12px; flex: 1; }
+.bar-track { height: 34px; border-radius: 17px; overflow: hidden; border-style: solid; }
+.bar-fill { height: 100%; }
+.well { border-style: solid; border-radius: 14px; padding: 22px; flex: 1; display: flex; flex-direction: column; gap: 12px; justify-content: center; }
+.btn { border-style: solid; border-radius: 18px; padding: 20px; text-align: center; }
+.modal-scrim { position: absolute; inset: 0; }
+.modal-tab { position: absolute; left: 11%; right: 11%; top: 15%; border-style: solid; border-radius: 22px; padding: 30px; display: flex; flex-direction: column; gap: 16px; }
+
+.section-head {
+  font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.14em;
+  text-transform: uppercase; color: var(--ink-low);
+  margin: 40px 0 12px; padding-bottom: 8px; border-bottom: 1px solid var(--rule);
+}
+.tablewrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 13px; min-width: 520px; }
+caption { text-align: left; color: var(--ink-mid); font-size: 12.5px; padding-bottom: 10px; max-width: 70ch; }
+th, td { padding: 7px 10px; text-align: left; border-bottom: 1px solid var(--rule); }
+thead th {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.09em;
+  text-transform: uppercase; color: var(--ink-low); font-weight: 500;
+}
+tbody th { font-weight: 400; font-size: 13px; }
+td.num { font-family: var(--mono); text-align: right; font-variant-numeric: tabular-nums; color: var(--ink-mid); }
+td.hit { color: var(--fail); font-weight: 500; }
+.swatch {
+  display: inline-block; width: 10px; height: 10px; border-radius: 2px;
+  margin-right: 6px; vertical-align: baseline; border: 1px solid rgba(255,255,255,0.18);
+}
+tbody tr:last-child th, tbody tr:last-child td { border-bottom: 0; }
+
+.verdicts { display: grid; gap: 14px; margin-top: 6px; }
+@media (min-width: 700px) { .verdicts { grid-template-columns: repeat(2, 1fr); } }
+.verdict { border: 1px solid var(--rule); border-radius: 4px; padding: 14px 15px; background: var(--surround); }
+.verdict h3 { margin: 0 0 4px; font-size: 13.5px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+.verdict .rank {
+  font-family: var(--mono); font-size: 10px; letter-spacing: 0.1em;
+  color: var(--ink-low); text-transform: uppercase;
+}
+.verdict p { margin: 0; font-size: 13px; color: var(--ink-mid); }
+.verdict p + p { margin-top: 7px; }
+.verdict code { font-family: var(--mono); font-size: 11.5px; color: var(--ink); }
+
+.notes { display: grid; gap: 16px; margin-top: 6px; }
+@media (min-width: 700px) { .notes { grid-template-columns: 1fr 1fr; } }
+.note h3 { font-size: 13.5px; margin: 0 0 6px; font-weight: 600; }
+.note p { margin: 0 0 8px; color: var(--ink-mid); font-size: 13.5px; }
+.note p:last-child { margin-bottom: 0; }
+.note code { font-family: var(--mono); font-size: 12px; background: var(--raised); padding: 1px 5px; border-radius: 3px; color: var(--ink); }
+
+@media (max-width: 560px) { h1 { font-size: 21px; } .wrap { padding: 16px 12px 48px; } }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <p class="eyebrow">Sir Fish · art direction · proof 2</p>
+    <h1>Lantern in four hues</h1>
+    <p class="lede">
+      The Lantern structure with its console hue rotated. Every other value —
+      the gold rim, the unlit night world, the violet modal, all text — is byte-identical
+      across the four, so the console hue is the only variable.
+    </p>
+    <div class="finding">
+      <p>
+        <b>All four pass the readability gate identically</b> (chrome edges 2.03–2.09:1,
+        world 2.07:1, text 3.72–3.77:1; the spread is 8-bit rounding). Hue was never the
+        load-bearing variable — luminance was. So this is not a legibility choice, it is a
+        <b>semantic</b> one: what each hue collides with.
+      </p>
+    </div>
+  </header>
+
+  <div class="controls">
+    <div class="ctl">
+      <span class="ctl-label" id="lbl-view">View</span>
+      <div class="seg" role="group" aria-labelledby="lbl-view">
+        <button type="button" data-view-btn="side" aria-pressed="true">All four</button>
+        <button type="button" data-view-btn="full" aria-pressed="false">True size</button>
+      </div>
+    </div>
+    <div class="ctl">
+      <span class="ctl-label" id="lbl-modal">Modal layer</span>
+      <div class="seg" role="group" aria-labelledby="lbl-modal">
+        <button type="button" data-modal-btn="off" aria-pressed="true">Hidden</button>
+        <button type="button" data-modal-btn="on" aria-pressed="false">Shown</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="proofs" id="proofs"></div>
+
+  <h2 class="section-head">Hue collisions — the actual decision</h2>
+  <div class="tablewrap">
+    <table>
+      <caption>
+        Angular distance on the colour wheel between each variant's console panel and a
+        colour the game already uses to <em>mean</em> something. Under 35° two colours read
+        as "the same colour" at a glance on a dim screen — and a console that shares a hue
+        with a signal is a console that mutes that signal.
+      </caption>
+      <thead>
+        <tr>
+          <th scope="col">Existing colour</th>
+          <th scope="col" style="text-align:right">Teal</th>
+          <th scope="col" style="text-align:right">Amethyst</th>
+          <th scope="col" style="text-align:right">Verdigris</th>
+          <th scope="col" style="text-align:right">Ember</th>
+        </tr>
+      </thead>
+      <tbody id="collisions"></tbody>
+    </table>
+  </div>
+
+  <h2 class="section-head">Read on each</h2>
+  <div class="verdicts" id="verdicts"></div>
+
+  <h2 class="section-head">Notes</h2>
+  <div class="notes">
+    <div class="note">
+      <h3>Why the world doesn't change</h3>
+      <p>
+        A full art direction would tint the lit near-field toward the lamp — a purple
+        lantern throws purple light onto the moss in front of it. That is deliberately not
+        done here, because it would confound the thing being judged. What you're seeing is
+        the lamp's own colour against a fixed night.
+      </p>
+      <p>Whichever hue wins, budget a pass on <code>C_GROUND</code> and <code>C_BRUSH</code> to carry a hint of it.</p>
+    </div>
+    <div class="note">
+      <h3>The gold rim is fixed on purpose</h3>
+      <p>
+        §6.1's rule — <em>gold is the UI</em> — is the one relationship every variant keeps.
+        Holding <code>C_PANEL_BORDER</code> constant at <code>#BFA864</code> also isolates
+        the variable: if the rim moved with the hue, you'd be judging two changes at once.
+      </p>
+      <p>Ember is the one variant where this needs re-testing — a warm rim on a warm panel loses its edge.</p>
+    </div>
+  </div>
+</div>
+
+<script>
+/* Hues solved at Lantern's exact target luminances (BG 0.0020, well 0.0450,
+   panel 0.1450, frame 0.2100), so every variant clears the same gate. */
+const SHARED = {
+  border:"#BFA864", goldFill:"#D8AF52", gold:"#EED694",
+  text:"#F5F1E6", dim:"#B5D2C9",
+  sky:"#193152", far:"#2A586E", mid:"#2E7365", near:"#234B58",
+  ground:"#41905B", brush:"#3B826B",
+  scrim:"#251536", tablet:"#614984", tabletInk:"#DCC1F7", tabletText:"#F5F1E6"
+};
+
+const VARIANTS = [
+  { name:"Teal",      note:"as spec'd", bg:"#040709", inset:"#194341", panel:"#34756A", stone:"#668761" },
+  { name:"Amethyst",  note:"purple",    bg:"#09060C", inset:"#4C2E67", panel:"#8359A1", stone:"#90759D" },
+  { name:"Verdigris", note:"green",     bg:"#030805", inset:"#1C4329", panel:"#397844", stone:"#6B865E" },
+  { name:"Ember",     note:"red",       bg:"#0A0604", inset:"#5C3027", panel:"#975B48", stone:"#937967" }
+];
+
+/* Phase 0 ramp — the type floor is assumed landed before any style work. */
+const M = { h1:78, body:46, small:40, btn:46, bd:8, bdThick:10 };
+
+const COLLISIONS = [
+  ["C_HEAL",          "#55C94A", [55, 160,  16, 100]],
+  ["C_DANGER",        "#E4484F", [173, 82, 133,  17]],
+  ["C_FIRE",          "#FF7A1A", [145,110, 105,  11]],
+  ["C_DEFEND",        "#D9A825", [126,129,  87,  29]],
+  ["C_LIGHTNING",     "#4C86F0", [49,  56,  88, 156]],
+  ["C_ARCANE",        "#3FA9E8", [33,  73,  72, 172]],
+  ["C_CRYSTAL",       "#8B5CF6", [88,  17, 128, 116]],
+  ["C_FLOWER",        "#A78BFA", [85,  20, 125, 119]],
+  ["C_GROUND (world)","#41905B", [30, 135,   9, 125]]
+];
+
+const VERDICTS = [
+  { name:"Teal", rank:"incumbent", body:
+    "<p>Two soft collisions, both already lived with: the sapphire crystals (33°) and the moss ground (30°). Lantern separates both by luminance rather than hue, which is exactly why the spec works.</p>" +
+    "<p>The safe answer, and the only one that needs no further retuning.</p>" },
+  { name:"Amethyst", rank:"purple", body:
+    "<p>Collides hard with the entire reliquary layer — <code>C_CRYSTAL</code> 17°, <code>C_FLOWER</code> 20°. §6.1e calls the modal <em>“the ONE place violet leads”</em>; a violet console spends that exception. Toggle the modal on and watch the tablet stop reading as a different place.</p>" +
+    "<p>Viable only if the modal moves to another hue — which means reopening a decision the presentation redesign already settled.</p>" },
+  { name:"Verdigris", rank:"green", body:
+    "<p>Two hard collisions: <code>C_HEAL</code> at 16° and the moss ground at 9°. The second is the serious one — §6.1's organising rule is <em>green is the ground, gold is the UI</em>, and a green console puts the frame in the world's colour.</p>" +
+    "<p>Structurally fine, semantically the weakest of the four.</p>" },
+  { name:"Ember", rank:"red", body:
+    "<p>The most striking and the most functionally risky: <code>C_FIRE</code> 11°, <code>C_DANGER</code> 17°, <code>C_DEFEND</code> 29°. Damage numbers and the danger state are the game's most time-critical feedback, and a warm console mutes all of it.</p>" +
+    "<p>If you love the look, it survives only by moving <code>C_DANGER</code> toward magenta — a real change with real reach.</p>" }
+];
+
+function px(n){ return n + "px"; }
+
+function buildMock(v) {
+  const s = SHARED;
+  const bodyFont = 'font-family:"EB Garamond",Georgia,serif;font-weight:600;';
+  const dispFont = 'font-family:"Cinzel",Georgia,serif;font-weight:900;';
+  const showModal = document.body.dataset.modal === "on";
+
+  const bands = [
+    [s.sky, 0, 34], [s.far, 30, 20], [s.mid, 48, 22], [s.brush, 68, 18], [s.ground, 84, 16]
+  ].map(([c, top, h]) => `<div class="band" style="top:${top}%;height:${h}%;background:${c}"></div>`).join("");
+
+  const trunks = [90, 300, 620, 880, 1000].map((x, i) =>
+    `<div class="trunk" style="left:${x}px;height:${180 + (i % 3) * 70}px;background:${s.near}"></div>`).join("");
+
+  const modal = showModal ? `
+    <div class="modal-scrim" style="background:${s.scrim};opacity:0.86"></div>
+    <div class="modal-tab" style="background:${s.tablet};border-width:${M.bdThick}px;border-color:${s.tabletInk}">
+      <div style="${dispFont}font-size:${px(M.h1)};color:${s.tabletInk};line-height:1.1">Relic Found</div>
+      <div style="${bodyFont}font-size:${px(M.body)};color:${s.tabletText}">A barnacled crown, three sizes too large.</div>
+      <div style="${bodyFont}font-size:${px(M.small)};color:${s.tabletInk}">Tap to keep it</div>
+    </div>` : "";
+
+  return `
+  <div class="mock" style="background:${v.bg}">
+    <div class="world">${bands}${trunks}</div>
+    <div class="console">
+      <div class="frame-outer" style="background:${v.stone};border-width:${M.bdThick}px;border-color:${s.border}">
+        <div class="panel" style="background:${v.panel};border-width:${M.bd}px;border-color:${s.border}">
+          <div class="row">
+            <div class="plate" style="background:${v.inset};border-width:${M.bd}px;border-color:${s.border}">
+              <span style="${dispFont}font-size:${px(M.h1)};color:${s.gold};line-height:1">1,240</span>
+              <span style="${bodyFont}font-size:${px(M.small)};color:${s.dim}">G</span>
+            </div>
+            <div class="bars">
+              ${[[0.82, s.goldFill],[0.55, s.gold],[0.34, s.goldFill]].map(([f,c]) => `
+                <div class="bar-track" style="background:${v.inset};border-width:${M.bd}px;border-color:${s.border}">
+                  <div class="bar-fill" style="width:${f*100}%;background:${c}"></div>
+                </div>`).join("")}
+            </div>
+          </div>
+          <div class="well" style="background:${v.inset};border-width:${M.bd}px;border-color:${s.border}">
+            <div style="${bodyFont}font-size:${px(M.body)};color:${s.text}">Sardine Blade</div>
+            <div style="${bodyFont}font-size:${px(M.small)};color:${s.dim}">+4 ATK &nbsp;·&nbsp; Rusted, but honest</div>
+          </div>
+          <div class="btn" style="background:${v.inset};border-width:${M.bdThick}px;border-color:${s.border}">
+            <span style="${dispFont}font-size:${px(M.btn)};color:${s.gold};letter-spacing:0.08em">DESCEND</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    ${modal}
+  </div>`;
+}
+
+function render() {
+  document.getElementById("proofs").innerHTML = VARIANTS.map(v => `
+    <div class="proof">
+      <div class="proof-head">
+        <span class="proof-name">${v.name}</span>
+        <span class="proof-hex">${v.panel}</span>
+      </div>
+      <div class="mock-frame">${buildMock(v)}</div>
+    </div>`).join("");
+  fit();
+}
+
+function fit() {
+  document.querySelectorAll(".mock-frame").forEach(frame => {
+    const mock = frame.firstElementChild;
+    if (!mock) return;
+    const scale = frame.clientWidth / 1080;
+    mock.style.transform = `scale(${scale})`;
+    frame.style.height = (1500 * scale) + "px";
+  });
+}
+
+function buildTables() {
+  document.getElementById("collisions").innerHTML = COLLISIONS.map(([name, hex, ds]) => {
+    const cells = ds.map(d =>
+      `<td class="num ${d < 35 ? "hit" : ""}">${d}°</td>`).join("");
+    return `<tr><th scope="row"><span class="swatch" style="background:${hex}"></span>${name}</th>${cells}</tr>`;
+  }).join("");
+
+  document.getElementById("verdicts").innerHTML = VERDICTS.map(v => `
+    <div class="verdict">
+      <h3>${v.name} <span class="rank">${v.rank}</span></h3>
+      ${v.body}
+    </div>`).join("");
+}
+
+document.querySelectorAll("[data-view-btn]").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.body.dataset.view = btn.dataset.viewBtn;
+    document.querySelectorAll("[data-view-btn]").forEach(b =>
+      b.setAttribute("aria-pressed", String(b === btn)));
+    fit();
+  });
+});
+document.querySelectorAll("[data-modal-btn]").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.body.dataset.modal = btn.dataset.modalBtn;
+    document.querySelectorAll("[data-modal-btn]").forEach(b =>
+      b.setAttribute("aria-pressed", String(b === btn)));
+    render();
+  });
+});
+
+window.addEventListener("resize", fit);
+if (document.fonts && document.fonts.ready) document.fonts.ready.then(fit);
+
+document.body.dataset.view = "side";
+document.body.dataset.modal = "off";
+buildTables();
+render();
+</script>
