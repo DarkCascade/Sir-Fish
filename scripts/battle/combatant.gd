@@ -5,6 +5,13 @@ extends Node3D
 ## combat is deterministic given a seed and trivially pausable (spec 8.1).
 
 enum State { IDLE, RUNNING, ATTACKING, HURT, DEAD }
+## [levels] Which power stat an attack draws from (levels & stats spec §1.3).
+## WEAPON covers melee swings and arrows; MAGIC covers bolts and the mage's
+## heal. Kept on Combatant rather than CombatantStats.AttackStyle - attack_style
+## says how a character REACHES its target (blink vs. projectile), school says
+## which stat pays for the hit, and an ability may want the non-default one
+## (Ability.school).
+enum School { WEAPON, MAGIC }
 
 signal died(c: Combatant)
 
@@ -19,6 +26,12 @@ const SPECIAL_FLASH_COLORS := {
 
 var current_hp: int
 var max_hp: int
+## [levels] This spawn's level. Never read from `stats` - the resource is
+## shared and cached (GameState._stats_cache) and must never carry the level
+## of one particular spawn. Defaults to 1 so a Combatant built before setup()
+## assigns one (see _build()'s early call from _ready()) still resolves sane
+## stats.
+var level: int = 1
 var state: State = State.IDLE
 var cooldown_remaining: float = 0.0
 var action_count: int = 0
@@ -74,12 +87,13 @@ func _ready() -> void:
 
 # --- construction -----------------------------------------------------------
 
-func setup(s: CombatantStats, starting_hp: int = -1) -> void:
+func setup(s: CombatantStats, starting_hp: int = -1, a_level: int = 1) -> void:
 	stats = s
+	level = a_level
 	if not is_inside_tree():
 		await ready
 	_build()
-	max_hp = stats.max_hp
+	max_hp = stats.hp_at(level)
 	current_hp = max_hp if starting_hp < 0 else clampi(starting_hp, 0, max_hp)
 	is_hero = stats.is_hero
 	state = State.IDLE
@@ -104,7 +118,7 @@ func setup(s: CombatantStats, starting_hp: int = -1) -> void:
 func _build() -> void:
 	_built = true
 	is_hero = stats.is_hero
-	max_hp = stats.max_hp
+	max_hp = stats.hp_at(level)
 	if current_hp <= 0:
 		current_hp = max_hp
 	CombatantRig.build(rig, stats)
@@ -281,58 +295,57 @@ func begin_action(ability: Ability) -> void:
 		face_position(ability.target.global_position)
 	play_anim(ability.anim_name)
 
-## Blink to the target, swing, then blink home (see BattleVfx.blink_out for
-## what the effect is doing and why). `state` stays ATTACKING for the whole
-## round trip, which is what makes the turn queue hold the next combatant
-## until this one is back in formation - one action at a time, fully
-## resolved, exactly as _advance_turn_queue() already assumed.
-##
-## The model is hidden outright rather than alpha-faded: at 0.13 s a fade is
-## imperceptible anyway, and driving rig alpha here would collide with the
-## corpse-fade tweens and CelMaterials.flash(), which own that same channel.
+## Instantly repositions to strike range, swings, then instantly returns home
+## (_blink_home). Melee still needs to end up adjacent to its target - only
+## the flash/vanish/streak dressing (BattleVfx.blink_out/blink_in/blink_trail)
+## and the hide-while-in-transit are gone; the reposition itself is a plain,
+## un-effected snap. `state` stays ATTACKING for the whole round trip, which is
+## what makes the turn queue hold the next combatant until this one is back in
+## formation - one action at a time, fully resolved, exactly as
+## _advance_turn_queue() already assumed.
 func _blink_strike(ability: Ability) -> void:
-	var from := global_position
 	var dest: Vector3 = ability.strike_position(self)
-
-	BattleVfx.blink_out(self, stats.accent_color)
-	visual.visible = false
-	await get_tree().create_timer(Tuning.TELEPORT_OUT_TIME).timeout
-	if not is_instance_valid(self) or state != State.ATTACKING:
-		return                                    # died, or was cancelled, mid-blink
-
 	global_position = dest
 	_blinked = true
 	if ability.target != null and is_instance_valid(ability.target):
 		face_position(ability.target.global_position)
-	BattleVfx.blink_trail(from, dest, stats.accent_color)
-	BattleVfx.blink_in(self, stats.accent_color)
-	visual.visible = true
 	play_anim(ability.anim_name)
 
 ## The return leg. Runs after the attack animation finishes, so the swing is
-## seen where it lands before the attacker leaves.
+## seen where it lands before the attacker leaves. TELEPORT_RETURN_DELAY is a
+## combat-readability beat (time for the hit to register before the attacker
+## vanishes from the target's side), not part of the removed visual effect, so
+## it stays.
 func _blink_home() -> void:
 	await get_tree().create_timer(Tuning.TELEPORT_RETURN_DELAY).timeout
 	if not is_instance_valid(self) or state == State.DEAD:
 		return
-	var from := global_position
-	BattleVfx.blink_out(self, stats.accent_color)
-	visual.visible = false
-	await get_tree().create_timer(Tuning.TELEPORT_OUT_TIME).timeout
-	if not is_instance_valid(self) or state == State.DEAD:
-		return
 	global_position = _home_position
 	face_home_dir()
-	BattleVfx.blink_trail(from, _home_position, stats.accent_color)
-	BattleVfx.blink_in(self, stats.accent_color)
-	visual.visible = true
 	_blinked = false
 
 # --- damage / healing -------------------------------------------------------
 
+## [levels] Which school this character's ordinary attack draws from, derived
+## from attack_style rather than stored twice: a MAGIC attacker's bolt is
+## magic, MELEE / RANGED both swing or shoot something physical. An ability
+## that wants the other school (the mage's heal, the ranger's bomb arrow) asks
+## for it explicitly via Ability.school instead of overriding this (spec §1.3).
+func default_school() -> School:
+	return School.MAGIC if stats.attack_style == CombatantStats.AttackStyle.MAGIC \
+		else School.WEAPON
+
+## The resolved Weapon or Magic Power for this spawn's level (spec §1.1/§1.3).
+func power(school: School) -> int:
+	return stats.magic_power_at(level) if school == School.MAGIC \
+		else stats.weapon_power_at(level)
+
 ## Spec 8.4. Includes the party damage buff and the per-hit variance roll.
-func compute_damage() -> int:
-	var raw := (float(stats.base_damage) + float(bonus_flat_damage)) * damage_multiplier
+## `school` is -1 (the default) to use this character's own default_school() -
+## see Ability.school for the explicit override.
+func compute_damage(school: int = -1) -> int:
+	var s: School = default_school() if school < 0 else school as School
+	var raw := (float(power(s)) + float(bonus_flat_damage)) * damage_multiplier
 	raw *= RNG.randf_range(1.0 - Tuning.DAMAGE_VARIANCE, 1.0 + Tuning.DAMAGE_VARIANCE)
 	return maxi(1, int(round(raw)))
 

@@ -200,7 +200,11 @@ func _slot_icon_for(token: String) -> Dictionary:
 		"blank", "-", "_", "":
 			return SlotIcon.blank()
 		"innate_dmg":
-			return { "id": SlotIcon.INNATE_DAMAGE, "roll": Tuning.SLOT_INNATE_DAMAGE,
+			# [levels] A mid roll for the forced debug icon, same convention as
+			# the modifier branch below - the real magnitude is now
+			# GameState.hero_weapon_power() * SLOT_INNATE_POWER_FRACTION, which
+			# needs a hero class this token does not carry.
+			return { "id": SlotIcon.INNATE_DAMAGE, "roll": 6,
 				"enhanced": false, "innate": true }
 		"innate_heal":
 			return { "id": SlotIcon.INNATE_HEAL, "roll": Tuning.SLOT_INNATE_HEAL_PCT,

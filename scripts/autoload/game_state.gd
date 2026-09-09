@@ -96,6 +96,24 @@ var completed_quest: QuestDef = null
 var expedition_gold: int = 0
 var expedition_scrap: int = 0
 
+## [levels] Hero level and XP-toward-next-level, keyed by class (StringName ->
+## int). Absent means level 1 / 0 xp - so a save from before this pass, or a
+## hero who has never earned any, reads correctly with no migration (spec
+## §3.1). Profile-scoped, saved.
+var hero_levels: Dictionary = {}
+var hero_xp: Dictionary = {}
+
+## [levels] XP earned this expedition, banked and applied in one step at
+## expedition end (spec §3.2) - a hero's power never changes mid-fight. Tallied
+## by the kill hook in BattleDirector, applied by apply_expedition_xp().
+## Unlike expedition_gold/scrap (which credit the profile immediately on
+## pickup and so survive a wipe on their own), this field IS the thing that
+## survives a wipe: apply_expedition_xp() runs on every expedition end,
+## victory or defeat, mirroring the existing "gold/scrap earned mid-run is
+## never clawed back" rule rather than the "loose loot is discarded" one -
+## killing enemies before a wipe should count for something.
+var expedition_xp: int = 0
+
 ## [day-night] Where the party is in the day/night loop (day/night spec §2.2).
 ## This enum is the whole enforcement mechanism for "one quest per day, one
 ## night per quest": resolve_night() is reachable ONLY from NIGHT_PENDING, and
@@ -451,6 +469,90 @@ func living_hero_count() -> int:
 			n += 1
 	return n
 
+## [levels] `id`'s level, or - with no argument - the highest level in
+## active_party (what the mayor's office's underlevelled check and
+## default_item_level() want). Absent from hero_levels means level 1 (spec
+## §3.1).
+func hero_level(id: StringName = &"") -> int:
+	if id != &"":
+		return int(hero_levels.get(id, 1))
+	var best := 1
+	for c: StringName in active_party:
+		best = maxi(best, int(hero_levels.get(c, 1)))
+	return best
+
+func hero_xp_for(id: StringName) -> int:
+	return int(hero_xp.get(id, 0))
+
+## [levels] What level an item generates at when nothing more specific is
+## available - the blacksmith's town stock, which has no expedition context
+## (spec §4.2). Itemizer's five generators all resolve their `level: int = -1`
+## default through this one function, so "what level is an unstamped item" has
+## exactly one answer.
+func default_item_level() -> int:
+	return hero_level()
+
+## [levels] `id`'s Weapon Power at their current level - the RAW stat, not a
+## live Combatant's buffed compute_damage() (no meal multiplier, no
+## bonus_flat_damage). This is what the slot board's innate damage icon reads
+## (spec §4.4): a level does not change mid-combat, so reading it off the
+## stats resource works identically in town (attract mode) and in a live fight,
+## and staying off the buffed value keeps the innate icon a pure function of
+## hero level, not of what happens to be equipped that spin.
+func hero_weapon_power(id: StringName) -> int:
+	var s := get_stats(id)
+	return 0 if s == null else s.weapon_power_at(hero_level(id))
+
+## XP needed to advance FROM `lvl` TO `lvl + 1` (spec §3.2). Parameter named
+## `lvl`, not `level` - this class already has a `level: LevelDef` field and
+## GDScript warns (correctly) about shadowing it.
+func xp_to_next(lvl: int) -> int:
+	return Tuning.XP_CURVE_BASE * maxi(lvl, 1)
+
+## [levels] Applies the whole of expedition_xp to every member of active_party
+## at once (not split - a future multi-hero party each gets the full amount,
+## the same "everyone benefits" shape party-wide gold already has). Called once
+## per expedition end, win or lose (spec §3.2) - see expedition_xp's own
+## comment for why a wipe still keeps it. A no-op with nothing banked.
+func apply_expedition_xp() -> void:
+	if expedition_xp <= 0:
+		return
+	for id: StringName in active_party:
+		_apply_xp_to_hero(id, expedition_xp)
+	expedition_xp = 0
+
+## Adds `amount` xp to `id`, resolving any level-ups it crosses (capped at
+## Tuning.HERO_MAX_LEVEL) and, if the level actually changed, pushing the new
+## max_hp into hero_runtime and raising current_hp by the same delta - a
+## level-up is not a heal, but it must not cut a living hero's current HP
+## either (spec §3.3). A hero who died this expedition stays dead; only their
+## max_hp rises, so the next heal (inn/street) fills the new, bigger bar.
+func _apply_xp_to_hero(id: StringName, amount: int) -> void:
+	var old_level: int = hero_level(id)
+	# Named `new_level`, not `level` - this class already has a `level: LevelDef`
+	# field and GDScript warns (correctly) about shadowing it.
+	var new_level: int = old_level
+	var xp: int = hero_xp_for(id) + amount
+	while new_level < Tuning.HERO_MAX_LEVEL and xp >= xp_to_next(new_level):
+		xp -= xp_to_next(new_level)
+		new_level += 1
+	hero_xp[id] = xp
+	if new_level == old_level:
+		return
+	hero_levels[id] = new_level
+	var s := get_stats(id)
+	if s == null:
+		return
+	var entry := hero_entry(id)
+	if entry.is_empty():
+		return
+	var old_max: int = int(entry.get("max_hp", s.hp_at(old_level)))
+	var new_max: int = s.hp_at(new_level)
+	entry["max_hp"] = new_max
+	if bool(entry.get("alive", false)):
+		entry["current_hp"] = clampi(int(entry.get("current_hp", 0)) + (new_max - old_max), 1, new_max)
+	EventBus.hero_levelled.emit(id, new_level)
+
 ## [town] spec 3.2 party panel: the active party's HP for display, one entry per
 ## active_party member in roster order - {stats_id, display_name, current_hp,
 ## max_hp, alive, color}. Reads hero_runtime where it has been built
@@ -465,8 +567,13 @@ func party_status() -> Array[Dictionary]:
 		if s == null:
 			continue
 		var entry := hero_entry(id)
-		var cur: int = int(entry.get("current_hp", s.max_hp))
-		var top: int = int(entry.get("max_hp", s.max_hp))
+		# [levels] The fallback (no hero_runtime entry yet - an un-run profile,
+		# or one from a save that predates the "heroes" key) resolves at this
+		# hero's CURRENT level, not the level-1 s.max_hp - an un-run profile's
+		# hero is whole at whatever level it has earned, which is the same
+		# "honest thing to show" this fallback already existed for.
+		var top: int = int(entry.get("max_hp", s.hp_at(hero_level(id))))
+		var cur: int = int(entry.get("current_hp", top))
 		out.append({
 			"stats_id": id,
 			"display_name": s.display_name,
@@ -474,6 +581,7 @@ func party_status() -> Array[Dictionary]:
 			"max_hp": top,
 			"alive": bool(entry.get("alive", cur > 0)),
 			"color": s.accent_color,
+			"level": hero_level(id),
 		})
 	return out
 
@@ -488,12 +596,19 @@ func party_status() -> Array[Dictionary]:
 ## so combat's HP payload stays lean.
 func hero_reel_icons(hero_class: StringName) -> Dictionary:
 	var icons: Array = []
-	var innate := SlotIcon.innate(hero_class)
+	var innate := SlotIcon.innate(hero_class, hero_weapon_power(hero_class))
 	innate["label"] = _reel_icon_label(innate)
 	icons.append(innate)
 	for it: Item in equipped_set(hero_class):
+		# [levels] Every equipped item's base icon, same as _rebuild_bag() -
+		# this readout is meant to be "what hero_class currently puts in the
+		# bag" (this function's own header), and a base icon is now part of
+		# that for every item regardless of rarity (spec §4.3).
+		var base_ic := SlotIcon.from_item_base(it)
+		base_ic["label"] = _reel_icon_label(base_ic)
+		icons.append(base_ic)
 		for mod: Dictionary in it.modifiers:
-			var ic := SlotIcon.from_modifier(mod)
+			var ic := SlotIcon.from_modifier(mod, it)
 			if ic.is_empty():
 				continue
 			ic["label"] = _reel_icon_label(ic)
@@ -538,6 +653,12 @@ func _build_quest_level(q: QuestDef) -> LevelDef:
 		var enc := EncounterDef.new()
 		enc.travel_duration = q.travel_durations[i] if i < q.travel_durations.size() \
 			else _default_quest_travel(i, n)
+		# [levels] Interpolated across the quest's level_range (spec §2.3). LOOT
+		# and SHOP encounters take a level too, so the chest / stock they
+		# generate is stamped with it (spec §4.2). The boss's own bump
+		# (Tuning.BOSS_LEVEL_BONUS) is applied per-unit in
+		# BattleDirector.start_combat(), not stored here.
+		enc.level = _interpolated_level(q.level_range, i, n)
 		var is_last: bool = i == n - 1
 		match q.encounter_types[i]:
 			EncounterDef.Type.LOOT:
@@ -571,6 +692,13 @@ func _default_quest_travel(index: int, count: int) -> float:
 	if index == count - 1:
 		return 4.0
 	return 3.0
+
+## [levels] Encounter `index` of `count`, interpolated across an inclusive
+## level band (spec §2.3 / §2.4). Shared by the quest and endless builders so
+## there is one formula for "where does this encounter sit in its band".
+func _interpolated_level(band: Vector2i, index: int, count: int) -> int:
+	var t: float = float(index) / float(maxi(count - 1, 1))
+	return int(round(lerpf(float(band.x), float(band.y), t)))
 
 # --- endless mode (spec: Endless Mode) --------------------------------------
 
@@ -615,30 +743,42 @@ func _build_endless_level(level_number: int) -> LevelDef:
 	@warning_ignore("integer_division")
 	var enemy_count := mini(2 + level_number / 3, 3)
 
+	# [levels] Depth is the level dial (spec §2.4): band
+	# (d * ENDLESS_LEVELS_PER_DEPTH, d * ENDLESS_LEVELS_PER_DEPTH + 4),
+	# interpolated across the six encounters below exactly as a quest's
+	# level_range is.
+	var band := Vector2i(level_number * Tuning.ENDLESS_LEVELS_PER_DEPTH,
+		level_number * Tuning.ENDLESS_LEVELS_PER_DEPTH + 4)
+
 	var e0 := EncounterDef.new()
 	e0.type = EncounterDef.Type.COMBAT
 	e0.enemy_stat_ids = _random_enemies(pool, enemy_count)
 	e0.travel_duration = 2.0
+	e0.level = _interpolated_level(band, 0, 6)
 
 	var e1 := EncounterDef.new()
 	e1.type = EncounterDef.Type.LOOT
 	e1.loot_item_count = Tuning.LOOT_ITEMS_PER_CHEST
 	e1.travel_duration = 3.0
+	e1.level = _interpolated_level(band, 1, 6)
 
 	var e2 := EncounterDef.new()
 	e2.type = EncounterDef.Type.COMBAT
 	e2.enemy_stat_ids = _random_enemies(pool, enemy_count)
 	e2.travel_duration = 3.0
+	e2.level = _interpolated_level(band, 2, 6)
 
 	var e3 := EncounterDef.new()
 	e3.type = EncounterDef.Type.SHOP
 	e3.shop_item_count = Tuning.SHOP_ITEMS_FOR_SALE
 	e3.travel_duration = 3.0
+	e3.level = _interpolated_level(band, 3, 6)
 
 	var e4 := EncounterDef.new()
 	e4.type = EncounterDef.Type.COMBAT
 	e4.enemy_stat_ids = _random_enemies(pool, enemy_count)
 	e4.travel_duration = 3.0
+	e4.level = _interpolated_level(band, 4, 6)
 
 	# Boss listed first so it lands at the leftmost enemy slot (spec 7.3),
 	# same convention as the fixed level's boss encounter.
@@ -650,6 +790,7 @@ func _build_endless_level(level_number: int) -> LevelDef:
 	e5.is_boss = true
 	e5.enemy_stat_ids = e5_ids
 	e5.travel_duration = 4.0
+	e5.level = _interpolated_level(band, 5, 6)
 
 	lvl.encounters = [e0, e1, e2, e3, e4, e5]
 	return lvl
@@ -663,6 +804,9 @@ func _random_enemies(pool: Array[StringName], count: int) -> Array[StringName]:
 
 # --- fixed level (endless_mode = false) --------------------------------------
 
+## [levels] Every encounter here stays at the EncounterDef.level default (1) -
+## deliberately: this is the "world as authored" baseline the balance harness
+## (spec §6) measures against, untouched by the level system.
 func _build_whispering_wood_level() -> LevelDef:
 	var lvl := LevelDef.new()
 	lvl.display_name = "The Whispering Wood"
@@ -752,6 +896,11 @@ func new_profile() -> void:
 	day_number = 1
 	meal_pct = 0
 	meal_eaten_today = false
+	# [levels] "the warrior starts at level 1" - a fresh profile has never
+	# earned any XP.
+	hero_levels.clear()
+	hero_xp.clear()
+	expedition_xp = 0
 	_reset_hero_runtime(true)     # full heal - a new profile starts whole
 
 ## [town] Everything an EXPEDITION owns, and nothing a profile owns. Called from
@@ -779,6 +928,7 @@ func start_expedition(q: QuestDef = null) -> void:
 	endless_level_number = 1
 	expedition_gold = 0
 	expedition_scrap = 0
+	expedition_xp = 0
 	_expedition_inventory_mark = inventory.size()
 	drops_by_class.clear()
 	Upgrades.reset()
@@ -818,7 +968,11 @@ func _reset_hero_runtime(full_heal: bool) -> void:
 		var s := get_stats(id)
 		if s == null:
 			continue
-		var hp: int = s.max_hp
+		# [levels] hp_at(hero_level(id)), not the level-1 s.max_hp - a leveled
+		# hero's max HP must survive both a full heal and a carried-over
+		# current_hp (spec §3.3).
+		var top: int = s.hp_at(hero_level(id))
+		var hp: int = top
 		if not full_heal:
 			for entry: Dictionary in previous:
 				if entry["stats_id"] == id:
@@ -827,7 +981,7 @@ func _reset_hero_runtime(full_heal: bool) -> void:
 		hero_runtime.append({
 			"stats_id": id,
 			"current_hp": hp,
-			"max_hp": s.max_hp,
+			"max_hp": top,
 			"alive": hp > 0,
 		})
 

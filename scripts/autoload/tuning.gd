@@ -34,7 +34,7 @@ const DAMAGE_NUMBER_SPREAD := 46.0        # [v2] px offset per concurrent number
 # --- 5.3 Ability tuning -----------------------------------------------------
 const WARRIOR_DEFEND_REDUCTION := 0.50    # incoming damage x (1 - 0.50)
 const WARRIOR_DEFEND_DURATION := 4.0
-const RANGER_BOMB_AOE_MULT := 0.75        # bomb arrow hits every enemy for base_damage x 0.75
+const RANGER_BOMB_AOE_MULT := 0.75        # bomb arrow hits every enemy for weapon_power x 0.75
 const MAGE_HEAL_MULT := 1.0               # heal = mage current damage x 1.0
 ## [overworld prototype] Off. Spec 9.3's darkening pass existed to sell a bolt
 ## called down out of the sky - the sky dims, then the bolt lands. The mage's
@@ -56,6 +56,60 @@ const SPECIAL_CAST_FLASH_TIME := 0.15     # [v2] universal special-cast telegrap
 ## squeeze left to tune. Composition now lives in 5.3c below.
 const MAX_ENEMIES := 3
 const PARTY_SIZE := 3                     # mage, ranger, warrior
+
+# --- [levels] Encounter / hero / item levels ---------------------------------
+## Levels above the encounter's own that the boss slot (index 0 of an is_boss
+## fight) spawns at, on top of the HP multiplier below (BattleDirector.
+## start_combat(), levels & stats spec §2.5).
+##
+## [Phase 6] Retuned 3 -> 1 alongside BOSS_HP_MULT below, after
+## test_level_curves.gd caught the two compounding badly: a FIXED level bonus
+## is a shrinking PERCENTAGE add as the band's own level rises (hp_per_level
+## dominates over the base at high level), so the boss/regular HP ratio decayed
+## from 6.3x at level 1 to 2.75x at level 30 - the boss becoming relatively
+## LESS impressive exactly where the game is hardest. Leaning on the pure
+## multiplier instead (level-independent by construction) and shrinking the
+## level add to a minor accent keeps the ratio in a tight 3.6-5.3x band across
+## every authored level (levels & stats spec §5, Phase 6 tuning pass).
+const BOSS_LEVEL_BONUS := 1
+## Multiplies the boss unit's max_hp BEFORE the level resolve - i.e. on the
+## duplicated CombatantStats' own max_hp field, never on the combatant's
+## resolved HP afterward - so CombatantStats.hp_at() stays the single answer to
+## "how much HP does this unit have" (spec §2.5). Raised 2.5 -> 3.5 with the
+## BOSS_LEVEL_BONUS retune above - see that constant's comment.
+const BOSS_HP_MULT := 3.5
+## Endless depth d runs encounters at level band
+## (d * ENDLESS_LEVELS_PER_DEPTH, d * ENDLESS_LEVELS_PER_DEPTH + 4) - depth 1 is
+## levels 3-7, depth 10 is levels 30-34 (spec §2.4).
+const ENDLESS_LEVELS_PER_DEPTH := 3
+
+## [levels] XP awarded per kill is XP_PER_ENEMY_LEVEL * the dying enemy's level,
+## x XP_BOSS_MULT for the boss unit (spec §3.2).
+const XP_PER_ENEMY_LEVEL := 12
+const XP_BOSS_MULT := 3.0
+## xp_to_next(level) = XP_CURVE_BASE * level (spec §3.2).
+const XP_CURVE_BASE := 100
+const HERO_MAX_LEVEL := 40
+
+## [levels] Flat power every icon an item supplies adds to its rolled value:
+## item.base_power() = ITEM_BASE_POWER * item.level (spec §4.1/§4.4).
+const ITEM_BASE_POWER := 6
+## Item value scales with level too, or a level-30 Common sells for the same
+## price as a level-1 one and the economy stops tracking power (spec §4.2).
+## value *= 1 + ITEM_VALUE_PER_LEVEL * (level - 1).
+const ITEM_VALUE_PER_LEVEL := 0.35
+## The innate slot icon's damage is a fraction of the living hero's own
+## power(WEAPON) at their level, replacing the old flat SLOT_INNATE_DAMAGE
+## constant (spec §4.4).
+const SLOT_INNATE_POWER_FRACTION := 0.5
+
+## [levels] Item.base_heal_pct()'s curve - a HEAL-kind board icon reads its
+## `roll` as a percent of max hp, never as a flat number, so a level-scaling
+## item base cannot be applied to it the way base_power() is to a DAMAGE icon.
+## Capped well under 100: a single icon should meaningfully help, not
+## trivialise the heal-lowest choice at high level.
+const ITEM_HEAL_PCT_PER_LEVEL := 1.0
+const ITEM_HEAL_PCT_CAP := 35
 
 # --- 5.3c Overworld field [overworld prototype] -----------------------------
 ## The battle is laid out on the XZ ground plane under an overhead camera, not
@@ -165,13 +219,18 @@ const ENEMY_ENTRY_TIME := 1.15
 const ENEMY_ENTRY_STAGGER := 0.13         # gap between each enemy's departure
 
 # --- 5.3d Melee teleport [overworld prototype] ------------------------------
-## Melee attackers do not walk to their target - they blink to it. Ranged and
-## magic attackers never teleport; they fire something that flies instead.
-const TELEPORT_OUT_TIME := 0.13           # dissolve at the origin
-const TELEPORT_IN_TIME := 0.15            # reform at the destination
+## Melee attackers do not walk to their target - they instantly reposition to
+## it (Combatant._blink_strike/_blink_home). Ranged and magic attackers never
+## teleport; they fire something that flies instead.
+##
+## The vanish/reform VFX that used to dress this move (BattleVfx.blink_out/
+## blink_in/blink_trail, and the TELEPORT_OUT_TIME/IN_TIME/GHOSTS/GHOST_FADE
+## constants that timed them) is gone - the reposition is a plain, un-effected
+## snap now. TELEPORT_STRIKE_GAP and TELEPORT_RETURN_DELAY survive: the first
+## is spatial (how close a hit lands, unrelated to any effect), the second is
+## a combat-readability beat (time for the hit to register before the
+## attacker leaves), not part of what was removed.
 const TELEPORT_STRIKE_GAP := 1.35         # how far short of the target it lands
-const TELEPORT_GHOSTS := 5                # afterimages left along the path
-const TELEPORT_GHOST_FADE := 0.28
 const TELEPORT_RETURN_DELAY := 0.14       # beat spent at the target after impact
 
 # --- 5.3e Magic bolt [overworld prototype] ----------------------------------
@@ -334,7 +393,11 @@ const SLOT_BLANK_PAD_FLOOR := 4
 ## They have no item behind them, so their magnitude is fixed here rather than
 ## read off a modifier `roll`. This is the floor that reconnects party
 ## composition to the slot and guarantees the bag is never empty of icons.
-const SLOT_INNATE_DAMAGE := 6            # flat, before the spin's dmg_pct / overcharge
+##
+## [levels] SLOT_INNATE_DAMAGE (the old flat magnitude) is gone - the innate
+## damage icon now reads GameState.hero_weapon_power(id) *
+## SLOT_INNATE_POWER_FRACTION (spec §4.4), making hero level the one place
+## outside gear that reaches the board.
 const SLOT_INNATE_HEAL_PCT := 8         # percent of max hp to the lowest-hp hero
 ## [v2] Attract mode (spec 16.6 / Q17): out of combat the reels drift instead of
 ## stopping. "Does nothing" means nothing that affects the game - not dead air.

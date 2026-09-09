@@ -52,6 +52,13 @@ enum Slot { WEAPON, ARMOR, TRINKET }
 ## the whole item this step (spec 14 step 2).
 @export var forge_count: int = 0
 
+## [levels] The level this item was made at - the encounter that dropped it, or
+## the shop tier that stocked it (Itemizer's five generators). NEVER changes
+## after generation: the forge raises rarity and adds modifiers, it does not
+## re-date an item (levels & stats spec §4.1 / §5.3). This is what lets a
+## Common from deep content out-damage an Enhanced forged in the shallows.
+@export var level: int = 1
+
 ## [town] A flat dictionary of primitives for the profile save (spec 2.4).
 ## Explicit rather than ResourceSaver on the resource: a saved .tres embeds this
 ## script's path, so moving item.gd a year from now would silently invalidate
@@ -70,6 +77,7 @@ func to_dict() -> Dictionary:
 		"value": value,
 		"equipped_by": equipped_by,
 		"forge_count": forge_count,
+		"level": level,
 	}
 
 ## Rebuilds an Item from to_dict()'s output. `modifiers` is copied with
@@ -91,12 +99,32 @@ static func from_dict(data: Dictionary) -> Item:
 	item.value = int(data.get("value", 0))
 	item.equipped_by = StringName(data.get("equipped_by", &""))
 	item.forge_count = int(data.get("forge_count", 0))
+	item.level = int(data.get("level", 1))
 	return item
 
 func subtitle() -> String:
-	# "Magic Sword - Warrior". The class half is what makes an item legible as
-	# "this one is for someone" while equipping does not exist to enforce it.
-	return "%s %s - %s" % [rarity_name(), type_name(), class_label()]
+	# "Lv 5 Magic Sword - Warrior". The class half is what makes an item legible
+	# as "this one is for someone" while equipping does not exist to enforce it.
+	return "Lv %d %s %s - %s" % [level, rarity_name(), type_name(), class_label()]
+
+## [levels] Flat power every board icon this item supplies adds to its rolled
+## value (levels & stats spec §4.1/§4.4/§4.3). The whole of what item level
+## does - gear still gives no stat increases (spec §8), it gives icons, and
+## this is how much each icon is worth.
+func base_power() -> int:
+	return Tuning.ITEM_BASE_POWER * maxi(level, 1)
+
+## [levels] The other unit an icon can resolve in: a HEAL-kind icon's `roll`
+## (armor's base icon, and the existing slot_mend modifier) is read as a
+## PERCENT OF MAX HP, not a flat number - see slot_machine._heal_lowest().
+## base_power() must never feed that path directly: it is unbounded and grows
+## with level (up to 180 at level 30), which as a raw percent would mean a
+## single mid-level armor piece instantly full-heals every time it resolves.
+## Bounded and much shallower per level instead - SlotIcon.from_item_base() /
+## from_modifier() pick this over base_power() whenever the icon's kind is HEAL.
+func base_heal_pct() -> int:
+	return clampi(int(round(Tuning.ITEM_HEAL_PCT_PER_LEVEL * float(maxi(level, 1)))),
+		1, Tuning.ITEM_HEAL_PCT_CAP)
 
 ## Which hero classes can wield this item. DERIVED from the weapon type rather
 ## than stored on the resource, for the reason CombatantStats.required_anims()

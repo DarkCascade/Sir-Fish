@@ -186,9 +186,9 @@ func _ready() -> void:
 	var lb := GameState.party_bonuses()
 	t.check(not lb.has("slot_purse"), "S6: party_bonuses() no longer has a slot_purse key")
 	t.check(int(lb["dmg_flat"]) == 5, "S6: the legit dmg_flat still aggregates (got %d)" % int(lb["dmg_flat"]))
-	t.check(SlotIcon.from_modifier(legacy_item.modifiers[0]).is_empty(),
+	t.check(SlotIcon.from_modifier(legacy_item.modifiers[0], legacy_item).is_empty(),
 		"S6: slot_purse maps to no board icon")
-	t.check(not SlotIcon.from_modifier(legacy_item.modifiers[1]).is_empty(),
+	t.check(not SlotIcon.from_modifier(legacy_item.modifiers[1], legacy_item).is_empty(),
 		"S6: dmg_flat still maps to a board icon")
 	var reel := GameState.hero_reel_icons(&"warrior")
 	var purse_in_reel := false

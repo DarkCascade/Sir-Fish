@@ -49,10 +49,22 @@ func _populate() -> void:
 		var button := Button.new()
 		button.custom_minimum_size = Vector2(0, 210)
 		button.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		# [phase 0] type ramp M step; the levels readout below adds a third and
+		# sometimes fourth line, so this button is the one most at risk of
+		# overflowing its 210px floor - see the Phase 0 verification handoff.
 		button.add_theme_font_size_override("font_size", 54)
-		button.text = "%s\n%s\n%d encounters   ·   %d gold" % [
-			q.display_name, q.blurb, q.encounter_types.size(), q.gold_reward,
+		# [levels] spec §2.6: name the band so a player can read difficulty off
+		# the number, not just the tier label. Underlevelled is a warning, never
+		# a lock - difficulty is the gate (this file's own header), so the
+		# button stays enabled and only tints.
+		var underlevelled: bool = GameState.hero_level() < q.level_range.x
+		button.text = "%s\n%s\nLevels %d–%d   ·   %d encounters   ·   %d gold%s" % [
+			q.display_name, q.blurb, q.level_range.x, q.level_range.y,
+			q.encounter_types.size(), q.gold_reward,
+			"\n— you are underlevelled" if underlevelled else "",
 		]
+		if underlevelled:
+			button.add_theme_color_override("font_color", Tuning.C_DANGER)
 		button.pressed.connect(_accept.bind(q))
 		_quest_list.add_child(button)
 

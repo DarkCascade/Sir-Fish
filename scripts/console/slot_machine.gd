@@ -148,18 +148,24 @@ func reset_to_attract() -> void:
 func _rebuild_bag() -> void:
 	_bag.clear()
 	for hero_class: StringName in _living_hero_classes():
-		_bag.append(SlotIcon.innate(hero_class))
+		_bag.append(SlotIcon.innate(hero_class, GameState.hero_weapon_power(hero_class)))
 	for item: Item in GameState.inventory:
 		if item.equipped_by == &"":
 			continue
+		# [levels] Every equipped item contributes its slot's base icon
+		# regardless of rarity or modifier count (spec §4.3) - the fix for a
+		# Common putting zero icons in the bag. Added before the modifier loop
+		# so a Common's one icon and a fully-modded item's base+N icons both
+		# read as "this item is in the bag" first.
+		_bag.append(SlotIcon.from_item_base(item))
 		for mod: Dictionary in item.modifiers:
-			var icon := SlotIcon.from_modifier(mod)
+			var icon := SlotIcon.from_modifier(mod, item)
 			if not icon.is_empty():
 				_bag.append(icon)
 	# Never empty of icons (§2): if a wiped party somehow leaves nothing, drop in
 	# a single damage icon so the board can still do something.
 	if _icon_count() == 0:
-		_bag.append(SlotIcon.innate(&"warrior"))
+		_bag.append(SlotIcon.innate(&"warrior", GameState.hero_weapon_power(&"warrior")))
 	for _i: int in range(_blank_pad()):
 		_bag.append(SlotIcon.blank())
 

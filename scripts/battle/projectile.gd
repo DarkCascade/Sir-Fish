@@ -41,7 +41,7 @@ func launch(source: Combatant, target: Combatant, director, bomb: bool) -> void:
 	# null out the resolution.
 	_damage = source.compute_damage()
 	if is_bomb:
-		_damage = maxi(1, int(round(float(source.stats.base_damage)
+		_damage = maxi(1, int(round(float(source.power(Combatant.School.WEAPON))
 			* source.damage_multiplier * Tuning.RANGER_BOMB_AOE_MULT)))
 	_start = source.hand_world_position()
 	# [overworld prototype] The fallback aim is down the run axis, not +X: the

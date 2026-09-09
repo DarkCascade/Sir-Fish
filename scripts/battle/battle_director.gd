@@ -28,7 +28,21 @@ var _boss_fight: bool = false
 ## them one at a time via _turn_queue, below. False: a combatant acts the
 ## instant its cooldown expires, same as before turn-based combat existed -
 ## multiple combatants can act simultaneously.
-@export var turn_based_combat: bool = false
+##
+## Defaults true - this is now the shipped mode. Heroes and enemies share ONE
+## queue (request_turn()), so this throttles BOTH sides' throughput, not just
+## the enemies' - a solo hero's own action rate drops from "every
+## attack_cooldown, always" to "roughly 1-of-(N enemies + 1) turns", same as
+## every enemy's. Net effect on outcomes is not simply "safer for the party":
+## it removes simultaneous multi-enemy bursts (which were previously the
+## bigger threat to a solo hero) while also slowing the hero's own melee
+## contribution - slot spins are untouched either way, they never went through
+## this queue. The levels & stats spec's Phase 6 balance harness
+## (test_level_curves.gd) and tools/sim_easy_attempts.gd both modeled the old
+## real-time default explicitly (see their own now-stale
+## "turn_based_combat defaults false" comments) and have not been re-run
+## against this change.
+@export var turn_based_combat: bool = true
 
 ## Turn-based combat. Combatants no longer act the instant their cooldown
 ## expires - they request a turn, the director queues requests in the order
@@ -58,6 +72,15 @@ func _on_combatant_died(c) -> void:
 		# fight) pays the BOSS_LOOT_MULT - spec 11.1's "the boss counting triple".
 		var is_boss_unit: bool = _boss_fight and not enemies.is_empty() and c == enemies[0]
 		LootPickup.spawn_for(c.hit_world_position(), is_boss_unit)
+		# [levels] Banked, not applied - see GameState.expedition_xp's own
+		# comment for why leveling waits for the expedition to end rather than
+		# firing mid-fight (spec §3.2). The dying enemy's OWN level pays, not
+		# the encounter's base - already correct for a scaled-up boss, whose
+		# `level` was bumped by BOSS_LEVEL_BONUS in start_combat().
+		var xp: int = Tuning.XP_PER_ENEMY_LEVEL * c.level
+		if is_boss_unit:
+			xp = int(round(float(xp) * Tuning.XP_BOSS_MULT))
+		GameState.expedition_xp += xp
 		_pending_corpse_fades += 1
 		var gen: int = int(c.get_meta("corpse_gen", 0)) + 1
 		c.set_meta("corpse_gen", gen)
@@ -79,7 +102,9 @@ func _roll_drop(c: Combatant) -> void:
 		_boss_fight and Tuning.DROP_BOSS_TARGETS_HUNGRIEST)
 	if hero_class == &"":
 		return
-	var item := Itemizer.generate_drop(hero_class, stats.drop_rarity_floor)
+	# [levels] The dying enemy's OWN level, not the encounter's base - already
+	# correct for a scaled-up boss (spec §4.2 table).
+	var item := Itemizer.generate_drop(hero_class, stats.drop_rarity_floor, c.level)
 	GameState.record_drop(hero_class)
 	# The position is captured now: begin_corpse_cleanup() starts the moment the
 	# fight ends, and the award pass runs after it.
@@ -180,14 +205,18 @@ func _load_combatant_scene(path: String) -> PackedScene:
 		# the plain load below rather than handing back a null scene.
 	return load(path) as PackedScene
 
-func _spawn_combatant(stats: CombatantStats, pos: Vector3, hp: int) -> Combatant:
+## [levels] `level` defaults to 1 - heroes are spawned by spawn_party() below,
+## which does not yet read a hero level (that lands with GameState.hero_level()
+## in the hero-XP phase); enemies always pass their encounter's level explicitly
+## from start_combat().
+func _spawn_combatant(stats: CombatantStats, pos: Vector3, hp: int, level: int = 1) -> Combatant:
 	var packed: PackedScene = _load_combatant_scene(stats.scene_path)
 	var c := packed.instantiate() as Combatant
 	var parent: Node3D = world.hero_slots if stats.is_hero else world.enemy_root
 	parent.add_child(c)
 	c.position = pos
 	c.director = self
-	c.setup(stats, hp)
+	c.setup(stats, hp, level)
 	return c
 
 # --- combat lifecycle -------------------------------------------------------
@@ -199,7 +228,8 @@ func _spawn_combatant(stats: CombatantStats, pos: Vector3, hp: int) -> Combatant
 ## regular pool encounters) is untouched.
 const BOSS_SCALE_MULT := 1.5
 
-func start_combat(enemy_stat_ids: Array, is_boss: bool = false, boss_rarity_floor: int = 1) -> void:
+func start_combat(enemy_stat_ids: Array, is_boss: bool = false, boss_rarity_floor: int = 1,
+		level: int = 1) -> void:
 	clear_enemies()
 	_resolving = false
 	_turn_queue.clear()
@@ -213,9 +243,22 @@ func start_combat(enemy_stat_ids: Array, is_boss: bool = false, boss_rarity_floo
 		var stats := GameState.get_stats(enemy_stat_ids[i])
 		if stats == null:
 			continue
+		# [levels] The encounter's level, bumped for the boss slot only (spec
+		# §2.5). unit_level feeds setup() below; the HP multiplier is applied to
+		# BOTH max_hp and hp_per_level on the duplicated resource, before the
+		# level resolve, so hp_at(unit_level) comes out to exactly
+		# hp_at_unboosted(unit_level) * BOSS_HP_MULT and CombatantStats.hp_at()
+		# stays the one answer to "how much HP does this unit have". Scaling
+		# max_hp alone would only inflate the level-1 base - growth would stay
+		# unscaled and the boss's HP edge would shrink away at high levels,
+		# exactly backwards from the point of a boss.
+		var unit_level: int = level
 		if is_boss and i == 0:
+			unit_level += Tuning.BOSS_LEVEL_BONUS
 			stats = stats.duplicate() as CombatantStats
 			stats.model_scale *= BOSS_SCALE_MULT
+			stats.max_hp = int(round(float(stats.max_hp) * Tuning.BOSS_HP_MULT))
+			stats.hp_per_level = int(round(float(stats.hp_per_level) * Tuning.BOSS_HP_MULT))
 			# [drops] "Boss: always drops, never Common" (§6) applies to whichever
 			# combatant the encounter scales up into the boss slot, not to a
 			# specific resource - BOSS_POOL (game_state.gd) picks from the four
@@ -233,7 +276,7 @@ func start_combat(enemy_stat_ids: Array, is_boss: bool = false, boss_rarity_floo
 		# have them materialise out of empty grass the camera can see straight
 		# through.
 		var slot: Vector3 = world.enemy_slot_position(i, total)
-		var c := _spawn_combatant(stats, world.enemy_entry_position(i, total), -1)
+		var c := _spawn_combatant(stats, world.enemy_entry_position(i, total), -1, unit_level)
 		c.set_home(slot)
 		enemies.append(c)
 		_run_enemy_in(c, slot, i)

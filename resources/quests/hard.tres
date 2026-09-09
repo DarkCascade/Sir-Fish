@@ -14,3 +14,4 @@ enemy_count = Vector2i(3, 3)
 boss_pool = Array[StringName]([&"skeleton_mage", &"skeleton_rogue", &"skeleton_warrior"])
 boss_drop_rarity_floor = 3
 travel_durations = Array[float]([2.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 3.0, 4.0])
+level_range = Vector2i(15, 30)
