@@ -7,3 +7,8 @@
 /builds/
 *.blend1
 
+# Bytecode cache from the tools/ scripts (palette_audit.py imports itself when
+# a sibling script reuses its luminance helpers, which writes this).
+__pycache__/
+*.pyc
+
