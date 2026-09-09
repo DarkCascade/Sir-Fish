@@ -142,8 +142,15 @@ func _reel_chip(ic: Dictionary) -> Control:
 	cell.alignment = BoxContainer.ALIGNMENT_CENTER
 
 	var icon := TextureRect.new()
-	icon.custom_minimum_size = Vector2(44, 44)
+	icon.custom_minimum_size = Vector2(72, 72)
 	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	# expand_mode defaults to EXPAND_KEEP_SIZE, which makes the control's
+	# MINIMUM size the texture's own native resolution (the reliquary chips
+	# are all 1024x1024) - Godot then takes the max of that and
+	# custom_minimum_size, so the 72x72 floor above is silently overridden and
+	# the chip renders at ~1024px instead. IGNORE_SIZE is what actually lets
+	# custom_minimum_size govern.
+	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	icon.texture = SlotIcon.chip_texture(id)
 	match SlotIcon.element_of(id):
 		&"fire": icon.modulate = Tuning.C_FIRE

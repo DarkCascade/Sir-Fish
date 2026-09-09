@@ -10,6 +10,14 @@ enum Type { COMBAT, LOOT, SHOP }
 @export var shop_item_count: int = 3                # SHOP only
 @export var travel_duration: float = 2.5            # seconds of scrolling before this encounter
 
+## [levels] The level every combatant in this encounter spawns at - set by the
+## builders in game_state.gd from the expedition's QuestDef.level_range (or the
+## endless-depth band), interpolated across the encounter list. The boss slot
+## adds Tuning.BOSS_LEVEL_BONUS on top (battle_director.start_combat()). LOOT
+## and SHOP encounters carry a level too, so the chest / stock they generate is
+## stamped with it (levels & stats spec §2.1 / §4.2).
+@export var level: int = 1
+
 ## [town] Lowest rarity this encounter's boss drop may roll, as an Item.Rarity
 ## index. Only read when is_boss (battle_director.start_combat()), and defaults
 ## to 1 so the endless / fixed bosses keep their "never Common" floor untouched;

@@ -145,7 +145,7 @@ func _arrive(def: EncounterDef) -> void:
 	match def.type:
 		EncounterDef.Type.COMBAT:
 			state = RunState.COMBAT
-			director.start_combat(def.enemy_stat_ids, def.is_boss, def.boss_drop_rarity_floor)
+			director.start_combat(def.enemy_stat_ids, def.is_boss, def.boss_drop_rarity_floor, def.level)
 		EncounterDef.Type.LOOT:
 			state = RunState.LOOT
 			_run_loot(def)
@@ -179,7 +179,7 @@ func _run_loot(def: EncounterDef) -> void:
 	chest.open()
 	await get_tree().create_timer(0.35).timeout
 
-	for item: Item in Itemizer.generate_items(def.loot_item_count):
+	for item: Item in Itemizer.generate_items(def.loot_item_count, def.level):
 		GameState.add_item(item)
 		GameState.run_stats["items_found"] = int(GameState.run_stats["items_found"]) + 1
 		overlay.spawn_world_label(chest.global_position + Vector3(0, 1.2, 0),
@@ -215,6 +215,10 @@ func _award_drops() -> void:
 # --- SHOP (spec 14.3) -------------------------------------------------------
 
 func _run_shop(def: EncounterDef) -> void:
+	# A fight's last damage/heal numbers can still be fading out when the
+	# encounter resolves into this one - clear them now rather than let them
+	# land on top of the shop building and the HUD's currency plate.
+	overlay.clear_floating()
 	var building = SHOP_SCENE.instantiate()
 	world.prop_root.add_child(building)
 	# [refinement-pass-3] Up-run and lifted, so the Meshy hut sits centred in the
@@ -306,6 +310,11 @@ func _run_complete() -> void:
 	_running = false
 	EventBus.run_completed.emit()
 
+	# [levels] Banked kill XP is applied here, before the quest/endless branch
+	# below - a win or a loss both reach this point, and a hero's power should
+	# never be clawed back for a wipe any more than banked scrap is (spec §3.2).
+	GameState.apply_expedition_xp()
+
 	# [town] spec 8.5 victory. RunController does the synchronous profile work
 	# and emits; QuestResult (a persistent Hud child, unlike this scene) does the
 	# await SceneRouter.go(MAYOR) -> present(true). It CANNOT be driven from here:
@@ -333,6 +342,10 @@ func _game_over() -> void:
 	await get_tree().create_timer(1.0).timeout
 	_running = false
 	EventBus.game_over.emit()
+
+	# [levels] See _run_complete()'s matching call - a wipe still keeps every
+	# kill's XP (spec §3.2).
+	GameState.apply_expedition_xp()
 
 	# [town] spec 8.5 failure: keep banked gold and scrap, drop every unequipped
 	# item found this trip, then hand off to QuestResult exactly as victory does

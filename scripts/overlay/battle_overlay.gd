@@ -184,6 +184,17 @@ func clear_all() -> void:
 		if is_instance_valid(bars):
 			(bars as Node).queue_free()
 	_bars.clear()
+	clear_floating()
+
+## The transient half of clear_all() only - floating damage/heal numbers and
+## status icons (defend/heal pips), never the persistent combatant health bars.
+## Called when a shop opens mid-expedition: a fight's last few damage numbers
+## can still be fading in when the encounter resolves and the shop building
+## pops in, and they land on top of the HUD's currency plate (spec: reported
+## as text visibly occluding the gold/scrap readout). Health bars stay -
+## nothing about a shop opening should make an in-progress hero's HP bar
+## vanish.
+func clear_floating() -> void:
 	for layer: Control in [floating_layer, vfx_layer]:
 		for child: Node in layer.get_children():
 			child.queue_free()

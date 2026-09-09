@@ -103,10 +103,12 @@ func _apply_heading(is_quest: bool) -> void:
 			subtitle.text = "Reached encounter %d of %d" % \
 				[shown_index, GameState.level.encounters.size()]
 
-## RETRY -> "RETRY". VICTORY / FAILURE -> one "Make camp" button that dismisses
-## into NightModal (day/night spec §7.2). SecondaryButton is hidden in all three
-## modes - it stays in the scene as authored chrome for the next two-button
-## modal.
+## RETRY -> "RETRY". VICTORY -> "Make camp"; FAILURE -> "Return to Town" - same
+## wording difference the two modes already had everywhere else (heading,
+## subtitle), just not here. Both still dismiss into NightModal (day/night spec
+## §7.2) - only the label changes, not the destination. SecondaryButton is
+## hidden in all three modes - it stays in the scene as authored chrome for the
+## next two-button modal.
 func _configure_buttons() -> void:
 	secondary_button.visible = false
 	primary_button.disabled = false
@@ -115,8 +117,10 @@ func _configure_buttons() -> void:
 	match _mode:
 		Mode.RETRY:
 			primary_button.text = "RETRY"
-		Mode.VICTORY, Mode.FAILURE:
+		Mode.VICTORY:
 			primary_button.text = "Make camp"
+		Mode.FAILURE:
+			primary_button.text = "Return to Town"
 
 func _on_primary_pressed() -> void:
 	_dismiss()

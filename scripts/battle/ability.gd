@@ -12,6 +12,12 @@ var anim_name: StringName = &"attack"
 var is_special: bool = false
 var target: Combatant = null
 var director = null               # BattleDirector (untyped: custom API)
+## [levels] Which power stat this action draws from - Combatant.School, or -1
+## for the source's own default_school() (spec §1.4). Every current ability
+## resolves through its source's default correctly as-is; this exists for the
+## day an ability wants the OTHER school (a caster's melee special, say)
+## without a match-on-id branch in _strike().
+var school: int = -1
 
 static func make(_source: Combatant, use_special: bool, a_target: Combatant,
 		a_director) -> Ability:
@@ -81,6 +87,16 @@ func resolve(source: Combatant) -> void:
 			_shadow(source)
 		&"orc_barbarian", &"orc_warlord":
 			_orc(source)
+		_:
+			# [levels] Every skeleton_* enemy and sporecap fell through here with
+			# no case and no default - they play their authored attack animation
+			# (see CombatantAnimations.IMPACT_DELAYS, which has an entry for each
+			# of them) but never actually struck. That is the entire ENDLESS_MID_POOL
+			# and BOSS_POOL (game_state.gd) dealing zero combat damage. A plain
+			# melee strike, the same shape as _shadow(), is a safe default for any
+			# id with no special-case behaviour - none of them carry a
+			# special_every_n_actions, so is_special is never true here.
+			_generic_enemy(source)
 
 # --- warrior ----------------------------------------------------------------
 
@@ -141,9 +157,18 @@ func _orc(source: Combatant) -> void:
 	director.world.shake(0.04, 0.15)
 	_strike(source, target)
 
+## [levels] The default for any enemy id with no dedicated case above -
+## skeleton_minion/mage/rogue/warrior and sporecap, today. A plain melee swing
+## tinted by the attacker's own accent color, same shape as _shadow().
+func _generic_enemy(source: Combatant) -> void:
+	if target == null or not target.is_alive():
+		return
+	BattleVfx.slash_arc(target, source.stats.accent_color, 1.4)
+	_strike(source, target)
+
 # --- shared -----------------------------------------------------------------
 
 func _strike(source: Combatant, victim: Combatant) -> void:
-	var amount := source.compute_damage()
+	var amount := source.compute_damage(school)
 	EventBus.combatant_attacked.emit(source, victim, amount)
 	victim.take_damage(amount, source)

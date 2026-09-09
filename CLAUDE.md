@@ -218,8 +218,81 @@ mesh; **the rig is hand-built in Blender**, not by Meshy.
    `CombatantSkeletonAnimations`, an `IMPACT_DELAYS` entry in `CombatantAnimations`, and
    the id added to a pool in `game_state.gd`.
 
-**Verifying without `execute_game_script`** (this MCP build has neither it nor
-`execute_editor_script`): make a throwaway scene at `res://scratch_<name>.tscn` that
-instances the enemy, calls `setup()` with its stats, prints
-`anim.get_animation_list()`, and loops a clip. `play_scene` it, read `get_output_log`,
-`capture_frames` to confirm the mesh actually deforms, then delete the scratch files.
+**Verifying the new enemy.** `execute_editor_script` and `execute_game_script` are
+both available — an earlier note here claimed this build lacked them, which was
+wrong. They were denied in `.claude/settings.local.json`, so they never reached the
+tool surface, and the absence got mistaken for a missing feature. That deny was
+lifted on 2026-09-09; the file's other denies (node/scene deletion, autoload
+removal, export, tilemap clear) still stand.
+
+Prefer `execute_game_script` for animation checks: instance the enemy, call
+`setup()` with its stats, print `anim.get_animation_list()`, and drive a clip
+directly in the running game.
+
+The throwaway-scene route is still the fallback when the editor is not connected,
+or when a check needs a real scene tree rather than a one-off script: make
+`res://scratch_<name>.tscn`, `play_scene` it, read `get_output_log`, then
+`capture_frames` to confirm the mesh actually deforms, and delete the scratch files
+afterwards. Run headless suites through `run_headless_scene`, which needs no editor
+connection at all.
+
+One caveat on `execute_editor_script`: its file-write guard is a substring match
+over five write APIs, and its own error text says it is an accident guard, not a
+security boundary. Edits made through it also bypass the editor's undo stack, so
+commit before leaning on it.
+
+### Watch item: `godot-editor-mcp` as a possible replacement for Godot MCP Pro
+
+**Status as of 2026-09-09: evaluated, parked, staying on Pro.** Revisit
+occasionally — this is a "check the project's health every few months" item, not
+a decision to re-open every session.
+
+`godot-editor-mcp` (PyPI, MIT, repo `hybridindie/godot-mcp`) reached its first
+stable release on 2026-09-02. It is a genuine alternative to Godot MCP Pro: same
+shape (Python MCP server plus a Godot editor addon over a localhost WebSocket),
+Godot 4.4+ with 4.7 recommended.
+
+**The one thing it does better, and the reason to keep watching it.** It exposes
+18 tools by default and gates the other 27 toolsets behind `godot_enable_toolset`.
+Pro puts its whole ~170-tool surface in context on every turn. That difference is
+pure context economy and it grows more valuable as sessions get longer.
+
+**Why it is parked.** Eleven GitHub stars, a single maintainer, and a first stable
+release one week old at the time of evaluation. Its version strings also disagree
+with each other across the plugin manifest, the server handshake and the
+capabilities block, which is the kind of thing that makes a version-specific bug
+painful to chase. None of that is disqualifying; it is just too early to move a
+project this far along onto it.
+
+**The blocking gap: no screenshot of the running game.** This is the biggest
+problem found in practice, during the Phase 0 verification run on 2026-09-09 — it
+forced building a scratch scene purely to get a screenshot. The new server ships
+exactly one capture tool, `godot_editor_capture_screenshot`, and it grabs the
+**editor viewport** only. There is no equivalent of Pro's `get_game_screenshot`,
+so a running game cannot be photographed directly. It is also in the `editor`
+category, which is gated off by default, so it does not even appear until
+`godot_enable_toolset` is called. Pro has both halves as first-class tools.
+
+That gap is disqualifying for how this project actually works. Verifying art
+direction, UI re-fits and animation all depend on looking at the running game, and
+routing every look through a throwaway scene turns a one-call check into a
+create/play/capture/delete cycle. That cost lands on exactly the art-direction work
+this project has queued.
+
+**What would change the answer.** In rough priority order: a first-class
+running-game screenshot, ideally with the editor one ungated. Then a meaningful
+contributor count, a few months of release history without churn in the tool
+contracts, and other people using it in anger. If Pro's context weight ever becomes
+the binding constraint on session length, that may justify revisiting sooner — but
+not before the screenshot gap closes, since the context saving would be spent
+immediately on scratch-scene round trips.
+
+**Re-testing is cheap, because the work is already done.** The server is installed
+(`uv tool install godot-editor-mcp`, binary at `~/.local/bin/godot-editor-mcp`),
+and a full test bed sits at `C:\Projects\Godot\Sir Fish MCP Test` — a copy of this
+project with the Pro addon moved aside to `addons/_godot_mcp_pro_disabled`, the new
+addon in `addons/godot_mcp`, its runtime probe registered as an autoload, and a
+project-scoped `.mcp.json` already pointing at the server. It has its own git repo
+with the pre-swap baseline as the first commit, so the whole swap is one diff. Do
+not swap addons in the real project: both use `addons/godot_mcp`, so installing one
+destroys the other.

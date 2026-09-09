@@ -45,6 +45,13 @@ signal item_forged(item: Item, new_rarity: int)
 signal quest_started(quest: QuestDef)
 signal quest_finished(victory: bool)
 
+## [levels] Fired by GameState._apply_xp_to_hero() the moment `hero_class`'s
+## level actually changes (spec §3.3) - never on an XP gain that doesn't cross
+## a threshold. quest_result.gd reads it for a "Warrior reached level 6" stat
+## row; the night modal's bars draw against the new max_hp regardless, since
+## hero_runtime is already updated by the time this fires.
+signal hero_levelled(hero_class: StringName, new_level: int)
+
 # [day-night] Emitted by boot.gd after it has loaded (or minted) the profile and
 # nudged the currency plate - the hook night_modal.gd uses to present the night
 # choice on a resume into DayPhase.NIGHT_PENDING (day/night spec §8.2). A signal

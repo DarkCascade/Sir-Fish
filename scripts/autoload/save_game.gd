@@ -27,7 +27,14 @@ const PATH := "user://profile.save"
 ## exact match, so this bump discards those saves and boot.tscn falls back to
 ## new_profile() - rather than resurrecting a party 4.5 just retired, with
 ## orphaned gear still feeding party_bonuses().
-const VERSION := 2
+##
+## [levels] Bumped 2 -> 3: adding Item.level itself needs no bump (a new key,
+## defaulting to 1 on read per from_dict()) - what triggers this one is that
+## EVERY item already on disk would silently load at level 1, near-inert
+## against level-scaled enemies and worth a fraction of its intended value.
+## That is the same "an existing default now means something materially
+## different" trigger the 1 -> 2 bump fired on, not a mere added key.
+const VERSION := 3
 
 ## Every profile mutation in town saves (spec 2.4's "When to save" list); this
 ## is also called from GameState.new_profile(), from start_expedition() and the
@@ -61,6 +68,11 @@ func save_profile() -> void:
 		# buying out the stock does not present as "never generated" on next load.
 		# No VERSION bump - same rule as forge_stock above (spec 2.4).
 		"forge_stock_generated": GameState.forge_stock_generated,
+		# [levels] Additive - no VERSION bump (same rule as forge_stock above).
+		# Absent on a pre-existing save means every hero reads as level 1 / 0 xp,
+		# which is exactly what that save's heroes actually are.
+		"hero_levels": GameState.hero_levels,
+		"hero_xp": GameState.hero_xp,
 	}))
 
 ## Returns false when there is no save, or it is unreadable, or its version is
@@ -127,6 +139,20 @@ func load_profile() -> bool:
 	# present as never-generated - derive the default from the stock it carries.
 	GameState.forge_stock_generated = bool(d.get("forge_stock_generated",
 		not stock.is_empty()))
+
+	# [levels] Rebuilt key-by-key rather than trusted verbatim, same defensive
+	# shape as active_party above - a hand-edited or older save's raw dict could
+	# carry a plain String key instead of a StringName.
+	var raw_levels: Dictionary = d.get("hero_levels", {})
+	var levels := {}
+	for k: Variant in raw_levels.keys():
+		levels[StringName(k)] = int(raw_levels[k])
+	GameState.hero_levels = levels
+	var raw_xp: Dictionary = d.get("hero_xp", {})
+	var xp := {}
+	for k: Variant in raw_xp.keys():
+		xp[StringName(k)] = int(raw_xp[k])
+	GameState.hero_xp = xp
 
 	return true
 

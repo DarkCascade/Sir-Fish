@@ -9,6 +9,14 @@ extends Resource
 ## boss guarantees - never as a stat-scaling multiplier: a second source of
 ## truth for combatant power alongside CombatantStats is exactly what
 ## _build_endless_level()'s own comment warns against (spec 8.1, spec 1.10).
+##
+## [levels] `level_range` EXTENDS that rule rather than breaking it (levels &
+## stats spec §2.2). A level is authored data on the quest, resolved into
+## authored data on each EncounterDef, and read by the one place that already
+## builds a combatant (BattleDirector.start_combat()). It is not a scaling
+## factor layered on top of CombatantStats after the fact - it is an argument
+## to CombatantStats.hp_at() / weapon_power_at() / magic_power_at(), which is
+## the ONLY place a level and a stat combine.
 
 @export var id: StringName = &""
 @export var display_name: String = ""
@@ -40,3 +48,11 @@ extends Resource
 ## Seconds of scrolling before each encounter, one per entry in encounter_types.
 ## Falls back to a 2 / 3 / ... / 4 ramp when short or empty (_build_quest_level).
 @export var travel_durations: Array[float] = []
+
+## [levels] Inclusive level band for this expedition (spec §2.2). The first
+## encounter runs at x, the last regular (non-boss) encounter at y,
+## interpolated across the list; the boss sits Tuning.BOSS_LEVEL_BONUS above y.
+## Bands are authored wide and non-overlapping ACROSS quests on purpose - see
+## the spec's §5.3 for why the item-level churn the brief asks for depends on
+## that gap, not on how steep any one curve is.
+@export var level_range: Vector2i = Vector2i(1, 1)

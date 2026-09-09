@@ -44,7 +44,7 @@ func open(encounter: EncounterDef) -> void:
 	if encounter.cached_shop_items.is_empty():
 		# A guaranteed rarity spread rather than an all-random roll, so at least one
 		# card is affordable and one is a teaser (spec 13.6 / Q14).
-		encounter.cached_shop_items = Itemizer.generate_shop_stock()
+		encounter.cached_shop_items = Itemizer.generate_shop_stock(encounter.level)
 		Debug.apply_shop_override(encounter.cached_shop_items)
 	_build_buy()
 	_build_sell()

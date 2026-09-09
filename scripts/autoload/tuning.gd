@@ -34,7 +34,7 @@ const DAMAGE_NUMBER_SPREAD := 46.0        # [v2] px offset per concurrent number
 # --- 5.3 Ability tuning -----------------------------------------------------
 const WARRIOR_DEFEND_REDUCTION := 0.50    # incoming damage x (1 - 0.50)
 const WARRIOR_DEFEND_DURATION := 4.0
-const RANGER_BOMB_AOE_MULT := 0.75        # bomb arrow hits every enemy for base_damage x 0.75
+const RANGER_BOMB_AOE_MULT := 0.75        # bomb arrow hits every enemy for weapon_power x 0.75
 const MAGE_HEAL_MULT := 1.0               # heal = mage current damage x 1.0
 ## [overworld prototype] Off. Spec 9.3's darkening pass existed to sell a bolt
 ## called down out of the sky - the sky dims, then the bolt lands. The mage's
@@ -56,6 +56,60 @@ const SPECIAL_CAST_FLASH_TIME := 0.15     # [v2] universal special-cast telegrap
 ## squeeze left to tune. Composition now lives in 5.3c below.
 const MAX_ENEMIES := 3
 const PARTY_SIZE := 3                     # mage, ranger, warrior
+
+# --- [levels] Encounter / hero / item levels ---------------------------------
+## Levels above the encounter's own that the boss slot (index 0 of an is_boss
+## fight) spawns at, on top of the HP multiplier below (BattleDirector.
+## start_combat(), levels & stats spec §2.5).
+##
+## [Phase 6] Retuned 3 -> 1 alongside BOSS_HP_MULT below, after
+## test_level_curves.gd caught the two compounding badly: a FIXED level bonus
+## is a shrinking PERCENTAGE add as the band's own level rises (hp_per_level
+## dominates over the base at high level), so the boss/regular HP ratio decayed
+## from 6.3x at level 1 to 2.75x at level 30 - the boss becoming relatively
+## LESS impressive exactly where the game is hardest. Leaning on the pure
+## multiplier instead (level-independent by construction) and shrinking the
+## level add to a minor accent keeps the ratio in a tight 3.6-5.3x band across
+## every authored level (levels & stats spec §5, Phase 6 tuning pass).
+const BOSS_LEVEL_BONUS := 1
+## Multiplies the boss unit's max_hp BEFORE the level resolve - i.e. on the
+## duplicated CombatantStats' own max_hp field, never on the combatant's
+## resolved HP afterward - so CombatantStats.hp_at() stays the single answer to
+## "how much HP does this unit have" (spec §2.5). Raised 2.5 -> 3.5 with the
+## BOSS_LEVEL_BONUS retune above - see that constant's comment.
+const BOSS_HP_MULT := 3.5
+## Endless depth d runs encounters at level band
+## (d * ENDLESS_LEVELS_PER_DEPTH, d * ENDLESS_LEVELS_PER_DEPTH + 4) - depth 1 is
+## levels 3-7, depth 10 is levels 30-34 (spec §2.4).
+const ENDLESS_LEVELS_PER_DEPTH := 3
+
+## [levels] XP awarded per kill is XP_PER_ENEMY_LEVEL * the dying enemy's level,
+## x XP_BOSS_MULT for the boss unit (spec §3.2).
+const XP_PER_ENEMY_LEVEL := 12
+const XP_BOSS_MULT := 3.0
+## xp_to_next(level) = XP_CURVE_BASE * level (spec §3.2).
+const XP_CURVE_BASE := 100
+const HERO_MAX_LEVEL := 40
+
+## [levels] Flat power every icon an item supplies adds to its rolled value:
+## item.base_power() = ITEM_BASE_POWER * item.level (spec §4.1/§4.4).
+const ITEM_BASE_POWER := 6
+## Item value scales with level too, or a level-30 Common sells for the same
+## price as a level-1 one and the economy stops tracking power (spec §4.2).
+## value *= 1 + ITEM_VALUE_PER_LEVEL * (level - 1).
+const ITEM_VALUE_PER_LEVEL := 0.35
+## The innate slot icon's damage is a fraction of the living hero's own
+## power(WEAPON) at their level, replacing the old flat SLOT_INNATE_DAMAGE
+## constant (spec §4.4).
+const SLOT_INNATE_POWER_FRACTION := 0.5
+
+## [levels] Item.base_heal_pct()'s curve - a HEAL-kind board icon reads its
+## `roll` as a percent of max hp, never as a flat number, so a level-scaling
+## item base cannot be applied to it the way base_power() is to a DAMAGE icon.
+## Capped well under 100: a single icon should meaningfully help, not
+## trivialise the heal-lowest choice at high level.
+const ITEM_HEAL_PCT_PER_LEVEL := 1.0
+const ITEM_HEAL_PCT_CAP := 35
 
 # --- 5.3c Overworld field [overworld prototype] -----------------------------
 ## The battle is laid out on the XZ ground plane under an overhead camera, not
@@ -165,13 +219,18 @@ const ENEMY_ENTRY_TIME := 1.15
 const ENEMY_ENTRY_STAGGER := 0.13         # gap between each enemy's departure
 
 # --- 5.3d Melee teleport [overworld prototype] ------------------------------
-## Melee attackers do not walk to their target - they blink to it. Ranged and
-## magic attackers never teleport; they fire something that flies instead.
-const TELEPORT_OUT_TIME := 0.13           # dissolve at the origin
-const TELEPORT_IN_TIME := 0.15            # reform at the destination
+## Melee attackers do not walk to their target - they instantly reposition to
+## it (Combatant._blink_strike/_blink_home). Ranged and magic attackers never
+## teleport; they fire something that flies instead.
+##
+## The vanish/reform VFX that used to dress this move (BattleVfx.blink_out/
+## blink_in/blink_trail, and the TELEPORT_OUT_TIME/IN_TIME/GHOSTS/GHOST_FADE
+## constants that timed them) is gone - the reposition is a plain, un-effected
+## snap now. TELEPORT_STRIKE_GAP and TELEPORT_RETURN_DELAY survive: the first
+## is spatial (how close a hit lands, unrelated to any effect), the second is
+## a combat-readability beat (time for the hit to register before the
+## attacker leaves), not part of what was removed.
 const TELEPORT_STRIKE_GAP := 1.35         # how far short of the target it lands
-const TELEPORT_GHOSTS := 5                # afterimages left along the path
-const TELEPORT_GHOST_FADE := 0.28
 const TELEPORT_RETURN_DELAY := 0.14       # beat spent at the target after impact
 
 # --- 5.3e Magic bolt [overworld prototype] ----------------------------------
@@ -334,7 +393,11 @@ const SLOT_BLANK_PAD_FLOOR := 4
 ## They have no item behind them, so their magnitude is fixed here rather than
 ## read off a modifier `roll`. This is the floor that reconnects party
 ## composition to the slot and guarantees the bag is never empty of icons.
-const SLOT_INNATE_DAMAGE := 6            # flat, before the spin's dmg_pct / overcharge
+##
+## [levels] SLOT_INNATE_DAMAGE (the old flat magnitude) is gone - the innate
+## damage icon now reads GameState.hero_weapon_power(id) *
+## SLOT_INNATE_POWER_FRACTION (spec §4.4), making hero level the one place
+## outside gear that reaches the board.
 const SLOT_INNATE_HEAL_PCT := 8         # percent of max hp to the lowest-hp hero
 ## [v2] Attract mode (spec 16.6 / Q17): out of combat the reels drift instead of
 ## stopping. "Does nothing" means nothing that affects the game - not dead air.
@@ -405,12 +468,20 @@ const UPGRADE_POLISH_STEP := 2           # blanks removed from the bag per level
 ## COOL BLUE IS THE LIGHT, GREEN IS THE GROUND, GOLD IS THE UI. Nothing that
 ## belongs to the world may be gold, and nothing that belongs to the frame may
 ## be cyan, or the two halves of the screen stop separating.
-const C_SKY := Color("0B2C4E")            # canopy gap, deep night blue
-const C_FAR_HILLS := Color("0E3A52")      # deepest treeline, blue-drowned
-const C_MID_TREES := Color("14584E")      # mid canopy, teal
-const C_NEAR_TREES := Color("0A1C24")     # near trunks, nearly black blue
-const C_GROUND := Color("2F6B44")         # lit moss down the path centre
-const C_BRUSH := Color("0C2A2C")          # undergrowth
+##
+## [art-style-a: lantern] Values retuned in place per `design documents/Art
+## Direction/Sir Fish - Art Style A - Lantern Spec.md` (§2). The organising
+## rule above is UNCHANGED - hue still carries the semantics. What moved is
+## LUMINANCE: the background drops toward black and the console lifts into a
+## real mid-tone, so the frame reads as a lit object held in darkness rather
+## than everything collapsing into one flat black mass on a phone at night.
+## Gate: `python tools/palette_audit.py --profile lantern --strict`.
+const C_SKY := Color("193152")            # canopy gap, deep night blue
+const C_FAR_HILLS := Color("2A586E")      # treeline, lifted to a shape not a smudge
+const C_MID_TREES := Color("2E7366")      # mid canopy, teal
+const C_NEAR_TREES := Color("234B58")     # near trunks, dark silhouette w/ an outline
+const C_GROUND := Color("41905C")         # lit moss down the path centre, brightest world surface
+const C_BRUSH := Color("3B826B")          # undergrowth, catches the console light (brighter than the trunks)
 const C_INK := Color("241E14")            # dark ink/outline - stays dark on purpose,
 										  # reused as text-on-parchment (S8)
 const C_WARRIOR_ARMOR := Color("5878A8")
@@ -427,7 +498,7 @@ const C_ORC_SKIN := Color("6FA83E")
 const C_ORC_IRON := Color("8C94A3")
 const C_SHADOW_BODY := Color("14121A")
 const C_SHADOW_EYES := Color("FF2D2D")
-const C_GOLD := Color("D4A843")           # the frame's trim gold, one step brighter
+const C_GOLD := Color("D8AF52")           # the frame's trim gold, one step brighter
 const C_DANGER := Color("E4484F")
 const C_HEAL := Color("55C94A")           # green, matches the PLUS slot symbol
 ## [ui-project-longshot] Back to blue. The concept's bolt glyph and its HP-bar
@@ -436,13 +507,13 @@ const C_HEAL := Color("55C94A")           # green, matches the PLUS slot symbol
 ## place the concept still uses it.
 const C_LIGHTNING := Color("4C86F0")
 const C_DEFEND := Color("D9A825")         # was blue - now the shield gold
-const C_CONSOLE_BG := Color("07171B")     # behind everything, near-black blue
-const C_CONSOLE_PANEL := Color("0D2A2A")  # panel fill, the dark glass of a reel well
-const C_TEXT := Color("F5F1E4")           # near-white, on dark
-const C_TEXT_DIM := Color("9CB0AC")       # muted sage, on dark
+const C_CONSOLE_BG := Color("040709")     # the void behind the lantern, near-black
+const C_CONSOLE_PANEL := Color("34756A")  # panel fill, a lit teal mid-tone - the lantern surface
+const C_TEXT := Color("F5F1E6")           # near-white, on dark
+const C_TEXT_DIM := Color("B5D2C8")       # secondary text - lives in the wells / on the void, never the lit panel (spec A 2.6)
 const C_WOOD := Color("7A4E28")           # slightly darkened for the night mood
 const C_WOOD_DARK := Color("5A3419")
-const C_PANEL_BORDER := Color("2E5A4E")   # inner border, one step off the panel fill
+const C_PANEL_BORDER := Color("BFA864")   # the lantern's lit gold rim - structural edge light
 const C_FIRE := Color("FF7A1A")           # [v2] fire-modifier damage numbers, unchanged
 ## [day-night] The meal glyph's tint (day/night spec §9.7). Warm roast orange -
 ## the one gap in the bonus strip's five existing glyph colours
@@ -453,7 +524,7 @@ const C_MEAL := Color("D9793A")
 const C_ICE := Color("5BC8F5")            # [v2] ice-modifier damage numbers, unchanged
 const C_FISH_SCALE := Color("4A9BE8")     # [v2] Sir Fish body
 const C_FISH_FIN := Color("3B6FD4")       # [v2] Sir Fish fins
-const C_ROCK := Color("2A3A44")           # [v3] layer-4 scatter rocks - now blue-slate
+const C_ROCK := Color("496071")           # [v3] layer-4 scatter rocks - blue-slate
 
 # --- 6.1b Arcane accents [ui-project-longshot] -------------------------------
 ## The blue every crystal, rune and slot bolt shares, so the world and the
@@ -475,13 +546,13 @@ const C_ARCANE_VIOLET := Color("8B5CF6")
 ## green panel this was. Stone reads warm-grey-green against the cold world
 ## behind it, which is most of what makes the console sit in front rather than
 ## blend into the forest.
-const C_CONSOLE_STONE := Color("3A4A3C")     # raised frame face (ornate_frame.gd)
-const C_CONSOLE_STONE_LIT := Color("5E7057")  # top-lit carved edge
-const C_CONSOLE_STONE_DARK := Color("1E2A22") # underside of a carved edge
+const C_CONSOLE_STONE := Color("668761")     # raised frame face (ornate_frame.gd), brightest chrome - carved, never carries text
+const C_CONSOLE_STONE_LIT := Color("82A47B")  # top-lit carved edge (re-derived above C_CONSOLE_STONE, spec A 2.4-style)
+const C_CONSOLE_STONE_DARK := Color("3C4F39") # underside of a carved edge (re-derived below C_CONSOLE_STONE)
 ## Recessed wells (reel windows, price plates). Dark GREEN-black, not blue-
 ## black: on the board the glass behind the reels still carries the forest's
 ## green, and a neutral near-black well reads as a hole punched in the cabinet.
-const C_CONSOLE_INSET := Color("0B1E1C")
+const C_CONSOLE_INSET := Color("194341")   # recessed well - the hole reads as a hole (2.03:1 on its panel)
 const C_GOLD_BRIGHT := Color("F5DFA0")       # top bevel highlight / payline glow
 const C_GOLD_DARK := Color("7A5A18")         # bottom bevel shadow
 const C_VINE := Color("3D7A45")              # frame overgrowth
@@ -499,7 +570,7 @@ const C_GEM_BRIGHT := Color("9FB8FF")        # their lit facet
 ## paper pinned to the cabinet rather than as part of it.
 const C_PARCHMENT := Color("C7C4B5")
 const C_PARCHMENT_SHADE := Color("A4A294")  # lower half of the card's gradient
-const C_TEXT_GOLD := Color("F0D588")        # headings and numerals on dark stone
+const C_TEXT_GOLD := Color("EFD694")        # headings and numerals on dark stone (AA-large on the lit panel)
 
 # --- 6.1e Reliquary (modal chrome) [scoped exception] -----------------------
 ## The modal layer ONLY. Opening a popup should feel like opening a warded
@@ -516,13 +587,13 @@ const C_TEXT_GOLD := Color("F0D588")        # headings and numerals on dark ston
 ##
 ## Still cold, never warm: a modal that reads brown or dusty-mauve is as wrong
 ## as a brown forest. Every hue below is pulled toward blue-violet.
-const C_RELIQUARY_MIST := Color("241832")        # scrim / drifting fog base
-const C_RELIQUARY_STONE := Color("1A1526")       # modal panel fill, plum-black
-const C_RELIQUARY_STONE_LIT := Color("2C2440")   # top-lit carved edge
-const C_RELIQUARY_STONE_DARK := Color("0E0B16")  # underside of an edge / recessed wells
-const C_CRYSTAL := Color("8B5CF6")               # crystal body, chip accent, name glow
-const C_CRYSTAL_BRIGHT := Color("D8B4FE")        # lit facet, heading text on plum stone
-const C_CRYSTAL_DEEP := Color("4C1D95")          # shadowed facet, well borders
+const C_RELIQUARY_MIST := Color("251536")        # scrim / drifting fog base (a scrim is meant to be dark)
+const C_RELIQUARY_STONE := Color("614984")       # modal panel fill, lit plum - separates from its own mist
+const C_RELIQUARY_STONE_LIT := Color("9F85BE")   # top-lit carved edge (re-derived ~midway STONE..CRYSTAL_BRIGHT, spec A 2.4)
+const C_RELIQUARY_STONE_DARK := Color("100B16")  # underside of an edge / recessed wells
+const C_CRYSTAL := Color("B18BEF")               # crystal body, chip accent, name glow (re-derived between its neighbours, spec A 2.4)
+const C_CRYSTAL_BRIGHT := Color("DCC1F7")        # lit facet, heading text on plum stone (4.66:1 on the tablet)
+const C_CRYSTAL_DEEP := Color("7A50BB")          # shadowed facet, well borders (re-derived between its neighbours, spec A 2.4)
 const C_THORN := Color("1E1A2E")                 # thorn-vine art tint reference
 const C_THORN_DARK := Color("0F0D18")            # its shadowed side
 const C_RELIQUARY_TRIM := Color("3A3A48")        # pewter corner-bracket art tint reference
@@ -540,7 +611,10 @@ const C_RELIQUARY_TRIM := Color("3A3A48")        # pewter corner-bracket art tin
 ## where the rest of the gloom comes from.
 const STORM_SKY := Color("16203A")        # the lowered background colour
 const STORM_SLATE := Color("5A6E96")      # what every hue is pulled toward
-const STORM_DARKEN := 0.50
+## [art-style-a: lantern] Was 0.50, tuned against panels that sat at ~0.019
+## luminance. Applied to Lantern's 0.145 panel a 0.50 darken made the storm
+## MORE legible than clear weather; 0.35 keeps the storm reading as gloom.
+const STORM_DARKEN := 0.35
 const STORM_TINT_MIX := 0.35
 
 ## How bright the sky goes at the peak of a lightning flash. Not white: a
@@ -720,7 +794,11 @@ const TREE_CLEAR_EXTRA := 3.0
 ## wall of haze, so there was nowhere for the archway to stand. Begin is
 ## pulled in rather than out to keep the same number of bands in front of the
 ## party as behind it.
-const FOG_DEPTH_BEGIN := 9.0
+## [art-style-a: lantern] Begin moved 9.0 -> 14.0 (spec A §3): near-field
+## haze was flattening the mid-ground into the background. This constant
+## is the source of truth - battle_world.gd enforces it over the scene's
+## inline fog_depth_begin.
+const FOG_DEPTH_BEGIN := 14.0
 const FOG_DEPTH_END := 84.0
 
 ## A second, non-scrolling ring of trees well outside the play area, sparser

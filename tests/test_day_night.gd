@@ -228,9 +228,13 @@ func _ready() -> void:
 	t.check(GameState.meal_eaten_today, "22: meal_eaten_today round-trips")
 
 	# 23. A legacy payload with none of the four keys loads as DAY / 1 / 0 / false.
+	# [levels] version is SaveGame.VERSION, not a hardcoded literal - this
+	# simulates "current format, missing the day/night keys", not "an old
+	# version number" (that's test_profile_save.gd's S4), so it must track
+	# every future VERSION bump the same way that test's S6 does.
 	var f := FileAccess.open(SaveGame.PATH, FileAccess.WRITE)
 	f.store_string(var_to_str({
-		"version": 2, "gold": 100, "scrap": 10,
+		"version": SaveGame.VERSION, "gold": 100, "scrap": 10,
 		"active_party": [&"warrior"], "heroes": [], "inventory": [],
 	}))
 	f.close()

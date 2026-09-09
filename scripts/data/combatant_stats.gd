@@ -15,8 +15,23 @@ enum AttackStyle { MELEE, RANGED, MAGIC }
 @export var id: StringName = &""
 @export var display_name: String = ""
 @export var is_hero: bool = false
+
+## [levels] Level-1 base stats. Growth per level above 1 lives in the matching
+## `*_per_level` field below - see `at_level()` / `hp_at()` / `weapon_power_at()`
+## / `magic_power_at()`, the ONLY place a level and a base+growth pair combine
+## (levels & stats spec §1.1). Replaces `base_damage`, which named a single
+## number for an attack that is now school-specific.
 @export var max_hp: int = 100
-@export var base_damage: int = 10
+@export var weapon_power: int = 10
+@export var magic_power: int = 0
+
+## [levels] Added per level above 1, authored per character rather than derived
+## from a global fraction - a glass-cannon and a wall of a tank should not
+## diverge only in their level-1 row (spec §1.2).
+@export var hp_per_level: int = 0
+@export var weapon_power_per_level: int = 0
+@export var magic_power_per_level: int = 0
+
 ## RECOVERY after an action ends, not the interval between actions (spec 5.2).
 ## The real cycle is attack_cooldown + the action's animation length; see the
 ## `real cycle` column of spec 5.2, which is the authoritative balance figure.
@@ -71,3 +86,21 @@ func required_anims() -> Array[StringName]:
 	if special_every_n_actions > 0:
 		names.append(&"special")
 	return names
+
+# --- [levels] level resolution (spec §1.1) ----------------------------------
+
+## `base + growth * (level - 1)`, floored so a level below 1 never subtracts.
+## Static and free of `self` on purpose: this resource is cached and shared
+## (GameState._stats_cache), so nothing here may depend on which particular
+## spawn is asking - the level always comes in as an argument.
+static func at_level(base: int, growth: int, level: int) -> int:
+	return base + growth * maxi(level - 1, 0)
+
+func hp_at(level: int) -> int:
+	return at_level(max_hp, hp_per_level, level)
+
+func weapon_power_at(level: int) -> int:
+	return at_level(weapon_power, weapon_power_per_level, level)
+
+func magic_power_at(level: int) -> int:
+	return at_level(magic_power, magic_power_per_level, level)

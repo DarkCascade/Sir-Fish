@@ -78,14 +78,14 @@ const RARITY_VALUE_MULT := [
 # value contribution should scale with the magnitude actually rolled rather than
 # being independently random.
 
-func generate_items(count: int) -> Array[Item]:
+func generate_items(count: int, level: int = -1) -> Array[Item]:
 	var out: Array[Item] = []
 	for i: int in range(count):
-		out.append(generate_item())
+		out.append(generate_item(level))
 	return out
 
-func generate_item() -> Item:
-	return generate_item_with_rarity(RNG.weighted_index(RARITY_WEIGHTS))
+func generate_item(level: int = -1) -> Item:
+	return generate_item_with_rarity(RNG.weighted_index(RARITY_WEIGHTS), level)
 
 ## Shop stock and the Debug harness need a specific rarity; everything else
 ## should go through generate_item() and take the weighted roll.
@@ -94,17 +94,22 @@ func generate_item() -> Item:
 ## types a slot happens to have must not decide how often that slot is served.
 ## Passes the active party, so with a solo warrior staves and bows stop
 ## appearing in chests and shop stock entirely (the spec 1.6 fix).
-func generate_item_with_rarity(rarity_index: int) -> Item:
+func generate_item_with_rarity(rarity_index: int, level: int = -1) -> Item:
 	# Clamp to RARE, never ENHANCED (spec 10.1): the guard now says what it means.
 	rarity_index = clampi(rarity_index, 0, Item.Rarity.RARE)
-	return _roll_typed(GameState.active_party, rarity_index)
+	return _roll_typed(GameState.active_party, rarity_index, level)
 
 ## The whole of the old generate_item_with_rarity() body from `item.weapon_type`
 ## onward, with the type handed in. Nothing else moves.
-func _generate_typed(wtype: StringName, rarity_index: int) -> Item:
+##
+## [levels] `level` -1 resolves through GameState.default_item_level() - the
+## ONLY writer of item.level, so "what level is an unstamped item" has exactly
+## one answer (spec §4.2).
+func _generate_typed(wtype: StringName, rarity_index: int, level: int = -1) -> Item:
 	var item := Item.new()
 	item.kind = Item.Kind.WEAPON      # the only kind generated in the demo (spec 13.7)
 	item.weapon_type = wtype
+	item.level = level if level > 0 else GameState.default_item_level()
 
 	item.rarity = rarity_index as Item.Rarity
 
@@ -141,7 +146,11 @@ func _generate_typed(wtype: StringName, rarity_index: int) -> Item:
 	var base_value: int = int(ITEM_TYPES[wtype]["base_value"])
 	var rarity_mult: float = RNG.randf_range(
 		RARITY_VALUE_MULT[rarity_index][0], RARITY_VALUE_MULT[rarity_index][1])
-	item.value = int(round(float(base_value) * rarity_mult * (1.0 + mod_sum)))
+	# [levels] A level-30 Common must not sell for the same price as a level-1
+	# one, or the economy stops tracking power (spec §4.2). Multiplies onto the
+	# same final line rarity_mult already does, rather than a separate pass.
+	var level_mult: float = 1.0 + Tuning.ITEM_VALUE_PER_LEVEL * float(item.level - 1)
+	item.value = int(round(float(base_value) * rarity_mult * level_mult * (1.0 + mod_sum)))
 	return item
 
 # --- the forge (spec 10.2) ------------------------------------------------------
@@ -254,7 +263,7 @@ func _equippable_slots_for(classes: Array[StringName]) -> Array[Item.Slot]:
 ## [town] Slot first, then a type within it - the shared body of both
 ## generators (spec 4.4). Keeping this one function is what stops the two
 ## generation paths drifting apart again.
-func _roll_typed(classes: Array[StringName], rarity_index: int) -> Item:
+func _roll_typed(classes: Array[StringName], rarity_index: int, level: int = -1) -> Item:
 	var slots := _equippable_slots_for(classes)
 	if slots.is_empty():
 		# Unreachable while some class in `classes` can wield something. A
@@ -262,10 +271,10 @@ func _roll_typed(classes: Array[StringName], rarity_index: int) -> Item:
 		# always carried, re-aimed: with no party-derived answer left, fall back
 		# to a uniform draw over every type.
 		var all: Array = ITEM_TYPES.keys()
-		return _generate_typed(all[RNG.randi_range(0, all.size() - 1)], rarity_index)
+		return _generate_typed(all[RNG.randi_range(0, all.size() - 1)], rarity_index, level)
 	var slot: Item.Slot = slots[RNG.randi_range(0, slots.size() - 1)]
 	var types := types_for_slot(slot, classes)
-	return _generate_typed(types[RNG.randi_range(0, types.size() - 1)], rarity_index)
+	return _generate_typed(types[RNG.randi_range(0, types.size() - 1)], rarity_index, level)
 
 ## The classes a drop can be aimed at, in active_party order (spec 4.5 - was
 ## PARTY_ORDER). Derived from the type table rather than listed, so a class with
@@ -283,12 +292,12 @@ func droppable_classes() -> Array[StringName]:
 ## fillable slots (spec 4.4). THE ONLY generator that picks a class first - see
 ## §0.3. Its guarantee is unchanged and now unconditional: a drop is always
 ## something the target class can wield.
-func generate_drop(hero_class: StringName, rarity_floor: int = 0) -> Item:
+func generate_drop(hero_class: StringName, rarity_floor: int = 0, level: int = -1) -> Item:
 	# Same RARE ceiling as generate_item_with_rarity() - a drop is never ENHANCED
 	# (spec 10.1). Stated as the enum value now that RARITY_WEIGHTS has a fifth,
 	# zero-weight entry.
 	var rarity: int = maxi(RNG.weighted_index(RARITY_WEIGHTS), clampi(rarity_floor, 0, Item.Rarity.RARE))
-	return _roll_typed([hero_class] as Array[StringName], rarity)
+	return _roll_typed([hero_class] as Array[StringName], rarity, level)
 
 # --- shop stock (spec 13.6 / Q14) -------------------------------------------
 
@@ -297,27 +306,27 @@ func generate_drop(hero_class: StringName, rarity_floor: int = 0) -> Item:
 ## out of reach, and a dead shop encounter is worse than a predictable one. So
 ## the stock guarantees a spread rather than price-checking against live gold,
 ## which would make the shop feel like it was reading the player's wallet.
-func generate_shop_stock() -> Array[Item]:
+func generate_shop_stock(level: int = -1) -> Array[Item]:
 	var stock: Array[Item] = [
-		_generate_in_bucket([Item.Rarity.COMMON, Item.Rarity.UNCOMMON]),   # affordable
-		generate_item(),                                                    # free roll
-		_generate_in_bucket([Item.Rarity.MAGIC, Item.Rarity.RARE]),         # teaser
+		_generate_in_bucket([Item.Rarity.COMMON, Item.Rarity.UNCOMMON], level),   # affordable
+		generate_item(level),                                                     # free roll
+		_generate_in_bucket([Item.Rarity.MAGIC, Item.Rarity.RARE], level),        # teaser
 	]
 	# SHOP_ITEMS_FOR_SALE governs the count; the two forced buckets come first and
 	# any remainder is free-rolled.
 	while stock.size() < Tuning.SHOP_ITEMS_FOR_SALE:
-		stock.append(generate_item())
+		stock.append(generate_item(level))
 	while stock.size() > Tuning.SHOP_ITEMS_FOR_SALE:
 		stock.pop_back()
 	stock.shuffle()          # so the expensive card is not always in the same slot
 	return stock
 
 ## Picks within the bucket using the 13.2 weights renormalised across it.
-func _generate_in_bucket(bucket: Array) -> Item:
+func _generate_in_bucket(bucket: Array, level: int = -1) -> Item:
 	var weights: Array[int] = []
 	for r: int in bucket:
 		weights.append(int(RARITY_WEIGHTS[r]))
-	return generate_item_with_rarity(int(bucket[RNG.weighted_index(weights)]))
+	return generate_item_with_rarity(int(bucket[RNG.weighted_index(weights)]), level)
 
 # --- the blacksmith's expanded shop (spec 7.4) --------------------------------
 
@@ -329,7 +338,11 @@ func _generate_in_bucket(bucket: Array) -> Item:
 ## here - it is forge-only (weight 0, spec 10.1). The result count is
 ## Tuning.FORGE_SHOP_SLOTS, drawn evenly across three buckets - so the constant
 ## must stay a multiple of three (B2).
-func generate_forge_stock() -> Array[Item]:
+##
+## [levels] `level` defaults to -1 (GameState.default_item_level(), i.e. the
+## hero's own level) - the blacksmith's stock has no expedition context to
+## stamp it with (spec §4.2 table).
+func generate_forge_stock(level: int = -1) -> Array[Item]:
 	var stock: Array[Item] = []
 	@warning_ignore("integer_division")
 	var per_bucket: int = Tuning.FORGE_SHOP_SLOTS / 3
@@ -339,6 +352,6 @@ func generate_forge_stock() -> Array[Item]:
 		[Item.Rarity.MAGIC,    Item.Rarity.RARE],       # dear
 	]:
 		for _i: int in range(per_bucket):
-			stock.append(_generate_in_bucket(bucket))
+			stock.append(_generate_in_bucket(bucket, level))
 	stock.shuffle()
 	return stock
