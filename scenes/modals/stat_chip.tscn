@@ -92,7 +92,7 @@ theme_override_styles/panel = SubResource("badge_pill")
 [node name="Label" type="Label" parent="Plate/Badge"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.960784, 0.945098, 0.894118, 1)
-theme_override_font_sizes/font_size = 24
+theme_override_font_sizes/font_size = 40
 text = "+0"
 horizontal_alignment = 1
 vertical_alignment = 1
@@ -102,7 +102,7 @@ custom_minimum_size = Vector2(116, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_colors/font_color = Color(0.960784, 0.945098, 0.894118, 1)
-theme_override_font_sizes/font_size = 22
+theme_override_font_sizes/font_size = 40
 text = "Stat"
 horizontal_alignment = 1
 autowrap_mode = 2

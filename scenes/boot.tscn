@@ -39,7 +39,7 @@ theme_override_constants/separation = 26
 [node name="Caption" type="Label" parent="Loading"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.831, 0.659, 0.263, 1)
-theme_override_font_sizes/font_size = 34
+theme_override_font_sizes/font_size = 46
 text = "Preparing"
 horizontal_alignment = 1
 

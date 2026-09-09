@@ -1,7 +1,7 @@
 extends Label
 ## Floating damage / heal / gold number (spec 11.4).
 
-func show_number(value: String, color: Color, font_size: int = 42,
+func show_number(value: String, color: Color, font_size: int = 54,
 		rise: float = 80.0, duration: float = 0.85) -> void:
 	text = value
 	add_theme_font_size_override("font_size", font_size)

@@ -22,7 +22,7 @@ offset_top = 24.0
 offset_right = 128.0
 offset_bottom = 128.0
 disabled = true
-theme_override_font_sizes/font_size = 30
+theme_override_font_sizes/font_size = 40
 icon = ExtResource("5_bag")
 expand_icon = true
 
@@ -32,7 +32,7 @@ offset_top = 24.0
 offset_right = 244.0
 offset_bottom = 128.0
 disabled = true
-theme_override_font_sizes/font_size = 30
+theme_override_font_sizes/font_size = 40
 icon = ExtResource("8_meal")
 expand_icon = true
 
@@ -65,13 +65,13 @@ theme_override_constants/separation = 8
 [node name="Caption" type="Label" parent="CurrencyPlate/Row/Gold"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.831, 0.659, 0.263, 1)
-theme_override_font_sizes/font_size = 34
+theme_override_font_sizes/font_size = 46
 text = "G"
 
 [node name="Value" type="Label" parent="CurrencyPlate/Row/Gold"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.961, 0.945, 0.894, 1)
-theme_override_font_sizes/font_size = 34
+theme_override_font_sizes/font_size = 46
 text = "0"
 
 [node name="Scrap" type="HBoxContainer" parent="CurrencyPlate/Row"]
@@ -81,13 +81,13 @@ theme_override_constants/separation = 8
 [node name="Caption" type="Label" parent="CurrencyPlate/Row/Scrap"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.624, 0.698, 0.745, 1)
-theme_override_font_sizes/font_size = 34
+theme_override_font_sizes/font_size = 46
 text = "S"
 
 [node name="Value" type="Label" parent="CurrencyPlate/Row/Scrap"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.961, 0.945, 0.894, 1)
-theme_override_font_sizes/font_size = 34
+theme_override_font_sizes/font_size = 46
 text = "0"
 
 [node name="ModalLayer" type="Control" parent="."]

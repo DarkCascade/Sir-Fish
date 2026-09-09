@@ -79,14 +79,14 @@ theme_override_constants/separation = 26
 [node name="Title" type="Label" parent="ChoicePanel/V"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.831, 0.659, 0.263, 1)
-theme_override_font_sizes/font_size = 60
+theme_override_font_sizes/font_size = 78
 text = "NIGHTFALL"
 horizontal_alignment = 1
 
 [node name="DayLine" type="Label" parent="ChoicePanel/V"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.611765, 0.686275, 0.643137, 1)
-theme_override_font_sizes/font_size = 30
+theme_override_font_sizes/font_size = 40
 text = "Day 1"
 horizontal_alignment = 1
 
@@ -102,13 +102,13 @@ layout_mode = 2
 [node name="PrimaryButton" type="Button" parent="ChoicePanel/V"]
 custom_minimum_size = Vector2(0, 116)
 layout_mode = 2
-theme_override_font_sizes/font_size = 38
+theme_override_font_sizes/font_size = 46
 text = "Stay at the Inn  —  50 G"
 
 [node name="SecondaryButton" type="Button" parent="ChoicePanel/V"]
 custom_minimum_size = Vector2(0, 116)
 layout_mode = 2
-theme_override_font_sizes/font_size = 38
+theme_override_font_sizes/font_size = 46
 text = "Sleep in the street  —  free"
 
 [node name="Frame" parent="ChoicePanel" instance=ExtResource("3_frame")]
@@ -137,7 +137,7 @@ theme_override_constants/separation = 24
 [node name="Title" type="Label" parent="ResultPanel/V"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.831, 0.659, 0.263, 1)
-theme_override_font_sizes/font_size = 60
+theme_override_font_sizes/font_size = 78
 text = "MORNING"
 horizontal_alignment = 1
 
@@ -145,7 +145,7 @@ horizontal_alignment = 1
 custom_minimum_size = Vector2(0, 70)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.611765, 0.686275, 0.643137, 1)
-theme_override_font_sizes/font_size = 28
+theme_override_font_sizes/font_size = 40
 text = "You wake with the dawn, every wound closed."
 horizontal_alignment = 1
 vertical_alignment = 1
@@ -163,7 +163,7 @@ layout_mode = 2
 [node name="PrimaryButton" type="Button" parent="ResultPanel/V"]
 custom_minimum_size = Vector2(0, 116)
 layout_mode = 2
-theme_override_font_sizes/font_size = 38
+theme_override_font_sizes/font_size = 46
 text = "Good morning"
 
 [node name="Frame" parent="ResultPanel" instance=ExtResource("3_frame")]

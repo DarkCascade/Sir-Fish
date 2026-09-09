@@ -58,11 +58,11 @@ theme_override_constants/separation = 4
 layout_mode = 2
 theme_type_variation = &"DisplayLabel"
 theme_override_colors/font_color = Color(0.94902, 0.913725, 0.815686, 1)
-theme_override_font_sizes/font_size = 40
+theme_override_font_sizes/font_size = 54
 
 [node name="SubtitleLabel" type="Label" parent="VBox/TopRow/Info"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 26
+theme_override_font_sizes/font_size = 40
 
 [node name="Modifiers" type="VBoxContainer" parent="VBox"]
 layout_mode = 2
@@ -71,7 +71,7 @@ theme_override_constants/separation = 2
 [node name="ForgeButton" type="Button" parent="VBox"]
 custom_minimum_size = Vector2(0, 88)
 layout_mode = 2
-theme_override_font_sizes/font_size = 30
+theme_override_font_sizes/font_size = 40
 text = "FORGE"
 
 [node name="FullyForged" type="Label" parent="VBox"]
@@ -79,7 +79,7 @@ visible = false
 custom_minimum_size = Vector2(0, 88)
 layout_mode = 2
 theme_override_colors/font_color = Color(1, 0.419608, 0.290196, 1)
-theme_override_font_sizes/font_size = 30
+theme_override_font_sizes/font_size = 40
 text = "Fully forged"
 horizontal_alignment = 1
 vertical_alignment = 1

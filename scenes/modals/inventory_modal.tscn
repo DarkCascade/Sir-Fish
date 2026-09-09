@@ -94,7 +94,7 @@ layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"DisplayLabel"
 theme_override_colors/font_color = Color(0.847059, 0.705882, 0.996078, 1)
-theme_override_font_sizes/font_size = 56
+theme_override_font_sizes/font_size = 78
 text = "INVENTORY"
 vertical_alignment = 1
 
@@ -107,7 +107,7 @@ alignment = 2
 layout_mode = 2
 theme_type_variation = &"DisplayLabel"
 theme_override_colors/font_color = Color(0.941176, 0.835294, 0.533333, 1)
-theme_override_font_sizes/font_size = 40
+theme_override_font_sizes/font_size = 54
 text = "0 G"
 vertical_alignment = 1
 
@@ -115,7 +115,7 @@ vertical_alignment = 1
 layout_mode = 2
 theme_type_variation = &"DisplayLabel"
 theme_override_colors/font_color = Color(0.623529, 0.698039, 0.745098, 1)
-theme_override_font_sizes/font_size = 40
+theme_override_font_sizes/font_size = 54
 text = "0 S"
 vertical_alignment = 1
 
@@ -126,7 +126,7 @@ size_flags_vertical = 4
 theme_override_colors/font_color = Color(0.94902, 0.913725, 0.815686, 1)
 theme_override_colors/font_hover_color = Color(0.847059, 0.705882, 0.996078, 1)
 theme_override_colors/font_pressed_color = Color(0.545098, 0.360784, 0.964706, 1)
-theme_override_font_sizes/font_size = 40
+theme_override_font_sizes/font_size = 54
 theme_override_styles/normal = SubResource("rel_close")
 theme_override_styles/hover = SubResource("rel_close")
 theme_override_styles/pressed = SubResource("rel_close")
@@ -147,7 +147,7 @@ theme_override_constants/separation = 16
 layout_mode = 2
 theme_type_variation = &"DisplayLabel"
 theme_override_colors/font_color = Color(0.847059, 0.705882, 0.996078, 1)
-theme_override_font_sizes/font_size = 34
+theme_override_font_sizes/font_size = 46
 text = "Equipped"
 
 [node name="Equipped" type="VBoxContainer" parent="Panel/Layout/Scroll/Body"]
@@ -158,7 +158,7 @@ theme_override_constants/separation = 12
 layout_mode = 2
 theme_type_variation = &"DisplayLabel"
 theme_override_colors/font_color = Color(0.847059, 0.705882, 0.996078, 1)
-theme_override_font_sizes/font_size = 34
+theme_override_font_sizes/font_size = 46
 text = "Carried"
 
 [node name="Carried" type="VBoxContainer" parent="Panel/Layout/Scroll/Body"]
@@ -168,7 +168,7 @@ theme_override_constants/separation = 12
 [node name="CarriedEmpty" type="Label" parent="Panel/Layout/Scroll/Body"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.611765, 0.686275, 0.643137, 1)
-theme_override_font_sizes/font_size = 32
+theme_override_font_sizes/font_size = 46
 text = "Nothing carried."
 
 ; [reliquary] Corner ornaments, as a sibling overlaying the panel exactly so

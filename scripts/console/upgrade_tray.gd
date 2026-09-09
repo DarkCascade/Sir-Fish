@@ -57,4 +57,4 @@ func _on_upgrade_purchased(id: StringName, _level: int) -> void:
 	# The level has already advanced, so the price paid was the previous cost.
 	var paid := int(round(float(Upgrades.DEFS[id]["base"])
 		* pow(Tuning.UPGRADE_COST_GROWTH, float(Upgrades.level(id) - 1))))
-	label.show_number("-%d" % paid, Tuning.C_GOLD, 34, 70.0, 0.9)
+	label.show_number("-%d" % paid, Tuning.C_GOLD, 46, 70.0, 0.9)

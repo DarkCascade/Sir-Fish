@@ -53,7 +53,7 @@ theme_override_constants/separation = 22
 
 [node name="Title" type="Label" parent="Layout"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 90
+theme_override_font_sizes/font_size = 96
 text = "The Blacksmith"
 horizontal_alignment = 1
 
@@ -61,7 +61,7 @@ horizontal_alignment = 1
 custom_minimum_size = Vector2(0, 70)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.611765, 0.686275, 0.643137, 1)
-theme_override_font_sizes/font_size = 39
+theme_override_font_sizes/font_size = 54
 text = "The forge roars. Bring scrap and gold, leave with something better."
 horizontal_alignment = 1
 vertical_alignment = 1
@@ -70,7 +70,7 @@ autowrap_mode = 3
 [node name="Tabs" type="TabContainer" parent="Layout"]
 layout_mode = 2
 size_flags_vertical = 3
-theme_override_font_sizes/font_size = 48
+theme_override_font_sizes/font_size = 64
 current_tab = 0
 
 [node name="Forge" type="ScrollContainer" parent="Layout/Tabs"]
@@ -98,14 +98,14 @@ theme_override_constants/separation = 12
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_colors/font_color = Color(0.611765, 0.686275, 0.643137, 1)
-theme_override_font_sizes/font_size = 42
+theme_override_font_sizes/font_size = 54
 text = "Wares"
 vertical_alignment = 1
 
 [node name="RefreshButton" type="Button" parent="Layout/Tabs/Buy/BuyHeader"]
 custom_minimum_size = Vector2(0, 72)
 layout_mode = 2
-theme_override_font_sizes/font_size = 42
+theme_override_font_sizes/font_size = 54
 text = "⟳  Refresh — 100 G"
 
 [node name="BuyScroll" type="ScrollContainer" parent="Layout/Tabs/Buy"]
@@ -124,7 +124,7 @@ visible = false
 custom_minimum_size = Vector2(0, 100)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.611765, 0.686275, 0.643137, 1)
-theme_override_font_sizes/font_size = 45
+theme_override_font_sizes/font_size = 54
 text = "Nothing in stock. Refresh for new wares."
 horizontal_alignment = 1
 vertical_alignment = 1
@@ -146,7 +146,7 @@ size_flags_horizontal = 3
 [node name="ScrapAllCommonButton" type="Button" parent="Layout/Tabs/Scrap/ScrapHeader"]
 custom_minimum_size = Vector2(0, 72)
 layout_mode = 2
-theme_override_font_sizes/font_size = 42
+theme_override_font_sizes/font_size = 54
 text = "Scrap All Common"
 
 [node name="ScrapScroll" type="ScrollContainer" parent="Layout/Tabs/Scrap"]
@@ -165,7 +165,7 @@ visible = false
 custom_minimum_size = Vector2(0, 100)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.611765, 0.686275, 0.643137, 1)
-theme_override_font_sizes/font_size = 45
+theme_override_font_sizes/font_size = 54
 text = "Nothing to scrap."
 horizontal_alignment = 1
 vertical_alignment = 1
@@ -187,7 +187,7 @@ size_flags_horizontal = 3
 [node name="SellAllCommonButton" type="Button" parent="Layout/Tabs/Sell/SellHeader"]
 custom_minimum_size = Vector2(0, 72)
 layout_mode = 2
-theme_override_font_sizes/font_size = 42
+theme_override_font_sizes/font_size = 54
 text = "Sell All Common"
 
 [node name="SellScroll" type="ScrollContainer" parent="Layout/Tabs/Sell"]
@@ -206,7 +206,7 @@ visible = false
 custom_minimum_size = Vector2(0, 100)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.611765, 0.686275, 0.643137, 1)
-theme_override_font_sizes/font_size = 45
+theme_override_font_sizes/font_size = 54
 text = "Nothing to sell."
 horizontal_alignment = 1
 vertical_alignment = 1
@@ -214,7 +214,7 @@ vertical_alignment = 1
 [node name="BackButton" type="Button" parent="Layout"]
 custom_minimum_size = Vector2(0, 96)
 layout_mode = 2
-theme_override_font_sizes/font_size = 51
+theme_override_font_sizes/font_size = 64
 text = "Back"
 
 [node name="CompareFlyout" parent="." instance=ExtResource("2_compare")]

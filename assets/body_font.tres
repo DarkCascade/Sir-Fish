@@ -6,9 +6,18 @@
 ; see assets/fonts/EBGaramond-OFL.txt). Body face for upgrade blurbs, item
 ; subtitles and anything below DisplayLabel's engraved-caps size - Cinzel has
 ; no true lowercase, so running paragraph text in it is illegible.
+;
+; [art style exploration, Phase 0 §1.2] wght raised 400 -> 600. At 400 this
+; is a hairline old-style serif - the single worst choice at ~12 CSS px on a
+; backlit phone (see the Art Direction exploration plan §0.2.3). The variable
+; font's wght axis covers this range natively, so no new file. If 600 still
+; reads thin on device, the documented fallback is swapping base_font to
+; assets/fonts/Crimson-Semibold.ttf (already vendored/imported) rather than
+; pushing wght further - EB Garamond's axis starts deforming letterforms
+; above ~700.
 [resource]
 base_font = ExtResource("1_garamond")
 variation_opentype = {
-"wght": 400.0
+"wght": 600.0
 }
 spacing_glyph = 1

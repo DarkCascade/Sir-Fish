@@ -78,7 +78,7 @@ func _apply_heading(is_quest: bool) -> void:
 		title.text = "QUEST COMPLETE" if _victory else "DEFEATED"
 	else:
 		title.text = "LEVEL CLEARED" if _victory else "DEFEATED"
-	title.add_theme_font_size_override("font_size", 76 if _victory else 84)
+	title.add_theme_font_size_override("font_size", 78 if _victory else 96)
 	title.add_theme_color_override("font_color",
 		Tuning.C_GOLD if _victory else Tuning.C_DANGER)
 

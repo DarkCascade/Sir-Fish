@@ -92,7 +92,7 @@ mouse_filter = 0
 theme_override_colors/font_color = Color(0.858824, 0.945098, 1, 1)
 theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
 theme_override_colors/font_pressed_color = Color(0.74902, 0.933333, 1, 1)
-theme_override_font_sizes/font_size = 30
+theme_override_font_sizes/font_size = 40
 theme_override_styles/normal = SubResource("action_normal")
 theme_override_styles/hover = SubResource("action_hover")
 theme_override_styles/pressed = SubResource("action_pressed")
@@ -134,16 +134,16 @@ theme_override_constants/separation = 4
 layout_mode = 2
 theme_type_variation = &"DisplayLabel"
 theme_override_colors/font_color = Color(0.94902, 0.913725, 0.815686, 1)
-theme_override_font_sizes/font_size = 42
+theme_override_font_sizes/font_size = 54
 
 [node name="SubtitleLabel" type="Label" parent="Stage/Face/FaceLayout/TopRow/Info"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 28
+theme_override_font_sizes/font_size = 40
 
 [node name="ModsLabel" type="Label" parent="Stage/Face/FaceLayout/TopRow/Info"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.611765, 0.686275, 0.643137, 1)
-theme_override_font_sizes/font_size = 26
+theme_override_font_sizes/font_size = 40
 
 [node name="Actions" type="HBoxContainer" parent="Stage/Face/FaceLayout"]
 layout_mode = 2

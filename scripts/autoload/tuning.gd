@@ -301,9 +301,9 @@ const DROP_BOSS_TARGETS_HUNGRIEST := true
 const DROP_LABEL_STAGGER := 0.25
 ## Height above the recorded corpse position that a drop label pops at.
 const DROP_LABEL_LIFT := 1.2
-## Smaller than spawn_world_label()'s 40 default: a drop label carries the item
+## Smaller than spawn_world_label()'s 54 default: a drop label carries the item
 ## name AND the class, so it is roughly twice as wide as a chest label.
-const DROP_LABEL_FONT_SIZE := 34
+const DROP_LABEL_FONT_SIZE := 46
 
 # --- 5.5 Slot machine — the icon bag [slot phase 2] -----------------------
 ## The reel is a BAG rebuilt from the party, not a fixed 27-stop strip: one

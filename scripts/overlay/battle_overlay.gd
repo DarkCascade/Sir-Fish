@@ -161,7 +161,7 @@ func spawn_number(c: Combatant, text: String, color: Color) -> void:
 
 ## Used by the loot chest for its rising item labels (spec 14.2).
 func spawn_world_label(world_pos: Vector3, text: String, color: Color,
-		font_size: int = 40, rise: float = 120.0, duration: float = 1.2) -> void:
+		font_size: int = 54, rise: float = 120.0, duration: float = 1.2) -> void:
 	var label = NUMBER_SCENE.instantiate()
 	floating_layer.add_child(label)
 	label.position = screen_position(world_pos)

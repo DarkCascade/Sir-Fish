@@ -93,7 +93,7 @@ layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"DisplayLabel"
 theme_override_colors/font_color = Color(0.847059, 0.705882, 0.996078, 1)
-theme_override_font_sizes/font_size = 56
+theme_override_font_sizes/font_size = 78
 text = "PARTY"
 vertical_alignment = 1
 
@@ -104,7 +104,7 @@ size_flags_vertical = 4
 theme_override_colors/font_color = Color(0.94902, 0.913725, 0.815686, 1)
 theme_override_colors/font_hover_color = Color(0.847059, 0.705882, 0.996078, 1)
 theme_override_colors/font_pressed_color = Color(0.545098, 0.360784, 0.964706, 1)
-theme_override_font_sizes/font_size = 40
+theme_override_font_sizes/font_size = 54
 theme_override_styles/normal = SubResource("rel_close")
 theme_override_styles/hover = SubResource("rel_close")
 theme_override_styles/pressed = SubResource("rel_close")
