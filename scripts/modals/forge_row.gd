@@ -43,7 +43,7 @@ func _fill_modifiers() -> void:
 	for mod: Dictionary in item.modifiers:
 		var line := Label.new()
 		line.text = String(mod["label"])
-		line.add_theme_font_size_override("font_size", 26)
+		line.add_theme_font_size_override("font_size", 40)
 		# spec 10.3: a forged (doubled) modifier tints to the ENHANCED colour.
 		line.add_theme_color_override("font_color",
 			Tuning.RARITY_COLORS[Item.Rarity.ENHANCED] if mod.get("enhanced", false)

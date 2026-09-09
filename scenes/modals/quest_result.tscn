@@ -98,7 +98,7 @@ layout_mode = 2
 theme_override_colors/font_color = Color(0.894118, 0.282353, 0.309804, 1)
 theme_override_colors/font_outline_color = Color(0.019608, 0.054902, 0.062745, 1)
 theme_override_constants/outline_size = 12
-theme_override_font_sizes/font_size = 84
+theme_override_font_sizes/font_size = 96
 text = "DEFEATED"
 horizontal_alignment = 1
 vertical_alignment = 1
@@ -106,7 +106,7 @@ vertical_alignment = 1
 [node name="Subtitle" type="Label" parent="Panel/Layout"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.611765, 0.686275, 0.643137, 1)
-theme_override_font_sizes/font_size = 36
+theme_override_font_sizes/font_size = 46
 horizontal_alignment = 1
 
 ; [reliquary] rule - fleuron - rule. Meshy ornament (assets/ui/reliquary/
@@ -147,13 +147,13 @@ layout_mode = 2
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_colors/font_color = Color(0.941176, 0.784314, 0.376471, 1)
-theme_override_font_sizes/font_size = 38
+theme_override_font_sizes/font_size = 46
 text = "Quest reward"
 
 [node name="Value" type="Label" parent="Panel/Layout/Stats/QuestReward"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.941176, 0.784314, 0.376471, 1)
-theme_override_font_sizes/font_size = 38
+theme_override_font_sizes/font_size = 46
 text = "200"
 horizontal_alignment = 2
 
@@ -165,13 +165,13 @@ layout_mode = 2
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_colors/font_color = Color(0.611765, 0.690196, 0.674510, 1)
-theme_override_font_sizes/font_size = 38
+theme_override_font_sizes/font_size = 46
 text = "Gold brought home"
 
 [node name="Value" type="Label" parent="Panel/Layout/Stats/ExpeditionGold"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.960784, 0.945098, 0.894118, 1)
-theme_override_font_sizes/font_size = 38
+theme_override_font_sizes/font_size = 46
 text = "47"
 horizontal_alignment = 2
 
@@ -183,13 +183,13 @@ layout_mode = 2
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_colors/font_color = Color(0.611765, 0.690196, 0.674510, 1)
-theme_override_font_sizes/font_size = 38
+theme_override_font_sizes/font_size = 46
 text = "Scrap brought home"
 
 [node name="Value" type="Label" parent="Panel/Layout/Stats/ExpeditionScrap"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.960784, 0.945098, 0.894118, 1)
-theme_override_font_sizes/font_size = 38
+theme_override_font_sizes/font_size = 46
 text = "31"
 horizontal_alignment = 2
 
@@ -201,13 +201,13 @@ layout_mode = 2
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_colors/font_color = Color(0.611765, 0.690196, 0.674510, 1)
-theme_override_font_sizes/font_size = 38
+theme_override_font_sizes/font_size = 46
 text = "Encounters cleared"
 
 [node name="Value" type="Label" parent="Panel/Layout/Stats/EncountersCleared"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.960784, 0.945098, 0.894118, 1)
-theme_override_font_sizes/font_size = 38
+theme_override_font_sizes/font_size = 46
 text = "6"
 horizontal_alignment = 2
 
@@ -219,13 +219,13 @@ layout_mode = 2
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_colors/font_color = Color(0.611765, 0.690196, 0.674510, 1)
-theme_override_font_sizes/font_size = 38
+theme_override_font_sizes/font_size = 46
 text = "Run time"
 
 [node name="Value" type="Label" parent="Panel/Layout/Stats/RunTime"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.960784, 0.945098, 0.894118, 1)
-theme_override_font_sizes/font_size = 38
+theme_override_font_sizes/font_size = 46
 text = "7:24"
 horizontal_alignment = 2
 
@@ -237,13 +237,13 @@ layout_mode = 2
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_colors/font_color = Color(0.611765, 0.690196, 0.674510, 1)
-theme_override_font_sizes/font_size = 38
+theme_override_font_sizes/font_size = 46
 text = "Gold earned"
 
 [node name="Value" type="Label" parent="Panel/Layout/Stats/GoldEarned"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.960784, 0.945098, 0.894118, 1)
-theme_override_font_sizes/font_size = 38
+theme_override_font_sizes/font_size = 46
 text = "1480"
 horizontal_alignment = 2
 
@@ -255,13 +255,13 @@ layout_mode = 2
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_colors/font_color = Color(0.611765, 0.690196, 0.674510, 1)
-theme_override_font_sizes/font_size = 38
+theme_override_font_sizes/font_size = 46
 text = "Gold spent"
 
 [node name="Value" type="Label" parent="Panel/Layout/Stats/GoldSpent"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.960784, 0.945098, 0.894118, 1)
-theme_override_font_sizes/font_size = 38
+theme_override_font_sizes/font_size = 46
 text = "205"
 horizontal_alignment = 2
 
@@ -273,13 +273,13 @@ layout_mode = 2
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_colors/font_color = Color(0.611765, 0.690196, 0.674510, 1)
-theme_override_font_sizes/font_size = 38
+theme_override_font_sizes/font_size = 46
 text = "Gold on hand"
 
 [node name="Value" type="Label" parent="Panel/Layout/Stats/GoldOnHand"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.960784, 0.945098, 0.894118, 1)
-theme_override_font_sizes/font_size = 38
+theme_override_font_sizes/font_size = 46
 text = "1275"
 horizontal_alignment = 2
 
@@ -291,13 +291,13 @@ layout_mode = 2
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_colors/font_color = Color(0.611765, 0.690196, 0.674510, 1)
-theme_override_font_sizes/font_size = 38
+theme_override_font_sizes/font_size = 46
 text = "Damage dealt"
 
 [node name="Value" type="Label" parent="Panel/Layout/Stats/DamageDealt"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.960784, 0.945098, 0.894118, 1)
-theme_override_font_sizes/font_size = 38
+theme_override_font_sizes/font_size = 46
 text = "3910"
 horizontal_alignment = 2
 
@@ -309,13 +309,13 @@ layout_mode = 2
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_colors/font_color = Color(0.611765, 0.690196, 0.674510, 1)
-theme_override_font_sizes/font_size = 38
+theme_override_font_sizes/font_size = 46
 text = "Damage taken"
 
 [node name="Value" type="Label" parent="Panel/Layout/Stats/DamageTaken"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.960784, 0.945098, 0.894118, 1)
-theme_override_font_sizes/font_size = 38
+theme_override_font_sizes/font_size = 46
 text = "1102"
 horizontal_alignment = 2
 
@@ -327,13 +327,13 @@ layout_mode = 2
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_colors/font_color = Color(0.611765, 0.690196, 0.674510, 1)
-theme_override_font_sizes/font_size = 38
+theme_override_font_sizes/font_size = 46
 text = "Slot spins"
 
 [node name="Value" type="Label" parent="Panel/Layout/Stats/SlotSpins"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.960784, 0.945098, 0.894118, 1)
-theme_override_font_sizes/font_size = 38
+theme_override_font_sizes/font_size = 46
 text = "38"
 horizontal_alignment = 2
 
@@ -345,13 +345,13 @@ layout_mode = 2
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_colors/font_color = Color(0.611765, 0.690196, 0.674510, 1)
-theme_override_font_sizes/font_size = 38
+theme_override_font_sizes/font_size = 46
 text = "Slot wins"
 
 [node name="Value" type="Label" parent="Panel/Layout/Stats/SlotWins"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.960784, 0.945098, 0.894118, 1)
-theme_override_font_sizes/font_size = 38
+theme_override_font_sizes/font_size = 46
 text = "19"
 horizontal_alignment = 2
 
@@ -363,13 +363,13 @@ layout_mode = 2
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_colors/font_color = Color(0.611765, 0.690196, 0.674510, 1)
-theme_override_font_sizes/font_size = 38
+theme_override_font_sizes/font_size = 46
 text = "Upgrades bought"
 
 [node name="Value" type="Label" parent="Panel/Layout/Stats/UpgradesBought"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.960784, 0.945098, 0.894118, 1)
-theme_override_font_sizes/font_size = 38
+theme_override_font_sizes/font_size = 46
 text = "4"
 horizontal_alignment = 2
 
@@ -381,13 +381,13 @@ layout_mode = 2
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_colors/font_color = Color(0.611765, 0.690196, 0.674510, 1)
-theme_override_font_sizes/font_size = 38
+theme_override_font_sizes/font_size = 46
 text = "Items found"
 
 [node name="Value" type="Label" parent="Panel/Layout/Stats/ItemsFound"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.960784, 0.945098, 0.894118, 1)
-theme_override_font_sizes/font_size = 38
+theme_override_font_sizes/font_size = 46
 text = "7"
 horizontal_alignment = 2
 
@@ -399,13 +399,13 @@ layout_mode = 2
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_colors/font_color = Color(0.611765, 0.690196, 0.674510, 1)
-theme_override_font_sizes/font_size = 38
+theme_override_font_sizes/font_size = 46
 text = "Items sold"
 
 [node name="Value" type="Label" parent="Panel/Layout/Stats/ItemsSold"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.960784, 0.945098, 0.894118, 1)
-theme_override_font_sizes/font_size = 38
+theme_override_font_sizes/font_size = 46
 text = "3"
 horizontal_alignment = 2
 
@@ -418,14 +418,14 @@ alignment = 1
 custom_minimum_size = Vector2(0, 136)
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 40
+theme_override_font_sizes/font_size = 54
 text = "RETRY"
 
 [node name="SecondaryButton" type="Button" parent="Panel/Layout/Buttons"]
 custom_minimum_size = Vector2(0, 136)
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_font_sizes/font_size = 40
+theme_override_font_sizes/font_size = 54
 text = "Sleep in the street — free"
 visible = false
 

@@ -115,7 +115,7 @@ func _add_row(into: VBoxContainer, i: Item) -> void:
 func _empty_slot_row(s: Item.Slot) -> Label:
 	var l := Label.new()
 	l.text = "%s slot — empty" % SLOT_NAMES[s]
-	l.add_theme_font_size_override("font_size", 30)
+	l.add_theme_font_size_override("font_size", 40)
 	l.add_theme_color_override("font_color", Tuning.C_TEXT_DIM)
 	return l
 

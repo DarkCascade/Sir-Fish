@@ -468,10 +468,10 @@ mesh = SubResource("tank_plaque_mesh")
 
 [node name="PlaqueText" type="Label3D" parent="FishViewport/Tank" unique_id=1027076708]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.72, 0.32)
-pixel_size = 0.0016
+pixel_size = 0.00064
 modulate = Color(0.141176, 0.117647, 0.078431, 1)
 text = "SIR FISH"
-font_size = 16
+font_size = 40
 outline_size = 0
 
 [node name="SirFish" type="Node3D" parent="FishViewport" unique_id=1827011726]

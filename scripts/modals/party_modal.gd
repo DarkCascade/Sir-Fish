@@ -80,14 +80,14 @@ func _member_row(h: Dictionary) -> Control:
 
 	var name_label := Label.new()
 	name_label.theme_type_variation = &"DisplayLabel"
-	name_label.add_theme_font_size_override("font_size", 36)
+	name_label.add_theme_font_size_override("font_size", 46)
 	name_label.add_theme_color_override("font_color", Tuning.C_TEXT)
 	name_label.text = h["display_name"]
 	name_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	top_line.add_child(name_label)
 
 	var hp_text := Label.new()
-	hp_text.add_theme_font_size_override("font_size", 32)
+	hp_text.add_theme_font_size_override("font_size", 46)
 	hp_text.add_theme_color_override("font_color", Tuning.C_TEXT_DIM)
 	hp_text.text = "Fallen" if not alive else "%d / %d" % [cur, top]
 	top_line.add_child(hp_text)
@@ -122,7 +122,7 @@ func _reel_strip(hero_class: StringName) -> Control:
 	box.add_theme_constant_override("separation", 4)
 
 	var head := Label.new()
-	head.add_theme_font_size_override("font_size", 24)
+	head.add_theme_font_size_override("font_size", 40)
 	head.add_theme_color_override("font_color", Tuning.C_TEXT_DIM)
 	head.text = "Reel icons (%d)" % int(data["count"])
 	box.add_child(head)
@@ -152,7 +152,7 @@ func _reel_chip(ic: Dictionary) -> Control:
 	cell.add_child(icon)
 
 	var lbl := Label.new()
-	lbl.add_theme_font_size_override("font_size", 22)
+	lbl.add_theme_font_size_override("font_size", 40)
 	lbl.add_theme_color_override("font_color", Tuning.C_TEXT)
 	lbl.text = String(ic.get("label", ""))
 	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -167,7 +167,7 @@ func _reel_chip(ic: Dictionary) -> Control:
 		tag_color = Tuning.RARITY_COLORS[Item.Rarity.ENHANCED]
 	if tag_text != "":
 		var tag := Label.new()
-		tag.add_theme_font_size_override("font_size", 16)
+		tag.add_theme_font_size_override("font_size", 40)
 		tag.add_theme_color_override("font_color", tag_color)
 		tag.text = tag_text
 		tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -178,7 +178,7 @@ func _bar_bg() -> StyleBoxFlat:
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = Color(0.055, 0.043, 0.086, 1.0)
 	sb.border_color = Color(0.227, 0.227, 0.282, 1.0)
-	sb.set_border_width_all(2)
+	sb.set_border_width_all(7)
 	sb.set_corner_radius_all(8)
 	return sb
 

@@ -25,4 +25,4 @@ static func float_delta(host: Control, label: Label, delta: int, positive_color:
 	var local_pos: Vector2 = label.global_position - host.global_position
 	number.position = local_pos + Vector2(label.size.x + 20.0, 10.0)
 	var color: Color = positive_color if delta > 0 else Tuning.C_DANGER
-	number.show_number("%s%d" % ["+" if delta > 0 else "", delta], color, 38, 60.0, 0.8)
+	number.show_number("%s%d" % ["+" if delta > 0 else "", delta], color, 46, 60.0, 0.8)

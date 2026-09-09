@@ -71,7 +71,7 @@ func setup(i: Item) -> void:
 	for mod: Dictionary in i.modifiers:
 		var line := Label.new()
 		line.text = String(mod["label"])
-		line.add_theme_font_size_override("font_size", 26)
+		line.add_theme_font_size_override("font_size", 40)
 		# [town] spec 10.3: Enhanced modifiers tint to the ENHANCED rarity colour.
 		# Shop stock is never Enhanced (weight 0), but a forged item resold onto a
 		# future stock would be - and the rule is one line wherever a modifier renders.

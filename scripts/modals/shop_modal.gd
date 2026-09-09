@@ -182,4 +182,4 @@ func _float_gold(delta: int) -> void:
 	panel.add_child(label)
 	label.position = gold_label.global_position - panel.global_position + Vector2(0, -10)
 	var color := Tuning.C_GOLD if delta > 0 else Tuning.C_DANGER
-	label.show_number("%s%d" % ["+" if delta > 0 else "", delta], color, 38, 70.0, 0.9)
+	label.show_number("%s%d" % ["+" if delta > 0 else "", delta], color, 46, 70.0, 0.9)
