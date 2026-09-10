@@ -110,11 +110,15 @@ const ITEM_VALUE_PER_LEVEL := 0.35
 const FORGE_ICON_POWER_MIN := 1.25
 const FORGE_ICON_POWER_MAX := 1.75
 
-## [levels] Item.base_heal_pct()'s curve - a HEAL-kind board icon reads its
-## `roll` as a percent of max hp, never as a flat number, so a level-scaling
-## item base cannot be applied to it the way base_power() is to a DAMAGE icon.
-## Capped well under 100: a single icon should meaningfully help, not
-## trivialise the heal-lowest choice at high level.
+## [levels] Item.base_heal_pct()'s curve - the armor base icon reads its `roll`
+## as a percent of max hp, never a flat number, so a level-scaling item base
+## cannot feed it the way Power feeds a DAMAGE icon. Capped well under 100: one
+## icon should meaningfully help, not trivialise the heal-lowest choice.
+## [balance pass] Added a flat BASE (was per-level only). At L1 the old curve
+## healed 1% - a single HP - so a fresh warrior's shield was pure dilution and
+## the first boss was a healless slog. BASE 6 makes a fresh shield worth ~7%,
+## in line with the mage's innate heal, fading to the cap by ~L29.
+const ITEM_HEAL_PCT_BASE := 6.0
 const ITEM_HEAL_PCT_PER_LEVEL := 1.0
 const ITEM_HEAL_PCT_CAP := 35
 
@@ -368,9 +372,13 @@ const DROP_LABEL_FONT_SIZE := 46
 ## (spec: Slot Phase 2). The match-to-win payline survives only as a bonus -
 ## three of a kind on the centre row resolve twice. Slot gold is gone entirely.
 
-const SLOT_SPIN_DURATION := 1.10          # reel 1 stop time
-const SLOT_REEL_STAGGER := 0.28           # reel 2 stops +0.28s, reel 3 stops +0.56s
-const SLOT_RESULT_HOLD := 0.85            # pause after reel 3 stops before the next spin
+const SLOT_SPIN_DURATION := 1.05          # reel 1 stop time
+const SLOT_REEL_STAGGER := 0.26           # reel 2 stops +0.26s, reel 3 stops +0.52s
+## [balance pass] 0.85 -> 0.65. The party's whole DPS is now the board's output
+## over one spin cycle (heroes stopped meleeing off their own cooldown), so
+## trimming dead air at the end of the cycle is a clean, level-flat lift to
+## party throughput - it does not touch how strong any one icon is.
+const SLOT_RESULT_HOLD := 0.65            # pause after reel 3 stops before the next spin
 ## [combat loop redesign] After the board's attack icons are summed and the
 ## front-line hero is told to swing, the resolve coroutine waits this long so
 ## the swing's impact and damage number land inside SLOT_RESULT_HOLD rather
@@ -386,8 +394,20 @@ const SLOT_BOARD_CELLS := 9
 ## empty; the `polish` upgrade (§6) buys it down toward the floor, two blanks a
 ## level. Draw-without-replacement over the bag is what keeps a cold streak
 ## from ever leaving the party with no output at all.
-const SLOT_BLANK_PAD_START := 12
-const SLOT_BLANK_PAD_FLOOR := 4
+## [balance pass] 12 -> 9 start, 4 -> 3 floor. Fewer blanks is a mildly
+## REGRESSIVE lift - a sparse early bag gains more icons/spin per blank removed
+## than a dense late one - which is the shape the curve needs after hero melee
+## left the low end. polish still has room to work (9 -> 3 over its levels).
+const SLOT_BLANK_PAD_START := 9
+const SLOT_BLANK_PAD_FLOOR := 3
+
+## [balance pass] Flat damage every attack icon adds to the hero swing, ON TOP
+## of its rolled (power-scaled) value - chain-bolt hits too. Level-INDEPENDENT
+## on purpose: it is ~40% of a fresh L1 icon and ~1% of an L30 one, so it lifts
+## the cold-board early game (where the party lost its melee contribution) and
+## fades to nothing once icons scale with item level. Not shown on item cards -
+## it is a property of the swing, not of any one item.
+const SLOT_ATTACK_ICON_FLOOR := 7
 
 ## Innate icons (§2): every living hero puts ONE icon in the bag regardless of
 ## gear - a damage icon for the warrior and ranger, a heal icon for the mage.

@@ -136,7 +136,8 @@ func power() -> int:
 ## every time it resolves. Bounded and much shallower per level instead -
 ## SlotIcon.from_item_base() picks this over power() whenever the icon is HEAL.
 func base_heal_pct() -> int:
-	return clampi(int(round(Tuning.ITEM_HEAL_PCT_PER_LEVEL * float(maxi(level, 1)))),
+	return clampi(int(round(Tuning.ITEM_HEAL_PCT_BASE
+			+ Tuning.ITEM_HEAL_PCT_PER_LEVEL * float(maxi(level, 1)))),
 		1, Tuning.ITEM_HEAL_PCT_CAP)
 
 ## Which hero classes can wield this item. DERIVED from the weapon type rather

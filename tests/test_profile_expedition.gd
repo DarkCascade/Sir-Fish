@@ -18,13 +18,17 @@ func _ready() -> void:
 	t.check(GameState.gold == Tuning.PROFILE_STARTING_GOLD,
 		"new_profile() sets gold to PROFILE_STARTING_GOLD (got %d)" % GameState.gold)
 	t.check(GameState.scrap == Tuning.PROFILE_STARTING_SCRAP, "new_profile() sets scrap to PROFILE_STARTING_SCRAP")
-	# [item power model] new_profile() now ships one weapon - a Magic sword,
-	# auto-equipped - so a fresh warrior is not swinging for nothing.
-	t.check(GameState.inventory.size() == 1, "new_profile() seeds exactly the starting weapon")
-	var start_wpn: Item = GameState.inventory[0] if not GameState.inventory.is_empty() else null
+	# [balance pass] new_profile() now ships a starting kit - a Magic sword and
+	# a plain shield, both auto-equipped - so a fresh warrior has offense AND a
+	# heal icon.
+	t.check(GameState.inventory.size() == 2, "new_profile() seeds the starting weapon + shield")
+	var start_wpn := GameState.equipped_item(&"warrior", Item.Slot.WEAPON)
 	t.check(start_wpn != null and start_wpn.weapon_type == &"sword"
-			and start_wpn.rarity == Item.Rarity.MAGIC and start_wpn.equipped_by == &"warrior",
+			and start_wpn.rarity == Item.Rarity.MAGIC,
 		"the starting weapon is a Magic sword equipped by the warrior")
+	var start_arm := GameState.equipped_item(&"warrior", Item.Slot.ARMOR)
+	t.check(start_arm != null and start_arm.weapon_type == &"shield",
+		"the starting armor is a shield equipped by the warrior")
 	t.check(GameState.day_phase == GameState.DayPhase.DAY, "new_profile() starts in DAY")
 	t.check(GameState.hero_runtime.size() == GameState.active_party.size(),
 		"new_profile() builds one hero_runtime entry per active_party member")
@@ -119,8 +123,8 @@ func _ready() -> void:
 	t.check(GameState.gold == Tuning.PROFILE_STARTING_GOLD,
 		"reset_run() still resets gold (got %d)" % GameState.gold)
 	t.check(GameState.scrap == Tuning.PROFILE_STARTING_SCRAP, "reset_run() still resets scrap")
-	t.check(GameState.inventory.size() == 1 and GameState.inventory[0].weapon_type == &"sword",
-		"reset_run() rewinds the inventory to just the starting weapon")
+	t.check(GameState.inventory.size() == 2,
+		"reset_run() rewinds the inventory to just the starting kit (weapon + shield)")
 	t.check(GameState.endless_level_number == 1, "reset_run() still rewinds to depth 1")
 	t.check(GameState.current_encounter_index == -1,
 		"reset_run() still rewinds current_encounter_index")

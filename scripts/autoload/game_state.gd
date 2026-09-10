@@ -892,12 +892,19 @@ func new_profile() -> void:
 	active_party = [&"warrior"] as Array[StringName]
 	# [item power model] A fresh profile ships one weapon, already equipped.
 	# Since the combat loop redesign a hero's entire offense is its equipped
-	# weapon's Power - an unarmed start plays as "the game is broken" and would
-	# distort any pre-balance-pass playtest. A level-1 Magic sword: one
-	# guaranteed strike icon plus one rolled modifier. Level is pinned to 1
-	# rather than default_item_level() so a retry off a leveled profile still
-	# starts fresh; add_item() auto-equips it into the warrior's empty slot.
-	add_item(Itemizer.generate_typed_item(&"sword", Item.Rarity.MAGIC, 1))
+	# weapon's Power - an unarmed start plays as "the game is broken". A level-1
+	# Magic sword: the base strike icon plus one modifier forced to a plain
+	# damage add ([balance pass]) so a fresh run is never a dead roll. Level is
+	# pinned to 1 so a retry off a leveled profile still starts fresh;
+	# add_item() auto-equips it into the warrior's empty slot.
+	var starter_weapon := Itemizer.generate_typed_item(&"sword", Item.Rarity.MAGIC, 1)
+	Itemizer.force_modifier(starter_weapon, 0, &"dmg_flat")
+	add_item(starter_weapon)
+	# [balance pass] ...and a plain shield. Its base armor icon is a heal
+	# (percent of max hp), the ONLY sustain a fresh solo warrior has - without
+	# it the first quest's boss is an unwinnable healless slog (sim_easy_
+	# attempts). Common, so no modifier roll: just the one heal icon.
+	add_item(Itemizer.generate_typed_item(&"shield", Item.Rarity.COMMON, 1))
 	# [day-night] a fresh profile starts a fresh first day, unfed, no night owed.
 	day_phase = DayPhase.DAY
 	day_number = 1

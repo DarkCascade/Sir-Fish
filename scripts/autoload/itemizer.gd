@@ -244,7 +244,9 @@ func _roll_icon_magnitude(def: Dictionary, item: Item, enhanced: bool) -> int:
 ## with an `enhanced: true` marker the UI tints - not a second table.
 ## party_bonuses() and compare_flyout read `id` / `roll` and need no edit.
 func _roll_modifier(pool: Array, item: Item, enhanced: bool) -> Dictionary:
-	var def: Dictionary = pool[RNG.randi_range(0, pool.size() - 1)]
+	return _build_modifier(pool[RNG.randi_range(0, pool.size() - 1)], item, enhanced)
+
+func _build_modifier(def: Dictionary, item: Item, enhanced: bool) -> Dictionary:
 	var roll: int = _roll_icon_magnitude(def, item, enhanced)
 	return {
 		"id": def["id"],
@@ -255,6 +257,19 @@ func _roll_modifier(pool: Array, item: Item, enhanced: bool) -> Dictionary:
 		"value_mult": RNG.randf_range(float(def["value_mult"][0]), float(def["value_mult"][1])),
 		"enhanced": enhanced,
 	}
+
+## [balance pass] Rewrites modifier slot `idx` with a fresh roll of `id`. The
+## starting weapon (GameState.new_profile()) uses this to guarantee its one
+## modifier is a plain damage add - a fresh run is never handed a dead roll
+## (a boost with nothing to boost, a mend on a solo warrior's damage bag).
+func force_modifier(item: Item, idx: int, id: StringName) -> void:
+	if item == null or idx < 0 or idx >= item.modifiers.size():
+		return
+	for def: Dictionary in MODIFIERS:
+		if def["id"] == id:
+			item.modifiers[idx] = _build_modifier(
+				def, item, bool(item.modifiers[idx].get("enhanced", false)))
+			return
 
 # --- class-first generation (enemy drops) -----------------------------------
 

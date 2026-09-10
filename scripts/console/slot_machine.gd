@@ -324,7 +324,9 @@ func _resolve_board(jackpot_id: StringName) -> void:
 		for _r: int in range(repeats):
 			_pulse_cell(idx)
 			if kind == SlotIcon.Kind.DAMAGE:
-				swing += maxi(1, int(round(float(int(ic.get("roll", 0))) * mult)))
+				# [balance pass] Flat per-icon floor on top of the rolled value.
+				swing += maxi(1, int(round(float(int(ic.get("roll", 0))) * mult))) \
+					+ Tuning.SLOT_ATTACK_ICON_FLOOR
 			else:
 				var out := await _resolve_icon(ic, kind, mult)
 				total_damage += out.x
@@ -415,7 +417,8 @@ func _strike(enemy: Combatant, id: StringName, roll: int, mult: float) -> int:
 	if overlay != null:
 		overlay.number_color_override = tint
 	BattleVfx.lightning_bolt(director, enemy, tint)
-	var base := maxi(1, int(round(float(roll) * mult)))
+	# [balance pass] SLOT_ATTACK_ICON_FLOOR applies to chain-bolt hits too.
+	var base := maxi(1, int(round(float(roll) * mult))) + Tuning.SLOT_ATTACK_ICON_FLOOR
 	var rolled := maxi(1, int(round(float(base) * RNG.randf_range(
 		1.0 - Tuning.DAMAGE_VARIANCE, 1.0 + Tuning.DAMAGE_VARIANCE))))
 	enemy.take_damage(rolled, null)
