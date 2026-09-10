@@ -24,11 +24,12 @@ extends Node
 ##     default); enemy group size is 2, ENDLESS_EARLY_POOL / easy.tres's own
 ##     enemy_count floor.
 ##
-## [STALE as of BattleDirector.turn_based_combat defaulting true] Everything in
-## this note assumed the real-time default this harness was written against.
-## Turn-based mode serializes heroes AND enemies through one shared queue -
-## the ttk/ttd numbers below have not been re-measured against it and may no
-## longer hold; re-run this harness before trusting them.
+## This note assumes the real-time default this harness was written against,
+## which BattleDirector.turn_based_combat defaulting false again ([combat loop
+## redesign]) restores - the ttk/ttd model below (concurrent, unserialized
+## enemy DPS) matches the shipped loop once more. Still pending: the redesign
+## moves party actions entirely onto the slot machine, so the party-DPS term
+## here (a hero meleeing off its own cooldown) will need re-deriving.
 ##
 ## [Phase 6 tuning pass] The spec's original ttk/ttd targets (12-30s / >25s)
 ## were written before any simulation or playtest existed, and the first run
@@ -206,11 +207,11 @@ func _case_band(level: int) -> void:
 		% [dps, regular_hp, ttk_regular, boss_hp, ttk_boss, ttk_boss / ttk_regular,
 			warrior.hp_at(level), ENEMY_GROUP_SIZE, ttd_party])
 
-	# [STALE - see the file header's "STALE" note] Bounds recalibrated from the
-	# spec's original 12-30s / 25s guesses against a real-time assumption
-	# (enemy_group_dps above literally sums concurrent, unserialized enemy
-	# output) that BattleDirector.turn_based_combat defaulting true no longer
-	# matches. Re-measure before trusting these.
+	# Bounds recalibrated from the spec's original 12-30s / 25s guesses to a
+	# real-time assumption: enemy_group_dps above sums concurrent, unserialized
+	# enemy output, which BattleDirector.turn_based_combat defaulting false
+	# again matches. The party-DPS half still models a hero meleeing off its
+	# own cooldown - re-measure once slot-only party actions land.
 	_t.check_between(ttk_regular, 3.0, 10.0,
 		"L%d: time to kill a regular enemy stays in a fast-combat 3-10s band" % level)
 	_t.check(ttd_party > 6.0,

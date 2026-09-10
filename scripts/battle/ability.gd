@@ -19,6 +19,12 @@ var director = null               # BattleDirector (untyped: custom API)
 ## without a match-on-id branch in _strike().
 var school: int = -1
 
+## [combat loop redesign] When >= 0, _strike() deals exactly this much instead
+## of rolling source.compute_damage(). Set by make_slot_strike() so a
+## slot-driven hero swing carries the board's aggregated attack-icon total -
+## the character's own power no longer feeds combat damage at all.
+var fixed_damage: int = -1
+
 static func make(_source: Combatant, use_special: bool, a_target: Combatant,
 		a_director) -> Ability:
 	var ab := Ability.new()
@@ -28,41 +34,21 @@ static func make(_source: Combatant, use_special: bool, a_target: Combatant,
 	ab.director = a_director
 	return ab
 
+## [combat loop redesign] A plain melee swing whose damage is supplied by the
+## caller (SlotMachine._hero_swing), not rolled. Always the primary `attack`
+## clip, never a special. Resolves through the same source.stats.id dispatch as
+## a normal turn, so the warrior still gets its slash arc and the ranger/mage
+## would still send a projectile the day the party has one.
+static func make_slot_strike(a_target: Combatant, amount: int, a_director) -> Ability:
+	var ab := Ability.new()
+	ab.anim_name = &"attack"
+	ab.target = a_target
+	ab.director = a_director
+	ab.fixed_damage = maxi(0, amount)
+	return ab
+
 func impact_delay(source: Combatant) -> float:
 	return CombatantAnimations.impact_delay(source.stats.id, anim_name)
-
-# --- reach (overworld prototype) ---------------------------------------------
-
-## Whether this action starts with a blink to the target. Melee only: ranged
-## and magic attackers hold formation and send something flying
-## instead, which is the whole distinction the overhead view needed.
-func wants_teleport(source: Combatant) -> bool:
-	if source.stats.attack_style != CombatantStats.AttackStyle.MELEE:
-		return false
-	if target == null or not is_instance_valid(target) or not target.is_alive():
-		return false
-	# A special aimed at the caster's own side is not a strike. Without this
-	# the warrior would blink into the enemy rank to raise his own shield.
-	if is_special and not source.stats.special_targets_opponent:
-		return false
-	return true
-
-## Where a blinking attacker lands: short of the target, on the line between
-## the two, so it arrives beside the target rather than inside it. Scaled by
-## the target's model, because the orc warlord is 1.7x and a fixed gap would
-## put the attacker in his chest.
-func strike_position(source: Combatant) -> Vector3:
-	if target == null or not is_instance_valid(target):
-		return source.global_position
-	var to := target.global_position
-	var away := to - source.global_position
-	away.y = 0.0
-	if away.length_squared() < 0.0001:
-		# Degenerate only if the two are already stacked; back off down-run for
-		# a hero, up-run for an enemy, so the pair still ends up facing.
-		away = Tuning.RUN_DIR if source.is_hero else -Tuning.RUN_DIR
-	var gap: float = Tuning.TELEPORT_STRIKE_GAP * maxf(1.0, target.stats.model_scale)
-	return to - away.normalized() * gap
 
 ## Telegraph beat - only characters flagged telegraphs_primary use it.
 func charge(source: Combatant) -> void:
@@ -76,6 +62,12 @@ func charge(source: Combatant) -> void:
 func resolve(source: Combatant) -> void:
 	if not source.is_alive():
 		return
+	# [combat loop redesign] A slot-driven swing was aimed when the spin
+	# resolved; if that enemy has since died (a chain bolt, an overkill), hit
+	# another rather than whiffing the party's whole turn.
+	if fixed_damage >= 0 and (target == null or not is_instance_valid(target) \
+			or not target.is_alive()):
+		target = director.random_living_enemy() if director != null else null
 	match source.stats.id:
 		&"warrior":
 			_warrior(source)
@@ -169,6 +161,8 @@ func _generic_enemy(source: Combatant) -> void:
 # --- shared -----------------------------------------------------------------
 
 func _strike(source: Combatant, victim: Combatant) -> void:
-	var amount := source.compute_damage(school)
+	# [combat loop redesign] fixed_damage (>= 0) is a slot-supplied swing total;
+	# anything else rolls the source's own power as before.
+	var amount := fixed_damage if fixed_damage >= 0 else source.compute_damage(school)
 	EventBus.combatant_attacked.emit(source, victim, amount)
 	victim.take_damage(amount, source)

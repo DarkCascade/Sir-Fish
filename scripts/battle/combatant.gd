@@ -56,20 +56,13 @@ var _status_icons: Array = []
 ## The dmg_pct share of damage_multiplier, kept apart so the party damage buff
 ## can be divided back out without wiping the item bonus (spec 17.3 / 21-D13).
 var _item_pct_multiplier: float = 1.0
-## [overworld prototype] The slot this combatant returns to after a blink. Set
-## from its spawn position, or explicitly by the director for enemies, which
-## spawn off-screen and run in to a slot they do not start on.
+## [overworld prototype] The formation slot this combatant fights from - its
+## spawn position, or the slot the director hands it via set_home() for enemies
+## that spawn off-screen and run in. [combat loop redesign] Combatants no
+## longer leave this slot to attack, so it is now purely a recorded anchor
+## (read via home_position()); face_home_dir() turns back toward the fixed run
+## axis rather than toward this point.
 var _home_position: Vector3 = Vector3.ZERO
-## True between the outbound blink and the return one, so death and the
-## animation-finished handler both know there is a trip to unwind.
-var _blinked: bool = false
-## Count of in-flight projectiles/bolts currently targeting this combatant
-## (spec: a combatant must not start its own attack - especially a teleport
-## strike - while an attack already aimed at it hasn't landed yet, since the
-## projectile tracks its target's live position and would otherwise chase it
-## into the enemy rank). Melee needs no such tracking: it resolves within the
-## attacker's own turn, which the turn queue already serialises.
-var incoming_attacks: int = 0
 
 @onready var visual: Node3D = $Visual
 @onready var rig: Node3D = $Visual/Rig
@@ -104,8 +97,6 @@ func setup(s: CombatantStats, starting_hp: int = -1, a_level: int = 1) -> void:
 	bonus_flat_damage = 0
 	apply_party_bonuses()
 	_home_position = global_position
-	_blinked = false
-	incoming_attacks = 0
 	visual.visible = true
 	# [overworld prototype] Facing is a direction on the ground plane now, not
 	# a choice between two. Heroes face up the run axis, enemies back down it,
@@ -164,19 +155,6 @@ func cooldown_fraction() -> float:
 		return 0.0
 	return clampf(cooldown_remaining / maxf(stats.attack_cooldown, 0.0001), 0.0, 1.0)
 
-## True while a projectile/bolt is still travelling toward this combatant.
-## BattleDirector holds this combatant's own turn until it clears (see
-## _advance_turn_queue / request_turn), which can mean the incoming hit kills
-## it before it ever gets to act.
-func is_expecting_attack() -> bool:
-	return incoming_attacks > 0
-
-func begin_incoming_attack() -> void:
-	incoming_attacks += 1
-
-func end_incoming_attack() -> void:
-	incoming_attacks = maxi(0, incoming_attacks - 1)
-
 # --- per-frame --------------------------------------------------------------
 
 func tick(delta: float) -> void:
@@ -186,10 +164,10 @@ func tick(delta: float) -> void:
 			state = State.IDLE
 			play_anim(&"idle")
 
-## Turn-based combat (experiment). Called by BattleDirector's per-frame loop
-## the instant this combatant's cooldown reaches zero. The combatant does not
-## act immediately - it hands the request to the director, which queues it
-## and dispatches turns one at a time in arrival order.
+## Called by BattleDirector's per-frame loop the instant this combatant's
+## cooldown reaches zero. The combatant hands the request to the director,
+## which in real-time mode (the shipped default) acts on it at once, or in
+## turn-based mode queues it and dispatches turns one at a time.
 func request_turn() -> void:
 	if director != null:
 		director.request_turn(self)
@@ -236,15 +214,10 @@ func _on_animation_finished(anim_name: StringName) -> void:
 	if state == State.DEAD:
 		return                                    # the corpse holds its pose
 	if anim_name == &"attack" or anim_name == &"special":
-		# [overworld prototype] A melee attacker is standing next to its victim
-		# at this point. Blink it home BEFORE releasing the turn, so the next
-		# combatant never acts around a fighter stranded in the enemy rank.
-		if _blinked:
-			await _blink_home()
-			if not is_instance_valid(self) or state == State.DEAD:
-				return
-		else:
-			face_home_dir()
+		# [combat loop redesign] Every attack now plays in place - the attacker
+		# turned to face its target in begin_action(); turn it back to its
+		# formation facing as the swing ends.
+		face_home_dir()
 		pending = null
 		state = State.IDLE
 		# The cooldown starts refilling only after the attack finishes, then
@@ -285,44 +258,28 @@ func _anim_special_cast() -> void:
 func begin_action(ability: Ability) -> void:
 	pending = ability
 	state = State.ATTACKING
-	if ability.wants_teleport(self):
-		_blink_strike(ability)
-		return
-	# Ranged and magic attackers never leave formation - they only turn to aim.
-	# Turning matters: HandAnchor sits at +X, so an unturned caster would fire
-	# its bolt off its own shoulder.
+	# [combat loop redesign] Nobody leaves formation to attack any more - melee
+	# swings in place exactly like ranged and magic. Every attacker only turns
+	# to face its target first. Turning matters even for a swing at empty air:
+	# HandAnchor sits at +X, so an unturned caster would fire its bolt off its
+	# own shoulder, and a melee slash arc is spawned on the target regardless.
 	if ability.target != null and is_instance_valid(ability.target):
 		face_position(ability.target.global_position)
 	play_anim(ability.anim_name)
 
-## Instantly repositions to strike range, swings, then instantly returns home
-## (_blink_home). Melee still needs to end up adjacent to its target - only
-## the flash/vanish/streak dressing (BattleVfx.blink_out/blink_in/blink_trail)
-## and the hide-while-in-transit are gone; the reposition itself is a plain,
-## un-effected snap. `state` stays ATTACKING for the whole round trip, which is
-## what makes the turn queue hold the next combatant until this one is back in
-## formation - one action at a time, fully resolved, exactly as
-## _advance_turn_queue() already assumed.
-func _blink_strike(ability: Ability) -> void:
-	var dest: Vector3 = ability.strike_position(self)
-	global_position = dest
-	_blinked = true
-	if ability.target != null and is_instance_valid(ability.target):
-		face_position(ability.target.global_position)
-	play_anim(ability.anim_name)
-
-## The return leg. Runs after the attack animation finishes, so the swing is
-## seen where it lands before the attacker leaves. TELEPORT_RETURN_DELAY is a
-## combat-readability beat (time for the hit to register before the attacker
-## vanishes from the target's side), not part of the removed visual effect, so
-## it stays.
-func _blink_home() -> void:
-	await get_tree().create_timer(Tuning.TELEPORT_RETURN_DELAY).timeout
-	if not is_instance_valid(self) or state == State.DEAD:
+## [combat loop redesign] The slot machine's only lever on a hero. Plays the
+## attack animation in place and, on the impact beat, deals `amount` to
+## `enemy` - the board's aggregated attack-icon total, fixed by the caller
+## rather than rolled from this hero's power (see SlotMachine._hero_swing).
+## A no-op if the hero cannot swing this instant (dead, or still mid-swing
+## from the previous spin); a flinch is overridden, so the party's turn is
+## never simply lost to bad timing.
+func slot_attack(enemy: Combatant, amount: int) -> void:
+	if director == null or not is_alive() or state == State.ATTACKING:
 		return
-	global_position = _home_position
-	face_home_dir()
-	_blinked = false
+	if enemy == null or not is_instance_valid(enemy) or not enemy.is_alive():
+		return
+	begin_action(Ability.make_slot_strike(enemy, amount, director))
 
 # --- damage / healing -------------------------------------------------------
 
@@ -409,11 +366,6 @@ func cancel_all_effects() -> void:
 	pending = null
 	if anim != null:
 		anim.stop()
-	# 1b. [overworld prototype] Dying mid-blink must not leave an invisible
-	# corpse. The body stays where it fell rather than snapping back to its
-	# slot - a corpse teleporting home with no effect playing reads as a bug,
-	# and the exit tween carries dead heroes off the field anyway (spec 12.5).
-	_blinked = false
 	if visual != null:
 		visual.visible = true
 	# 2. Drop the defence and orphan its timer.
@@ -452,13 +404,10 @@ func is_defending() -> bool:
 
 # --- world helpers ----------------------------------------------------------
 
-## While blinked in on a melee strike, the bar stays behind at the home slot
-## instead of following the body into the party's ranks (overworld prototype):
-## bar_anchor.position is a pure +Y offset, unaffected by facing, so adding it
-## to _home_position reproduces where the anchor would sit back home.
+## [combat loop redesign] Combatants no longer leave their slot to attack, so
+## the anchor's own world position is always right - the blinked-in special
+## case this had is gone.
 func bar_world_position() -> Vector3:
-	if _blinked:
-		return _home_position + bar_anchor.position
 	return bar_anchor.global_position
 
 func hit_world_position() -> Vector3:

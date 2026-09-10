@@ -5,12 +5,13 @@ extends Node
 ##
 ##     godot --headless --path "C:/Projects/Godot/Sir Fish" res://tools/sim_easy_attempts.tscn
 ##
-## [STALE as of BattleDirector.turn_based_combat defaulting true] Every combat
-## event below fires each actor independently at its own attack_cooldown -
-## the real-time model this was written against. Turn-based mode serializes
-## heroes AND enemies through one shared queue instead (one actor's whole
-## animation must finish before the next starts), which this resolver does
-## not represent. Re-run before trusting the attempt-count result again.
+## Every combat event below fires each actor independently at its own
+## attack_cooldown - the real-time model this was written against, which
+## BattleDirector.turn_based_combat defaulting false again ([combat loop
+## redesign]) matches. NOTE: this resolver still models a hero meleeing off
+## its own cooldown, which the redesign is removing in favour of slot-only
+## party actions - re-derive the hero-output term against that before trusting
+## the attempt-count result.
 ##
 ## Reuses the real systems wherever they work headless: GameState for
 ## profile/expedition/XP/leveling state, Itemizer for every item generated,

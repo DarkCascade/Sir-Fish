@@ -2,12 +2,17 @@ extends Control
 ## The management console's heart: a three-reel cabinet that spins continuously
 ## during combat. [slot phase 2] It is a *Luck be a Landlord* board now, not a
 ## Vegas match-to-win slot: a BAG of icons built from the party's gear and living
-## heroes, nine drawn without replacement onto the 3x3 board each spin, every
-## non-blank icon resolving its own effect independently.
+## heroes, nine drawn without replacement onto the 3x3 board each spin.
 ##
 ##   bag = [one icon per living hero]              (innate, §2)
 ##       + [one icon per equipped item modifier]   (§3)
 ##       + (BLANK_PAD blanks, bought down by `polish`)
+##
+## [combat loop redesign] The board is now the party's ONLY source of actions.
+## Single-target attack icons are summed across the board and delivered as one
+## swing by the front-line hero (Combatant.slot_attack), who plays the real
+## attack animation - so three attack icons is one swing for ~3x one icon's
+## roll. Chain (DAMAGE_ALL) and mend (HEAL) still resolve per-cell in place.
 ##
 ## The payline survives only as a BONUS: three of the same icon on the centre
 ## row (the old jackpot) makes those three resolve twice, and keeps the banner,
@@ -303,6 +308,12 @@ func _resolve_board(jackpot_id: StringName) -> void:
 
 	var total_damage := 0
 	var total_heal := 0
+	# [combat loop redesign] Single-target attack icons no longer call down
+	# their own lightning. Their rolled magnitudes are summed here and dealt as
+	# ONE swing by the party's front-line hero after the rest of the board
+	# resolves ("one swing, 3x damage"). Chain (DAMAGE_ALL) and mend (HEAL)
+	# still resolve per-cell, in place, staggered.
+	var swing := 0
 	for idx: int in range(_board.size()):
 		var ic: Dictionary = _board[idx]
 		var kind: int = SlotIcon.kind_of(StringName(ic.get("id", &"")))
@@ -312,10 +323,16 @@ func _resolve_board(jackpot_id: StringName) -> void:
 		var repeats := 2 if (jackpot_id != &"" and idx >= 3 and idx <= 5) else 1
 		for _r: int in range(repeats):
 			_pulse_cell(idx)
-			var out := await _resolve_icon(ic, kind, mult)
-			total_damage += out.x
-			total_heal += out.y
+			if kind == SlotIcon.Kind.DAMAGE:
+				swing += maxi(1, int(round(float(int(ic.get("roll", 0))) * mult)))
+			else:
+				var out := await _resolve_icon(ic, kind, mult)
+				total_damage += out.x
+				total_heal += out.y
 			await get_tree().create_timer(Tuning.AOE_STAGGER).timeout
+
+	if swing > 0:
+		total_damage += await _hero_swing(swing)
 
 	if total_damage > 0 or total_heal > 0:
 		GameState.run_stats["slot_wins"] = int(GameState.run_stats["slot_wins"]) + 1
@@ -329,27 +346,50 @@ func _resolve_board(jackpot_id: StringName) -> void:
 	elif total_heal > 0:
 		EventBus.slot_payout.emit("heal", total_heal)
 
-## Resolves one icon. Returns Vector2i(damage_dealt, heal_done).
+## Resolves one board icon that is NOT a single-target attack (those are summed
+## into the hero swing - see _resolve_board / _hero_swing). Returns
+## Vector2i(damage_dealt, heal_done).
 func _resolve_icon(ic: Dictionary, kind: int, mult: float) -> Vector2i:
 	if director == null:
 		return Vector2i.ZERO
 	var id := StringName(ic.get("id", &""))
 	var roll := int(ic.get("roll", 0))
 	match kind:
-		SlotIcon.Kind.DAMAGE:
-			return Vector2i(await _hit_one(id, roll, mult), 0)
 		SlotIcon.Kind.DAMAGE_ALL:
 			return Vector2i(await _hit_all(id, roll, mult), 0)
 		SlotIcon.Kind.HEAL:
 			return Vector2i(0, _heal_lowest(roll))
 	return Vector2i.ZERO
 
-func _hit_one(id: StringName, roll: int, mult: float) -> int:
-	var targets: Array[Combatant] = director.living_enemies()
-	if targets.is_empty():
+## [combat loop redesign] The board's summed attack-icon damage, delivered as a
+## single swing by a living front-line hero. Returns the damage dealt (0 if no
+## hero can swing or no enemy is alive). One variance roll on the whole total,
+## so a board of three attack icons lands as ~3x one icon.
+func _hero_swing(amount: int) -> int:
+	if director == null:
 		return 0
-	var enemy: Combatant = targets[RNG.randi_range(0, targets.size() - 1)]
-	return _strike(enemy, id, roll, mult)
+	var hero: Combatant = _swinging_hero()
+	var enemy: Combatant = director.random_living_enemy()
+	if hero == null or enemy == null:
+		return 0
+	var dealt := maxi(1, int(round(float(amount) * RNG.randf_range(
+		1.0 - Tuning.DAMAGE_VARIANCE, 1.0 + Tuning.DAMAGE_VARIANCE))))
+	hero.slot_attack(enemy, dealt)
+	# slot_attack lands on the animation's impact beat - hold here so the hit
+	# and its number resolve inside SLOT_RESULT_HOLD, not over the next spin.
+	await get_tree().create_timer(Tuning.SLOT_SWING_SETTLE).timeout
+	return dealt
+
+## The hero who makes the aggregated attack swing - the first living hero in
+## formation order (the solo warrior today). When the mage and ranger return,
+## per-hero icon ownership decides the swinger here instead.
+func _swinging_hero() -> Combatant:
+	if director == null:
+		return null
+	for h: Combatant in director.living_heroes():
+		if is_instance_valid(h) and h.is_alive():
+			return h
+	return null
 
 func _hit_all(id: StringName, roll: int, mult: float) -> int:
 	var targets: Array[Combatant] = director.living_enemies()

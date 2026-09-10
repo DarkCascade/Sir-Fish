@@ -218,21 +218,6 @@ const ENEMY_ENTRY_DISTANCE := 12.0
 const ENEMY_ENTRY_TIME := 1.15
 const ENEMY_ENTRY_STAGGER := 0.13         # gap between each enemy's departure
 
-# --- 5.3d Melee teleport [overworld prototype] ------------------------------
-## Melee attackers do not walk to their target - they instantly reposition to
-## it (Combatant._blink_strike/_blink_home). Ranged and magic attackers never
-## teleport; they fire something that flies instead.
-##
-## The vanish/reform VFX that used to dress this move (BattleVfx.blink_out/
-## blink_in/blink_trail, and the TELEPORT_OUT_TIME/IN_TIME/GHOSTS/GHOST_FADE
-## constants that timed them) is gone - the reposition is a plain, un-effected
-## snap now. TELEPORT_STRIKE_GAP and TELEPORT_RETURN_DELAY survive: the first
-## is spatial (how close a hit lands, unrelated to any effect), the second is
-## a combat-readability beat (time for the hit to register before the
-## attacker leaves), not part of what was removed.
-const TELEPORT_STRIKE_GAP := 1.35         # how far short of the target it lands
-const TELEPORT_RETURN_DELAY := 0.14       # beat spent at the target after impact
-
 # --- 5.3e Magic bolt [overworld prototype] ----------------------------------
 ## The mage's primary is an aimed bolt now, not a pillar dropped from the
 ## sky. The sky-drop version survives only as the slot machine's payout, which
@@ -375,6 +360,11 @@ const DROP_LABEL_FONT_SIZE := 46
 const SLOT_SPIN_DURATION := 1.10          # reel 1 stop time
 const SLOT_REEL_STAGGER := 0.28           # reel 2 stops +0.28s, reel 3 stops +0.56s
 const SLOT_RESULT_HOLD := 0.85            # pause after reel 3 stops before the next spin
+## [combat loop redesign] After the board's attack icons are summed and the
+## front-line hero is told to swing, the resolve coroutine waits this long so
+## the swing's impact and damage number land inside SLOT_RESULT_HOLD rather
+## than bleeding into the next spin. Roughly the warrior chop's impact_delay.
+const SLOT_SWING_SETTLE := 0.45
 
 ## The nine scoring cells: _cells[1], _cells[2], _cells[3] on each of the three
 ## reels (offsets -1 / 0 / +1 from the payline). _cells[0] / _cells[4] are
