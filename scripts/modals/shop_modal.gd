@@ -58,6 +58,7 @@ func open(encounter: EncounterDef) -> void:
 	# ...and a paused world has no reason to keep being redrawn behind the
 	# scrim. See MainLayout.set_world_rendering().
 	_set_world_rendering(false)
+	EventBus.shop_visibility_changed.emit(true)
 
 	scrim.modulate.a = 0.0
 	var s := create_tween()
@@ -76,6 +77,7 @@ func close() -> void:
 	# torn down unexpectedly can never strand the tree paused.
 	get_tree().paused = false
 	_set_world_rendering(true)
+	EventBus.shop_visibility_changed.emit(false)
 	var tw := create_tween().set_parallel(true)
 	tw.tween_property(panel, "scale", Vector2(0.9, 0.9), 0.2)
 	tw.tween_property(panel, "modulate:a", 0.0, 0.2)

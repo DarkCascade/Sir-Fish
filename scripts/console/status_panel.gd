@@ -27,8 +27,14 @@ const CurrencyFeedback := preload("res://scripts/ui/currency_feedback.gd")
 
 @onready var gold_label: Label = $Layout/ResourceRow/GoldPlate/GoldLabel
 
+## Muted while the shop is open (EventBus.shop_visibility_changed): the panel
+## sits behind the shop scrim, where a run of buy/sell deltas just stacks into
+## an unreadable smear over the number.
+var _shop_open: bool = false
+
 func _ready() -> void:
 	EventBus.gold_changed.connect(_on_gold_changed)
+	EventBus.shop_visibility_changed.connect(func(is_open: bool) -> void: _shop_open = is_open)
 	#EventBus.run_started.connect(_update_depth)
 	#EventBus.encounter_started.connect(func(_index: int, _def: EncounterDef) -> void: _update_depth())
 	_update_gold()
@@ -39,6 +45,8 @@ func _update_gold() -> void:
 
 func _on_gold_changed(_new_total: int, delta: int) -> void:
 	_update_gold()
+	if _shop_open:
+		return
 	CurrencyFeedback.pop(gold_label)
 	# The number pops as a child of StatusPanel itself, not of GoldPlate, so the
 	# helper converts through global_position (S6's GoldPlate nesting moved
