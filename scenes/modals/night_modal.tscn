@@ -137,7 +137,7 @@ theme_override_constants/separation = 24
 [node name="Title" type="Label" parent="ResultPanel/V"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.831, 0.659, 0.263, 1)
-theme_override_font_sizes/font_size = 78
+theme_override_font_sizes/font_size = 60
 text = "MORNING"
 horizontal_alignment = 1
 
