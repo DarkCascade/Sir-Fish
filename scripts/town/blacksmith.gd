@@ -163,17 +163,19 @@ func _refresh_forge_card(card: Control) -> void:
 	var short_gold: int = maxi(0, need_gold - GameState.gold)
 	if short_scrap == 0 and short_gold == 0:
 		card.set_action_disabled(&"forge", false)
-		card.set_action_text(&"forge", "FORGE  →  %s        %d scrap  ·  %d gold"
+		card.set_action_text(&"forge", "Forge → %s   ·   %d scrap, %d gold"
 			% [to_name, need_scrap, need_gold])
 	else:
+		# Can't afford it: the destination rarity is on the card's own flash;
+		# what the player needs here is the shortfall, kept short so a long
+		# "need N scrap and M gold" can never blow the card wider than the list.
 		card.set_action_disabled(&"forge", true)
 		var parts: PackedStringArray = []
 		if short_scrap > 0:
-			parts.append("%d more scrap" % short_scrap)
+			parts.append("%d scrap" % short_scrap)
 		if short_gold > 0:
-			parts.append("%d more gold" % short_gold)
-		card.set_action_text(&"forge", "FORGE  →  %s   (need %s)"
-			% [to_name, " and ".join(parts)])
+			parts.append("%d gold" % short_gold)
+		card.set_action_text(&"forge", "Need %s" % ", ".join(parts))
 
 # --- buy tab ---------------------------------------------------------------
 
