@@ -255,13 +255,14 @@ layout_mode = 2
 size_flags_horizontal = 3
 theme_override_styles/panel = SubResource("tile")
 
-[node name="Box" type="VBoxContainer" parent="Card/Content/Layout/StatRow/Attack"]
+[node name="Box" type="HBoxContainer" parent="Card/Content/Layout/StatRow/Attack"]
 layout_mode = 2
-theme_override_constants/separation = 2
+theme_override_constants/separation = 12
 
 [node name="Icon" type="TextureRect" parent="Card/Content/Layout/StatRow/Attack/Box"]
 custom_minimum_size = Vector2(0, 54)
 layout_mode = 2
+size_flags_horizontal = 3
 size_flags_vertical = 3
 texture = ExtResource("5_atk")
 expand_mode = 1
@@ -270,7 +271,7 @@ stretch_mode = 5
 [node name="Value" type="Label" parent="Card/Content/Layout/StatRow/Attack/Box"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.937255, 0.839216, 0.580392, 1)
-theme_override_font_sizes/font_size = 38
+theme_override_font_sizes/font_size = 52
 text = "0"
 horizontal_alignment = 1
 
@@ -279,13 +280,14 @@ layout_mode = 2
 size_flags_horizontal = 3
 theme_override_styles/panel = SubResource("tile")
 
-[node name="Box" type="VBoxContainer" parent="Card/Content/Layout/StatRow/Magic"]
+[node name="Box" type="HBoxContainer" parent="Card/Content/Layout/StatRow/Magic"]
 layout_mode = 2
-theme_override_constants/separation = 2
+theme_override_constants/separation = 12
 
 [node name="Icon" type="TextureRect" parent="Card/Content/Layout/StatRow/Magic/Box"]
 custom_minimum_size = Vector2(0, 54)
 layout_mode = 2
+size_flags_horizontal = 3
 size_flags_vertical = 3
 texture = ExtResource("6_mag")
 expand_mode = 1
@@ -294,7 +296,7 @@ stretch_mode = 5
 [node name="Value" type="Label" parent="Card/Content/Layout/StatRow/Magic/Box"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.937255, 0.839216, 0.580392, 1)
-theme_override_font_sizes/font_size = 38
+theme_override_font_sizes/font_size = 52
 text = "0"
 horizontal_alignment = 1
 
@@ -303,13 +305,14 @@ layout_mode = 2
 size_flags_horizontal = 3
 theme_override_styles/panel = SubResource("tile")
 
-[node name="Box" type="VBoxContainer" parent="Card/Content/Layout/StatRow/Health"]
+[node name="Box" type="HBoxContainer" parent="Card/Content/Layout/StatRow/Health"]
 layout_mode = 2
-theme_override_constants/separation = 2
+theme_override_constants/separation = 12
 
 [node name="Icon" type="TextureRect" parent="Card/Content/Layout/StatRow/Health/Box"]
 custom_minimum_size = Vector2(0, 54)
 layout_mode = 2
+size_flags_horizontal = 3
 size_flags_vertical = 3
 texture = ExtResource("7_hp")
 expand_mode = 1
@@ -318,7 +321,7 @@ stretch_mode = 5
 [node name="Value" type="Label" parent="Card/Content/Layout/StatRow/Health/Box"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.937255, 0.839216, 0.580392, 1)
-theme_override_font_sizes/font_size = 38
+theme_override_font_sizes/font_size = 52
 text = "0"
 horizontal_alignment = 1
 
@@ -327,13 +330,14 @@ layout_mode = 2
 size_flags_horizontal = 3
 theme_override_styles/panel = SubResource("tile")
 
-[node name="Box" type="VBoxContainer" parent="Card/Content/Layout/StatRow/Defense"]
+[node name="Box" type="HBoxContainer" parent="Card/Content/Layout/StatRow/Defense"]
 layout_mode = 2
-theme_override_constants/separation = 2
+theme_override_constants/separation = 12
 
 [node name="Icon" type="TextureRect" parent="Card/Content/Layout/StatRow/Defense/Box"]
 custom_minimum_size = Vector2(0, 54)
 layout_mode = 2
+size_flags_horizontal = 3
 size_flags_vertical = 3
 texture = ExtResource("8_def")
 expand_mode = 1
@@ -342,7 +346,7 @@ stretch_mode = 5
 [node name="Value" type="Label" parent="Card/Content/Layout/StatRow/Defense/Box"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.937255, 0.839216, 0.580392, 1)
-theme_override_font_sizes/font_size = 38
+theme_override_font_sizes/font_size = 52
 text = "0"
 horizontal_alignment = 1
 
