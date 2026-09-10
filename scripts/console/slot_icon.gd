@@ -28,13 +28,17 @@ const BASE_ARMOR := &"base_armor"
 const BASE_TRINKET := &"base_trinket"
 
 ## The equipped-modifier ids that map to a board icon. `dmg_pct` is here — it is
-## the multiplier icon. `slot_purse` is deliberately absent (§5).
+## the multiplier icon. `slot_purse` is deliberately absent (§5). [armor items]
+## `armor_block` is here (a BLOCK icon); `armor_life` is NOT - it is a passive
+## max-hp boost read straight off item.modifiers, never a board icon.
 const KNOWN_MODIFIER_IDS: Array[StringName] = [
 	&"dmg_flat", &"dmg_pct", &"elem_fire", &"elem_ice", &"elem_light",
-	&"slot_bolt", &"slot_mend",
+	&"slot_bolt", &"slot_mend", &"armor_block",
 ]
 
-enum Kind { BLANK, DAMAGE, DAMAGE_ALL, HEAL, MULT }
+## [armor items] BLOCK: an armor icon that grants the party a temporary flat
+## damage reduction when it resolves (SlotMachine._grant_block).
+enum Kind { BLANK, DAMAGE, DAMAGE_ALL, HEAL, MULT, BLOCK }
 
 ## The reliquary chip art, one PNG per modifier id (already on disk, drawn by the
 ## compare flyout's stat chips). The two innate ids borrow the closest chip.
@@ -47,8 +51,10 @@ static func kind_of(id: StringName) -> Kind:
 			return Kind.DAMAGE
 		&"slot_bolt":
 			return Kind.DAMAGE_ALL
-		&"slot_mend", INNATE_HEAL, BASE_ARMOR:
+		&"slot_mend", INNATE_HEAL:
 			return Kind.HEAL
+		BASE_ARMOR, &"armor_block":
+			return Kind.BLOCK
 		&"dmg_pct":
 			return Kind.MULT
 		_:
@@ -82,13 +88,13 @@ static func base_for(slot: Item.Slot) -> StringName:
 static func is_base(id: StringName) -> bool:
 	return id == BASE_WEAPON or id == BASE_ARMOR or id == BASE_TRINKET
 
-## [item power model] The base slot icon's magnitude - 100% of the item's
-## Power for a DAMAGE icon (weapon, trinket), or a bounded percent of max HP
-## for the HEAL icon (armor). power() is unbounded and level-scaling, so it can
-## never feed the HEAL path directly - see Item.base_heal_pct().
+## The base slot icon's magnitude - 100% of the item's characteristic value:
+## Power for a DAMAGE icon (weapon, trinket), armor_value for a BLOCK icon
+## (armor). [armor items] Armor's base icon used to be a percent-of-max-hp
+## heal; it is a flat block now.
 static func _base_icon_roll(item: Item, kind: Kind) -> int:
-	if kind == Kind.HEAL:
-		return item.base_heal_pct()
+	if kind == Kind.BLOCK:
+		return item.armor_value()
 	return item.power()
 
 ## [levels] Every equipped item's guaranteed slot icon (spec §4.3) - a Common
@@ -137,10 +143,16 @@ static func is_blank(icon: Dictionary) -> bool:
 ## The chip texture path for an icon id, or "" if none applies (blank). Innate
 ## ids borrow the nearest modifier chip.
 static func chip_path(id: StringName) -> String:
+	# [armor items] No reliquary chip art for block / life yet - borrow the
+	# shield and heart glyphs from the item card's stat-tile set.
+	if id == BASE_ARMOR or id == &"armor_block":
+		return "res://assets/icons/glyph_shield.png"
+	if id == &"armor_life":
+		return "res://assets/icons/glyph_heal.png"
 	var key := id
 	if id == INNATE_DAMAGE or id == BASE_WEAPON:
 		key = &"dmg_flat"
-	elif id == INNATE_HEAL or id == BASE_ARMOR:
+	elif id == INNATE_HEAL:
 		key = &"slot_mend"
 	elif id == BASE_TRINKET:
 		key = &"elem_light"
@@ -166,12 +178,13 @@ static func short_label(id: StringName) -> String:
 		&"slot_bolt": return "Chain"
 		&"slot_mend", INNATE_HEAL: return "Mend"
 		BASE_WEAPON: return "Strike"
-		BASE_ARMOR: return "Ward"
+		BASE_ARMOR, &"armor_block": return "Block"
+		&"armor_life": return "Life"
 		BASE_TRINKET: return "Focus"
 	return ""
 
 ## Percent-magnitude icons render their roll as "+N%"; the rest as "+N".
-## [levels] BASE_ARMOR heals a percent of max hp, same shape as slot_mend /
-## INNATE_HEAL (spec §4.3).
+## [armor items] BASE_ARMOR / armor_block are flat now (a block amount, not a
+## percent); armor_life IS a percent (of max hp).
 static func is_percent(id: StringName) -> bool:
-	return id == &"dmg_pct" or id == &"slot_mend" or id == INNATE_HEAL or id == BASE_ARMOR
+	return id == &"dmg_pct" or id == &"slot_mend" or id == INNATE_HEAL or id == &"armor_life"

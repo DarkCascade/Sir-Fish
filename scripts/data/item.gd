@@ -110,35 +110,39 @@ static func from_dict(data: Dictionary) -> Item:
 func subtitle() -> String:
 	# "Lv 5 Magic Sword - Warrior". The class half is what makes an item legible
 	# as "this one is for someone" while equipping does not exist to enforce it.
-	# [item power model] Weapons carry the number the swing is made of, so it
-	# rides here where every card and the compare flyout already show it.
+	# Weapons carry the swing number, armor carries its flat damage reduction.
 	var head := "Lv %d %s %s" % [level, rarity_name(), type_name()]
 	if slot() == Slot.WEAPON:
 		head += "  ·  %d dmg" % power()
+	elif slot() == Slot.ARMOR:
+		head += "  ·  %d armor" % armor_value()
 	return "%s - %s" % [head, class_label()]
 
-## [item power model] The item's Power at its level: the type's authored base
-## (Itemizer.ITEM_TYPES[type].power, or Tuning.ITEM_BASE_POWER if the row omits
-## it) times item level. The base slot icon is worth 100% of this; each rarity
-## icon rolls 125-175% of it (Itemizer._roll_icon_magnitude). Weapons display
-## it as "Weapon Damage" and it is the entire magnitude of a hero's swing -
-## the party's own stats no longer feed combat damage.
+## [item power model] A weapon / trinket's Power at its level: the type's
+## authored base (ITEM_TYPES[type].power) times item level. The base slot icon
+## is worth 100% of this; each rarity icon rolls 125-175% of it. Weapons
+## display it as "Weapon Damage" and it is the entire magnitude of a hero's
+## swing. 0 for armor (which has no `power` row - see armor_value()).
 func power() -> int:
 	var entry: Dictionary = Itemizer.ITEM_TYPES.get(weapon_type, {})
-	var per_level: int = int(entry.get("power", Tuning.ITEM_BASE_POWER))
-	return per_level * maxi(level, 1)
+	return int(entry.get("power", 0)) * maxi(level, 1)
 
-## [levels] The other unit an icon can resolve in: a HEAL-kind icon's `roll`
-## (armor's base icon, and the slot_mend modifier) is read as a PERCENT OF MAX
-## HP, not a flat number - see slot_machine._heal_lowest(). power() must never
-## feed that path directly: it is unbounded and grows with level, which as a
-## raw percent would mean a single mid-level armor piece instantly full-heals
-## every time it resolves. Bounded and much shallower per level instead -
-## SlotIcon.from_item_base() picks this over power() whenever the icon is HEAL.
-func base_heal_pct() -> int:
-	return clampi(int(round(Tuning.ITEM_HEAL_PCT_BASE
-			+ Tuning.ITEM_HEAL_PCT_PER_LEVEL * float(maxi(level, 1)))),
-		1, Tuning.ITEM_HEAL_PCT_CAP)
+## [armor items] An armor piece's flat damage reduction at its level -
+## ITEM_TYPES[type].armor times item level. Applied to the wearer while
+## equipped (Combatant.armor) and read as 100% by the base BLOCK icon; a block
+## modifier rolls 125-175% of it. 0 for weapons / trinkets.
+func armor_value() -> int:
+	var entry: Dictionary = Itemizer.ITEM_TYPES.get(weapon_type, {})
+	return int(entry.get("armor", 0)) * maxi(level, 1)
+
+## [armor items] Percent added to the wearer's max hp by this item's `armor_life`
+## modifiers (never a board icon - read straight off the modifier list).
+func life_bonus_pct() -> int:
+	var total := 0
+	for m: Dictionary in modifiers:
+		if StringName(m.get("id", &"")) == &"armor_life":
+			total += int(m.get("roll", 0))
+	return total
 
 ## Which hero classes can wield this item. DERIVED from the weapon type rather
 ## than stored on the resource, for the reason CombatantStats.required_anims()

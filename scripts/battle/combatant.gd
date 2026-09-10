@@ -39,8 +39,15 @@ var action_count: int = 0
 ## action counter keeps its rhythm through healthy stretches instead of freezing.
 var special_pending: bool = false
 var damage_multiplier: float = 1.0        # party damage buff + item dmg_pct
-var damage_reduction: float = 0.0         # warrior defend lives here
+var damage_reduction: float = 0.0         # warrior defend lives here (a fraction)
 var bonus_flat_damage: int = 0            # [v2] item dmg_flat + elemental (spec 13.5)
+## [armor items] Flat damage reduction, subtracted AFTER damage_reduction's
+## percent cut, floored so a hit always lands for >= 1. `armor` is the passive
+## from equipped armor (heroes only, set by apply_party_bonuses); `_temp_armor`
+## is the decaying bonus a BLOCK slot icon grants (add_temp_armor).
+var armor: int = 0
+var _temp_armor: int = 0
+var _temp_armor_timer: SceneTreeTimer = null
 var is_hero: bool = false
 
 ## Set by BattleDirector when it spawns us.
@@ -95,6 +102,9 @@ func setup(s: CombatantStats, starting_hp: int = -1, a_level: int = 1) -> void:
 	damage_multiplier = 1.0
 	damage_reduction = 0.0
 	bonus_flat_damage = 0
+	armor = 0
+	_temp_armor = 0
+	_temp_armor_timer = null
 	apply_party_bonuses()
 	_home_position = global_position
 	visual.visible = true
@@ -141,6 +151,19 @@ func apply_party_bonuses() -> void:
 	# damage_multiplier - a stored round-trip compounded the meal on every
 	# party_bonuses_changed emit and every spawn (day/night §9.5).
 	damage_multiplier = GameState.meal_multiplier() * _item_pct_multiplier
+	# [armor items] Passive flat damage reduction from equipped armor.
+	armor = GameState.hero_armor(stats.id)
+	# [armor items] Max hp = the runtime figure GameState keeps (hero level plus
+	# the armor_life percent), not the level-1 stats base setup() seeded. A
+	# raise adds its delta to current_hp so a full hero stays full; a drop
+	# (armor unequipped) clamps. Never below 1 for a living hero.
+	var new_max := GameState.hero_max_hp(stats.id)
+	if new_max > 0 and new_max != max_hp:
+		if is_alive():
+			current_hp = clampi(current_hp + (new_max - max_hp), 1, new_max)
+		else:
+			current_hp = clampi(current_hp, 0, new_max)
+		max_hp = new_max
 
 # --- queries ----------------------------------------------------------------
 
@@ -310,7 +333,8 @@ func take_damage(amount: int, source: Combatant) -> void:
 	if not is_alive():
 		return
 	var reduction := clampf(damage_reduction, 0.0, 0.9)
-	var final := maxi(1, int(round(float(amount) * (1.0 - reduction))))
+	# [armor items] percent cut first (Defend), then flat armor, floored at 1.
+	var final := maxi(1, int(round(float(amount) * (1.0 - reduction))) - armor - _temp_armor)
 	var previous_hp := current_hp
 	current_hp = maxi(0, current_hp - final)
 
@@ -368,9 +392,11 @@ func cancel_all_effects() -> void:
 		anim.stop()
 	if visual != null:
 		visual.visible = true
-	# 2. Drop the defence and orphan its timer.
+	# 2. Drop the defence, the block buff, and orphan their timers.
 	damage_reduction = 0.0
 	_defend_timer = null
+	_temp_armor = 0
+	_temp_armor_timer = null
 	# 3. Free every status icon this combatant owns, immediately.
 	for icon: Variant in _status_icons:
 		if is_instance_valid(icon):
@@ -398,6 +424,25 @@ func apply_defend() -> void:
 	if _defend_timer == timer:
 		damage_reduction = 0.0
 		_defend_timer = null
+
+## [armor items] Grant a BLOCK spin's aggregated `amount` as decaying flat
+## damage reduction for BLOCK_DURATION. It does NOT pile up across spins - a
+## fresh grant takes the LARGER of the two and refreshes the window (the spin
+## cycle is shorter than the window, so adding would make temp armor
+## effectively permanent and unbounded). Fired by SlotMachine._grant_block.
+func add_temp_armor(amount: int) -> void:
+	if amount <= 0 or not is_alive():
+		return
+	_temp_armor = maxi(_temp_armor, amount)
+	var timer := get_tree().create_timer(Tuning.BLOCK_DURATION)
+	_temp_armor_timer = timer
+	await timer.timeout
+	if _temp_armor_timer == timer:
+		_temp_armor = 0
+		_temp_armor_timer = null
+
+func temp_armor() -> int:
+	return _temp_armor
 
 func is_defending() -> bool:
 	return damage_reduction > 0.0

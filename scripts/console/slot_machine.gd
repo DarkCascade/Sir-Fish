@@ -311,9 +311,12 @@ func _resolve_board(jackpot_id: StringName) -> void:
 	# [combat loop redesign] Single-target attack icons no longer call down
 	# their own lightning. Their rolled magnitudes are summed here and dealt as
 	# ONE swing by the party's front-line hero after the rest of the board
-	# resolves ("one swing, 3x damage"). Chain (DAMAGE_ALL) and mend (HEAL)
-	# still resolve per-cell, in place, staggered.
+	# resolves ("one swing, 3x damage"). [armor items] BLOCK icons aggregate the
+	# same way into one temp-armor grant. Chain (DAMAGE_ALL) and mend (HEAL)
+	# still resolve per-cell, in place, staggered. Neither dmg_pct nor Overcharge
+	# touches BLOCK - those lift damage output only.
 	var swing := 0
+	var block := 0
 	for idx: int in range(_board.size()):
 		var ic: Dictionary = _board[idx]
 		var kind: int = SlotIcon.kind_of(StringName(ic.get("id", &"")))
@@ -327,6 +330,8 @@ func _resolve_board(jackpot_id: StringName) -> void:
 				# [balance pass] Flat per-icon floor on top of the rolled value.
 				swing += maxi(1, int(round(float(int(ic.get("roll", 0))) * mult))) \
 					+ Tuning.SLOT_ATTACK_ICON_FLOOR
+			elif kind == SlotIcon.Kind.BLOCK:
+				block += maxi(1, int(ic.get("roll", 0)))
 			else:
 				var out := await _resolve_icon(ic, kind, mult)
 				total_damage += out.x
@@ -335,8 +340,10 @@ func _resolve_board(jackpot_id: StringName) -> void:
 
 	if swing > 0:
 		total_damage += await _hero_swing(swing)
+	if block > 0:
+		_grant_block(block)
 
-	if total_damage > 0 or total_heal > 0:
+	if total_damage > 0 or total_heal > 0 or block > 0:
 		GameState.run_stats["slot_wins"] = int(GameState.run_stats["slot_wins"]) + 1
 
 	# Sir Fish (and anything else) reads this: a jackpot makes him smug, any
@@ -347,6 +354,8 @@ func _resolve_board(jackpot_id: StringName) -> void:
 		EventBus.slot_payout.emit("damage", total_damage)
 	elif total_heal > 0:
 		EventBus.slot_payout.emit("heal", total_heal)
+	elif block > 0:
+		EventBus.slot_payout.emit("block", block)
 
 ## Resolves one board icon that is NOT a single-target attack (those are summed
 ## into the hero swing - see _resolve_board / _hero_swing). Returns
@@ -381,6 +390,16 @@ func _hero_swing(amount: int) -> int:
 	# and its number resolve inside SLOT_RESULT_HOLD, not over the next spin.
 	await get_tree().create_timer(Tuning.SLOT_SWING_SETTLE).timeout
 	return dealt
+
+## [armor items] The board's summed BLOCK value, granted as temporary flat
+## armor to every living hero for Tuning.BLOCK_DURATION (Combatant.add_temp_armor).
+func _grant_block(amount: int) -> void:
+	if director == null:
+		return
+	for h: Combatant in director.living_heroes():
+		if is_instance_valid(h) and h.is_alive():
+			h.add_temp_armor(amount)
+			BattleVfx.defend_icon(h, Tuning.BLOCK_DURATION)
 
 ## The hero who makes the aggregated attack swing - the first living hero in
 ## formation order (the solo warrior today). When the mage and ranger return,

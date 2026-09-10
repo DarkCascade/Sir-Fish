@@ -100,10 +100,14 @@ func _run_expedition() -> bool:
 	var stats := GameState.get_stats(&"warrior")
 	var level := GameState.hero_level(&"warrior")
 	var entry := GameState.hero_entry(&"warrior")
+	# [armor items] max hp folds in armor_life; every enemy hit is flat-reduced
+	# by the passive armor. BLOCK icons (temporary armor) are left unmodelled -
+	# conservative for "how many attempts".
 	var hero := {
-		"max_hp": stats.hp_at(level),
-		"hp": int(entry.get("current_hp", stats.hp_at(level))),
+		"max_hp": GameState.hero_max_hp(&"warrior"),
+		"hp": int(entry.get("current_hp", GameState.hero_max_hp(&"warrior"))),
 		"level": level,
+		"armor": GameState.hero_armor(&"warrior"),
 	}
 	var won := true
 	for enc: EncounterDef in GameState.level.encounters:
@@ -193,10 +197,11 @@ func _run_combat(enc: EncounterDef, hero: Dictionary) -> bool:
 			acting_enemy["next_action"] = t + acting_enemy["attack_cooldown"] + _ENEMY_ATTACK_CLIP
 			var raw: float = float(acting_enemy["weapon_power"]) \
 				* RNG.randf_range(1.0 - Tuning.DAMAGE_VARIANCE, 1.0 + Tuning.DAMAGE_VARIANCE)
-			hero["hp"] -= maxi(1, int(round(raw)))
+			var block: int = int(hero.get("block", 0)) if t < float(hero.get("block_until", -1.0)) else 0
+			hero["hp"] -= maxi(1, int(round(raw)) - int(hero["armor"]) - block)
 		else:
 			hero_next_spin = t + _SPIN_CYCLE
-			_resolve_spin(hero, enemies)
+			_resolve_spin(hero, enemies, t)
 
 		# One death check per event, after whichever branch above ran - this is
 		# the ONLY place _on_enemy_died() is called, so a kill is counted
@@ -266,7 +271,7 @@ func _on_enemy_died(e: Dictionary, hero: Dictionary) -> void:
 ## DAMAGE_ALL / HEAL icon - the same shape as slot_machine._resolve_board(),
 ## minus the payline-triple double-resolve (a conservative, few-percent
 ## underestimate of party output).
-func _resolve_spin(hero: Dictionary, enemies: Array) -> void:
+func _resolve_spin(hero: Dictionary, enemies: Array, now: float) -> void:
 	var bag := _build_bag(hero["level"])
 	var board: Array = SlotMachineScript.draw_nine(bag)
 	var pct := 0
@@ -274,6 +279,7 @@ func _resolve_spin(hero: Dictionary, enemies: Array) -> void:
 		if SlotIcon.kind_of(StringName(ic.get("id", &""))) == SlotIcon.Kind.MULT:
 			pct += int(ic.get("roll", 0))
 	var mult := (1.0 + float(pct) / 100.0) * Upgrades.overcharge_mult()
+	var block := 0
 	for ic: Dictionary in board:
 		var kind: int = SlotIcon.kind_of(StringName(ic.get("id", &"")))
 		var roll := int(ic.get("roll", 0))
@@ -289,6 +295,15 @@ func _resolve_spin(hero: Dictionary, enemies: Array) -> void:
 			SlotIcon.Kind.HEAL:
 				var amount: int = maxi(1, int(round(float(hero["max_hp"]) * float(roll) / 100.0)))
 				hero["hp"] = mini(hero["max_hp"], hero["hp"] + amount)
+			SlotIcon.Kind.BLOCK:
+				block += maxi(1, roll)
+	# [armor items] a spin's BLOCK icons grant temporary flat armor for
+	# BLOCK_DURATION - the LARGER of old and new, not a sum (Combatant.
+	# add_temp_armor), so it cannot pile up spin over spin.
+	if block > 0:
+		var carried: int = int(hero.get("block", 0)) if now < float(hero.get("block_until", -1.0)) else 0
+		hero["block"] = maxi(carried, block)
+		hero["block_until"] = now + Tuning.BLOCK_DURATION
 
 func _rolled(roll: int, mult: float) -> int:
 	# [balance pass] + the flat per-attack-icon floor (slot_machine._strike).

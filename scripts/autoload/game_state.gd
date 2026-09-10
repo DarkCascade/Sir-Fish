@@ -502,6 +502,33 @@ func hero_weapon_power(id: StringName) -> int:
 	var w := equipped_item(id, Item.Slot.WEAPON)
 	return 0 if w == null else w.power()
 
+## [armor items] Flat damage reduction from `id`'s equipped armor - the passive
+## half of Combatant.armor (the temporary half comes from BLOCK icons).
+func hero_armor(id: StringName) -> int:
+	var a := equipped_item(id, Item.Slot.ARMOR)
+	return 0 if a == null else a.armor_value()
+
+## [armor items] Percent added to `id`'s max hp by equipped armor_life modifiers.
+func hero_life_pct(id: StringName) -> int:
+	var a := equipped_item(id, Item.Slot.ARMOR)
+	return 0 if a == null else a.life_bonus_pct()
+
+## [armor items] `id`'s full max hp: the level-resolved stat base times the
+## armor_life percent boost. The single answer for hero_runtime
+## (_reset_hero_runtime / _apply_xp_to_hero / party_status) AND for
+## Combatant.apply_party_bonuses - which also lets combat finally honour hero
+## level, a pre-existing gap spawn_party() left (it spawns at level 1).
+func hero_max_hp(id: StringName) -> int:
+	return _leveled_max_hp(id, hero_level(id))
+
+## hero_max_hp() at an explicit level - _apply_xp_to_hero needs the OLD and NEW
+## max across a level change, and hero_max_hp reads the already-updated level.
+func _leveled_max_hp(id: StringName, lvl: int) -> int:
+	var s := get_stats(id)
+	if s == null:
+		return 1
+	return int(round(float(s.hp_at(lvl)) * (1.0 + float(hero_life_pct(id)) / 100.0)))
+
 ## XP needed to advance FROM `lvl` TO `lvl + 1` (spec §3.2). Parameter named
 ## `lvl`, not `level` - this class already has a `level: LevelDef` field and
 ## GDScript warns (correctly) about shadowing it.
@@ -545,8 +572,10 @@ func _apply_xp_to_hero(id: StringName, amount: int) -> void:
 	var entry := hero_entry(id)
 	if entry.is_empty():
 		return
-	var old_max: int = int(entry.get("max_hp", s.hp_at(old_level)))
-	var new_max: int = s.hp_at(new_level)
+	# [armor items] via hero_max_hp so the armor_life boost rides along - but
+	# hero_levels[id] was already set above, so pass the level explicitly.
+	var old_max: int = int(entry.get("max_hp", _leveled_max_hp(id, old_level)))
+	var new_max: int = _leveled_max_hp(id, new_level)
 	entry["max_hp"] = new_max
 	if bool(entry.get("alive", false)):
 		entry["current_hp"] = clampi(int(entry.get("current_hp", 0)) + (new_max - old_max), 1, new_max)
@@ -571,7 +600,7 @@ func party_status() -> Array[Dictionary]:
 		# hero's CURRENT level, not the level-1 s.max_hp - an un-run profile's
 		# hero is whole at whatever level it has earned, which is the same
 		# "honest thing to show" this fallback already existed for.
-		var top: int = int(entry.get("max_hp", s.hp_at(hero_level(id))))
+		var top: int = int(entry.get("max_hp", hero_max_hp(id)))
 		var cur: int = int(entry.get("current_hp", top))
 		out.append({
 			"stats_id": id,
@@ -984,8 +1013,8 @@ func _reset_hero_runtime(full_heal: bool) -> void:
 			continue
 		# [levels] hp_at(hero_level(id)), not the level-1 s.max_hp - a leveled
 		# hero's max HP must survive both a full heal and a carried-over
-		# current_hp (spec §3.3).
-		var top: int = s.hp_at(hero_level(id))
+		# current_hp (spec §3.3). [armor items] hero_max_hp folds in armor_life.
+		var top: int = hero_max_hp(id)
 		var hp: int = top
 		if not full_heal:
 			for entry: Dictionary in previous:

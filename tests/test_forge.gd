@@ -74,18 +74,27 @@ func _test_ladder() -> void:
 
 func _test_no_duplicate_ids() -> void:
 	_be_rich()
-	var dupes := 0
+	var wrong := 0
 	for i: int in range(1000):
 		var item := _fresh_common()
-		for _s: int in range(4):
+		for _s: int in range(3):
 			Itemizer.forge(item)
 		var seen := {}
+		var dups := 0
 		for m: Dictionary in item.modifiers:
 			if seen.has(m["id"]):
-				dupes += 1
+				dups += 1
 			seen[m["id"]] = true
-	_t.check(dupes == 0,
-		"no item carries the same modifier id twice after a full forge (%d/1000)" % dupes)
+		# [armor items] Armor's pool is only {block, life}, so the last rung of a
+		# full forge HAS to repeat one - at most once. Weapons / trinkets (a
+		# 7-mod pool) must never repeat.
+		if item.slot() == Item.Slot.ARMOR:
+			if dups > 1:
+				wrong += 1
+		elif dups > 0:
+			wrong += 1
+	_t.check(wrong == 0,
+		"weapons never repeat a modifier; armor repeats at most once to reach ENHANCED (%d/1000)" % wrong)
 
 # --- rejection paths -------------------------------------------------------
 
@@ -167,6 +176,9 @@ func _test_enhanced_marker_and_rolls() -> void:
 				var want: int
 				if kind == SlotIcon.Kind.DAMAGE or kind == SlotIcon.Kind.DAMAGE_ALL:
 					want = maxi(1, int(round(float(item.power()) * Tuning.FORGE_ICON_POWER_MAX)))
+				elif kind == SlotIcon.Kind.BLOCK:
+					# [armor items] block scales off armor_value, like damage off Power.
+					want = maxi(1, int(round(float(item.armor_value()) * Tuning.FORGE_ICON_POWER_MAX)))
 				else:
 					want = int(def["roll"][1])
 				if int(last["roll"]) != want:
@@ -188,7 +200,7 @@ func _test_arbitrage_gate() -> void:
 	for i: int in range(1000):
 		var item := _fresh_common()
 		var gold_spent := item.buy_price()
-		for r: int in range(4):
+		for r: int in range(3):   # [rarity] 3 rungs since UNCOMMON was removed
 			gold_spent += int(Tuning.FORGE_COSTS[item.rarity][1])
 			Itemizer.forge(item)
 		var recovered := item.sell_price()

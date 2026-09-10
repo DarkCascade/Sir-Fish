@@ -17,18 +17,19 @@ const ItemCardStyle := preload("res://scripts/ui/item_card_style.gd")
 ## tile sums the rolls of the modifier ids named here.
 ##
 ## `dmg_pct` is deliberately in NO tile: it is a percentage and cannot be summed
-## into the flat damage adds without lying about the unit. Nothing is hidden by
-## leaving it out - the chip row above the tiles lists every modifier the item
-## carries, `dmg_pct` included.
+## into the flat damage adds without lying about the unit. The chip row above
+## the tiles lists it anyway.
 ##
-## Defense lists no ids because no armor modifier exists yet (Itemizer.MODIFIERS
-## is five damage ids plus two slot ids). It reads 0 on every item until one is
-## added, which is what the reference art itself shows.
+## [armor items] Health also carries `armor_life` (a % of max hp), and Defense
+## carries `armor_block` PLUS the item's passive armor_value() - added in
+## _fill_stats since it is not a modifier roll. A weapon reads 0 on both armor
+## tiles, an armor piece reads 0 on Attack / Magic.
+const DEFENSE_TILE := 3
 const STAT_TILES: Array[Dictionary] = [
 	{ "ids": [&"dmg_flat", &"elem_fire", &"elem_ice", &"elem_light"], "pct": false },
 	{ "ids": [&"slot_bolt"], "pct": false },
-	{ "ids": [&"slot_mend"], "pct": true },
-	{ "ids": [], "pct": false },
+	{ "ids": [&"slot_mend", &"armor_life"], "pct": true },
+	{ "ids": [&"armor_block"], "pct": false },
 ]
 
 ## Every button authored under Actions. The node name is the id capitalized.
@@ -106,9 +107,11 @@ func _fill_mods(i: Item) -> void:
 		if not chip.visible:
 			continue
 		var mod: Dictionary = i.modifiers[idx]
-		var path := "res://assets/ui/reliquary/chip_%s.png" % String(mod.get("id", &""))
+		# [armor items] SlotIcon.chip_path resolves the reliquary chips AND the
+		# glyph fallbacks for block / life, so no id is left with a blank chip.
+		var path := SlotIcon.chip_path(StringName(mod.get("id", &"")))
 		var icon := chip.get_node("Icon") as TextureRect
-		icon.texture = load(path) as Texture2D if ResourceLoader.exists(path) else null
+		icon.texture = load(path) as Texture2D if path != "" and ResourceLoader.exists(path) else null
 		chip.tooltip_text = String(mod.get("label", ""))
 		var tint: Color = Tuning.RARITY_COLORS[Item.Rarity.ENHANCED] \
 			if mod.get("enhanced", false) else i.rarity_color()
@@ -124,6 +127,9 @@ func _fill_stats(i: Item) -> void:
 		for mod: Dictionary in i.modifiers:
 			if ids.has(mod.get("id", &"")):
 				total += int(mod.get("roll", 0))
+		# [armor items] the Defense tile also shows the passive flat DR.
+		if idx == DEFENSE_TILE:
+			total += i.armor_value()
 		var value := _stat_row.get_child(idx).get_node("Box/Value") as Label
 		value.text = ("%d%%" % total) if bool(spec["pct"]) and total > 0 else str(total)
 		# A zero tile is dimmed rather than hidden: the four tiles are a fixed

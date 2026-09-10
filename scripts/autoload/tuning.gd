@@ -110,17 +110,10 @@ const ITEM_VALUE_PER_LEVEL := 0.35
 const FORGE_ICON_POWER_MIN := 1.25
 const FORGE_ICON_POWER_MAX := 1.75
 
-## [levels] Item.base_heal_pct()'s curve - the armor base icon reads its `roll`
-## as a percent of max hp, never a flat number, so a level-scaling item base
-## cannot feed it the way Power feeds a DAMAGE icon. Capped well under 100: one
-## icon should meaningfully help, not trivialise the heal-lowest choice.
-## [balance pass] Added a flat BASE (was per-level only). At L1 the old curve
-## healed 1% - a single HP - so a fresh warrior's shield was pure dilution and
-## the first boss was a healless slog. BASE 6 makes a fresh shield worth ~7%,
-## in line with the mage's innate heal, fading to the cap by ~L29.
-const ITEM_HEAL_PCT_BASE := 6.0
-const ITEM_HEAL_PCT_PER_LEVEL := 1.0
-const ITEM_HEAL_PCT_CAP := 35
+## [armor items] How long a BLOCK slot icon's temporary flat armor lasts on a
+## hero (Combatant.add_temp_armor). Blocks within the window add together;
+## each one refreshes this single expiry rather than stacking a second timer.
+const BLOCK_DURATION := 5.0
 
 # --- 5.3c Overworld field [overworld prototype] -----------------------------
 ## The battle is laid out on the XZ ground plane under an overhead camera, not
