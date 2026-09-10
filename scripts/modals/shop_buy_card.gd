@@ -45,6 +45,51 @@ static var _taught_this_run: bool = false
 func _ready() -> void:
 	face.action_triggered.connect(func() -> void: compare_requested.emit(item))
 	resized.connect(_on_card_resized)
+	# The visible card is Face, with its rarity border. The root PanelContainer
+	# must not ALSO draw the theme's default gold-bordered panel behind it - that
+	# is a second frame 20px outside Face's, invisible only while Face's own
+	# border was a hairline.
+	add_theme_stylebox_override("panel", StyleBoxEmpty.new())
+	_apply_palette()
+
+## [art-style-a: lantern] shop_buy_card.tscn's button styleboxes are geometry-
+## only templates (corners, margins, border widths); every colour that must
+## track the palette is set here from Tuning, the same .tscn-shape / code-colour
+## split item_card_style.gd already uses for the face - a .tscn sub-resource
+## cannot read a Tuning constant.
+##
+## The BUY bar is a gold-trimmed dark CTA, matching the theme's affirmative
+## Button language (dark fill, C_GOLD border) rather than dragging console-green
+## into the violet reliquary card. The Compare swipe lane stays "safe info" via
+## the reliquary's amethyst accent instead of the old arcane blue.
+func _apply_palette() -> void:
+	var buy_states := {
+		"normal": [Tuning.C_RELIQUARY_STONE_DARK, Tuning.C_GOLD],
+		"hover": [Tuning.C_RELIQUARY_STONE, Tuning.C_GOLD_BRIGHT],
+		"pressed": [Tuning.C_THORN_DARK, Tuning.C_GOLD_DARK],
+		# Dim gold, not a colour swap: an unaffordable BUY must still read as the
+		# BUY button (greyed), never as some other control.
+		"disabled": [Tuning.C_RELIQUARY_STONE_DARK, Tuning.C_GOLD_DARK],
+	}
+	for state: String in buy_states:
+		var sb: StyleBoxFlat = buy_bar.get_theme_stylebox(state).duplicate()
+		sb.bg_color = buy_states[state][0]
+		sb.border_color = buy_states[state][1]
+		buy_bar.add_theme_stylebox_override(state, sb)
+
+	var action_btn: Button = $Stage/ActionLayer/ActionButton
+	var action_states := {
+		"normal": [Tuning.C_RELIQUARY_STONE_DARK, Tuning.C_CRYSTAL],
+		"hover": [Tuning.C_RELIQUARY_STONE, Tuning.C_CRYSTAL_BRIGHT],
+		"pressed": [Tuning.C_THORN_DARK, Tuning.C_CRYSTAL_DEEP],
+	}
+	for state: String in action_states:
+		var sb: StyleBoxFlat = action_btn.get_theme_stylebox(state).duplicate()
+		sb.bg_color = action_states[state][0]
+		sb.border_color = action_states[state][1]
+		action_btn.add_theme_stylebox_override(state, sb)
+
+	divider.color = Color(Tuning.C_GOLD.r, Tuning.C_GOLD.g, Tuning.C_GOLD.b, 0.5)
 
 ## The Buy/Sell tabs are built while their container is still hidden (ShopModal
 ## opens hidden then show()s; the blacksmith's Buy tab starts visible = false).
@@ -62,7 +107,12 @@ func _on_card_resized() -> void:
 
 func setup(i: Item) -> void:
 	item = i
-	ItemCardStyle.apply(face, glyph, i, name_label, subtitle_label)
+	# [art-style-a: lantern] name_label is passed null so ItemCardStyle leaves the
+	# heading alone: rarity now reads off the face border + glyph ring only, and
+	# the name sits in C_CRYSTAL_BRIGHT per the Lantern spec's "headings on plum
+	# stone" rule (Sir Fish - Art Style A - Lantern Spec.md 2.4).
+	ItemCardStyle.apply(face, glyph, i, null, subtitle_label)
+	name_label.add_theme_color_override("font_color", Tuning.C_CRYSTAL_BRIGHT)
 
 	name_label.text = i.display_name
 	subtitle_label.text = i.subtitle()

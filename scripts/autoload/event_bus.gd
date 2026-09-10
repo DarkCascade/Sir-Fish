@@ -32,6 +32,12 @@ signal item_added(item: Item)
 signal item_removed(item: Item)
 signal party_bonuses_changed(bonuses: Dictionary)   # [v2] spec 13.5
 
+## True while the shop modal is on screen. The HUD/console currency readouts
+## mute their floating +N / -N deltas for the duration - the plates sit behind
+## the shop's scrim, where a stack of floats just piles into an unreadable
+## smear, and the shop already shows its own on-panel number.
+signal shop_visibility_changed(is_open: bool)
+
 # --- [town] spec 3.3. All five signal names landed in one edit at step 5.
 # scrap_changed got its faucet at step 9 (GameState.add_scrap, from combat
 # pickups); item_forged is emitted by Itemizer.forge() from step 9 too.

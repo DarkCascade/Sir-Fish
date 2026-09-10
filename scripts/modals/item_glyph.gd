@@ -55,8 +55,11 @@ func _draw() -> void:
 	var r: float = minf(size.x, size.y) * 0.5
 
 	# Soft outer glow: a few widening, fading rings rather than a real blur.
+	# [art-style-a: lantern] Tightened and dimmed - the reliquary panel lifted
+	# ~10x in luminance (C_RELIQUARY_STONE 0.009 -> 0.09), so the old 0.05*i
+	# alpha over a 1.48x radius spread haloed visibly into the card.
 	for i: int in range(3, 0, -1):
-		draw_circle(c, r * (1.0 + 0.16 * i), Color(ring_color.r, ring_color.g, ring_color.b, 0.05 * i))
+		draw_circle(c, r * (1.0 + 0.11 * i), Color(ring_color.r, ring_color.g, ring_color.b, 0.035 * i))
 
 	draw_circle(c, r * 0.94, C_DISC)
 

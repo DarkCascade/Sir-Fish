@@ -20,13 +20,16 @@ static func apply(face: PanelContainer, glyph: Control, item: Item,
 		name_label: Label = null, subtitle_label: Label = null) -> void:
 	var rarity_color := item.rarity_color()
 
-	# [reliquary] The teal card face becomes the plum-black reliquary stone; the
-	# border and shadow stay the rarity tint (now a slightly stronger halo).
+	# [reliquary] The card face is the near-black reliquary underside now, not the
+	# lit plum: every card is identified purely by its rarity-tinted border + halo.
+	# The border is widened to the spec's 7px floor (0.1) so it actually carries
+	# that job against a dark fill, and the halo is pushed a little stronger.
 	var face_style: StyleBoxFlat = (face.get_theme_stylebox("panel") as StyleBoxFlat).duplicate()
-	face_style.bg_color = Tuning.C_RELIQUARY_STONE
+	face_style.bg_color = Tuning.C_RELIQUARY_STONE_DARK
 	face_style.border_color = rarity_color
-	face_style.shadow_color = Color(rarity_color.r, rarity_color.g, rarity_color.b, 0.32)
-	face_style.shadow_size = 6
+	face_style.set_border_width_all(7)
+	face_style.shadow_color = Color(rarity_color.r, rarity_color.g, rarity_color.b, 0.38)
+	face_style.shadow_size = 8
 	face.add_theme_stylebox_override("panel", face_style)
 
 	glyph.set("ring_color", rarity_color)

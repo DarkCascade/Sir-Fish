@@ -22,18 +22,28 @@ const SCRAP_COLOR := Color("9FB2BE")
 @onready var gold_label: Label = $Row/Gold/Value
 @onready var scrap_label: Label = $Row/Scrap/Value
 
+## Muted while the shop is open (EventBus.shop_visibility_changed): this plate
+## sits behind the shop scrim, where a run of buy/sell deltas just stacks into
+## an unreadable smear over the number.
+var _shop_open: bool = false
+
 func _ready() -> void:
 	EventBus.gold_changed.connect(_on_gold_changed)
 	EventBus.scrap_changed.connect(_on_scrap_changed)
+	EventBus.shop_visibility_changed.connect(func(is_open: bool) -> void: _shop_open = is_open)
 	gold_label.text = str(GameState.gold)
 	scrap_label.text = str(GameState.scrap)
 
 func _on_gold_changed(new_total: int, delta: int) -> void:
 	gold_label.text = str(new_total)
+	if _shop_open:
+		return
 	CurrencyFeedback.pop(gold_label)
 	CurrencyFeedback.float_delta(self, gold_label, delta, Tuning.C_GOLD)
 
 func _on_scrap_changed(new_total: int, delta: int) -> void:
 	scrap_label.text = str(new_total)
+	if _shop_open:
+		return
 	CurrencyFeedback.pop(scrap_label)
 	CurrencyFeedback.float_delta(self, scrap_label, delta, SCRAP_COLOR)

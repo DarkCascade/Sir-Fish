@@ -52,6 +52,11 @@ static var _taught_this_run: bool = false
 func _ready() -> void:
 	face.action_triggered.connect(func() -> void: compare_requested.emit(item))
 	resized.connect(_on_row_resized)
+	# The visible card is Face, with its rarity border. The root PanelContainer
+	# must not ALSO draw the theme's default gold-bordered panel behind it - that
+	# is a second frame 20px outside Face's, invisible only while Face's own
+	# border was a hairline.
+	add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 
 ## ShopModal.open() builds both tabs while the modal is still hidden, so with no
 ## layout pass Face - a PanelContainer anchored full-rect inside the plain-Control
