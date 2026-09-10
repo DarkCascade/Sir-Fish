@@ -8,21 +8,28 @@ extends Node
 ## classes: [&"warrior"] rather than [] so usable_by() / weapon_types_for() /
 ## _maybe_auto_equip() keep working untouched; the mage and ranger get their own
 ## rows here when they return (spec 15).
+## [item power model] `power` is the type's level-1 Power; item.power() scales
+## it by level. Weapons show it as "Weapon Damage" and it is the whole of a
+## hero's swing (the party's own stats no longer feed combat). The spread is
+## deliberate - a dagger is not a sword - and sits near the old flat
+## ITEM_BASE_POWER (6) so total board output stays in roughly the same band
+## pending a balance pass. A type row that omits `power` falls back to
+## Tuning.ITEM_BASE_POWER.
 const ITEM_TYPES := {
-	# --- weapons (unchanged from WEAPON_TYPES) ---
-	&"axe":    { "slot": Item.Slot.WEAPON,  "base_value": 20, "classes": [&"warrior"], "nouns": ["Axe", "Hatchet", "Cleaver", "Chopper"] },
-	&"sword":  { "slot": Item.Slot.WEAPON,  "base_value": 22, "classes": [&"warrior"], "nouns": ["Sword", "Blade", "Saber", "Longsword"] },
-	&"bow":    { "slot": Item.Slot.WEAPON,  "base_value": 20, "classes": [&"ranger"],  "nouns": ["Bow", "Longbow", "Shortbow", "Recurve"] },
-	&"dagger": { "slot": Item.Slot.WEAPON,  "base_value": 18, "classes": [&"ranger"],  "nouns": ["Dagger", "Knife", "Dirk", "Shiv"] },
-	&"staff":  { "slot": Item.Slot.WEAPON,  "base_value": 25, "classes": [&"mage"],    "nouns": ["Staff", "Rod", "Cane", "Scepter"] },
+	# --- weapons ---
+	&"axe":    { "slot": Item.Slot.WEAPON,  "base_value": 20, "power": 6, "classes": [&"warrior"], "nouns": ["Axe", "Hatchet", "Cleaver", "Chopper"] },
+	&"sword":  { "slot": Item.Slot.WEAPON,  "base_value": 22, "power": 6, "classes": [&"warrior"], "nouns": ["Sword", "Blade", "Saber", "Longsword"] },
+	&"bow":    { "slot": Item.Slot.WEAPON,  "base_value": 20, "power": 5, "classes": [&"ranger"],  "nouns": ["Bow", "Longbow", "Shortbow", "Recurve"] },
+	&"dagger": { "slot": Item.Slot.WEAPON,  "base_value": 18, "power": 5, "classes": [&"ranger"],  "nouns": ["Dagger", "Knife", "Dirk", "Shiv"] },
+	&"staff":  { "slot": Item.Slot.WEAPON,  "base_value": 25, "power": 4, "classes": [&"mage"],    "nouns": ["Staff", "Rod", "Cane", "Scepter"] },
 	# --- armor [town] ---
-	&"helm":   { "slot": Item.Slot.ARMOR,   "base_value": 18, "classes": [&"warrior"], "nouns": ["Helm", "Casque", "Barbute", "Coif"] },
-	&"mail":   { "slot": Item.Slot.ARMOR,   "base_value": 24, "classes": [&"warrior"], "nouns": ["Mail", "Hauberk", "Cuirass", "Plate"] },
-	&"shield": { "slot": Item.Slot.ARMOR,   "base_value": 22, "classes": [&"warrior"], "nouns": ["Shield", "Buckler", "Targe", "Kite"] },
+	&"helm":   { "slot": Item.Slot.ARMOR,   "base_value": 18, "power": 4, "classes": [&"warrior"], "nouns": ["Helm", "Casque", "Barbute", "Coif"] },
+	&"mail":   { "slot": Item.Slot.ARMOR,   "base_value": 24, "power": 5, "classes": [&"warrior"], "nouns": ["Mail", "Hauberk", "Cuirass", "Plate"] },
+	&"shield": { "slot": Item.Slot.ARMOR,   "base_value": 22, "power": 5, "classes": [&"warrior"], "nouns": ["Shield", "Buckler", "Targe", "Kite"] },
 	# --- trinkets [town] ---
-	&"ring":   { "slot": Item.Slot.TRINKET, "base_value": 19, "classes": [&"warrior"], "nouns": ["Ring", "Band", "Signet", "Loop"] },
-	&"amulet": { "slot": Item.Slot.TRINKET, "base_value": 21, "classes": [&"warrior"], "nouns": ["Amulet", "Pendant", "Charm", "Talisman"] },
-	&"idol":   { "slot": Item.Slot.TRINKET, "base_value": 23, "classes": [&"warrior"], "nouns": ["Idol", "Fetish", "Totem", "Effigy"] },
+	&"ring":   { "slot": Item.Slot.TRINKET, "base_value": 19, "power": 4, "classes": [&"warrior"], "nouns": ["Ring", "Band", "Signet", "Loop"] },
+	&"amulet": { "slot": Item.Slot.TRINKET, "base_value": 21, "power": 4, "classes": [&"warrior"], "nouns": ["Amulet", "Pendant", "Charm", "Talisman"] },
+	&"idol":   { "slot": Item.Slot.TRINKET, "base_value": 23, "power": 5, "classes": [&"warrior"], "nouns": ["Idol", "Fetish", "Totem", "Effigy"] },
 }
 
 const ADJECTIVES := [
@@ -127,7 +134,9 @@ func _generate_typed(wtype: StringName, rarity_index: int, level: int = -1) -> I
 		var pick_index: int = RNG.randi_range(0, pool.size() - 1)
 		var def: Dictionary = pool[pick_index]
 		pool.remove_at(pick_index)          # never roll the same modifier twice on one item
-		var roll: int = RNG.randi_range(int(def["roll"][0]), int(def["roll"][1]))
+		# [item power model] Generation never rolls the enhanced icon - that is
+		# the forge's final rung only.
+		var roll: int = _roll_icon_magnitude(def, item, false)
 		var vm: float = RNG.randf_range(float(def["value_mult"][0]), float(def["value_mult"][1]))
 		mod_sum += vm
 		mods.append({
@@ -182,7 +191,7 @@ func forge(item: Item) -> bool:
 		GameState.add_scrap(int(cost[0]))  # refund - never half-charge
 		return false
 	var enhanced: bool = item.rarity == Item.Rarity.RARE
-	item.modifiers.append(_roll_modifier(pool, enhanced))
+	item.modifiers.append(_roll_modifier(pool, item, enhanced))
 	item.rarity = (item.rarity + 1) as Item.Rarity
 	item.forge_count += 1
 	item.value += int(cost[1])             # spec 10.5 - the gold half only
@@ -207,15 +216,27 @@ func _modifier_pool_excluding(item: Item) -> Array:
 			pool.append(def)
 	return pool
 
+## [item power model] One rarity icon's magnitude, shared by generation and
+## forge() so a found item and a forged item of the same rarity roll their
+## icons identically. DAMAGE / DAMAGE_ALL icons scale off the item's Power
+## (125-175%, locked to 175% for the enhanced icon); HEAL (mend) and MULT
+## (boost) icons keep their own percent roll from the modifier's range
+## (enhanced -> the top of that range).
+func _roll_icon_magnitude(def: Dictionary, item: Item, enhanced: bool) -> int:
+	var kind: int = SlotIcon.kind_of(StringName(def["id"]))
+	if kind == SlotIcon.Kind.DAMAGE or kind == SlotIcon.Kind.DAMAGE_ALL:
+		var frac: float = Tuning.FORGE_ICON_POWER_MAX if enhanced \
+			else RNG.randf_range(Tuning.FORGE_ICON_POWER_MIN, Tuning.FORGE_ICON_POWER_MAX)
+		return maxi(1, int(round(float(item.power()) * frac)))
+	return int(def["roll"][1]) if enhanced \
+		else RNG.randi_range(int(def["roll"][0]), int(def["roll"][1]))
+
 ## [town] spec 10.3: Enhanced modifiers are the SAME ids as the normal pool,
-## with the roll doubled and an `enhanced: true` marker - not a second table.
-## party_bonuses() and compare_flyout read `id` / `roll` and need no edit; the
-## marker is only what the UI tints.
-func _roll_modifier(pool: Array, enhanced: bool) -> Dictionary:
+## with an `enhanced: true` marker the UI tints - not a second table.
+## party_bonuses() and compare_flyout read `id` / `roll` and need no edit.
+func _roll_modifier(pool: Array, item: Item, enhanced: bool) -> Dictionary:
 	var def: Dictionary = pool[RNG.randi_range(0, pool.size() - 1)]
-	var roll: int = RNG.randi_range(int(def["roll"][0]), int(def["roll"][1]))
-	if enhanced:
-		roll *= Tuning.FORGE_ENHANCED_MULT
+	var roll: int = _roll_icon_magnitude(def, item, enhanced)
 	return {
 		"id": def["id"],
 		"label": (def["label"] as String) % roll,

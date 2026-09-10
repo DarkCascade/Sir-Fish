@@ -91,17 +91,24 @@ const XP_BOSS_MULT := 3.0
 const XP_CURVE_BASE := 100
 const HERO_MAX_LEVEL := 40
 
-## [levels] Flat power every icon an item supplies adds to its rolled value:
-## item.base_power() = ITEM_BASE_POWER * item.level (spec §4.1/§4.4).
+## [item power model] Every item has a Power that scales with level:
+## item.power() = ITEM_TYPES[type].power * item.level. Weapons surface it on
+## the card as "Weapon Damage". ITEM_BASE_POWER is the fallback for a type row
+## that omits its own `power` key. The base slot icon is worth 100% of an
+## item's Power; each rarity icon rolls 125-175% of it (FORGE_ICON_POWER_*).
 const ITEM_BASE_POWER := 6
 ## Item value scales with level too, or a level-30 Common sells for the same
 ## price as a level-1 one and the economy stops tracking power (spec §4.2).
 ## value *= 1 + ITEM_VALUE_PER_LEVEL * (level - 1).
 const ITEM_VALUE_PER_LEVEL := 0.35
-## The innate slot icon's damage is a fraction of the living hero's own
-## power(WEAPON) at their level, replacing the old flat SLOT_INNATE_DAMAGE
-## constant (spec §4.4).
-const SLOT_INNATE_POWER_FRACTION := 0.5
+## [item power model] A rarity icon (one added per rarity step, by forging or
+## already present on a found item of that rarity) rolls this fraction of the
+## item's Power - stronger than the base icon. The Enhanced step's own added
+## icon is locked at the max; the others on an Enhanced item keep their rolled
+## fraction. DAMAGE / DAMAGE_ALL icons only - HEAL (mend) and MULT (boost)
+## modifiers keep their own percent rolls from Itemizer.MODIFIERS.
+const FORGE_ICON_POWER_MIN := 1.25
+const FORGE_ICON_POWER_MAX := 1.75
 
 ## [levels] Item.base_heal_pct()'s curve - a HEAL-kind board icon reads its
 ## `roll` as a percent of max hp, never as a flat number, so a level-scaling
@@ -300,9 +307,11 @@ const FORGE_COSTS := [
 	[18, 70],     # Magic    -> Rare
 	[30, 120],    # Rare     -> Enhanced
 ]
-## The final rung's modifier rolls at double magnitude, and carries an
-## `enhanced: true` marker the UI tints (spec 10.3).
-const FORGE_ENHANCED_MULT := 2
+## [item power model] The final rung's added icon carries an `enhanced: true`
+## marker the UI tints, and its magnitude is locked to the maximum bonus:
+## FORGE_ICON_POWER_MAX of the item's Power for a DAMAGE / DAMAGE_ALL icon, or
+## the top of the modifier's roll range for a HEAL / MULT icon. Only that one
+## icon is maxed - the other rungs on an Enhanced item keep their rolls.
 
 # --- [town] Combat pickups (spec 9) ----------------------------------------------
 ## VALUE rolled per kill, NOT an object count (spec 9.3): spawn
@@ -384,10 +393,9 @@ const SLOT_BLANK_PAD_FLOOR := 4
 ## read off a modifier `roll`. This is the floor that reconnects party
 ## composition to the slot and guarantees the bag is never empty of icons.
 ##
-## [levels] SLOT_INNATE_DAMAGE (the old flat magnitude) is gone - the innate
-## damage icon now reads GameState.hero_weapon_power(id) *
-## SLOT_INNATE_POWER_FRACTION (spec §4.4), making hero level the one place
-## outside gear that reaches the board.
+## [item power model] The innate DAMAGE icon is 100% of the hero's equipped
+## weapon Power (GameState.hero_weapon_power(id) -> Item.power()); only the
+## innate HEAL icon (the mage) still uses a fixed constant, this one.
 const SLOT_INNATE_HEAL_PCT := 8         # percent of max hp to the lowest-hp hero
 ## [v2] Attract mode (spec 16.6 / Q17): out of combat the reels drift instead of
 ## stopping. "Does nothing" means nothing that affects the game - not dead air.

@@ -158,10 +158,18 @@ func _test_enhanced_marker_and_rolls() -> void:
 			if is_final and not last.get("enhanced", false):
 				final_plain += 1
 			if is_final:
+				# [item power model] The enhanced icon is locked to the max
+				# bonus: FORGE_ICON_POWER_MAX of the item's Power for a DAMAGE /
+				# DAMAGE_ALL icon, or the top of the modifier's roll range for a
+				# HEAL / MULT icon.
 				var def: Dictionary = mods_by_id[last["id"]]
-				var lo := int(def["roll"][0]) * Tuning.FORGE_ENHANCED_MULT
-				var hi := int(def["roll"][1]) * Tuning.FORGE_ENHANCED_MULT
-				if int(last["roll"]) < lo or int(last["roll"]) > hi:
+				var kind: int = SlotIcon.kind_of(StringName(last["id"]))
+				var want: int
+				if kind == SlotIcon.Kind.DAMAGE or kind == SlotIcon.Kind.DAMAGE_ALL:
+					want = maxi(1, int(round(float(item.power()) * Tuning.FORGE_ICON_POWER_MAX)))
+				else:
+					want = int(def["roll"][1])
+				if int(last["roll"]) != want:
 					out_of_range += 1
 
 	_t.check(early_enhanced == 0,
@@ -169,7 +177,7 @@ func _test_enhanced_marker_and_rolls() -> void:
 	_t.check(final_plain == 0,
 		"step 4 always produces an enhanced modifier (%d/300 missed)" % final_plain)
 	_t.check(out_of_range == 0,
-		"every enhanced roll falls in [min x2, max x2] of its definition (%d/300 out)" % out_of_range)
+		"every enhanced roll is locked to the max bonus (%d/300 off)" % out_of_range)
 
 # --- the arbitrage gate (spec 10.5) -------------------------------------------
 

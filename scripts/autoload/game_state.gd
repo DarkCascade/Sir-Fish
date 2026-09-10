@@ -492,16 +492,15 @@ func hero_xp_for(id: StringName) -> int:
 func default_item_level() -> int:
 	return hero_level()
 
-## [levels] `id`'s Weapon Power at their current level - the RAW stat, not a
-## live Combatant's buffed compute_damage() (no meal multiplier, no
-## bonus_flat_damage). This is what the slot board's innate damage icon reads
-## (spec §4.4): a level does not change mid-combat, so reading it off the
-## stats resource works identically in town (attract mode) and in a live fight,
-## and staying off the buffed value keeps the innate icon a pure function of
-## hero level, not of what happens to be equipped that spin.
+## [item power model] The Power of the weapon `id` currently has equipped, or 0
+## when unarmed. This is what the slot board's innate damage icon is worth -
+## the hero's own stats no longer feed combat, so an unequipped hero swings for
+## nothing (an unarmed baseline is a later concern). Equipping / forging a
+## weapon fires party_bonuses_changed, so the bag picks the new number up on
+## its next rebuild.
 func hero_weapon_power(id: StringName) -> int:
-	var s := get_stats(id)
-	return 0 if s == null else s.weapon_power_at(hero_level(id))
+	var w := equipped_item(id, Item.Slot.WEAPON)
+	return 0 if w == null else w.power()
 
 ## XP needed to advance FROM `lvl` TO `lvl + 1` (spec §3.2). Parameter named
 ## `lvl`, not `level` - this class already has a `level: LevelDef` field and

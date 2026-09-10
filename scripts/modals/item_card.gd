@@ -71,7 +71,9 @@ func setup(i: Item) -> void:
 	item = i
 	ItemCardStyle.apply(_backing, _glyph, i, _name_label, _subtitle_label)
 	_name_label.text = i.display_name
-	_subtitle_label.text = "Lv %d" % i.level
+	# [item power model] Weapons carry the number their swing is made of.
+	_subtitle_label.text = "Lv %d  ·  %d dmg" % [i.level, i.power()] \
+		if i.slot() == Item.Slot.WEAPON else "Lv %d" % i.level
 	_fill_mods(i)
 	_fill_stats(i)
 	_fit_name()
