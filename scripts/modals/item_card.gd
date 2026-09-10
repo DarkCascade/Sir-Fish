@@ -44,9 +44,9 @@ const NAME_SIZE_MIN := 28
 var item: Item = null
 
 @onready var _backing: PanelContainer = $Card/Backing
-@onready var _glyph = $Card/Content/Layout/TopRow/Medallion/Glyph  # ItemGlyph (untyped: custom API)
+@onready var _glyph = $Card/Content/Layout/TopRow/MedallionCol/Medallion/Glyph  # ItemGlyph (untyped: custom API)
 @onready var _name_label: Label = $Card/Content/Layout/TopRow/Info/NameLabel
-@onready var _subtitle_label: Label = $Card/Content/Layout/TopRow/Info/SubtitleLabel
+@onready var _subtitle_label: Label = $Card/Content/Layout/TopRow/MedallionCol/LevelPlate/SubtitleLabel
 @onready var _mod_row: HBoxContainer = $Card/Content/Layout/TopRow/Info/ModRow
 @onready var _stat_row: HBoxContainer = $Card/Content/Layout/StatRow
 @onready var _actions: HBoxContainer = $Actions
@@ -69,7 +69,7 @@ func setup(i: Item) -> void:
 	item = i
 	ItemCardStyle.apply(_backing, _glyph, i, _name_label, _subtitle_label)
 	_name_label.text = i.display_name
-	_subtitle_label.text = i.subtitle()
+	_subtitle_label.text = "Lv %d" % i.level
 	_fill_mods(i)
 	_fill_stats(i)
 	_fit_name.call_deferred()
