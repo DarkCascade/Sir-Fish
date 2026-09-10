@@ -1,8 +1,8 @@
 @tool
 extends VBoxContainer
 ## [reliquary] One item modifier rendered as a chip tile for the compare flyout:
-## a rarity-tinted rounded-square plate carrying a stat icon, a "+N" / "+N%"
-## badge pinned to its top-right corner, and a short caption beneath. Instanced
+## a rarity-tinted rounded-square plate carrying a stat icon, with its "+N" /
+## "+N%" value on its own gold line beneath and a dim caption under that. Instanced
 ## by compare_flyout._fill_mods() in place of the old Label-per-line list, and
 ## laid out in an HFlowContainer so the chips wrap into rows like the reference.
 ##
@@ -13,7 +13,7 @@ extends VBoxContainer
 
 @onready var _bg: PanelContainer = $Plate/IconClip/Bg
 @onready var _icon: TextureRect = $Plate/IconClip/Icon
-@onready var _badge_label: Label = $Plate/Badge/Label
+@onready var _value: Label = $Value
 @onready var _caption: Label = $Caption
 
 const _ICON_DIR := "res://assets/ui/reliquary/"
@@ -28,7 +28,7 @@ func setup(mod: Dictionary, tint: Color) -> void:
 	# `pct` is authored on the modifier now; the fallback is only for a modifier
 	# dict loaded from a save that predates the key.
 	var pct := bool(mod.get("pct", label_s.contains("% ")))
-	_badge_label.text = ("+%d%%" % roll) if pct else ("+%d" % roll)
+	_value.text = ("+%d%%" % roll) if pct else ("+%d" % roll)
 	_caption.text = String(mod.get("caption", _caption_from_label(label_s)))
 	tooltip_text = label_s
 
