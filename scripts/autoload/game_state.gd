@@ -890,6 +890,14 @@ func new_profile() -> void:
 	forge_stock.clear()          # the blacksmith regenerates on first visit (spec 7.4)
 	forge_stock_generated = false
 	active_party = [&"warrior"] as Array[StringName]
+	# [item power model] A fresh profile ships one weapon, already equipped.
+	# Since the combat loop redesign a hero's entire offense is its equipped
+	# weapon's Power - an unarmed start plays as "the game is broken" and would
+	# distort any pre-balance-pass playtest. A level-1 Magic sword: one
+	# guaranteed strike icon plus one rolled modifier. Level is pinned to 1
+	# rather than default_item_level() so a retry off a leveled profile still
+	# starts fresh; add_item() auto-equips it into the warrior's empty slot.
+	add_item(Itemizer.generate_typed_item(&"sword", Item.Rarity.MAGIC, 1))
 	# [day-night] a fresh profile starts a fresh first day, unfed, no night owed.
 	day_phase = DayPhase.DAY
 	day_number = 1

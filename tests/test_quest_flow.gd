@@ -15,11 +15,14 @@ func _ready() -> void:
 	var q: QuestDef = load("res://resources/quests/easy.tres")
 
 	# --- discard_expedition_loot: keep town gear + equipped, drop loose loot ---
-	GameState.new_profile()
-	var town_item := Itemizer.generate_item()          # carried from town (index 0)
+	GameState.new_profile()                             # ships a starting weapon at index 0
+	var town_item := Itemizer.generate_item()          # carried from town
 	GameState.inventory.append(town_item)
+	var inv_at_start := GameState.inventory.size()
 	GameState.start_expedition(q)
-	t.check(GameState._expedition_inventory_mark == 1, "mark snapshots inventory size at start")
+	t.check(GameState._expedition_inventory_mark == inv_at_start,
+		"mark snapshots inventory size at start (got %d, want %d)"
+			% [GameState._expedition_inventory_mark, inv_at_start])
 	t.check(GameState.completed_quest == null, "start_expedition clears completed_quest")
 
 	var found_loose := Itemizer.generate_item_with_rarity(Item.Rarity.COMMON)

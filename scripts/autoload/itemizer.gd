@@ -109,6 +109,12 @@ func generate_item_with_rarity(rarity_index: int, level: int = -1) -> Item:
 	rarity_index = clampi(rarity_index, 0, Item.Rarity.RARE)
 	return _roll_typed(GameState.active_party, rarity_index, level)
 
+## [item power model] One item of an EXACT type at an exact rarity, skipping the
+## slot-first roll - the caller has already decided what it wants. Used for the
+## starting weapon a fresh profile ships with (GameState.new_profile()).
+func generate_typed_item(wtype: StringName, rarity_index: int, level: int = -1) -> Item:
+	return _generate_typed(wtype, clampi(rarity_index, 0, Item.Rarity.RARE), level)
+
 ## The whole of the old generate_item_with_rarity() body from `item.weapon_type`
 ## onward, with the type handed in. Nothing else moves.
 ##

@@ -18,7 +18,13 @@ func _ready() -> void:
 	t.check(GameState.gold == Tuning.PROFILE_STARTING_GOLD,
 		"new_profile() sets gold to PROFILE_STARTING_GOLD (got %d)" % GameState.gold)
 	t.check(GameState.scrap == Tuning.PROFILE_STARTING_SCRAP, "new_profile() sets scrap to PROFILE_STARTING_SCRAP")
-	t.check(GameState.inventory.is_empty(), "new_profile() empties the inventory")
+	# [item power model] new_profile() now ships one weapon - a Magic sword,
+	# auto-equipped - so a fresh warrior is not swinging for nothing.
+	t.check(GameState.inventory.size() == 1, "new_profile() seeds exactly the starting weapon")
+	var start_wpn: Item = GameState.inventory[0] if not GameState.inventory.is_empty() else null
+	t.check(start_wpn != null and start_wpn.weapon_type == &"sword"
+			and start_wpn.rarity == Item.Rarity.MAGIC and start_wpn.equipped_by == &"warrior",
+		"the starting weapon is a Magic sword equipped by the warrior")
 	t.check(GameState.day_phase == GameState.DayPhase.DAY, "new_profile() starts in DAY")
 	t.check(GameState.hero_runtime.size() == GameState.active_party.size(),
 		"new_profile() builds one hero_runtime entry per active_party member")
@@ -37,6 +43,7 @@ func _ready() -> void:
 	GameState.scrap = 37
 	var kept := Itemizer.generate_item()
 	GameState.inventory.append(kept)
+	var inv_at_start := GameState.inventory.size()   # starting weapon + kept
 
 	GameState.start_expedition()
 
@@ -44,7 +51,7 @@ func _ready() -> void:
 		"start_expedition() does not touch gold (got %d, want 512)" % GameState.gold)
 	t.check(GameState.scrap == 37,
 		"start_expedition() does not touch scrap (got %d, want 37)" % GameState.scrap)
-	t.check(GameState.inventory.size() == 1 and GameState.inventory[0] == kept,
+	t.check(GameState.inventory.size() == inv_at_start and GameState.inventory.has(kept),
 		"start_expedition() does not touch the inventory")
 
 	# --- P3: start_expedition() DOES reset everything an expedition owns ----
@@ -56,9 +63,9 @@ func _ready() -> void:
 	t.check(GameState.expedition_gold == 0 and GameState.expedition_scrap == 0,
 		"start_expedition() zeroes the expedition banks")
 	t.check(GameState.drops_by_class.is_empty(), "start_expedition() clears drops_by_class")
-	t.check(GameState._expedition_inventory_mark == 1,
-		"start_expedition() marks the inventory size it started at (got %d, want 1)"
-			% GameState._expedition_inventory_mark)
+	t.check(GameState._expedition_inventory_mark == inv_at_start,
+		"start_expedition() marks the inventory size it started at (got %d, want %d)"
+			% [GameState._expedition_inventory_mark, inv_at_start])
 
 	# --- P4: the wounded-hero branch (_reset_hero_runtime(false)) -----------
 	# The inn is the heal (spec 2.1) - damage must survive a new expedition.
@@ -112,7 +119,8 @@ func _ready() -> void:
 	t.check(GameState.gold == Tuning.PROFILE_STARTING_GOLD,
 		"reset_run() still resets gold (got %d)" % GameState.gold)
 	t.check(GameState.scrap == Tuning.PROFILE_STARTING_SCRAP, "reset_run() still resets scrap")
-	t.check(GameState.inventory.is_empty(), "reset_run() still empties the inventory")
+	t.check(GameState.inventory.size() == 1 and GameState.inventory[0].weapon_type == &"sword",
+		"reset_run() rewinds the inventory to just the starting weapon")
 	t.check(GameState.endless_level_number == 1, "reset_run() still rewinds to depth 1")
 	t.check(GameState.current_encounter_index == -1,
 		"reset_run() still rewinds current_encounter_index")
