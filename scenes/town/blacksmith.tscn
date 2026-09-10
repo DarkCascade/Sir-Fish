@@ -1,10 +1,14 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene format=3 uid="uid://ch27ruqj8et4x"]
 
-[ext_resource type="Script" path="res://scripts/town/blacksmith.gd" id="1_smith"]
+[ext_resource type="Script" uid="uid://0whqw76p8jeq" path="res://scripts/town/blacksmith.gd" id="1_smith"]
 [ext_resource type="PackedScene" path="res://scenes/modals/compare_flyout.tscn" id="2_compare"]
-[ext_resource type="Texture2D" path="res://assets/blacksmith-bg.png" id="3_bg"]
+[ext_resource type="Texture2D" uid="uid://bco60q65dwhx4" path="res://assets/blacksmith-bg.png" id="3_bg"]
 
-[node name="Blacksmith" type="Control"]
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_3ej8u"]
+content_margin_top = 10.0
+bg_color = Color(0.6, 0.6, 0.6, 0)
+
+[node name="Blacksmith" type="Control" unique_id=197420300]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -13,7 +17,7 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_smith")
 
-[node name="Background" type="TextureRect" parent="."]
+[node name="Background" type="TextureRect" parent="." unique_id=1203322652]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -26,7 +30,7 @@ expand_mode = 1
 stretch_mode = 6
 metadata/_edit_lock_ = true
 
-[node name="Vignette" type="ColorRect" parent="Background"]
+[node name="Vignette" type="ColorRect" parent="Background" unique_id=1478238621]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -36,7 +40,7 @@ grow_vertical = 2
 mouse_filter = 2
 color = Color(0.043137, 0.031373, 0.023529, 0.46)
 
-[node name="Layout" type="VBoxContainer" parent="."]
+[node name="Layout" type="VBoxContainer" parent="." unique_id=90729725]
 layout_mode = 1
 anchors_preset = 8
 anchor_left = 0.5
@@ -44,82 +48,78 @@ anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
 offset_left = -510.0
-offset_top = -880.0
+offset_top = -860.0
 offset_right = 510.0
-offset_bottom = 880.0
+offset_bottom = 900.0
 grow_horizontal = 2
 grow_vertical = 2
 theme_override_constants/separation = 22
 
-[node name="Title" type="Label" parent="Layout"]
+[node name="Title" type="Label" parent="Layout" unique_id=2005558995]
 layout_mode = 2
 theme_override_font_sizes/font_size = 96
 text = "The Blacksmith"
 horizontal_alignment = 1
 
-[node name="Flavour" type="Label" parent="Layout"]
+[node name="Flavour" type="Label" parent="Layout" unique_id=26549444]
 custom_minimum_size = Vector2(0, 70)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.611765, 0.686275, 0.643137, 1)
 theme_override_font_sizes/font_size = 54
-text = "The forge roars. Bring scrap and gold, leave with something better."
+text = "The forge roars."
 horizontal_alignment = 1
-vertical_alignment = 1
-autowrap_mode = 3
 
-[node name="Tabs" type="TabContainer" parent="Layout"]
+[node name="Spacer" type="Label" parent="Layout" unique_id=1201401132]
+layout_mode = 2
+
+[node name="Tabs" type="TabContainer" parent="Layout" unique_id=774061619]
 layout_mode = 2
 size_flags_vertical = 3
+theme_override_constants/side_margin = 4
+theme_override_constants/tab_separation = 4
 theme_override_font_sizes/font_size = 64
+theme_override_styles/panel = SubResource("StyleBoxFlat_3ej8u")
 current_tab = 0
 
-[node name="Forge" type="ScrollContainer" parent="Layout/Tabs"]
+[node name="Forge" type="ScrollContainer" parent="Layout/Tabs" unique_id=240578869]
 layout_mode = 2
 horizontal_scroll_mode = 0
 scroll_deadzone = 24
 metadata/_tab_index = 0
 
-[node name="ForgeList" type="VBoxContainer" parent="Layout/Tabs/Forge"]
+[node name="ForgeList" type="VBoxContainer" parent="Layout/Tabs/Forge" unique_id=594256944]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 16
 
-[node name="Buy" type="VBoxContainer" parent="Layout/Tabs"]
+[node name="Buy" type="VBoxContainer" parent="Layout/Tabs" unique_id=343060746]
 visible = false
 layout_mode = 2
 theme_override_constants/separation = 12
 metadata/_tab_index = 1
 
-[node name="BuyHeader" type="HBoxContainer" parent="Layout/Tabs/Buy"]
+[node name="BuyHeader" type="HBoxContainer" parent="Layout/Tabs/Buy" unique_id=647546535]
 layout_mode = 2
 theme_override_constants/separation = 12
 
-[node name="HeaderLabel" type="Label" parent="Layout/Tabs/Buy/BuyHeader"]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_colors/font_color = Color(0.611765, 0.686275, 0.643137, 1)
-theme_override_font_sizes/font_size = 54
-text = "Wares"
-vertical_alignment = 1
-
-[node name="RefreshButton" type="Button" parent="Layout/Tabs/Buy/BuyHeader"]
+[node name="RefreshButton" type="Button" parent="Layout/Tabs/Buy/BuyHeader" unique_id=577590917]
 custom_minimum_size = Vector2(0, 72)
 layout_mode = 2
 theme_override_font_sizes/font_size = 54
-text = "⟳  Refresh — 100 G"
+text = "⟳ 100 G"
 
-[node name="BuyScroll" type="ScrollContainer" parent="Layout/Tabs/Buy"]
+[node name="BuyScroll" type="ScrollContainer" parent="Layout/Tabs/Buy" unique_id=1541951099]
 layout_mode = 2
 size_flags_vertical = 3
 horizontal_scroll_mode = 0
 scroll_deadzone = 24
 
-[node name="BuyList" type="VBoxContainer" parent="Layout/Tabs/Buy/BuyScroll"]
+[node name="BuyList" type="VBoxContainer" parent="Layout/Tabs/Buy/BuyScroll" unique_id=359274050]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 16
 
-[node name="BuyEmpty" type="Label" parent="Layout/Tabs/Buy"]
+[node name="BuyEmpty" type="Label" parent="Layout/Tabs/Buy" unique_id=992130001]
 visible = false
 custom_minimum_size = Vector2(0, 100)
 layout_mode = 2
@@ -129,38 +129,38 @@ text = "Nothing in stock. Refresh for new wares."
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="Scrap" type="VBoxContainer" parent="Layout/Tabs"]
+[node name="Scrap" type="VBoxContainer" parent="Layout/Tabs" unique_id=661280978]
 visible = false
 layout_mode = 2
 theme_override_constants/separation = 12
 metadata/_tab_index = 2
 
-[node name="ScrapHeader" type="HBoxContainer" parent="Layout/Tabs/Scrap"]
+[node name="ScrapHeader" type="HBoxContainer" parent="Layout/Tabs/Scrap" unique_id=600553195]
 layout_mode = 2
 theme_override_constants/separation = 12
 
-[node name="Spacer" type="Control" parent="Layout/Tabs/Scrap/ScrapHeader"]
+[node name="Spacer" type="Control" parent="Layout/Tabs/Scrap/ScrapHeader" unique_id=1792755281]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="ScrapAllCommonButton" type="Button" parent="Layout/Tabs/Scrap/ScrapHeader"]
+[node name="ScrapAllCommonButton" type="Button" parent="Layout/Tabs/Scrap/ScrapHeader" unique_id=1393736379]
 custom_minimum_size = Vector2(0, 72)
 layout_mode = 2
 theme_override_font_sizes/font_size = 54
 text = "Scrap All Common"
 
-[node name="ScrapScroll" type="ScrollContainer" parent="Layout/Tabs/Scrap"]
+[node name="ScrapScroll" type="ScrollContainer" parent="Layout/Tabs/Scrap" unique_id=1436276890]
 layout_mode = 2
 size_flags_vertical = 3
 horizontal_scroll_mode = 0
 scroll_deadzone = 24
 
-[node name="ScrapList" type="VBoxContainer" parent="Layout/Tabs/Scrap/ScrapScroll"]
+[node name="ScrapList" type="VBoxContainer" parent="Layout/Tabs/Scrap/ScrapScroll" unique_id=1186292068]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 16
 
-[node name="ScrapEmpty" type="Label" parent="Layout/Tabs/Scrap"]
+[node name="ScrapEmpty" type="Label" parent="Layout/Tabs/Scrap" unique_id=1982187813]
 visible = false
 custom_minimum_size = Vector2(0, 100)
 layout_mode = 2
@@ -170,38 +170,38 @@ text = "Nothing to scrap."
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="Sell" type="VBoxContainer" parent="Layout/Tabs"]
+[node name="Sell" type="VBoxContainer" parent="Layout/Tabs" unique_id=1604548381]
 visible = false
 layout_mode = 2
 theme_override_constants/separation = 12
 metadata/_tab_index = 3
 
-[node name="SellHeader" type="HBoxContainer" parent="Layout/Tabs/Sell"]
+[node name="SellHeader" type="HBoxContainer" parent="Layout/Tabs/Sell" unique_id=2092600866]
 layout_mode = 2
 theme_override_constants/separation = 12
 
-[node name="Spacer" type="Control" parent="Layout/Tabs/Sell/SellHeader"]
+[node name="Spacer" type="Control" parent="Layout/Tabs/Sell/SellHeader" unique_id=1266802433]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="SellAllCommonButton" type="Button" parent="Layout/Tabs/Sell/SellHeader"]
+[node name="SellAllCommonButton" type="Button" parent="Layout/Tabs/Sell/SellHeader" unique_id=107859254]
 custom_minimum_size = Vector2(0, 72)
 layout_mode = 2
 theme_override_font_sizes/font_size = 54
 text = "Sell All Common"
 
-[node name="SellScroll" type="ScrollContainer" parent="Layout/Tabs/Sell"]
+[node name="SellScroll" type="ScrollContainer" parent="Layout/Tabs/Sell" unique_id=184091943]
 layout_mode = 2
 size_flags_vertical = 3
 horizontal_scroll_mode = 0
 scroll_deadzone = 24
 
-[node name="SellList" type="VBoxContainer" parent="Layout/Tabs/Sell/SellScroll"]
+[node name="SellList" type="VBoxContainer" parent="Layout/Tabs/Sell/SellScroll" unique_id=1197626260]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 16
 
-[node name="SellEmpty" type="Label" parent="Layout/Tabs/Sell"]
+[node name="SellEmpty" type="Label" parent="Layout/Tabs/Sell" unique_id=1430397996]
 visible = false
 custom_minimum_size = Vector2(0, 100)
 layout_mode = 2
@@ -211,11 +211,11 @@ text = "Nothing to sell."
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="BackButton" type="Button" parent="Layout"]
+[node name="BackButton" type="Button" parent="Layout" unique_id=1904365149]
 custom_minimum_size = Vector2(0, 96)
 layout_mode = 2
 theme_override_font_sizes/font_size = 64
 text = "Back"
 
-[node name="CompareFlyout" parent="." instance=ExtResource("2_compare")]
+[node name="CompareFlyout" parent="." unique_id=198858635 instance=ExtResource("2_compare")]
 layout_mode = 1

@@ -106,11 +106,11 @@ func _build_forge() -> void:
 ## slot" is information the forge screen should volunteer (spec 7.3).
 func _empty_slot_row(s: Item.Slot) -> Control:
 	var panel := PanelContainer.new()
-	panel.custom_minimum_size = Vector2(880, 0)
+	panel.custom_minimum_size = Vector2(0, 0)
 	var l := Label.new()
 	l.text = "Your %s slot is empty — nothing to forge." % SLOT_NAMES[s]
 	l.custom_minimum_size = Vector2(0, 120)
-	l.add_theme_font_size_override("font_size", 54)
+	l.add_theme_font_size_override("font_size", 52)
 	l.add_theme_color_override("font_color", Tuning.C_TEXT_DIM)
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER

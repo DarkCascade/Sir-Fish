@@ -34,10 +34,12 @@ const STAT_TILES: Array[Dictionary] = [
 ## Every button authored under Actions. The node name is the id capitalized.
 const ACTION_IDS: Array[StringName] = [&"compare", &"equip", &"unequip", &"buy", &"sell", &"forge"]
 
-## Shrink-to-fit bounds for the name. The longest name Itemizer can generate is
-## "Grumbling Longsword" (longest ADJECTIVE + longest noun, 19 chars); a name
-## that still overruns at the floor wraps onto the label's second line rather
-## than clipping, which is why the label keeps autowrap on.
+## Shrink-to-fit bounds for the name. The display font is wide: the longest name
+## Itemizer can generate - "Grumbling Longsword" (longest ADJECTIVE + longest
+## noun, 19 chars) - only fits the ~500px Info column on one line at about 30, so
+## the floor is deliberately down at 28 and the longest names really do reach it.
+## A name that STILL overruns at 28 gets an ellipsis (the label is single-line
+## with clip_text on) rather than a second line.
 const NAME_SIZE_MAX := 54
 const NAME_SIZE_MIN := 28
 
@@ -72,7 +74,7 @@ func setup(i: Item) -> void:
 	_subtitle_label.text = "Lv %d" % i.level
 	_fill_mods(i)
 	_fill_stats(i)
-	_fit_name.call_deferred()
+	_fit_name()
 
 ## Which action buttons show, in the order given. Anything not listed is hidden.
 func set_actions(ids: Array[StringName]) -> void:
@@ -126,17 +128,38 @@ func _fill_stats(i: Item) -> void:
 		# readout, and holes opening in the row would cost more than the noise.
 		value.modulate.a = 1.0 if total > 0 else 0.4
 
-## Steps the name down from NAME_SIZE_MAX until it fits the Info column on one
-## line. Measured against the font directly rather than the rendered label,
-## because the label has not laid out yet on the frame setup() runs.
+## Picks the largest font size (NAME_SIZE_MAX down to NAME_SIZE_MIN) at which the
+## name fits the Info column on one line, measured against the font directly
+## rather than the rendered label. The label is single-line with clip_text on, so
+## a name that still overruns at the floor gets an ellipsis - it can never wrap.
+##
+## `setup()` calls this before the card has laid out, when `_info.size.x` is
+## still 0, so it waits a frame for a real width and then re-checks until the
+## width holds steady (different hosts - the shop's VBox, the inventory grid, the
+## forge - settle the column in a different number of passes). `_fitting`
+## collapses the `setup()` call and the `resized` emits it races into one fit.
+var _fitting := false
+
 func _fit_name() -> void:
+	if _fitting or _name_label.text.is_empty():
+		return
+	_fitting = true
 	var avail := _info.size.x
-	if avail <= 0.0 or _name_label.text.is_empty():
+	for _i: int in range(8):
+		await get_tree().process_frame
+		if not is_inside_tree():
+			_fitting = false
+			return
+		if is_equal_approx(avail, _info.size.x):
+			break
+		avail = _info.size.x
+	_fitting = false
+	if avail <= 1.0:
 		return
 	var font := _name_label.get_theme_font("font")
 	var s := NAME_SIZE_MAX
 	while s > NAME_SIZE_MIN and font.get_string_size(
-			_name_label.text, HORIZONTAL_ALIGNMENT_LEFT, -1, s).x > avail:
+			_name_label.text, HORIZONTAL_ALIGNMENT_LEFT, -1, s).x > avail - 2.0:
 		s -= 2
 	_name_label.add_theme_font_size_override("font_size", s)
 
@@ -203,4 +226,3 @@ func play_departure() -> void:
 	tw.tween_property(self, "modulate:a", 0.0, 0.25)
 	tw.tween_property(card, "custom_minimum_size:y", 0.0, 0.25)
 	tw.chain().tween_callback(queue_free)
-

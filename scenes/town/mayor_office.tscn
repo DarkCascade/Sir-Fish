@@ -1,9 +1,9 @@
-[gd_scene load_steps=3 format=3 uid="uid://wc6ntd4tlgi8"]
+[gd_scene format=3 uid="uid://wc6ntd4tlgi8"]
 
-[ext_resource type="Script" path="res://scripts/town/mayor_office.gd" id="1_mayor"]
-[ext_resource type="Texture2D" path="res://assets/mayor-bg.png" id="2_bg"]
+[ext_resource type="Script" uid="uid://bvwq0lmlwxyma" path="res://scripts/town/mayor_office.gd" id="1_mayor"]
+[ext_resource type="Texture2D" uid="uid://cs64d6ercgdf0" path="res://assets/mayor-bg.png" id="2_bg"]
 
-[node name="MayorOffice" type="Control"]
+[node name="MayorOffice" type="Control" unique_id=883462637]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -12,7 +12,7 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_mayor")
 
-[node name="Background" type="TextureRect" parent="."]
+[node name="Background" type="TextureRect" parent="." unique_id=2076815112]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -25,7 +25,7 @@ expand_mode = 1
 stretch_mode = 6
 metadata/_edit_lock_ = true
 
-[node name="Vignette" type="ColorRect" parent="Background"]
+[node name="Vignette" type="ColorRect" parent="Background" unique_id=1449865675]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -35,7 +35,7 @@ grow_vertical = 2
 mouse_filter = 2
 color = Color(0.023529, 0.043137, 0.043137, 0.46)
 
-[node name="Layout" type="VBoxContainer" parent="."]
+[node name="Layout" type="VBoxContainer" parent="." unique_id=1639732759]
 layout_mode = 1
 anchors_preset = 8
 anchor_left = 0.5
@@ -50,23 +50,22 @@ grow_horizontal = 2
 grow_vertical = 2
 theme_override_constants/separation = 28
 
-[node name="Title" type="Label" parent="Layout"]
+[node name="Title" type="Label" parent="Layout" unique_id=1429187089]
 layout_mode = 2
 theme_override_font_sizes/font_size = 96
 text = "Mayor's Office"
 horizontal_alignment = 1
 
-[node name="Flavour" type="Label" parent="Layout"]
+[node name="Flavour" type="Label" parent="Layout" unique_id=2029919163]
 custom_minimum_size = Vector2(0, 90)
 layout_mode = 2
 theme_override_colors/font_color = Color(0.611765, 0.686275, 0.643137, 1)
 theme_override_font_sizes/font_size = 54
-text = "\"There's always work for a knight. Pick your road.\""
+text = "There's always work for a knight."
 horizontal_alignment = 1
 vertical_alignment = 1
-autowrap_mode = 3
 
-[node name="FedLine" type="Label" parent="Layout"]
+[node name="FedLine" type="Label" parent="Layout" unique_id=604777709]
 visible = false
 layout_mode = 2
 theme_override_colors/font_color = Color(0.851, 0.475, 0.227, 1)
@@ -74,12 +73,12 @@ theme_override_font_sizes/font_size = 54
 text = "The party is well fed. +10% damage."
 horizontal_alignment = 1
 
-[node name="QuestList" type="VBoxContainer" parent="Layout"]
+[node name="QuestList" type="VBoxContainer" parent="Layout" unique_id=2021442037]
 layout_mode = 2
 size_flags_vertical = 3
 theme_override_constants/separation = 20
 
-[node name="BackButton" type="Button" parent="Layout"]
+[node name="BackButton" type="Button" parent="Layout" unique_id=2015878856]
 custom_minimum_size = Vector2(0, 96)
 layout_mode = 2
 theme_override_font_sizes/font_size = 64
