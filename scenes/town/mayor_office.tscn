@@ -59,7 +59,7 @@ horizontal_alignment = 1
 [node name="Flavour" type="Label" parent="Layout" unique_id=2029919163]
 custom_minimum_size = Vector2(0, 90)
 layout_mode = 2
-theme_override_colors/font_color = Color(0.611765, 0.686275, 0.643137, 1)
+theme_override_colors/font_color = Color(0.8085031, 0.8551713, 0.82771426, 1)
 theme_override_font_sizes/font_size = 54
 text = "There's always work for a knight."
 horizontal_alignment = 1
