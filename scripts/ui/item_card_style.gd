@@ -1,9 +1,9 @@
 extends RefCounted
-## [town] The rarity-tinted card frame shared by the shop's Buy card, the shop's
-## Sell row and (spec 6.2) the inventory row. Lifted verbatim from the identical
-## block setup() carried in BOTH shop_buy_card.gd and shop_sell_row.gd, so the
-## third caller does not write a third copy - the same "don't copy it a third
-## time" that produced currency_feedback.gd at step 5 (spec 5.3).
+## [item-card] The rarity tinting for the universal ItemCard - its one caller
+## now that the shop's Buy card, the shop's Sell row, the inventory row and the
+## forge row have all collapsed into that single scene. Kept as a separate file
+## rather than folded into item_card.gd because it is the RARITY half of the
+## card's look, and the compare flyout is the obvious next thing to want it.
 ##
 ## Static, no state: it only ever reads the item and pushes onto two nodes the
 ## caller already holds. Lives in scripts/ui/ alongside currency_feedback.gd

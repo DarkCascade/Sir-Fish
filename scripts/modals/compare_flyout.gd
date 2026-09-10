@@ -19,6 +19,11 @@ extends Control
 
 @onready var scrim: ColorRect = $Scrim
 @onready var panel: PanelContainer = $Panel
+## The crystal-corner overlay. A SIBLING of Panel, not a child: the panel's
+## stylebox carries 72px content margins, so parenting the frame to it would
+## inset every corner by that much instead of pinning it to the panel's edge.
+## Sibling means it has to be told the panel's rect - see _sync_frame().
+@onready var frame: Control = $Frame
 @onready var for_label: Label = $Panel/Layout/Header/ForLabel
 @onready var close_button: Button = $Panel/Layout/Header/CloseButton
 
@@ -38,17 +43,40 @@ extends Control
 ## [reliquary] Each modifier is now a chip tile rather than a text line.
 const StatChipScene := preload("res://scenes/modals/stat_chip.tscn")
 
-const MOD_FONT_SIZE := 26
-## An em dash standing in for a modifier the item on that side simply does not
-## have. Wider than a hyphen on purpose - it has to read as "nothing here", not
-## as a minus sign in front of a number that failed to render.
-const ABSENT := "—"
+const MOD_FONT_SIZE := 30
+## U+2212, not a hyphen: it matches the digit width of "+" so a column of gains
+## and losses stays aligned.
+const MINUS := "−"
 
 func _ready() -> void:
 	for_label.add_theme_color_override("font_color", Tuning.C_TEXT_DIM)
 	scrim.gui_input.connect(_on_scrim_input)
 	close_button.pressed.connect(close)
+	# item_rect_changed, not resized: the panel is re-CENTRED as it grows, and
+	# resized fires only for the size half of that, which left the corners
+	# correctly sized but parked at the old position.
+	panel.item_rect_changed.connect(_sync_frame)
 	hide()
+
+## Pins the corner frame to the panel's ACTUAL rect. Both were authored at the
+## same 940x900, but Panel is a PanelContainer and grows to whatever its content
+## needs, while Frame is a plain Control that stays where it was authored - so
+## the corners drifted off the panel edges as soon as the columns got tall.
+##
+## Re-centres the scale pivot on the same pass, which had the identical bug: a
+## pivot baked at (470, 450) spins the open animation about a point that is no
+## longer the panel's middle.
+## `position`, NOT `global_position`: a Control's global position is taken from
+## its transform, which folds in its own scale about its pivot - so while the
+## open tween holds the panel at 0.9 it reports a point ~5% of the panel size
+## off. Scale changes do not re-fire item_rect_changed, so that stale value
+## would then stick for the life of the dialog. Both nodes are siblings, so the
+## layout-space position compares directly and is scale-independent.
+func _sync_frame() -> void:
+	frame.size = panel.size
+	frame.position = panel.position
+	panel.pivot_offset = panel.size * 0.5
+	frame.pivot_offset = panel.pivot_offset
 
 ## Shows `item` compared against whatever its (single, in practice) usable_by()
 ## class currently has equipped.
@@ -87,12 +115,18 @@ func show_for(item: Item) -> void:
 	_fill_changes(equipped, item)
 
 	show()
+	# The columns have just changed height, so the panel is about to be re-laid
+	# out; sync after that pass rather than against the previous item's rect.
+	_sync_frame.call_deferred()
 	_animate_in()
 
 func close() -> void:
+	# The frame is a sibling, so it has to be flown with the panel by hand or the
+	# corners hang in place while the panel shrinks away underneath them.
 	var tw := create_tween().set_parallel(true)
-	tw.tween_property(panel, "scale", Vector2(0.92, 0.92), 0.15)
-	tw.tween_property(panel, "modulate:a", 0.0, 0.15)
+	for n: Control in [panel, frame]:
+		tw.tween_property(n, "scale", Vector2(0.92, 0.92), 0.15)
+		tw.tween_property(n, "modulate:a", 0.0, 0.15)
 	tw.tween_property(scrim, "modulate:a", 0.0, 0.15)
 	tw.chain().tween_callback(hide)
 
@@ -148,39 +182,41 @@ func _fill_mods(container: HFlowContainer, item: Item) -> void:
 
 # --- the change list --------------------------------------------------------
 
-## One line per modifier either item carries, as "old -> new", coloured by which
-## way the number moved. Walked in Itemizer.MODIFIERS order rather than in
-## either item's own order, so the same two items always produce the same list
-## and a modifier does not jump rows depending on which side happens to have it.
+## One line per modifier whose value actually MOVES, as a single net figure -
+## "−5 Damage", not "+9 Damage → +4 Damage". The player pressed Compare to
+## ask "is this better", and a before/after pair leaves them to do the
+## subtraction; this does it for them.
+##
+## Walked in Itemizer.MODIFIERS order rather than either item's own order, so
+## the same two items always produce the same list and a modifier cannot jump
+## rows depending on which side happens to carry it. `caption` and `pct` are
+## read off the DEFINITION rather than the rolled dict, because a modifier
+## loaded from an older save may predate either key.
 func _fill_changes(equipped: Item, candidate: Item) -> void:
 	for child: Node in change_list.get_children():
 		child.queue_free()
 
 	var before := _mods_by_id(equipped)
 	var after := _mods_by_id(candidate)
-	var any := false
+	var moved := false
 	for def: Dictionary in Itemizer.MODIFIERS:
 		var id: StringName = def["id"]
-		if not before.has(id) and not after.has(id):
-			continue
-		any = true
-		var before_roll: int = int(before[id]["roll"]) if before.has(id) else 0
-		var after_roll: int = int(after[id]["roll"]) if after.has(id) else 0
-		var text := "%s   %s   %s" % [
-			String(before[id]["label"]) if before.has(id) else ABSENT,
-			"→",
-			String(after[id]["label"]) if after.has(id) else ABSENT,
+		var delta: int = (int(after[id]["roll"]) if after.has(id) else 0) 			- (int(before[id]["roll"]) if before.has(id) else 0)
+		if delta == 0:
+			continue          # unchanged modifiers are not news
+		moved = true
+		var text := "%s%d%s %s" % [
+			"+" if delta > 0 else MINUS,
+			absi(delta),
+			"%" if bool(def["pct"]) else "",
+			def["caption"],
 		]
-		var color := Tuning.C_TEXT_DIM
-		if after_roll > before_roll:
-			color = Tuning.C_HEAL
-		elif after_roll < before_roll:
-			color = Tuning.C_DANGER
-		change_list.add_child(_line(text, color))
+		change_list.add_child(_line(text, Tuning.C_HEAL if delta > 0 else Tuning.C_DANGER))
 
-	if not any:
-		# Two plain Commons. Saying so beats an empty panel that looks broken.
-		change_list.add_child(_line("Neither item has modifiers.", Tuning.C_TEXT_DIM))
+	if not moved:
+		# Either two plain Commons, or two items that happen to roll identically.
+		# Saying so beats an empty panel that looks broken.
+		change_list.add_child(_line("No change to any stat.", Tuning.C_TEXT_DIM))
 
 ## Modifier dictionaries keyed by id, for a null-safe item. Rolls are compared
 ## rather than the formatted labels because the label is a display string with

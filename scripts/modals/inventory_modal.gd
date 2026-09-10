@@ -20,7 +20,7 @@ extends Control
 ## modal in a different scene. The slot-aware lookup (spec 6.3) is in
 ## compare_flyout.gd itself, so both instances get it for free.
 
-const INVENTORY_ROW := preload("res://scenes/modals/inventory_row.tscn")
+const ITEM_CARD := preload("res://scenes/modals/item_card.tscn")
 
 const SLOT_NAMES := {
 	Item.Slot.WEAPON: "Weapon",
@@ -105,12 +105,49 @@ func _rebuild() -> void:
 	for i: Item in carried:
 		_add_row(carried_list, i)
 
+## [item-card] One inventory entry is now the universal ItemCard with Compare
+## and Equip/Unequip beneath it, rather than the old inventory_row scene. The
+## equip decision that used to live in that row moved HERE because the modal
+## already owns the rebuild it triggers: equipping can displace a different
+## entry in the same slot, so the whole list is rebuilt either way.
 func _add_row(into: VBoxContainer, i: Item) -> void:
-	var row := INVENTORY_ROW.instantiate()
-	into.add_child(row)
-	row.setup(i)
-	row.compare_requested.connect(func(it: Item) -> void: compare_flyout.show_for(it))
-	row.equip_changed.connect(_rebuild)
+	var card := ITEM_CARD.instantiate()
+	into.add_child(card)
+	card.setup(i)
+	var hero := _eligible_class(i)
+	var acts: Array[StringName] = [&"compare"]
+	# No field hero can wield it - offer no equip control at all rather than one
+	# that silently fails (the rule the old row already followed).
+	if hero != &"":
+		acts.append(&"unequip" if i.equipped_by == hero else &"equip")
+	card.set_actions(acts)
+	# bind() appends its args after the signal's own, so the handler receives
+	# (id, item, hero) - a named method rather than a lambda because GDScript
+	# will not parse a match block inside one.
+	card.action_pressed.connect(_on_card_action.bind(i, hero))
+
+func _on_card_action(id: StringName, i: Item, hero: StringName) -> void:
+	match id:
+		&"compare":
+			compare_flyout.show_for(i)
+		&"equip":
+			GameState.equip_item(i, hero)
+			_rebuild()
+		&"unequip":
+			GameState.unequip_item(i)
+			_rebuild()
+
+## The first member of active_party that can wield `i`. An "Anyone" item (empty
+## usable_by()) goes to the field leader; an item restricted to classes none of
+## whom are on the field returns &"", which drops the Equip action.
+func _eligible_class(i: Item) -> StringName:
+	var usable := i.usable_by()
+	if usable.is_empty():
+		return GameState.active_party[0] if not GameState.active_party.is_empty() else &""
+	for c: StringName in usable:
+		if c in GameState.active_party:
+			return c
+	return &""
 
 func _empty_slot_row(s: Item.Slot) -> Label:
 	var l := Label.new()

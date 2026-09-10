@@ -14,8 +14,8 @@ extends Control
 
 signal closed()
 
-const BUY_CARD := preload("res://scenes/modals/shop_buy_card.tscn")
-const SELL_ROW := preload("res://scenes/modals/shop_sell_row.tscn")
+const ITEM_CARD := preload("res://scenes/modals/item_card.tscn")
+const CardActions := preload("res://scripts/ui/item_card_actions.gd")
 const NUMBER_SCENE := preload("res://scenes/overlay/damage_number.tscn")
 
 var _encounter: EncounterDef = null
@@ -108,13 +108,16 @@ func _build_buy() -> void:
 	_cards.clear()
 	var index := 0
 	for item: Item in _encounter.cached_shop_items:
-		var card = BUY_CARD.instantiate()
+		var card := ITEM_CARD.instantiate()
 		buy_list.add_child(card)
 		card.setup(item)
-		card.purchased.connect(_on_purchased)
-		card.compare_requested.connect(_on_compare_requested)
-		# [meshy-shop-pass] Staggered pop-in, and a one-time swipe teach on the
-		# first card - see shop_buy_card.gd's play_entrance().
+		var acts: Array[StringName] = [&"compare", &"buy"]
+		card.set_actions(acts)
+		card.set_action_text(&"buy", CardActions.buy_label(item))
+		card.action_pressed.connect(_on_buy_action.bind(card, item))
+		# Staggered pop-in. The one-time swipe teach went with the swipe layer:
+		# the card puts Compare on a button now, so there is no hidden gesture
+		# left to teach.
 		card.play_entrance(index)
 		_cards.append(card)
 		index += 1
@@ -127,12 +130,17 @@ func _on_compare_requested(item: Item) -> void:
 func _refresh_cards() -> void:
 	for card: Variant in _cards:
 		if is_instance_valid(card):
-			card.refresh_affordability()
+			CardActions.refresh_buy_state(card, card.item)
 
-func _on_purchased(item: Item, _card: Control) -> void:
-	GameState.run_stats["items_found"] = int(GameState.run_stats["items_found"]) + 1
-	_build_sell()
-	_float_gold(-item.buy_price())
+func _on_buy_action(id: StringName, card: Control, item: Item) -> void:
+	if id == &"compare":
+		_on_compare_requested(item)
+	elif id == &"buy" and CardActions.do_buy(card, item):
+		# The bought item lands in the inventory, so the Sell tab is stale, and
+		# the spend moves every other card across the affordability line.
+		_build_sell()
+		_float_gold(-item.buy_price())
+		_refresh_cards()
 
 # --- sell -------------------------------------------------------------------
 
@@ -147,26 +155,34 @@ func _build_sell() -> void:
 	sell_empty.visible = items.is_empty()
 	var index := 0
 	for item: Item in items:
-		var row = SELL_ROW.instantiate()
-		sell_list.add_child(row)
-		row.setup(item)
-		row.sold.connect(_on_sold)
-		row.compare_requested.connect(_on_compare_requested)
-		row.equip_changed.connect(_on_equip_changed)
-		# [meshy-experiment] Staggered pop-in, and a one-time swipe teach on
-		# the first row - see shop_sell_row.gd's play_entrance().
-		row.play_entrance(index)
+		var card := ITEM_CARD.instantiate()
+		sell_list.add_child(card)
+		card.setup(item)
+		var acts: Array[StringName] = [&"compare"]
+		var eq := CardActions.equip_action(item)
+		if eq != &"":
+			acts.append(eq)
+		acts.append(&"sell")
+		card.set_actions(acts)
+		CardActions.refresh_sell_state(card, item, CardActions.Mode.SELL)
+		card.action_pressed.connect(_on_sell_action.bind(card, item))
+		card.play_entrance(index)
 		index += 1
 
-func _on_sold(item: Item, _row: Control) -> void:
-	_float_gold(item.sell_price())
-	# Selling changes the party bonuses AND every card's affordability.
-	_refresh_cards()
-
-## An equip/unequip may have unequipped a DIFFERENT row's item for the same
-## hero, so the whole tab is rebuilt rather than patching one row.
-func _on_equip_changed() -> void:
-	_build_sell()
+## An equip/unequip may have unequipped a DIFFERENT card's item for the same
+## hero, so the whole tab is rebuilt rather than patching one card.
+func _on_sell_action(id: StringName, card: Control, item: Item) -> void:
+	match id:
+		&"compare":
+			_on_compare_requested(item)
+		&"equip", &"unequip":
+			CardActions.do_equip(item, id == &"equip")
+			_build_sell()
+		&"sell":
+			if CardActions.do_sell(card, item, CardActions.Mode.SELL):
+				_float_gold(item.sell_price())
+				# Selling changes the party bonuses AND every card affordability.
+				_refresh_cards()
 
 # --- gold -------------------------------------------------------------------
 

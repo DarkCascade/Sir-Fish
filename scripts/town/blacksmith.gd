@@ -9,7 +9,7 @@ extends Control
 ##   - Buy: FORGE_SHOP_SLOTS cards from Itemizer.generate_forge_stock(), cached on
 ##     GameState.forge_stock and rerolled ONLY by the refresh button, which costs
 ##     SHOP_REFRESH_COST gold (spec 7.4). Walking out and back in never rerolls.
-##   - Scrap: [refinement-pass-3] one shop_sell_row per inventory item in
+##   - Scrap: [item-card] one ItemCard per inventory item in
 ##     Mode.SCRAP - the primary bar melts the item down for Item.scrap_value()
 ##     scrap (a quarter of its gold sell price).
 ##   - Sell: [refinement-pass-3] the same rows in Mode.SELL, identical to the
@@ -21,12 +21,10 @@ extends Control
 ## darkening Vignette scrim are authored in blacksmith.tscn - the Meshy art
 ## pass, spec 12.1 (step 11).
 
-const BUY_CARD := preload("res://scenes/modals/shop_buy_card.tscn")
-const FORGE_ROW := preload("res://scenes/modals/forge_row.tscn")
-const SELL_ROW := preload("res://scenes/modals/shop_sell_row.tscn")
-## The row's own script, for its Mode enum - shop_sell_row.gd carries no
-## class_name, so the .tscn preload above cannot reach the constant.
-const SELL_ROW_SCRIPT := preload("res://scripts/modals/shop_sell_row.gd")
+const ITEM_CARD := preload("res://scenes/modals/item_card.tscn")
+## The shared transactions behind the card buttons, and the Mode enum the
+## Scrap and Sell tabs differ by.
+const CardActions := preload("res://scripts/ui/item_card_actions.gd")
 
 const SLOT_NAMES := {
 	Item.Slot.WEAPON: "weapon",
@@ -49,7 +47,7 @@ const SLOT_NAMES := {
 @onready var _compare_flyout = $CompareFlyout   # CompareFlyout (untyped: custom API)
 
 var _cards: Array = []
-var _forge_rows: Dictionary = {}   # Item.Slot -> ForgeRow (filled slots only)
+var _forge_rows: Dictionary = {}   # Item.Slot -> ItemCard (filled slots only)
 
 func _ready() -> void:
 	# spec 3.1: re-assert our own place for direct launches (F5, play_scene).
@@ -95,11 +93,14 @@ func _build_forge() -> void:
 		if worn == null:
 			_forge_list.add_child(_empty_slot_row(s))
 			continue
-		var row := FORGE_ROW.instantiate()
-		_forge_list.add_child(row)
-		row.setup(worn)
-		row.forge_pressed.connect(_on_forge_pressed)
-		_forge_rows[s] = row
+		var card := ITEM_CARD.instantiate()
+		_forge_list.add_child(card)
+		card.setup(worn)
+		var acts: Array[StringName] = [&"forge"]
+		card.set_actions(acts)
+		card.action_pressed.connect(_on_forge_pressed.bind(worn))
+		_refresh_forge_card(card)
+		_forge_rows[s] = card
 
 ## A named placeholder, not a missing row - "you have nothing in your trinket
 ## slot" is information the forge screen should volunteer (spec 7.3).
@@ -116,14 +117,20 @@ func _empty_slot_row(s: Item.Slot) -> Control:
 	panel.add_child(l)
 	return panel
 
-func _on_forge_pressed(item: Item) -> void:
+## [item-card] Takes the action id the universal card emits, then the item it
+## was bound to. The id is ignored - the Forge card offers exactly one action.
+func _on_forge_pressed(_id: StringName, item: Item) -> void:
 	var slot := item.slot()
 	if not Itemizer.forge(item):
 		return
 	SaveGame.save_profile()
 	_build_forge()
 	if _forge_rows.has(slot):
-		_forge_rows[slot].flash_new_modifier()
+		# The whole card washes the new rarity colour now. forge_row.gd tinted
+		# just the appended modifier LINE, which the card does not have - it
+		# shows modifiers as icon chips, where a one-line colour fade would be
+		# invisible.
+		_forge_rows[slot].flash_rarity()
 	_refresh_forge_affordability()
 	# The forged item is worth more now, so its Scrap/Sell rows (shown but
 	# locked while equipped) must reprice.
@@ -131,9 +138,42 @@ func _on_forge_pressed(item: Item) -> void:
 	_build_sell()
 
 func _refresh_forge_affordability() -> void:
-	for row: Variant in _forge_rows.values():
-		if is_instance_valid(row):
-			row.refresh_affordability()
+	for card: Variant in _forge_rows.values():
+		if is_instance_valid(card):
+			_refresh_forge_card(card)
+
+## Sets the Forge button label and enabled state (spec 7.3): the next rarity
+## and its price when affordable, the shortfall spelled out when not, and a
+## disabled "Fully forged" at ENHANCED - which is why the button is always
+## present rather than swapped for the old static plate. Lifted from
+## forge_row.gd, the scene the universal card replaced.
+func _refresh_forge_card(card: Control) -> void:
+	var item: Item = card.item
+	if item == null:
+		return
+	if item.rarity >= Item.Rarity.ENHANCED:
+		card.set_action_text(&"forge", "Fully forged")
+		card.set_action_disabled(&"forge", true)
+		return
+	var cost: Array = Tuning.FORGE_COSTS[item.rarity]
+	var need_scrap := int(cost[0])
+	var need_gold := int(cost[1])
+	var to_name: String = Item.rarity_name_for(item.rarity + 1)
+	var short_scrap: int = maxi(0, need_scrap - GameState.scrap)
+	var short_gold: int = maxi(0, need_gold - GameState.gold)
+	if short_scrap == 0 and short_gold == 0:
+		card.set_action_disabled(&"forge", false)
+		card.set_action_text(&"forge", "FORGE  →  %s        %d scrap  ·  %d gold"
+			% [to_name, need_scrap, need_gold])
+	else:
+		card.set_action_disabled(&"forge", true)
+		var parts: PackedStringArray = []
+		if short_scrap > 0:
+			parts.append("%d more scrap" % short_scrap)
+		if short_gold > 0:
+			parts.append("%d more gold" % short_gold)
+		card.set_action_text(&"forge", "FORGE  →  %s   (need %s)"
+			% [to_name, " and ".join(parts)])
 
 # --- buy tab ---------------------------------------------------------------
 
@@ -144,11 +184,13 @@ func _build_buy() -> void:
 	_buy_empty.visible = GameState.forge_stock.is_empty()
 	var index := 0
 	for item: Item in GameState.forge_stock:
-		var card := BUY_CARD.instantiate()
+		var card := ITEM_CARD.instantiate()
 		_buy_list.add_child(card)
 		card.setup(item)
-		card.purchased.connect(_on_purchased)
-		card.compare_requested.connect(_on_compare_requested)
+		var acts: Array[StringName] = [&"compare", &"buy"]
+		card.set_actions(acts)
+		card.set_action_text(&"buy", CardActions.buy_label(item))
+		card.action_pressed.connect(_on_buy_action.bind(card, item))
 		card.play_entrance(index)
 		_cards.append(card)
 		index += 1
@@ -161,9 +203,15 @@ func _on_compare_requested(item: Item) -> void:
 func _refresh_cards() -> void:
 	for card: Variant in _cards:
 		if is_instance_valid(card):
-			card.refresh_affordability()
+			CardActions.refresh_buy_state(card, card.item)
 
-func _on_purchased(item: Item, _card: Control) -> void:
+func _on_buy_action(id: StringName, card: Control, item: Item) -> void:
+	if id == &"compare":
+		_on_compare_requested(item)
+	elif id == &"buy" and CardActions.do_buy(card, item):
+		_on_purchased(item)
+
+func _on_purchased(item: Item) -> void:
 	GameState.run_stats["items_found"] = int(GameState.run_stats["items_found"]) + 1
 	# The bought item leaves the persistent stock, so walking back in does not
 	# offer it again (spec 7.4). add_item() may have auto-equipped it into an
@@ -194,14 +242,14 @@ func _refresh_refresh_button() -> void:
 
 ## [refinement-pass-3] Both tabs list the WHOLE inventory, equipped items
 ## included - exactly as the shop's Sell tab does (shop_modal.gd's _build_sell).
-## An equipped row renders locked (shop_sell_row.gd's _refresh_sell_state), so
+## An equipped card renders locked (ItemCardActions.refresh_sell_state), so
 ## the player can still see and compare it without being able to melt it down
 ## from under its hero.
 func _build_scrap() -> void:
-	_build_item_rows(_scrap_list, _scrap_empty, SELL_ROW_SCRIPT.Mode.SCRAP, _on_scrapped)
+	_build_item_rows(_scrap_list, _scrap_empty, CardActions.Mode.SCRAP, _on_scrapped)
 
 func _build_sell() -> void:
-	_build_item_rows(_sell_list, _sell_empty, SELL_ROW_SCRIPT.Mode.SELL, _on_sold)
+	_build_item_rows(_sell_list, _sell_empty, CardActions.Mode.SELL, _on_sold)
 
 func _build_item_rows(list: VBoxContainer, empty: Label, mode: int,
 		on_done: Callable) -> void:
@@ -211,15 +259,34 @@ func _build_item_rows(list: VBoxContainer, empty: Label, mode: int,
 	empty.visible = items.is_empty()
 	var index := 0
 	for item: Item in items:
-		var row := SELL_ROW.instantiate()
-		list.add_child(row)
-		row.setup(item, mode)
-		row.sold.connect(on_done)
-		row.compare_requested.connect(_on_compare_requested)
-		row.equip_changed.connect(_on_equip_changed)
-		row.play_entrance(index)
+		var card := ITEM_CARD.instantiate()
+		list.add_child(card)
+		card.setup(item)
+		var acts: Array[StringName] = [&"compare"]
+		var eq := CardActions.equip_action(item)
+		if eq != &"":
+			acts.append(eq)
+		acts.append(&"sell")
+		card.set_actions(acts)
+		CardActions.refresh_sell_state(card, item, mode)
+		card.action_pressed.connect(_on_item_action.bind(card, item, mode, on_done))
+		card.play_entrance(index)
 		index += 1
 	_refresh_bulk_buttons()
+
+## `on_done` is the tab-specific tail (_on_scrapped / _on_sold), run only once
+## the payout has actually happened - an equipped item refuses the sale.
+func _on_item_action(id: StringName, card: Control, item: Item, mode: int,
+		on_done: Callable) -> void:
+	match id:
+		&"compare":
+			_on_compare_requested(item)
+		&"equip", &"unequip":
+			CardActions.do_equip(item, id == &"equip")
+			_on_equip_changed()
+		&"sell":
+			if CardActions.do_sell(card, item, mode):
+				on_done.call()
 
 ## The unequipped Common items - what "Sell/Scrap All Common" would act on.
 ## Equipped Commons are skipped for the same reason a row locks them: a bulk
@@ -242,7 +309,7 @@ func _on_scrap_all_common() -> void:
 func _on_sell_all_common() -> void:
 	_bulk_dispose(false)
 
-## En-masse counterpart to shop_sell_row.gd's _on_sell(): same per-item payout
+## En-masse counterpart to ItemCardActions.do_sell(): same per-item payout
 ## and inventory removal, applied to every loose Common at once, then one save
 ## and one rebuild of both tabs.
 func _bulk_dispose(as_scrap: bool) -> void:
@@ -262,11 +329,11 @@ func _bulk_dispose(as_scrap: bool) -> void:
 
 ## Selling and scrapping both shrink the inventory, so the sibling tab is
 ## rebuilt to drop the same row. The acting tab lets its own row animate out.
-func _on_scrapped(_item: Item, _row: Control) -> void:
+func _on_scrapped() -> void:
 	SaveGame.save_profile()
 	_build_sell()
 
-func _on_sold(_item: Item, _row: Control) -> void:
+func _on_sold() -> void:
 	SaveGame.save_profile()
 	_build_scrap()
 
