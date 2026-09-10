@@ -1,0 +1,397 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/modals/item_card.gd" id="1_card"]
+[ext_resource type="Script" path="res://scripts/modals/item_glyph.gd" id="2_glyph"]
+[ext_resource type="Texture2D" path="res://assets/ui/reliquary/card_frame.png" id="3_frame"]
+[ext_resource type="Texture2D" path="res://assets/ui/reliquary/card_medallion.png" id="4_med"]
+[ext_resource type="Texture2D" path="res://assets/icons/bonus_sword.png" id="5_atk"]
+[ext_resource type="Texture2D" path="res://assets/icons/bonus_bolt.png" id="6_mag"]
+[ext_resource type="Texture2D" path="res://assets/icons/glyph_heal.png" id="7_hp"]
+[ext_resource type="Texture2D" path="res://assets/icons/glyph_shield.png" id="8_def"]
+
+; The inner plate. ItemCardStyle.apply() duplicates this and overrides
+; bg/border/shadow per rarity - exactly as the four old card scenes did - so
+; this only supplies the shared shape. Inset 56px from the card rect so the
+; vine frame band overlaps its edge and the rarity border reads as an inner
+; lip rather than a second outline competing with the gold.
+[sub_resource type="StyleBoxFlat" id="backing"]
+bg_color = Color(0.101961, 0.082353, 0.14902, 1)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0.5, 0.5, 0.5, 1)
+corner_radius_top_left = 20
+corner_radius_top_right = 20
+corner_radius_bottom_right = 20
+corner_radius_bottom_left = 20
+
+; Modifier chip plate. border_color is re-tinted per rarity at runtime.
+[sub_resource type="StyleBoxFlat" id="chip"]
+content_margin_left = 6.0
+content_margin_top = 6.0
+content_margin_right = 6.0
+content_margin_bottom = 6.0
+bg_color = Color(0.14902, 0.117647, 0.219608, 1)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0.5, 0.5, 0.5, 1)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+
+; Stat tile plate - a fixed gold rim, NOT rarity-tinted: the four tiles are a
+; constant readout, and re-tinting them would compete with the border and the
+; name for the same "what rarity is this" job.
+[sub_resource type="StyleBoxFlat" id="tile"]
+content_margin_left = 8.0
+content_margin_top = 10.0
+content_margin_right = 8.0
+content_margin_bottom = 10.0
+bg_color = Color(0.14902, 0.117647, 0.219608, 1)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0.478431, 0.407843, 0.235294, 1)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+
+; Purchase burst, lifted verbatim from shop_buy_card.tscn so a buy on the
+; universal card throws the same coin spray it always did.
+[sub_resource type="ParticleProcessMaterial" id="burst_mat"]
+emission_shape = 1
+emission_sphere_radius = 6.0
+direction = Vector3(0, -1, 0)
+spread = 55.0
+initial_velocity_min = 180.0
+initial_velocity_max = 360.0
+gravity = Vector3(0, 620, 0)
+scale_min = 0.5
+scale_max = 1.15
+color = Color(0.960784, 0.874509, 0.627451, 1)
+
+[node name="ItemCard" type="VBoxContainer"]
+theme_override_constants/separation = 18
+script = ExtResource("1_card")
+
+[node name="Card" type="Control" parent="."]
+custom_minimum_size = Vector2(0, 470)
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+
+[node name="Backing" type="PanelContainer" parent="Card"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 42.0
+offset_top = 42.0
+offset_right = -42.0
+offset_bottom = -42.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("backing")
+
+[node name="Content" type="MarginContainer" parent="Card"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/margin_left = 78
+theme_override_constants/margin_top = 78
+theme_override_constants/margin_right = 78
+theme_override_constants/margin_bottom = 78
+
+[node name="Layout" type="VBoxContainer" parent="Card/Content"]
+layout_mode = 2
+theme_override_constants/separation = 22
+
+[node name="TopRow" type="HBoxContainer" parent="Card/Content/Layout"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 24
+
+[node name="Medallion" type="Control" parent="Card/Content/Layout/TopRow"]
+custom_minimum_size = Vector2(180, 180)
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+
+[node name="Glyph" type="Control" parent="Card/Content/Layout/TopRow/Medallion"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -52.0
+offset_top = -52.0
+offset_right = 52.0
+offset_bottom = 52.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("2_glyph")
+
+[node name="Ring" type="TextureRect" parent="Card/Content/Layout/TopRow/Medallion"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("4_med")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Info" type="VBoxContainer" parent="Card/Content/Layout/TopRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+theme_override_constants/separation = 8
+
+[node name="NameLabel" type="Label" parent="Card/Content/Layout/TopRow/Info"]
+layout_mode = 2
+theme_type_variation = &"DisplayLabel"
+theme_override_colors/font_color = Color(0.937255, 0.839216, 0.580392, 1)
+theme_override_font_sizes/font_size = 54
+text = "Grumbling Longsword"
+autowrap_mode = 3
+max_lines_visible = 2
+
+[node name="SubtitleLabel" type="Label" parent="Card/Content/Layout/TopRow/Info"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.709804, 0.823529, 0.784314, 1)
+theme_override_font_sizes/font_size = 32
+text = "Lv 1 Common Sword - Warrior"
+autowrap_mode = 3
+
+[node name="ModRow" type="HBoxContainer" parent="Card/Content/Layout/TopRow/Info"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Chip0" type="PanelContainer" parent="Card/Content/Layout/TopRow/Info/ModRow"]
+custom_minimum_size = Vector2(68, 68)
+layout_mode = 2
+theme_override_styles/panel = SubResource("chip")
+
+[node name="Icon" type="TextureRect" parent="Card/Content/Layout/TopRow/Info/ModRow/Chip0"]
+layout_mode = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Chip1" type="PanelContainer" parent="Card/Content/Layout/TopRow/Info/ModRow"]
+custom_minimum_size = Vector2(68, 68)
+layout_mode = 2
+theme_override_styles/panel = SubResource("chip")
+
+[node name="Icon" type="TextureRect" parent="Card/Content/Layout/TopRow/Info/ModRow/Chip1"]
+layout_mode = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Chip2" type="PanelContainer" parent="Card/Content/Layout/TopRow/Info/ModRow"]
+custom_minimum_size = Vector2(68, 68)
+layout_mode = 2
+theme_override_styles/panel = SubResource("chip")
+
+[node name="Icon" type="TextureRect" parent="Card/Content/Layout/TopRow/Info/ModRow/Chip2"]
+layout_mode = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Chip3" type="PanelContainer" parent="Card/Content/Layout/TopRow/Info/ModRow"]
+custom_minimum_size = Vector2(68, 68)
+layout_mode = 2
+theme_override_styles/panel = SubResource("chip")
+
+[node name="Icon" type="TextureRect" parent="Card/Content/Layout/TopRow/Info/ModRow/Chip3"]
+layout_mode = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="StatRow" type="HBoxContainer" parent="Card/Content/Layout"]
+custom_minimum_size = Vector2(0, 124)
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="Attack" type="PanelContainer" parent="Card/Content/Layout/StatRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/panel = SubResource("tile")
+
+[node name="Box" type="VBoxContainer" parent="Card/Content/Layout/StatRow/Attack"]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="Icon" type="TextureRect" parent="Card/Content/Layout/StatRow/Attack/Box"]
+custom_minimum_size = Vector2(0, 54)
+layout_mode = 2
+size_flags_vertical = 3
+texture = ExtResource("5_atk")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Value" type="Label" parent="Card/Content/Layout/StatRow/Attack/Box"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.937255, 0.839216, 0.580392, 1)
+theme_override_font_sizes/font_size = 38
+text = "0"
+horizontal_alignment = 1
+
+[node name="Magic" type="PanelContainer" parent="Card/Content/Layout/StatRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/panel = SubResource("tile")
+
+[node name="Box" type="VBoxContainer" parent="Card/Content/Layout/StatRow/Magic"]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="Icon" type="TextureRect" parent="Card/Content/Layout/StatRow/Magic/Box"]
+custom_minimum_size = Vector2(0, 54)
+layout_mode = 2
+size_flags_vertical = 3
+texture = ExtResource("6_mag")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Value" type="Label" parent="Card/Content/Layout/StatRow/Magic/Box"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.937255, 0.839216, 0.580392, 1)
+theme_override_font_sizes/font_size = 38
+text = "0"
+horizontal_alignment = 1
+
+[node name="Health" type="PanelContainer" parent="Card/Content/Layout/StatRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/panel = SubResource("tile")
+
+[node name="Box" type="VBoxContainer" parent="Card/Content/Layout/StatRow/Health"]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="Icon" type="TextureRect" parent="Card/Content/Layout/StatRow/Health/Box"]
+custom_minimum_size = Vector2(0, 54)
+layout_mode = 2
+size_flags_vertical = 3
+texture = ExtResource("7_hp")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Value" type="Label" parent="Card/Content/Layout/StatRow/Health/Box"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.937255, 0.839216, 0.580392, 1)
+theme_override_font_sizes/font_size = 38
+text = "0"
+horizontal_alignment = 1
+
+[node name="Defense" type="PanelContainer" parent="Card/Content/Layout/StatRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/panel = SubResource("tile")
+
+[node name="Box" type="VBoxContainer" parent="Card/Content/Layout/StatRow/Defense"]
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="Icon" type="TextureRect" parent="Card/Content/Layout/StatRow/Defense/Box"]
+custom_minimum_size = Vector2(0, 54)
+layout_mode = 2
+size_flags_vertical = 3
+texture = ExtResource("8_def")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Value" type="Label" parent="Card/Content/Layout/StatRow/Defense/Box"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.937255, 0.839216, 0.580392, 1)
+theme_override_font_sizes/font_size = 38
+text = "0"
+horizontal_alignment = 1
+
+[node name="Frame" type="NinePatchRect" parent="Card"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("3_frame")
+patch_margin_left = 75
+patch_margin_top = 75
+patch_margin_right = 75
+patch_margin_bottom = 75
+axis_stretch_horizontal = 2
+axis_stretch_vertical = 2
+
+; A brief rarity-coloured wash over the whole card, driven by flash_rarity().
+; Declared after Frame so the wash covers the gold vines too - the old card
+; flashed only the face, which read as a rectangle inside the frame.
+[node name="RarityFlash" type="ColorRect" parent="Card"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(1, 1, 1, 0)
+
+[node name="Actions" type="HBoxContainer" parent="."]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="Compare" type="Button" parent="Actions"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"SecondaryButton"
+text = "Compare"
+
+[node name="Equip" type="Button" parent="Actions"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Equip"
+
+[node name="Unequip" type="Button" parent="Actions"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"SecondaryButton"
+text = "Unequip"
+
+[node name="Buy" type="Button" parent="Actions"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Buy"
+
+[node name="Sell" type="Button" parent="Actions"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Sell"
+
+[node name="Forge" type="Button" parent="Actions"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Forge"
+
+[node name="Burst" type="GPUParticles2D" parent="."]
+emitting = false
+amount = 22
+lifetime = 0.7
+one_shot = true
+explosiveness = 0.9
+process_material = SubResource("burst_mat")

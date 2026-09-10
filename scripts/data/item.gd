@@ -164,8 +164,9 @@ func class_label() -> String:
 	return " / ".join(names)
 
 ## The name of an arbitrary rarity index - so a caller that needs the name of a
-## rarity OTHER than this item's own (e.g. forge_row.gd naming the step's
-## destination, rarity + 1) has one owner for the array instead of a copy (D4).
+## rarity OTHER than this item's own (e.g. blacksmith.gd's _refresh_forge_card()
+## naming the step's destination, rarity + 1) has one owner for the array
+## instead of a copy (D4).
 static func rarity_name_for(r: int) -> String:
 	return ["Common", "Uncommon", "Magic", "Rare", "Enhanced"][r]
 
