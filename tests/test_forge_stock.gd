@@ -40,8 +40,8 @@ func _ready() -> void:
 				unusable += 1
 	t.check(enhanced_seen == 0,
 		"ENHANCED never appears in forge stock - it is forge-only (%d seen)" % enhanced_seen)
-	t.check(rarities_seen.has(int(Item.Rarity.COMMON)) and rarities_seen.has(int(Item.Rarity.UNCOMMON))
-			and rarities_seen.has(int(Item.Rarity.MAGIC)) and rarities_seen.has(int(Item.Rarity.RARE)),
+	t.check(rarities_seen.has(int(Item.Rarity.COMMON)) and rarities_seen.has(int(Item.Rarity.MAGIC))
+			and rarities_seen.has(int(Item.Rarity.RARE)),
 		"every rarity COMMON..RARE appears across the sample (%s)" % [rarities_seen.keys()])
 	t.check(slot_bad == 0, "every item's slot() is one of the three (%d off)" % slot_bad)
 	t.check(unusable == 0,

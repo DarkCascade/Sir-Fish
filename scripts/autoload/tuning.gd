@@ -301,11 +301,13 @@ const MEAL_COST_PER_HERO := 30
 ## [scrap, gold] to raise an item FROM rarity index i to i + 1. Indexed by the
 ## item's CURRENT rarity, so the array is one shorter than Item.Rarity - there
 ## is no step out of ENHANCED (spec 10.2).
+## [item power model] Uncommon removed - the ladder is three rungs now.
+## Common -> Magic folds the old Common -> Uncommon -> Magic pair (5+10 scrap,
+## 20+40 gold) into one step; the upper two rungs are unchanged.
 const FORGE_COSTS := [
-	[5, 20],      # Common   -> Uncommon
-	[10, 40],     # Uncommon -> Magic
-	[18, 70],     # Magic    -> Rare
-	[30, 120],    # Rare     -> Enhanced
+	[15, 60],     # Common -> Magic
+	[18, 70],     # Magic  -> Rare
+	[30, 120],    # Rare   -> Enhanced
 ]
 ## [item power model] The final rung's added icon carries an `enhanced: true`
 ## marker the UI tints, and its magnitude is locked to the maximum bonus:
@@ -862,7 +864,6 @@ const ENEMY_DEATH_FADE_RUSH := 0.45       # 0.30 + 0.45 = 0.75, inside ENCOUNTER
 ## thing at a glance. item_glyph.gd picks this up for free via rarity_color().
 const RARITY_COLORS := [
 	Color("B8B2C4"),  # Common
-	Color("4CC38A"),  # Uncommon
 	Color("4A9BE8"),  # Magic
 	Color("F2C230"),  # Rare
 	Color("FF6B4A"),  # Enhanced [town] - forge-hot

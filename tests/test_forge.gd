@@ -50,7 +50,7 @@ func _test_ladder() -> void:
 		"a fresh Common starts at rarity 0 with 0 modifiers")
 
 	var forged_before := int(GameState.run_stats["items_forged"])
-	for step: int in range(4):
+	for step: int in range(3):
 		var ok := Itemizer.forge(item)
 		_t.check(ok, "forge step %d succeeds" % (step + 1))
 		_t.check(int(item.rarity) == step + 1,
@@ -62,9 +62,9 @@ func _test_ladder() -> void:
 			"step %d: forge_count is %d" % [step + 1, item.forge_count])
 
 	_t.check(item.rarity == Item.Rarity.ENHANCED,
-		"four steps from COMMON reach ENHANCED, and no more")
-	_t.check(int(GameState.run_stats["items_forged"]) == forged_before + 4,
-		"run_stats.items_forged counted all four forges")
+		"three steps from COMMON reach ENHANCED, and no more")
+	_t.check(int(GameState.run_stats["items_forged"]) == forged_before + 3,
+		"run_stats.items_forged counted all three forges")
 
 	var gold_at_cap := GameState.gold
 	var scrap_at_cap := GameState.scrap
@@ -92,7 +92,7 @@ func _test_no_duplicate_ids() -> void:
 func _test_enhanced_rejects() -> void:
 	_be_rich()
 	var item := _fresh_common()
-	for _s: int in range(4):
+	for _s: int in range(3):
 		Itemizer.forge(item)
 	var rarity := item.rarity
 	var mods := item.modifiers.size()
@@ -149,10 +149,10 @@ func _test_enhanced_marker_and_rolls() -> void:
 	var out_of_range := 0
 	for i: int in range(300):
 		var item := _fresh_common()
-		for step: int in range(4):
+		for step: int in range(3):
 			Itemizer.forge(item)
 			var last: Dictionary = item.modifiers[item.modifiers.size() - 1]
-			var is_final := step == 3
+			var is_final := step == 2
 			if not is_final and last.get("enhanced", false):
 				early_enhanced += 1
 			if is_final and not last.get("enhanced", false):
@@ -173,9 +173,9 @@ func _test_enhanced_marker_and_rolls() -> void:
 					out_of_range += 1
 
 	_t.check(early_enhanced == 0,
-		"steps 1-3 never produce an enhanced modifier (%d/900)" % early_enhanced)
+		"steps 1-2 never produce an enhanced modifier (%d/600)" % early_enhanced)
 	_t.check(final_plain == 0,
-		"step 4 always produces an enhanced modifier (%d/300 missed)" % final_plain)
+		"step 3 always produces an enhanced modifier (%d/300 missed)" % final_plain)
 	_t.check(out_of_range == 0,
 		"every enhanced roll is locked to the max bonus (%d/300 off)" % out_of_range)
 

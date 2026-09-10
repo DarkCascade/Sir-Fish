@@ -53,7 +53,7 @@ const MODIFIERS := [
 	# real: finding items in the world adds icons to the reel.
 	# [slot phase 2] `slot_purse` ("+%d Coin Yield") was removed here - the slot
 	# no longer produces gold (§3/§5). The pool drops from 8 ids to 7, still
-	# comfortably above RARITY_MOD_COUNT's max of 4 distinct picks. Items on disk
+	# comfortably above RARITY_MOD_COUNT's max of 3 distinct picks. Items on disk
 	# still carrying a `slot_purse` modifier load verbatim (Item.from_dict) and
 	# resolve to NO icon on the board - see slot_machine.gd's KNOWN_ICON_IDS.
 	{ "id": &"slot_bolt",  "label": "+%d Bolt Power",    "caption": "Bolt Power",    "pct": false, "roll": [2, 8],   "value_mult": [0.40, 0.75] },
@@ -70,13 +70,16 @@ const MODIFIERS := [
 # (spec 10.2, lands with scrap). RARITY_VALUE_MULT's ENHANCED row is never read
 # (forging adds gold to value directly, spec 10.5) but the array has to match
 # the others in length or an index goes stale.
-const RARITY_WEIGHTS := [50, 30, 15, 5, 0]
-const RARITY_MOD_COUNT := [0, 1, 2, 3, 4]
+#
+# [item power model] UNCOMMON removed. Its 30 weight folds mostly into Common;
+# Magic is now the "one icon" tier (RARITY_MOD_COUNT 1) and takes the frequency
+# the old Uncommon had, with the value range lifted toward the old Magic row.
+const RARITY_WEIGHTS := [60, 30, 10, 0]
+const RARITY_MOD_COUNT := [0, 1, 2, 3]
 const RARITY_VALUE_MULT := [
 	[1.0, 1.0],
-	[1.6, 2.2],
-	[2.8, 3.6],
-	[4.5, 6.0],
+	[1.8, 2.6],
+	[3.4, 4.6],
 	[6.5, 8.0],   # ENHANCED - never read, present for length parity
 ]
 
@@ -329,7 +332,7 @@ func generate_drop(hero_class: StringName, rarity_floor: int = 0, level: int = -
 ## which would make the shop feel like it was reading the player's wallet.
 func generate_shop_stock(level: int = -1) -> Array[Item]:
 	var stock: Array[Item] = [
-		_generate_in_bucket([Item.Rarity.COMMON, Item.Rarity.UNCOMMON], level),   # affordable
+		_generate_in_bucket([Item.Rarity.COMMON, Item.Rarity.MAGIC], level),      # affordable
 		generate_item(level),                                                     # free roll
 		_generate_in_bucket([Item.Rarity.MAGIC, Item.Rarity.RARE], level),        # teaser
 	]
@@ -368,9 +371,9 @@ func generate_forge_stock(level: int = -1) -> Array[Item]:
 	@warning_ignore("integer_division")
 	var per_bucket: int = Tuning.FORGE_SHOP_SLOTS / 3
 	for bucket: Array in [
-		[Item.Rarity.COMMON,   Item.Rarity.UNCOMMON],   # cheap
-		[Item.Rarity.UNCOMMON, Item.Rarity.MAGIC],      # average
-		[Item.Rarity.MAGIC,    Item.Rarity.RARE],       # dear
+		[Item.Rarity.COMMON, Item.Rarity.MAGIC],                 # cheap
+		[Item.Rarity.COMMON, Item.Rarity.MAGIC, Item.Rarity.RARE],  # average (a normal roll)
+		[Item.Rarity.MAGIC,  Item.Rarity.RARE],                  # dear
 	]:
 		for _i: int in range(per_bucket):
 			stock.append(_generate_in_bucket(bucket, level))

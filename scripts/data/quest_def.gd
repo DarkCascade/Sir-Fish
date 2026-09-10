@@ -43,7 +43,7 @@ extends Resource
 ## Lowest rarity the boss drop may roll, as an Item.Rarity index (0-3). This is
 ## the only cheap route to an Enhanced Rare, and the reason hard exists beyond
 ## its bigger gold reward (spec 8.2).
-@export_range(0, 4, 1) var boss_drop_rarity_floor: int = 0
+@export_range(0, 3, 1) var boss_drop_rarity_floor: int = 0
 
 ## Seconds of scrolling before each encounter, one per entry in encounter_types.
 ## Falls back to a 2 / 3 / ... / 4 ramp when short or empty (_build_quest_level).

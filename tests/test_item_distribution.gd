@@ -16,11 +16,11 @@ func _ready() -> void:
 	var t := TestSupport.new()
 	var items: Array[Item] = Itemizer.generate_items(SAMPLE)
 
-	# [town] Five entries, indexed by Item.Rarity (spec 10.1 added ENHANCED).
-	# ENHANCED's weight is 0 so by_rarity[4] is never incremented here, but a
-	# four-wide array indexed by a five-value enum is an out-of-bounds waiting
-	# for the day that weight changes - widen it now (spec 13.2, step-3 Q6).
-	var by_rarity := [0, 0, 0, 0, 0]
+	# [item power model] Four entries, indexed by Item.Rarity
+	# { COMMON, MAGIC, RARE, ENHANCED }. ENHANCED's weight is 0 so by_rarity[3]
+	# is never incremented here, but the array is sized to the full enum so an
+	# index can never go stale.
+	var by_rarity := [0, 0, 0, 0]
 	var values: Array[int] = []
 	for item: Item in items:
 		by_rarity[item.rarity] += 1
@@ -28,9 +28,9 @@ func _ready() -> void:
 	values.sort()
 
 	print("--- %d generated items ---" % SAMPLE)
-	var names := ["Common", "Uncommon", "Magic", "Rare", "Enhanced"]
-	var expected := [50.0, 30.0, 15.0, 5.0, 0.0]
-	for i: int in range(5):
+	var names := ["Common", "Magic", "Rare", "Enhanced"]
+	var expected := [60.0, 30.0, 10.0, 0.0]
+	for i: int in range(4):
 		print("  %-9s %3d  (%5.1f%%, expected %4.1f%%)" % [
 			names[i], by_rarity[i], 100.0 * float(by_rarity[i]) / float(SAMPLE),
 			expected[i]])

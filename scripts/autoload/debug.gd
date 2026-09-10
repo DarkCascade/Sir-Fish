@@ -345,7 +345,6 @@ func _cmd_drops(args: Array) -> void:
 func _parse_rarity(token: String) -> int:
 	match token.to_lower():
 		"common": return Item.Rarity.COMMON
-		"uncommon": return Item.Rarity.UNCOMMON
 		"magic": return Item.Rarity.MAGIC
 		"rare": return Item.Rarity.RARE
 		_: return clampi(int(token), 0, Item.Rarity.RARE)

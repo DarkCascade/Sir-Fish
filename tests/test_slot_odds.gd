@@ -20,7 +20,7 @@ const DRAWS := 200_000
 
 ## (label, non-blank icons, bag size, expected icons per spin) from §2.
 const STAGES := [
-	["start (1 hero, 3 Uncommons)", 4, 16, 2.25],
+	["start (1 hero, 3 Commons)", 4, 16, 2.25],
 	["mid (1 hero, 3 Magic)", 7, 19, 3.32],
 	["late (1 hero, 3 Enhanced, blanks bought down)", 13, 17, 6.88],
 ]

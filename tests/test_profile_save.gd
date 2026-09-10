@@ -56,7 +56,7 @@ func _ready() -> void:
 	var b := Itemizer.generate_item_with_rarity(Item.Rarity.RARE)
 	b.weapon_type = &"helm"     # ARMOR slot
 	b.equipped_by = &"warrior"
-	var c := Itemizer.generate_item_with_rarity(Item.Rarity.UNCOMMON)
+	var c := Itemizer.generate_item_with_rarity(Item.Rarity.MAGIC)
 	c.weapon_type = &"ring"     # TRINKET slot
 	c.equipped_by = &"warrior"
 	var loose := Itemizer.generate_item_with_rarity(Item.Rarity.COMMON)

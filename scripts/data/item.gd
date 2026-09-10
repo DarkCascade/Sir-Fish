@@ -3,11 +3,16 @@ extends Resource
 
 ## COMMON..RARE are the rolled rarities (Itemizer.RARITY_WEIGHTS). ENHANCED is
 ## [town]: forge-only, never generated (its weight is 0), reached only by walking
-## an item up the full ladder (spec 10.1 / 10.2). Five index-addressed arrays
+## an item up the full ladder (spec 10.1 / 10.2). Four index-addressed arrays
 ## are keyed by this enum and must all carry an ENHANCED slot -
 ## Item.rarity_name(), Tuning.RARITY_COLORS, and Itemizer's RARITY_WEIGHTS /
 ## RARITY_MOD_COUNT / RARITY_VALUE_MULT.
-enum Rarity { COMMON, UNCOMMON, MAGIC, RARE, ENHANCED }
+##
+## [item power model] The UNCOMMON tier was removed - the forge ladder is three
+## rungs now (Common -> Magic -> Rare -> Enhanced), each adding one slot icon.
+## A saved item stores rarity as a raw int, so this reindex is a save-breaking
+## change: SaveGame.VERSION was bumped and pre-existing saves are rejected.
+enum Rarity { COMMON, MAGIC, RARE, ENHANCED }
 enum Kind { WEAPON, POTION, RELIC }
 
 ## [town] Which of the hero's three equipment slots this item occupies (spec
@@ -176,7 +181,7 @@ func class_label() -> String:
 ## naming the step's destination, rarity + 1) has one owner for the array
 ## instead of a copy (D4).
 static func rarity_name_for(r: int) -> String:
-	return ["Common", "Uncommon", "Magic", "Rare", "Enhanced"][r]
+	return ["Common", "Magic", "Rare", "Enhanced"][r]
 
 func rarity_name() -> String:
 	return rarity_name_for(rarity)

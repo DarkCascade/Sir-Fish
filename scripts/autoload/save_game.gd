@@ -34,7 +34,14 @@ const PATH := "user://profile.save"
 ## against level-scaled enemies and worth a fraction of its intended value.
 ## That is the same "an existing default now means something materially
 ## different" trigger the 1 -> 2 bump fired on, not a mere added key.
-const VERSION := 3
+##
+## [item power model] Bumped 3 -> 4: removing the UNCOMMON tier reindexes
+## Item.Rarity (MAGIC 2->1, RARE 3->2, ENHANCED 4->3). rarity is stored as a
+## raw int, so a v3 item's saved `2` would load as RARE and its `3` as
+## ENHANCED - a found item silently becoming a rarity that can never be rolled.
+## Same trigger again; the gate discards v3 saves and boot falls back to
+## new_profile().
+const VERSION := 4
 
 ## Every profile mutation in town saves (spec 2.4's "When to save" list); this
 ## is also called from GameState.new_profile(), from start_expedition() and the

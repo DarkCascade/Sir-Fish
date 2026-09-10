@@ -66,7 +66,7 @@ const BANDS: Array[int] = [1, 5, 10, 20, 30]
 ## re-derive the plan. ENHANCED assumes one full forge ladder climbed.
 const GEAR_RARITY_AT_LEVEL := {
 	1: Item.Rarity.COMMON,
-	5: Item.Rarity.UNCOMMON,
+	5: Item.Rarity.MAGIC,
 	10: Item.Rarity.MAGIC,
 	20: Item.Rarity.RARE,
 	30: Item.Rarity.ENHANCED,
@@ -300,7 +300,7 @@ func _case_crossover_table() -> void:
 	var sword_power: int = int(Itemizer.ITEM_TYPES[_TYPE_FOR_SLOT[Item.Slot.WEAPON]]["power"])
 	var mid: float = (Tuning.FORGE_ICON_POWER_MIN + Tuning.FORGE_ICON_POWER_MAX) * 0.5
 	for c: Array in [
-		[5, Item.Rarity.ENHANCED], [5, Item.Rarity.MAGIC], [14, Item.Rarity.UNCOMMON],
+		[5, Item.Rarity.ENHANCED], [5, Item.Rarity.MAGIC], [14, Item.Rarity.RARE],
 		[14, Item.Rarity.COMMON], [30, Item.Rarity.COMMON],
 	]:
 		var level: int = c[0]

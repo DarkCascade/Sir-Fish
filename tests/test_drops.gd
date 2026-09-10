@@ -90,14 +90,14 @@ func _ready() -> void:
 	t.check(d5_commons == 0,
 		"generate_drop(c, 1) never returns a Common, 500 samples/class (%d found)" % d5_commons)
 
-	# --- D6: generate_drop(c, 0) rarity split within +/- 4pp of 50/30/15/5 --
+	# --- D6: generate_drop(c, 0) rarity split within +/- 4pp of 60/30/10 -----
 	var d6_by_rarity: Array[int] = [0, 0, 0, 0]
 	for hero_class: StringName in GameState.PARTY_ORDER:
 		for i: int in range(1000):
 			d6_by_rarity[Itemizer.generate_drop(hero_class, 0).rarity] += 1
 	var d6_total := d6_by_rarity[0] + d6_by_rarity[1] + d6_by_rarity[2] + d6_by_rarity[3]
-	var d6_expected := [50.0, 30.0, 15.0, 5.0]
-	var d6_names := ["Common", "Uncommon", "Magic", "Rare"]
+	var d6_expected := [60.0, 30.0, 10.0, 0.0]
+	var d6_names := ["Common", "Magic", "Rare", "Enhanced"]
 	for i: int in range(4):
 		var pct := 100.0 * float(d6_by_rarity[i]) / float(d6_total)
 		t.check_between(pct, d6_expected[i] - 4.0, d6_expected[i] + 4.0,
