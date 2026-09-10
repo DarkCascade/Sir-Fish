@@ -45,7 +45,8 @@ corner_radius_bottom_left = 10
 
 ; Stat tile plate - a fixed gold rim, NOT rarity-tinted: the four tiles are a
 ; constant readout, and re-tinting them would compete with the border and the
-; name for the same "what rarity is this" job.
+; name for the same "what rarity is this" job. The Lv plate under the medallion
+; borrows this same stylebox so the level reads as one of the boxed attributes.
 [sub_resource type="StyleBoxFlat" id="tile"]
 content_margin_left = 8.0
 content_margin_top = 10.0
@@ -80,8 +81,12 @@ color = Color(0.960784, 0.874509, 0.627451, 1)
 theme_override_constants/separation = 18
 script = ExtResource("1_card")
 
+; 510 is the content's own minimum height (427) plus the two 40px Content
+; margins. At the old 470 the layout overflowed by 113px and the title ran
+; under the top vine; the thinner band recovers most of that, and this closes
+; the rest so nothing is drawn beneath the frame.
 [node name="Card" type="Control" parent="."]
-custom_minimum_size = Vector2(0, 470)
+custom_minimum_size = Vector2(0, 510)
 layout_mode = 2
 size_flags_horizontal = 3
 mouse_filter = 2
@@ -91,10 +96,10 @@ layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-offset_left = 42.0
-offset_top = 42.0
-offset_right = -42.0
-offset_bottom = -42.0
+offset_left = 21.0
+offset_top = 21.0
+offset_right = -21.0
+offset_bottom = -21.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
@@ -108,10 +113,10 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-theme_override_constants/margin_left = 78
-theme_override_constants/margin_top = 78
-theme_override_constants/margin_right = 78
-theme_override_constants/margin_bottom = 78
+theme_override_constants/margin_left = 40
+theme_override_constants/margin_top = 40
+theme_override_constants/margin_right = 40
+theme_override_constants/margin_bottom = 40
 
 [node name="Layout" type="VBoxContainer" parent="Card/Content"]
 layout_mode = 2
@@ -122,13 +127,22 @@ layout_mode = 2
 size_flags_vertical = 3
 theme_override_constants/separation = 24
 
-[node name="Medallion" type="Control" parent="Card/Content/Layout/TopRow"]
+; The medallion and the level plate stack in a top-aligned column so the halo
+; sits in the card's upper-left corner instead of floating centred against the
+; name. size_flags_vertical = 0 pins the column to the top of the expanding
+; TopRow; the plate reuses the stat tiles' gold "tile" stylebox.
+[node name="MedallionCol" type="VBoxContainer" parent="Card/Content/Layout/TopRow"]
+layout_mode = 2
+size_flags_vertical = 0
+theme_override_constants/separation = 12
+
+[node name="Medallion" type="Control" parent="Card/Content/Layout/TopRow/MedallionCol"]
 custom_minimum_size = Vector2(180, 180)
 layout_mode = 2
-size_flags_vertical = 4
+size_flags_horizontal = 4
 mouse_filter = 2
 
-[node name="Glyph" type="Control" parent="Card/Content/Layout/TopRow/Medallion"]
+[node name="Glyph" type="Control" parent="Card/Content/Layout/TopRow/MedallionCol/Medallion"]
 layout_mode = 1
 anchors_preset = 8
 anchor_left = 0.5
@@ -144,7 +158,7 @@ grow_vertical = 2
 mouse_filter = 2
 script = ExtResource("2_glyph")
 
-[node name="Ring" type="TextureRect" parent="Card/Content/Layout/TopRow/Medallion"]
+[node name="Ring" type="TextureRect" parent="Card/Content/Layout/TopRow/MedallionCol/Medallion"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -156,10 +170,24 @@ texture = ExtResource("4_med")
 expand_mode = 1
 stretch_mode = 5
 
+; Just the level now - rarity, type and class have moved off the card face.
+; Boxed in the gold tile so it reads as a stamped attribute under the halo.
+[node name="LevelPlate" type="PanelContainer" parent="Card/Content/Layout/TopRow/MedallionCol"]
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_styles/panel = SubResource("tile")
+
+[node name="SubtitleLabel" type="Label" parent="Card/Content/Layout/TopRow/MedallionCol/LevelPlate"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.709804, 0.823529, 0.784314, 1)
+theme_override_font_sizes/font_size = 32
+text = "Lv 1"
+horizontal_alignment = 1
+
 [node name="Info" type="VBoxContainer" parent="Card/Content/Layout/TopRow"]
 layout_mode = 2
 size_flags_horizontal = 3
-size_flags_vertical = 4
+size_flags_vertical = 0
 theme_override_constants/separation = 8
 
 [node name="NameLabel" type="Label" parent="Card/Content/Layout/TopRow/Info"]
@@ -168,16 +196,11 @@ theme_type_variation = &"DisplayLabel"
 theme_override_colors/font_color = Color(0.937255, 0.839216, 0.580392, 1)
 theme_override_font_sizes/font_size = 54
 text = "Grumbling Longsword"
-autowrap_mode = 3
-max_lines_visible = 2
+clip_text = true
+text_overrun_behavior = 3
 
-[node name="SubtitleLabel" type="Label" parent="Card/Content/Layout/TopRow/Info"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.709804, 0.823529, 0.784314, 1)
-theme_override_font_sizes/font_size = 32
-text = "Lv 1 Common Sword - Warrior"
-autowrap_mode = 3
-
+; The modifier chips ride directly under the name now - they took the row the
+; "Lv 1 Common Sword - Warrior" subtitle used to occupy.
 [node name="ModRow" type="HBoxContainer" parent="Card/Content/Layout/TopRow/Info"]
 layout_mode = 2
 theme_override_constants/separation = 12
@@ -323,13 +346,17 @@ theme_override_font_sizes/font_size = 38
 text = "0"
 horizontal_alignment = 1
 
+; The vine frame at half thickness. A NinePatchRect always draws its corners
+; 1:1 with the source texels, so shrinking the band by cutting patch_margin
+; would slice the vine art in half instead of scaling it. Instead the node is
+; laid out at TWICE the card rect (anchors of 2.0) and drawn at scale 0.5, so
+; the 75px band lands as a 37.5px band with all 384px of art still in it -
+; which also keeps it sharp on the 2x canvas_items upscale.
 [node name="Frame" type="NinePatchRect" parent="Card"]
 layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
+anchor_right = 2.0
+anchor_bottom = 2.0
+scale = Vector2(0.5, 0.5)
 mouse_filter = 2
 texture = ExtResource("3_frame")
 patch_margin_left = 75

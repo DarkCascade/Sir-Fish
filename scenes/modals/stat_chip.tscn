@@ -1,4 +1,4 @@
-[gd_scene load_steps=3 format=3]
+[gd_scene format=3 uid="uid://f506uvq572k5"]
 
 ; [item-card] Restyled to the language the universal item card set: an icon
 ; plate with its value on its own line beneath in gold, then a dim caption.
@@ -10,7 +10,7 @@
 ; number is now the same gold-on-plum numeral the card's stat tiles use, and
 ; the caption is demoted to a dim sub-label so the value reads first.
 
-[ext_resource type="Script" path="res://scripts/modals/stat_chip.gd" id="1_chip"]
+[ext_resource type="Script" uid="uid://30kbqun51qsw" path="res://scripts/modals/stat_chip.gd" id="1_chip"]
 
 [sub_resource type="StyleBoxFlat" id="plate_default"]
 bg_color = Color(0.054902, 0.043137, 0.086275, 1)
@@ -30,18 +30,18 @@ shadow_size = 6
 ; wraps to two lines and chips whose caption fits on one still line their plates
 ; and values up across a row. Centring them instead pushed the short-caption
 ; chips half a line down from their neighbours.
-[node name="StatChip" type="VBoxContainer"]
+[node name="StatChip" type="VBoxContainer" unique_id=1671733396]
 custom_minimum_size = Vector2(140, 196)
 size_flags_horizontal = 4
 theme_override_constants/separation = 6
 script = ExtResource("1_chip")
 
-[node name="Plate" type="Control" parent="."]
+[node name="Plate" type="Control" parent="." unique_id=558433259]
 custom_minimum_size = Vector2(104, 104)
 layout_mode = 2
 size_flags_horizontal = 4
 
-[node name="IconClip" type="Control" parent="Plate"]
+[node name="IconClip" type="Control" parent="Plate" unique_id=225406222]
 clip_contents = true
 layout_mode = 1
 anchors_preset = 15
@@ -51,7 +51,7 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 
-[node name="Bg" type="PanelContainer" parent="Plate/IconClip"]
+[node name="Bg" type="PanelContainer" parent="Plate/IconClip" unique_id=1821748393]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -60,7 +60,7 @@ grow_horizontal = 2
 grow_vertical = 2
 theme_override_styles/panel = SubResource("plate_default")
 
-[node name="Icon" type="TextureRect" parent="Plate/IconClip"]
+[node name="Icon" type="TextureRect" parent="Plate/IconClip" unique_id=679843506]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -71,14 +71,14 @@ mouse_filter = 2
 expand_mode = 1
 stretch_mode = 6
 
-[node name="Value" type="Label" parent="."]
+[node name="Value" type="Label" parent="." unique_id=1795363124]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.937255, 0.839216, 0.580392, 1)
 theme_override_font_sizes/font_size = 36
 text = "+0"
 horizontal_alignment = 1
 
-[node name="Caption" type="Label" parent="."]
+[node name="Caption" type="Label" parent="." unique_id=1163260119]
 custom_minimum_size = Vector2(140, 0)
 layout_mode = 2
 size_flags_horizontal = 3

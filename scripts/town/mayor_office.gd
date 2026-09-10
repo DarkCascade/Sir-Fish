@@ -58,7 +58,7 @@ func _populate() -> void:
 		# a lock - difficulty is the gate (this file's own header), so the
 		# button stays enabled and only tints.
 		var underlevelled: bool = GameState.hero_level() < q.level_range.x
-		button.text = "%s\n%s\nLevels %d–%d   ·   %d encounters   ·   %d gold%s" % [
+		button.text = "%s\n%s\nLv. %d–%d  ·  %d encounters  ·  %d gold%s" % [
 			q.display_name, q.blurb, q.level_range.x, q.level_range.y,
 			q.encounter_types.size(), q.gold_reward,
 			"\n— you are underlevelled" if underlevelled else "",

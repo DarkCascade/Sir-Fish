@@ -1,12 +1,12 @@
-[gd_resource type="Resource" script_class="QuestDef" format=3 uid="uid://cq0quest0med00"]
+[gd_resource type="Resource" script_class="QuestDef" format=3 uid="uid://dt6k0mjpq4y3x"]
 
-[ext_resource type="Script" path="res://scripts/data/quest_def.gd" id="1_qd"]
+[ext_resource type="Script" uid="uid://d0nce1a0k1mdc" path="res://scripts/data/quest_def.gd" id="1_qd"]
 
 [resource]
 script = ExtResource("1_qd")
 id = &"medium"
 display_name = "The Deep Wood"
-blurb = "Past the shallows the bones walk. A longer road, and something older at the end of it."
+blurb = "Past the shallows the bones walk."
 encounter_types = Array[int]([0, 0, 1, 0, 0, 2, 0])
 gold_reward = 400
 enemy_pool = Array[StringName]([&"shadow_monster", &"skeleton_minion", &"skeleton_warrior", &"skeleton_mage", &"skeleton_rogue", &"sporecap"])
