@@ -1,10 +1,13 @@
-[gd_resource type="Resource" script_class="CombatantStats" format=3 uid="uid://bgtajfxfcvo6m"]
+[gd_resource type="Resource" script_class="CombatantStats" load_steps=4 format=3 uid="uid://bgtajfxfcvo6m"]
 
 [ext_resource type="Script" uid="uid://j4id3pdqg34k" path="res://scripts/data/combatant_stats.gd" id="1_stats"]
+[ext_resource type="Resource" path="res://resources/abilities/shadow_primary.tres" id="2_primary"]
+[ext_resource type="Resource" path="res://resources/rig_profiles/shadow_rig.tres" id="3_rig"]
 
 [resource]
 script = ExtResource("1_stats")
 id = &"shadow_monster"
+primary = ExtResource("2_primary")
 display_name = "Shadow Monster"
 max_hp = 40
 weapon_power = 8
@@ -17,4 +20,7 @@ model_scale = 0.9
 body_color = Color(0.078431, 0.070588, 0.101961, 1)
 accent_color = Color(1, 0.176471, 0.176471, 1)
 scene_path = "res://scenes/battle/enemies/shadow_monster.tscn"
+rig_profile = ExtResource("3_rig")
+tags = Array[StringName]([&"shade", &"swarm"])
+threat = 1
 drop_chance = 0.2

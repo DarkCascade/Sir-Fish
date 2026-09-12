@@ -6,16 +6,19 @@ extends Node
 ##
 ## tools/strip_unused_animations.gd deletes every clip a character's .glb ships
 ## with except a hardcoded keep-list, at import time. That keep-list is a second
-## copy of what CombatantBakedAnimations.CLIPS references, and the two can drift:
-## retarget a hero onto a different clip in CLIPS, and the strip script will
-## happily delete the clip the game now needs. Nothing else in the suite would
-## catch it - the failure is a silent missing animation at runtime, on one
-## character, in one state.
+## copy of what each BAKED character's RigProfile.clips references
+## (content-phase-0 spec §3 Step 3 moved this data off
+## CombatantBakedAnimations.CLIPS and onto resources/rig_profiles/*.tres), and
+## the two can drift: retarget a hero onto a different clip in its RigProfile,
+## and the strip script will happily delete the clip the game now needs.
+## Nothing else in the suite would catch it - the failure is a silent missing
+## animation at runtime, on one character, in one state.
 ##
-## So this walks CLIPS itself (the source of truth) and asserts every clip it
-## names is actually present in that character's imported scene. It deliberately
-## reads the IMPORTED scene rather than the .glb on disk, because the imported
-## scene is what the strip script produces and what the game loads.
+## So this walks each character's RigProfile itself (the source of truth) and
+## asserts every clip it names is actually present in that character's
+## imported scene. It deliberately reads the IMPORTED scene rather than the
+## .glb on disk, because the imported scene is what the strip script produces
+## and what the game loads.
 ##
 ## It also asserts the strip actually happened - a keep-list that silently
 ## stopped being applied would leave the clips present and the payload bloated,
@@ -80,16 +83,17 @@ func _check_character(id: StringName) -> void:
 
 	root.free()
 
-## Pulls the distinct "clip" values out of CombatantBakedAnimations.CLIPS for one
-## character - the same table the retarget reads at runtime, so this cannot go
-## stale against it the way a second hardcoded list would.
+## Pulls the distinct "clip" values out of this character's RigProfile - the
+## same resource the retarget reads at runtime, so this cannot go stale
+## against it the way a second hardcoded list would.
 func _wanted_clips(id: StringName) -> Array[String]:
 	var out: Array[String] = []
-	if not CombatantBakedAnimations.CLIPS.has(id):
+	var stats := GameState.get_stats(id)
+	if stats == null or stats.rig_profile == null:
 		return out
-	var entry: Dictionary = CombatantBakedAnimations.CLIPS[id]
-	for state: StringName in entry:
-		var spec: Dictionary = entry[state]
+	var resolved := stats.rig_profile.resolved_clips()
+	for state: Variant in resolved:
+		var spec: Dictionary = resolved[state]
 		var clip: String = String(spec.get("clip", ""))
 		if clip != "" and not out.has(clip):
 			out.append(clip)

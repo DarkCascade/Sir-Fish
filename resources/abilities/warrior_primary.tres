@@ -1,0 +1,7 @@
+[gd_resource type="Resource" script_class="MeleeStrikeAbility" format=3]
+
+[ext_resource type="Script" path="res://scripts/battle/abilities/melee_strike_ability.gd" id="1_melee"]
+
+[resource]
+script = ExtResource("1_melee")
+tint_color = Color(0.960784, 0.945098, 0.901961, 1)

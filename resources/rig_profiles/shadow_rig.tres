@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="RigProfile" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/rig_profile.gd" id="1_rig"]
+[ext_resource type="Script" path="res://scripts/battle/rig_finalizers/shadow_finalizer.gd" id="2_finalizer"]
+
+[resource]
+script = ExtResource("1_rig")
+source = 2
+finalizer = ExtResource("2_finalizer")

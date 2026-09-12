@@ -1,12 +1,16 @@
-[gd_resource type="Resource" script_class="CombatantStats" format=3 uid="uid://b7kjv26uwhpeg"]
+[gd_resource type="Resource" script_class="CombatantStats" load_steps=5 format=3 uid="uid://b7kjv26uwhpeg"]
 
 [ext_resource type="Script" uid="uid://j4id3pdqg34k" path="res://scripts/data/combatant_stats.gd" id="1_stats"]
+[ext_resource type="Resource" path="res://resources/abilities/ranger_primary.tres" id="2_primary"]
+[ext_resource type="Resource" path="res://resources/abilities/ranger_special.tres" id="3_special"]
+[ext_resource type="Resource" path="res://resources/rig_profiles/ranger_rig.tres" id="4_rig"]
 
 [resource]
 script = ExtResource("1_stats")
 id = &"ranger"
 display_name = "Ranger"
 is_hero = true
+roster_order = 1
 max_hp = 80
 weapon_power = 0
 magic_power = 0
@@ -15,8 +19,11 @@ weapon_power_per_level = 0
 magic_power_per_level = 0
 attack_cooldown = 1.4
 special_every_n_actions = 4
+primary = ExtResource("2_primary")
+special = ExtResource("3_special")
 attack_style = 1
 model_scale = 0.95
 body_color = Color(0.278431, 0.541176, 0.360784, 1)
 accent_color = Color(0.611765, 0.419608, 0.2, 1)
 scene_path = "res://scenes/battle/heroes/ranger.tscn"
+rig_profile = ExtResource("4_rig")

@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="RigProfile" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/rig_profile.gd" id="1_rig"]
+[ext_resource type="Resource" path="res://resources/rig_profiles/orc_rig.tres" id="2_base"]
+[ext_resource type="Script" path="res://scripts/battle/rig_finalizers/orc_finalizer.gd" id="3_finalizer"]
+
+[resource]
+script = ExtResource("1_rig")
+inherits = ExtResource("2_base")
+source = 1
+skeleton_path = "Rig/Model/OrcRig/Skeleton3D"
+finalizer = ExtResource("3_finalizer")
+speed_scale = 0.8695652173913043

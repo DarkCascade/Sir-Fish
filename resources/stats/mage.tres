@@ -1,12 +1,16 @@
-[gd_resource type="Resource" script_class="CombatantStats" format=3 uid="uid://dn1nscxq8xnly"]
+[gd_resource type="Resource" script_class="CombatantStats" load_steps=5 format=3 uid="uid://dn1nscxq8xnly"]
 
 [ext_resource type="Script" uid="uid://j4id3pdqg34k" path="res://scripts/data/combatant_stats.gd" id="1_stats"]
+[ext_resource type="Resource" path="res://resources/abilities/mage_primary.tres" id="2_primary"]
+[ext_resource type="Resource" path="res://resources/abilities/mage_special.tres" id="3_special"]
+[ext_resource type="Resource" path="res://resources/rig_profiles/mage_rig.tres" id="4_rig"]
 
 [resource]
 script = ExtResource("1_stats")
 id = &"mage"
 display_name = "Mage"
 is_hero = true
+roster_order = 0
 max_hp = 70
 weapon_power = 0
 magic_power = 0
@@ -15,11 +19,11 @@ weapon_power_per_level = 0
 magic_power_per_level = 0
 attack_cooldown = 2.0
 special_every_n_actions = 3
-special_requires_wounded_ally = true
-special_targets_opponent = false
-telegraphs_primary = true
+primary = ExtResource("2_primary")
+special = ExtResource("3_special")
 attack_style = 2
 model_scale = 0.95
 body_color = Color(0.431373, 0.352941, 0.658824, 1)
 accent_color = Color(0.768627, 0.709804, 0.992157, 1)
 scene_path = "res://scenes/battle/heroes/mage.tscn"
+rig_profile = ExtResource("4_rig")

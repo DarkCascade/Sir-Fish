@@ -15,13 +15,6 @@ enum School { WEAPON, MAGIC }
 
 signal died(c: Combatant)
 
-## Spec 9.6's per-caster telegraph colour.
-const SPECIAL_FLASH_COLORS := {
-	&"warrior": Tuning.C_DEFEND,   # defend blue
-	&"ranger": Tuning.C_GOLD,      # bomb-arrow gold
-	&"mage": Tuning.C_HEAL,        # heal green
-}
-
 @export var stats: CombatantStats
 
 var current_hp: int
@@ -273,7 +266,9 @@ func _anim_charge() -> void:
 ## happen" beat, and it is why flash() must remember its base colour via metadata
 ## rather than reading the live albedo: specials now overlap with hit flashes.
 func _anim_special_cast() -> void:
-	var color := SPECIAL_FLASH_COLORS.get(stats.id, Tuning.C_TEXT) as Color
+	# [content phase 0] Reads the SPECIAL ability's own flash_color now,
+	# replacing Combatant.SPECIAL_FLASH_COLORS - see ability_def.gd.
+	var color: Color = stats.special.flash_color if stats.special != null else Tuning.C_TEXT
 	CelMaterials.flash(rig, color, Tuning.SPECIAL_CAST_FLASH_TIME)
 
 # --- actions ----------------------------------------------------------------
@@ -415,10 +410,14 @@ func _on_status_icon_gone(icon: Node) -> void:
 
 # --- warrior defend ---------------------------------------------------------
 
-func apply_defend() -> void:
-	damage_reduction = Tuning.WARRIOR_DEFEND_REDUCTION
+## [content phase 0] Parameters default to the warrior's own numbers so any
+## other caller is unaffected; SelfBuffAbility (ability_def.gd) is the one
+## caller that passes its own authored reduction/duration.
+func apply_defend(reduction: float = Tuning.WARRIOR_DEFEND_REDUCTION,
+		duration: float = Tuning.WARRIOR_DEFEND_DURATION) -> void:
+	damage_reduction = reduction
 	# Re-applying refreshes the duration rather than stacking (spec 9.1).
-	var timer := get_tree().create_timer(Tuning.WARRIOR_DEFEND_DURATION)
+	var timer := get_tree().create_timer(duration)
 	_defend_timer = timer
 	await timer.timeout
 	if _defend_timer == timer:

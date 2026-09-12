@@ -1,14 +1,24 @@
 class_name CombatantSkeletonAnimations
 extends RefCounted
-## Builds the six required clips (spec 8.3) directly onto $Visual/AnimationPlayer
-## for a hero whose real Blender model has landed under Visual/Rig/Model
-## (spec 20.4 / M8b). See QUESTIONS-m8b.md Q2 for why this is GDScript-authored
-## rather than a copy of the Blender-baked AnimationLibrary: there is no
-## execute_editor_script / execute_game_script tool in this MCP build to pull
-## the baked keyframe data out of an imported .glb into editable .tscn text,
-## and no tool can assign an existing resource to a node property. The mesh,
-## the 17-bone armature and the skinning are still fully Blender-authored;
-## only the six clips are typed in here instead of imported.
+## Builds the required clips (spec 8.3) directly onto $Visual/AnimationPlayer
+## for a character whose real Blender model has landed under Visual/Rig/Model
+## on the in-house 17-bone rig (spec 20.4 / M8b). See QUESTIONS-m8b.md Q2 for
+## why this is GDScript-authored rather than a copy of a Blender-baked
+## AnimationLibrary: there is no execute_editor_script / execute_game_script
+## tool in the MCP build M8b was written against to pull baked keyframe data
+## out of an imported .glb into editable .tscn text, and no tool can assign an
+## existing resource to a node property. The mesh, the armature and the
+## skinning are still fully Blender-authored; only the clips are typed in here
+## instead of imported.
+##
+## [content phase 0] Which clips a character needs, and which SHARED builder
+## answers each one, is now data - RigProfile.clips, keyed
+## {"builder": "<name>"} against BUILDERS below (spec §3 Step 3). The
+## choreography itself stays GDScript: every key is authored as a DELTA from
+## the character's own modelled rest pose (spec 9.0.2, below), composed
+## against a live Skeleton3D read at build time, which is not expressible as
+## plain data without reimplementing a keyframe-curve authoring format this
+## project has no other need for.
 ##
 ## SPEC 9.0.2 - READ BEFORE TOUCHING A NUMBER BELOW.
 ## A Skeleton3D bone track (TYPE_ROTATION_3D / TYPE_POSITION_3D) is an
@@ -24,66 +34,37 @@ extends RefCounted
 
 const DEG := PI / 180.0
 
-## The warrior, the ranger and the mage are all absent on purpose: they now
-## run on KayKit models (knight.glb, rogue.glb, mage.glb) whose 41-bone
-## armature shares no bone name with the in-house rig every clip below is
-## keyed against. Their clips come from CombatantBakedAnimations, which
-## CombatantAnimations.build() consults first.
-static var SKELETON_PATH := {
-	&"orc_barbarian": "Rig/Model/OrcRig/Skeleton3D",
-	&"orc_warlord": "Rig/Model/OrcRig/Skeleton3D",
-	# The sporecap is Meshy-generated geometry rigged in Blender onto THIS
-	# file's 17-bone naming on purpose (Root / Arm.R / Thigh.L ...), rather
-	# than shipping a baked action library like the KayKit imports do. Meshy's
-	# auto-rigger refuses the silhouette - a cap that wide with no neck fails
-	# its pose estimation - so the armature is hand-built, and matching the
-	# in-house names means the shared humanoid clips below drive it unchanged.
-	&"sporecap": "Rig/Model/SporecapRig/Skeleton3D",
-}
-
-static func build_for(player: AnimationPlayer, stats: CombatantStats) -> bool:
-	if not SKELETON_PATH.has(stats.id):
-		return false
-	var skel_str: String = SKELETON_PATH[stats.id]
+static func build(player: AnimationPlayer, profile: RigProfile) -> void:
 	var visual: Node = player.get_parent()
-	var skel := visual.get_node(NodePath(skel_str)) as Skeleton3D
-	assert(skel != null, "CombatantSkeletonAnimations: no Skeleton3D at %s" % skel_str)
+	var skel := visual.get_node(NodePath(profile.skeleton_path)) as Skeleton3D
+	assert(skel != null, "CombatantSkeletonAnimations: no Skeleton3D at %s" % profile.skeleton_path)
 
 	var lib := AnimationLibrary.new()
-	match stats.id:
-		# Enemies take no special (spec 8.3). idle/run/hurt/die are the shared
-		# humanoid builders unchanged (spec 9.0.3, R16); attack is the one
-		# authored clip and the warlord takes it as-is from the barbarian.
-		#
-		# [overworld prototype] `run` used to be heroes-only, because the
-		# side-on world scrolled past a stationary enemy line and an enemy
-		# never travelled. Enemies now sprint in from off the top-right corner
-		# (BattleDirector._run_enemy_in), so they need legs. required_anims()
-		# still does not DEMAND run of an enemy - the shadow monster floats and
-		# has none - it is simply available to those built on this rig.
-		&"orc_barbarian", &"orc_warlord":
-			lib.add_animation(&"idle", _humanoid_idle(skel, skel_str))
-			lib.add_animation(&"run", _humanoid_run(skel, skel_str))
-			lib.add_animation(&"attack", _orc_attack(skel, skel_str))
-			lib.add_animation(&"hurt", _humanoid_hurt(skel, skel_str))
-			lib.add_animation(&"die", _humanoid_die(skel, skel_str))
-		# Same four shared humanoid clips as the orcs - the sporecap is built
-		# on the same bone names, so idle/run/hurt/die need no variant - plus
-		# one authored attack of its own.
-		&"sporecap":
-			lib.add_animation(&"idle", _humanoid_idle(skel, skel_str))
-			lib.add_animation(&"run", _humanoid_run(skel, skel_str))
-			lib.add_animation(&"attack", _sporecap_attack(skel, skel_str))
-			lib.add_animation(&"hurt", _humanoid_hurt(skel, skel_str))
-			lib.add_animation(&"die", _humanoid_die(skel, skel_str))
+	var specs := profile.resolved_clips()
+	for anim_name: Variant in specs:
+		var builder_name: String = (specs[anim_name] as Dictionary).get("builder", "")
+		var anim := _build_clip(builder_name, skel, profile.skeleton_path)
+		assert(anim != null, "CombatantSkeletonAnimations: no builder '%s'" % builder_name)
+		if anim == null:
+			continue
+		lib.add_animation(StringName(anim_name), anim)
 	if player.has_animation_library(&""):
 		player.remove_animation_library(&"")
 	player.add_animation_library(&"", lib)
-	# The warlord plays SLOWER, not faster (spec 8.7): "heavier" is the
-	# stated intent, and speed_scale = 1.15 would make the biggest thing on
-	# the battlefield the twitchiest. Matches the placeholder's identical rule.
-	player.speed_scale = (1.0 / 1.15) if stats.id == &"orc_warlord" else 1.0
-	return true
+
+## Named-builder dispatch for RigProfile.clips' {"builder": "<name>"} entries -
+## a match rather than a Callable table, since a static Dictionary literal
+## referencing this class's own static funcs by bare name would need to be
+## built after the class finishes parsing, not in its own default expression.
+static func _build_clip(builder_name: String, skel: Skeleton3D, skel_path: String) -> Animation:
+	match builder_name:
+		"humanoid_idle": return _humanoid_idle(skel, skel_path)
+		"humanoid_run": return _humanoid_run(skel, skel_path)
+		"humanoid_hurt": return _humanoid_hurt(skel, skel_path)
+		"humanoid_die": return _humanoid_die(skel, skel_path)
+		"orc_attack": return _orc_attack(skel, skel_path)
+		"sporecap_attack": return _sporecap_attack(skel, skel_path)
+	return null
 
 # --- rest-composing helpers (spec 9.0.2) ---------------------------------
 
@@ -195,7 +176,7 @@ static func _call(a: Animation, time: float, method: StringName) -> void:
 	a.track_insert_key(t, time, {"method": method, "args": []})
 
 # --- shared humanoid clips (spec 8.3's idle/run/hurt/die - identical numbers
-# for every humanoid hero in the pre-M8 procedural rig, carried over unchanged) --
+# for every humanoid character on this rig, carried over unchanged) --------
 
 const ARM_R_IDLE := -20.0
 
@@ -243,11 +224,11 @@ static func _humanoid_die(skel: Skeleton3D, s: String) -> Animation:
 # --- orc barbarian / orc warlord (spec 9.5) ---------------------------------
 
 ## Shared by both orcs (spec 9.0.3, R16) - the warlord takes this unchanged
-## and differs only via speed_scale, model_scale and colour (spec 8.7, A3).
-## The Visual-level rotation/position/scale keys are ordinary TYPE_VALUE
-## tracks, exactly as in the placeholder: spec 9.0.2's rest composition is
-## scoped to skeleton bone tracks only (its own scope table) and does not
-## apply to Visual itself.
+## and differs only via RigProfile.speed_scale, model_scale and colour (spec
+## 8.7, A3). The Visual-level rotation/position/scale keys are ordinary
+## TYPE_VALUE tracks, exactly as in the placeholder: spec 9.0.2's rest
+## composition is scoped to skeleton bone tracks only (its own scope table)
+## and does not apply to Visual itself.
 static func _orc_attack(skel: Skeleton3D, s: String) -> Animation:
 	var a := _new_anim(0.85, false)
 	_rot_z(a, skel, s, "Arm.R", [

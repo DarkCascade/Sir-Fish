@@ -1,12 +1,13 @@
 class_name CombatantAnimations
 extends RefCounted
-## Dispatches to CombatantSkeletonAnimations for every combatant with a
-## skeleton (spec 8.3 / 9.0.2). The shadow monster has no armature (spec
-## 20.5, 23.2) - build_for() returns false for it, and its four clips are
-## built here directly as TYPE_VALUE tracks on Visual (spec 9.0.2's rest
-## composition applies to skeleton bone tracks only, so these are authored
-## exactly like the shader-param/method-call tracks the composed clips also
-## carry - see that file's own scope table).
+## Dispatches on CombatantStats.rig_profile.source (content-phase-0 spec §3
+## Step 3) - BAKED to CombatantBakedAnimations, AUTHORED_SKELETON to
+## CombatantSkeletonAnimations, SHAPE_KEYS to _build_shadow() below, the
+## shadow monster's own path since it has no armature (spec 20.5, 23.2) and
+## its four clips are built here directly as TYPE_VALUE tracks on Visual
+## (spec 9.0.2's rest composition applies to skeleton bone tracks only, so
+## these are authored exactly like the shader-param/method-call tracks the
+## composed clips also carry - see that file's own scope table).
 ##
 ## Impacts are scheduled by method-call tracks, never by a SceneTreeTimer: a
 ## call track is a position in the animation, so it scales with speed_scale
@@ -14,37 +15,17 @@ extends RefCounted
 
 const DEG := PI / 180.0
 
-# Impact offsets, in seconds from animation start (spec 9).
-const IMPACT_DELAYS := {
-	&"warrior":        { "attack": 0.30, "special": 0.25 },
-	&"ranger":         { "attack": 0.30, "special": 0.30 },
-	&"mage":           { "attack": 0.55, "special": 0.40 },
-	&"shadow_monster": { "attack": 0.28, "special": 0.0 },
-	&"orc_barbarian":  { "attack": 0.42, "special": 0.0 },
-	&"orc_warlord":    { "attack": 0.42, "special": 0.0 },
-	&"skeleton_warrior": { "attack": 0.30 },
-	&"skeleton_mage":    { "attack": 0.45 },
-	&"skeleton_rogue":   { "attack": 0.24 },
-	&"skeleton_minion":  { "attack": 0.20 },
-	&"sporecap":         { "attack": 0.40 },
-}
-
 static func build(player: AnimationPlayer, stats: CombatantStats) -> void:
-	# Models that ship their own baked action library (the KayKit warrior)
-	# take it first; the GDScript-authored clips below/next door only address
-	# the in-house rig's bone names. See CombatantBakedAnimations.
-	if CombatantBakedAnimations.build_for(player, stats):
-		return
-	if CombatantSkeletonAnimations.build_for(player, stats):
-		return
-	assert(stats.id == &"shadow_monster",
-		"CombatantAnimations: no builder for '%s'" % stats.id)
-	_build_shadow(player)
-
-static func impact_delay(id: StringName, anim: StringName) -> float:
-	if not IMPACT_DELAYS.has(id):
-		return 0.3
-	return float((IMPACT_DELAYS[id] as Dictionary).get(String(anim), 0.3))
+	var profile := stats.rig_profile
+	assert(profile != null, "CombatantAnimations: %s has no rig_profile" % stats.id)
+	match profile.source:
+		RigProfile.Source.BAKED:
+			CombatantBakedAnimations.build(player, profile)
+		RigProfile.Source.AUTHORED_SKELETON:
+			CombatantSkeletonAnimations.build(player, profile)
+		RigProfile.Source.SHAPE_KEYS:
+			_build_shadow(player)
+	player.speed_scale = profile.speed_scale
 
 # --- track helpers ----------------------------------------------------------
 
@@ -85,7 +66,6 @@ static func _build_shadow(player: AnimationPlayer) -> void:
 	if player.has_animation_library(&""):
 		player.remove_animation_library(&"")
 	player.add_animation_library(&"", lib)
-	player.speed_scale = 1.0
 
 static func _shadow_idle() -> Animation:
 	var a := _new_anim(1.60, true)
@@ -139,8 +119,8 @@ static func _shadow_swipe() -> Animation:
 	# ShadowBody". The extra "ShadowRig" segment is Godot's glTF import
 	# nesting the source .glb's own root object one level under the
 	# synthetic scene root that becomes "Model" on instancing - the same
-	# shape CombatantSkeletonAnimations.SKELETON_PATH relies on for every
-	# hero (e.g. "Rig/Model/MageRig/Skeleton3D").
+	# shape RigProfile.skeleton_path relies on for every AUTHORED_SKELETON
+	# character (e.g. "Rig/Model/MageRig/Skeleton3D").
 	_track(a, "Rig/Model/ShadowRig/ShadowBody:blend_shapes/Lunge", [
 		[0.0, 0.0], [0.20, 1.0], [0.36, 0.0],
 	])

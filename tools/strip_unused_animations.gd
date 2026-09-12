@@ -13,14 +13,18 @@ extends EditorScenePostImport
 ## `import/skip_import` on the ANIMATION_NODE category, removes the whole
 ## AnimationPlayer and with it every clip - including the five that are used.
 ##
-## The clips that survive are the union of what CombatantBakedAnimations.CLIPS
-## actually references, per character. That table is the single source of truth
-## for which clips the game plays; KEEP below must be kept in step with it, and
+## The clips that survive are the union of what each BAKED character's
+## RigProfile.clips actually references (resources/rig_profiles/*.tres,
+## content-phase-0 spec §3 Step 3 - this table used to mirror
+## CombatantBakedAnimations.CLIPS before that data moved to RigProfile
+## resources). Those resources are the single source of truth for which clips
+## the game plays; KEEP below must be kept in step with them, and
 ## tests/test_animation_clips.gd fails the suite if it drifts.
 ##
 ## Wired up via `import_script/path` in each character's .glb.import.
 
-## stem -> clip names to keep. Derived from CombatantBakedAnimations.CLIPS.
+## stem -> clip names to keep. Derived from the union of every BAKED
+## character's RigProfile.clips (resources/rig_profiles/*.tres).
 ## A .glb whose stem is absent here is passed through untouched, so attaching
 ## this script to an unrelated model is a no-op rather than a wipe.
 const KEEP := {

@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="SelfBuffAbility" format=3]
+
+[ext_resource type="Script" path="res://scripts/battle/abilities/self_buff_ability.gd" id="1_selfbuff"]
+
+[resource]
+script = ExtResource("1_selfbuff")
+special_targets_opponent = false
+flash_color = Color(0.85098, 0.658824, 0.145098, 1)
+damage_reduction = 0.5
+duration = 4.0

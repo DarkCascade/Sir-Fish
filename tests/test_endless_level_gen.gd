@@ -14,13 +14,19 @@ func _ready() -> void:
 
 	_check_level_shape(t, GameState.level, "depth 1")
 
+	# [content phase 0] The three pools are EnemyPool resources now, not const
+	# arrays (spec §3 Step 4) - resolve() is what game_state.gd itself calls.
+	var early_pool := GameState.ENDLESS_EARLY_POOL.resolve()
+	var mid_pool := GameState.ENDLESS_MID_POOL.resolve()
+	var boss_pool := GameState.BOSS_POOL.resolve()
+
 	# Every enemy id the generator can produce must resolve to real stats -
 	# this is the check that would have caught a typo in the enemy pools.
-	for id: StringName in GameState.ENDLESS_EARLY_POOL:
+	for id: StringName in early_pool:
 		t.check(GameState.get_stats(id) != null, "early pool '%s' resolves to real stats" % id)
-	for id: StringName in GameState.ENDLESS_MID_POOL:
+	for id: StringName in mid_pool:
 		t.check(GameState.get_stats(id) != null, "mid pool '%s' resolves to real stats" % id)
-	for id: StringName in GameState.BOSS_POOL:
+	for id: StringName in boss_pool:
 		t.check(GameState.get_stats(id) != null, "boss pool '%s' resolves to real stats" % id)
 
 	# Depth 1: only the early pool should ever appear in the three REGULAR
@@ -40,10 +46,10 @@ func _ready() -> void:
 		for enc_index: int in [0, 2, 4]:
 			var enc: EncounterDef = lvl.encounters[enc_index]
 			for id: StringName in enc.enemy_stat_ids:
-				if id not in GameState.ENDLESS_EARLY_POOL:
+				if id not in early_pool:
 					only_early_at_depth1 = false
 	t.check(only_early_at_depth1, "depth 1's regular combat slots only ever draw the early pool")
-	t.check(depth1.encounters[5].enemy_stat_ids[0] in GameState.BOSS_POOL,
+	t.check(depth1.encounters[5].enemy_stat_ids[0] in boss_pool,
 		"depth 1's boss encounter still leads with a boss-pool id")
 
 	# Depth 5: the mid pool has joined, and the group size has scaled up to
@@ -58,7 +64,7 @@ func _ready() -> void:
 	# convention as the fixed level's boss encounter.
 	var boss_enc: EncounterDef = depth5.encounters[5]
 	t.check(boss_enc.is_boss, "encounter 6 is flagged as the boss fight")
-	t.check(boss_enc.enemy_stat_ids[0] in GameState.BOSS_POOL,
+	t.check(boss_enc.enemy_stat_ids[0] in boss_pool,
 		"boss encounter's first id is from the boss pool")
 
 	t.finish(get_tree(), "test_endless_level_gen")

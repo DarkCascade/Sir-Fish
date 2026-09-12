@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="HealAllyAbility" format=3]
+
+[ext_resource type="Script" path="res://scripts/battle/abilities/heal_ally_ability.gd" id="1_heal"]
+
+[resource]
+script = ExtResource("1_heal")
+special_requires_wounded_ally = true
+special_targets_opponent = false
+flash_color = Color(0.333333, 0.788235, 0.290196, 1)

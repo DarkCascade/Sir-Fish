@@ -1,0 +1,7 @@
+[gd_resource type="Resource" script_class="EnemyPool" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/enemy_pool.gd" id="1_pool"]
+
+[resource]
+script = ExtResource("1_pool")
+explicit_ids = Array[StringName]([&"skeleton_warrior", &"skeleton_mage", &"skeleton_rogue", &"skeleton_minion"])
