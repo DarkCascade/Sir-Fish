@@ -419,13 +419,14 @@ func _take_action(c: Combatant) -> void:
 		and c.action_count % c.stats.special_every_n_actions == 0
 	var use_special: bool = due or c.special_pending
 
-	# Wounded-ally skip rule (spec 4.1 / 10.2, V6). [v3] Data-driven, not an id
-	# check: special_requires_wounded_ally is true only on mage.tres. Applying
-	# this to every special would also suppress the warrior's Defend at full
-	# party HP, which is backwards - Defend is most useful before anyone is
-	# hurt. "Ally" means every living combatant on the caster's own side,
-	# including the caster, so a wounded mage in an otherwise-healthy party
-	# still heals itself.
+	# Wounded-ally skip rule (spec 4.1 / 10.2, V6). [content phase 0]
+	# special_requires_wounded_ally now lives on the SPECIAL AbilityDef, not
+	# the character (mage.tres's special asset is the only one with it set).
+	# Applying this to every special would also suppress the warrior's Defend
+	# at full party HP, which is backwards - Defend is most useful before
+	# anyone is hurt. "Ally" means every living combatant on the caster's own
+	# side, including the caster, so a wounded mage in an otherwise-healthy
+	# party still heals itself.
 	#
 	# v1 decremented action_count so the next action re-tested the same multiple.
 	# That worked but froze the counter: through a healthy stretch the mage's
@@ -433,20 +434,23 @@ func _take_action(c: Combatant) -> void:
 	# action after anyone took a scratch - reactive twitch rather than a cadence
 	# the player can feel. A pending flag lets the counter advance normally AND
 	# still fires a skipped heal as soon as a target exists.
-	if use_special and c.stats.special_requires_wounded_ally \
-			and _every_living_ally_at_full_hp(c):
+	var requires_wounded: bool = use_special and c.stats.special != null \
+			and c.stats.special.special_requires_wounded_ally
+	if requires_wounded and _every_living_ally_at_full_hp(c):
 		use_special = false
 		c.special_pending = true
 	elif use_special:
 		c.special_pending = false
 
-	# [v3] special_targets_opponent, not an id check (spec 4.1 / 10.2, V6). The
-	# warrior's Defend and the mage's Heal must still fire when no opponent is
-	# alive - during the resolve window after the last enemy (or last hero)
-	# dies. The ranger's bomb arrow is aimed, so it correctly aborts here; bomb
-	# arrow and slot lightning ignore the chosen target at resolution anyway.
+	# [content phase 0] special_targets_opponent now lives on the SPECIAL
+	# AbilityDef (spec 4.1 / 10.2, V6). The warrior's Defend and the mage's
+	# Heal must still fire when no opponent is alive - during the resolve
+	# window after the last enemy (or last hero) dies. The ranger's bomb
+	# arrow is aimed, so it correctly aborts here; bomb arrow and slot
+	# lightning ignore the chosen target at resolution anyway.
+	var targets_opponent: bool = c.stats.special == null or c.stats.special.special_targets_opponent
 	var target: Combatant = null
-	if not (use_special and not c.stats.special_targets_opponent):
+	if not (use_special and not targets_opponent):
 		target = _random_target_for(c)
 		if target == null:
 			c.cooldown_remaining = c.stats.attack_cooldown
@@ -582,11 +586,18 @@ func _finish_corpse(c: Combatant) -> void:
 	if is_instance_valid(c):
 		c.queue_free()
 
+## [content phase 0] Matched by stats_id via GameState.hero_entry(), not by
+## list index (spec §3 Step 5) - heroes[i] and GameState.hero_runtime[i] are
+## two independent arrays with no guaranteed positional correspondence (a
+## hero_runtime entry whose stats id fails to resolve makes spawn_party()
+## skip appending a Combatant for it, which used to leave every entry after
+## it off by one here).
 func sync_heroes_to_state() -> void:
-	for i: int in range(mini(heroes.size(), GameState.hero_runtime.size())):
-		var c: Combatant = heroes[i]
+	for c: Combatant in heroes:
 		if not is_instance_valid(c):
 			continue
-		var entry: Dictionary = GameState.hero_runtime[i]
+		var entry := GameState.hero_entry(c.stats.id)
+		if entry.is_empty():
+			continue
 		entry["current_hp"] = c.current_hp
 		entry["alive"] = c.is_alive()

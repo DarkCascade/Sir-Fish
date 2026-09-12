@@ -1,10 +1,13 @@
-[gd_resource type="Resource" script_class="CombatantStats" format=3 uid="uid://b6mb65bygu5d6"]
+[gd_resource type="Resource" script_class="CombatantStats" load_steps=4 format=3 uid="uid://b6mb65bygu5d6"]
 
 [ext_resource type="Script" uid="uid://j4id3pdqg34k" path="res://scripts/data/combatant_stats.gd" id="1_stats"]
+[ext_resource type="Resource" path="res://resources/abilities/melee_strike_generic.tres" id="2_primary"]
+[ext_resource type="Resource" path="res://resources/rig_profiles/skeleton_rogue_rig.tres" id="3_rig"]
 
 [resource]
 script = ExtResource("1_stats")
 id = &"skeleton_rogue"
+primary = ExtResource("2_primary")
 display_name = "Skeleton Rogue"
 max_hp = 50
 weapon_power = 12
@@ -16,4 +19,7 @@ model_scale = 0.95
 body_color = Color(0.847059, 0.815686, 0.752941, 1)
 accent_color = Color(0.4, 0.243137, 0.560784, 1)
 scene_path = "res://scenes/battle/enemies/skeleton_rogue.tscn"
+rig_profile = ExtResource("3_rig")
+tags = Array[StringName]([&"undead", &"skirmisher"])
+threat = 2
 drop_chance = 0.3

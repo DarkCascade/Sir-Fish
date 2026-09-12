@@ -1,10 +1,13 @@
-[gd_resource type="Resource" script_class="CombatantStats" format=3 uid="uid://dnvr178pq8l62"]
+[gd_resource type="Resource" script_class="CombatantStats" load_steps=4 format=3 uid="uid://dnvr178pq8l62"]
 
 [ext_resource type="Script" uid="uid://j4id3pdqg34k" path="res://scripts/data/combatant_stats.gd" id="1_stats"]
+[ext_resource type="Resource" path="res://resources/abilities/orc_primary.tres" id="2_primary"]
+[ext_resource type="Resource" path="res://resources/rig_profiles/orc_rig.tres" id="3_rig"]
 
 [resource]
 script = ExtResource("1_stats")
 id = &"orc_barbarian"
+primary = ExtResource("2_primary")
 display_name = "Orc Barbarian"
 max_hp = 70
 weapon_power = 15
@@ -17,4 +20,7 @@ model_scale = 1.15
 body_color = Color(0.435294, 0.658824, 0.243137, 1)
 accent_color = Color(0.54902, 0.580392, 0.639216, 1)
 scene_path = "res://scenes/battle/enemies/orc_barbarian.tscn"
+rig_profile = ExtResource("3_rig")
+tags = Array[StringName]([&"orc", &"brute"])
+threat = 2
 drop_chance = 0.35

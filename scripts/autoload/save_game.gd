@@ -43,6 +43,16 @@ const PATH := "user://profile.save"
 ## new_profile().
 const VERSION := 4
 
+## [content phase 0] Version -> the name of the function that migrates a
+## payload FROM that version up to the next one, mutating and returning the
+## dict (spec §3 Step 5 / §2.8). Empty today - VERSION has not moved past 4
+## in this pass - but the chain is the deliverable: load_profile() walks it
+## below instead of discarding every save that isn't an exact match, so the
+## next bump needs one migration function and one entry here, not a rejected
+## player file. A version with no entry (and no exact match) still falls back
+## to new_profile(), same as before.
+const MIGRATIONS := {}
+
 ## Every profile mutation in town saves (spec 2.4's "When to save" list); this
 ## is also called from GameState.new_profile(), from start_expedition() and the
 ## result-banking flow (later steps), and from _notification() below.
@@ -97,8 +107,20 @@ func load_profile() -> bool:
 	if not (data is Dictionary):
 		return false
 	var d: Dictionary = data
-	if int(d.get("version", 0)) != VERSION:
+
+	# [content phase 0] A migration chain, not an exact-match gate (spec §3
+	# Step 5 / §2.8) - a save from the future is still refused outright
+	# (never guess forward), but anything older walks MIGRATIONS one step at
+	# a time until it reaches VERSION or runs out of path, in which case it
+	# falls back to new_profile() exactly as an exact-match miss always has.
+	var file_version: int = int(d.get("version", 0))
+	if file_version > VERSION:
 		return false
+	while file_version < VERSION:
+		if not MIGRATIONS.has(file_version):
+			return false
+		d = call(MIGRATIONS[file_version], d)
+		file_version = int(d.get("version", file_version))
 
 	GameState.gold = int(d.get("gold", 0))
 	GameState.scrap = int(d.get("scrap", 0))

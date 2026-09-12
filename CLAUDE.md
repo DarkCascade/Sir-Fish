@@ -214,9 +214,14 @@ mesh; **the rig is hand-built in Blender**, not by Meshy.
    `export_apply=False` (never apply the armature modifier).
 7. **Wire up in Godot**: `resources/stats/<id>.tres`, `scenes/battle/enemies/<id>.tscn`
    (instance `combatant.tscn`, add the `.glb` under `Visual/Rig` as `Model`), a
-   `SKELETON_PATH` entry `Rig/Model/<Name>Rig/Skeleton3D` plus a `match` branch in
-   `CombatantSkeletonAnimations`, an `IMPACT_DELAYS` entry in `CombatantAnimations`, and
-   the id added to a pool in `game_state.gd`.
+   `RigProfile` resource under `resources/rig_profiles/` (`source = AUTHORED_SKELETON`,
+   `skeleton_path = "Rig/Model/<Name>Rig/Skeleton3D"`, `clips` naming the shared
+   `humanoid_idle/run/hurt/die` builders plus your own attack builder in
+   `CombatantSkeletonAnimations`), referenced from the stats resource's `rig_profile`
+   field, and the id added to a pool in `game_state.gd`. There is no `IMPACT_DELAYS` table
+   to update any more (content-phase-0 §1.1/§3 Step 3 deleted it) — the attack clip's own
+   `_anim_impact` call track, authored inside your attack builder, is the only impact
+   timing that has ever actually fired.
 
 **Verifying the new enemy.** `execute_editor_script` and `execute_game_script` are
 both available — an earlier note here claimed this build lacked them, which was

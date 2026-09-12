@@ -1,12 +1,16 @@
-[gd_resource type="Resource" script_class="CombatantStats" format=3 uid="uid://dvlsv4sefg0ct"]
+[gd_resource type="Resource" script_class="CombatantStats" load_steps=5 format=3 uid="uid://dvlsv4sefg0ct"]
 
 [ext_resource type="Script" uid="uid://j4id3pdqg34k" path="res://scripts/data/combatant_stats.gd" id="1_stats"]
+[ext_resource type="Resource" path="res://resources/abilities/warrior_primary.tres" id="2_primary"]
+[ext_resource type="Resource" path="res://resources/abilities/warrior_special.tres" id="3_special"]
+[ext_resource type="Resource" path="res://resources/rig_profiles/warrior_rig.tres" id="4_rig"]
 
 [resource]
 script = ExtResource("1_stats")
 id = &"warrior"
 display_name = "Warrior"
 is_hero = true
+roster_order = 2
 max_hp = 120
 weapon_power = 0
 magic_power = 0
@@ -15,7 +19,9 @@ weapon_power_per_level = 0
 magic_power_per_level = 0
 attack_cooldown = 1.6
 special_every_n_actions = 3
-special_targets_opponent = false
+primary = ExtResource("2_primary")
+special = ExtResource("3_special")
 body_color = Color(0.345098, 0.470588, 0.658824, 1)
 accent_color = Color(0.752941, 0.2, 0.247059, 1)
 scene_path = "res://scenes/battle/heroes/warrior.tscn"
+rig_profile = ExtResource("4_rig")

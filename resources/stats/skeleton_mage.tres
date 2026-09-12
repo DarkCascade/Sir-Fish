@@ -1,10 +1,13 @@
-[gd_resource type="Resource" script_class="CombatantStats" format=3 uid="uid://sbgqqcoyw80h"]
+[gd_resource type="Resource" script_class="CombatantStats" load_steps=4 format=3 uid="uid://sbgqqcoyw80h"]
 
 [ext_resource type="Script" uid="uid://j4id3pdqg34k" path="res://scripts/data/combatant_stats.gd" id="1_stats"]
+[ext_resource type="Resource" path="res://resources/abilities/melee_strike_generic.tres" id="2_primary"]
+[ext_resource type="Resource" path="res://resources/rig_profiles/skeleton_mage_rig.tres" id="3_rig"]
 
 [resource]
 script = ExtResource("1_stats")
 id = &"skeleton_mage"
+primary = ExtResource("2_primary")
 display_name = "Skeleton Mage"
 max_hp = 55
 weapon_power = 18
@@ -16,4 +19,7 @@ attack_cooldown = 2.4
 body_color = Color(0.847059, 0.815686, 0.752941, 1)
 accent_color = Color(0.345098, 0.517647, 0.831373, 1)
 scene_path = "res://scenes/battle/enemies/skeleton_mage.tscn"
+rig_profile = ExtResource("3_rig")
+tags = Array[StringName]([&"undead", &"caster"])
+threat = 2
 drop_chance = 0.3

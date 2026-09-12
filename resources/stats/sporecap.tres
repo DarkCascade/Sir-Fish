@@ -1,10 +1,13 @@
-[gd_resource type="Resource" script_class="CombatantStats" format=3]
+[gd_resource type="Resource" script_class="CombatantStats" load_steps=4 format=3]
 
 [ext_resource type="Script" uid="uid://j4id3pdqg34k" path="res://scripts/data/combatant_stats.gd" id="1_stats"]
+[ext_resource type="Resource" path="res://resources/abilities/melee_strike_generic.tres" id="2_primary"]
+[ext_resource type="Resource" path="res://resources/rig_profiles/sporecap_rig.tres" id="3_rig"]
 
 [resource]
 script = ExtResource("1_stats")
 id = &"sporecap"
+primary = ExtResource("2_primary")
 display_name = "Sporecap"
 max_hp = 65
 weapon_power = 13
@@ -17,4 +20,7 @@ model_scale = 0.85
 body_color = Color(0.482353, 0.247059, 0.627451, 1)
 accent_color = Color(0.356863, 0.784314, 0.960784, 1)
 scene_path = "res://scenes/battle/enemies/sporecap.tscn"
+rig_profile = ExtResource("3_rig")
+tags = Array[StringName]([&"fungal", &"brute"])
+threat = 2
 drop_chance = 0.3

@@ -65,18 +65,20 @@ const BATTLE_WORLD := preload("res://scenes/battle/battle_world.tscn")
 ## What CombatantRig.build() actually does, which is what this has to mirror:
 ##
 ##   KayKit (knight/rogue/mage + all four skeletons)
-##       keeps the StandardMaterial3D its .glb ships - CombatantRig only hides
-##       surplus props and swaps the mage's staff to an emissive cel material.
-##       This is the family the whole party and most enemies are drawn with,
-##       and the one the orc proxy was never standing in for.
+##       keeps the StandardMaterial3D its .glb ships - RigProfile.hidden_parts
+##       hides surplus props and the mage's RigProfile.finalizer
+##       (rig_finalizers/mage_finalizer.gd) swaps its staff to an emissive cel
+##       material. This is the family the whole party and most enemies are
+##       drawn with, and the one the orc proxy was never standing in for.
 ##   In-house rig (orc barbarian / warlord)
-##       every part reassigned CelMaterials.cel() at runtime, because the pair
-##       share one .glb and are coloured apart from CombatantStats.
+##       every part reassigned CelMaterials.cel() at runtime by
+##       rig_finalizers/orc_finalizer.gd, because the pair share one .glb and
+##       are coloured apart from CombatantStats.
 ##   Shadow monster
-##       CelMaterials.smoke() on the body - and note it has NO ARMATURE
-##       (see CombatantRig._finalize_shadow), so smoke belongs on a STATIC
-##       mesh. Warming it skinned, as the first cut did, compiled a program
-##       the game never asks for.
+##       CelMaterials.smoke() on the body (rig_finalizers/shadow_finalizer.gd) -
+##       and note it has NO ARMATURE, so smoke belongs on a STATIC mesh.
+##       Warming it skinned, as the first cut did, compiled a program the
+##       game never asks for.
 const KAYKIT_SOURCE := preload("res://assets/meshes/knight.glb")
 const INHOUSE_SOURCE := preload("res://assets/meshes/orc_barbarian.glb")
 const SHADOW_SOURCE := preload("res://assets/meshes/shadow_monster.glb")
@@ -147,8 +149,8 @@ func _run_step(step: Step) -> void:
 			# variant nothing renders.
 			_add_glb(KAYKIT_SOURCE, null, true)
 		Step.KAYKIT_CEL:
-			# The mage's staff (CombatantRig._finalize_mage) - a cel material
-			# with emission, on the KayKit vertex layout.
+			# The mage's staff (rig_finalizers/mage_finalizer.gd) - a cel
+			# material with emission, on the KayKit vertex layout.
 			_add_glb(KAYKIT_SOURCE, CelMaterials.cel(
 				Tuning.C_MAGE_ACCENT, Tuning.C_MAGE_ACCENT, 1.5), true)
 		Step.INHOUSE_CEL:

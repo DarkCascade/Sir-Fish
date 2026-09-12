@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="ProjectileAbility" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/battle/abilities/projectile_ability.gd" id="1_proj"]
+[ext_resource type="PackedScene" path="res://scenes/battle/projectiles/bomb_arrow.tscn" id="2_bomb"]
+
+[resource]
+script = ExtResource("1_proj")
+scene = ExtResource("2_bomb")
+bomb_payload = true
+flash_color = Color(0.847059, 0.686275, 0.321569, 1)

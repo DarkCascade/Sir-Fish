@@ -4,8 +4,19 @@ extends Node
 
 const STATS_DIR := "res://resources/stats/"
 
-## Party order is fixed left-to-right: Mage, Ranger, Warrior (spec 7.1).
-const PARTY_ORDER: Array[StringName] = [&"mage", &"ranger", &"warrior"]
+## [content phase 0] DERIVED, not authored here (spec §3 Step 5 / decision
+## D3) - every hero CombatantStats, sorted by its own roster_order, rebuilt by
+## _rebuild_party_order() whenever _load_all_stats() runs. mage/ranger/warrior
+## are authored roster_order 0/1/2, so this reproduces the old fixed constant
+## exactly (spec 7.1) - do not rely on alphabetical order happening to match.
+## Kept as a screaming-case `var` rather than renamed to a roster() function -
+## a derived var populated at load is still cheap to compute repeatedly, so
+## the screaming case is only a naming leftover, not a performance excuse -
+## but it is what lets test_drops.gd and test_profile_expedition.gd read this
+## name unedited, which the phase's own counter-metric requires. Renaming it
+## is deferred to Phase 1's ClassDef pass, when those tests are touched for
+## their own reasons anyway.
+var PARTY_ORDER: Array[StringName] = []
 
 var gold: int = 0
 var inventory: Array[Item] = []
@@ -206,12 +217,35 @@ func _load_all_stats() -> void:
 		var res := load(STATS_DIR + clean)
 		if res is CombatantStats:
 			_stats_cache[(res as CombatantStats).id] = res
+	_rebuild_party_order()
+
+## [content phase 0] PARTY_ORDER, derived from every hero CombatantStats
+## currently cached, sorted by roster_order (spec §3 Step 5 / D3).
+func _rebuild_party_order() -> void:
+	var heroes: Array[CombatantStats] = []
+	for stats: CombatantStats in _stats_cache.values():
+		if stats.is_hero:
+			heroes.append(stats)
+	heroes.sort_custom(func(a: CombatantStats, b: CombatantStats) -> bool:
+		return a.roster_order < b.roster_order)
+	var order: Array[StringName] = []
+	for stats: CombatantStats in heroes:
+		order.append(stats.id)
+	PARTY_ORDER = order
 
 func get_stats(id: StringName) -> CombatantStats:
 	if not _stats_cache.has(id):
 		push_error("GameState: unknown combatant stats id '%s'" % id)
 		return null
 	return _stats_cache[id]
+
+## [content phase 0] Every cached stats id - what EnemyPool.resolve() walks to
+## build a tag-filtered roster (spec §3 Step 4).
+func all_stats_ids() -> Array[StringName]:
+	var out: Array[StringName] = []
+	for id: StringName in _stats_cache.keys():
+		out.append(id)
+	return out
 
 # --- gold -------------------------------------------------------------------
 
@@ -435,13 +469,26 @@ func next_drop_class(force_hungriest: bool = false) -> StringName:
 	if classes.is_empty():
 		return &""
 	if force_hungriest:
-		# Ties break in PARTY_ORDER rather than by dictionary iteration order:
-		# the boss drop is the one drop a player will remember, so which class
-		# it favours must not depend on insertion order.
-		var best: StringName = classes[0]
-		for c: StringName in classes:
-			if drop_count(c) < drop_count(best):
+		# [content phase 0] Ties actually break in PARTY_ORDER now (spec §1.2
+		# fixed this): the comment always claimed PARTY_ORDER, but the loop
+		# iterated `classes` - active_party order - which happened to be
+		# unobservable while active_party is solo. Decided in favour of the
+		# comment's original intent rather than the code's accidental
+		# behaviour: the boss drop is the one drop a player will remember, so
+		# which class it favours on a tie should be the canonical roster
+		# order, not the arbitrary order the player happened to recruit into
+		# active_party.
+		var best: StringName = &""
+		for c: StringName in PARTY_ORDER:
+			if not classes.has(c):
+				continue
+			if best == &"" or drop_count(c) < drop_count(best):
 				best = c
+		# classes is a subset of active_party, which is a subset of every
+		# hero PARTY_ORDER derives from, so this never actually fires - kept
+		# as a guard rather than an assumption.
+		if best == &"":
+			best = classes[0]
 		return best
 	var leader: int = 0
 	for c: StringName in classes:
@@ -730,10 +777,12 @@ func _interpolated_level(band: Vector2i, index: int, count: int) -> int:
 
 # --- endless mode (spec: Endless Mode) --------------------------------------
 
+## [content phase 0] Moved out of this file as EnemyPool resources (spec §3
+## Step 4) - game_state.gd no longer carries a const array of enemy ids.
 ## Regular enemies available from the first level. skeleton_minion is the
 ## other "weak" combatant alongside shadow_monster - a swarm of either reads
 ## as an easy opener.
-const ENDLESS_EARLY_POOL: Array[StringName] = [&"shadow_monster", &"skeleton_minion"]
+const ENDLESS_EARLY_POOL: EnemyPool = preload("res://resources/pools/endless_early.tres")
 ## Join the pool once the party has cleared at least one level, so depth 1
 ## stays as gentle as the old fixed level's opening fight.
 ##
@@ -741,17 +790,13 @@ const ENDLESS_EARLY_POOL: Array[StringName] = [&"shadow_monster", &"skeleton_min
 ## built from separate primitive blocks (O_Head, O_ArmL, O_Torso...), and
 ## next to the KayKit skeletons it reads as a stick figure. The stats, scene
 ## and rig branches all stay - nothing spawns it, so nothing renders it.
-const ENDLESS_MID_POOL: Array[StringName] = [
-	&"skeleton_warrior", &"skeleton_mage", &"skeleton_rogue", &"sporecap",
-]
+const ENDLESS_MID_POOL: EnemyPool = preload("res://resources/pools/endless_mid.tres")
 ## [UI pass] Was just the orc warlord. Any of the four KayKit skeletons can
 ## anchor encounter 6 now - battle_director.start_combat() scales whichever
 ## one gets picked up 150% for the boss slot (a runtime-duplicated
 ## CombatantStats, never the shared cached one, so the regular-sized version
 ## other encounters spawn from ENDLESS_MID_POOL is untouched).
-const BOSS_POOL: Array[StringName] = [
-	&"skeleton_warrior", &"skeleton_mage", &"skeleton_rogue", &"skeleton_minion",
-]
+const BOSS_POOL: EnemyPool = preload("res://resources/pools/boss_pool.tres")
 
 ## Six encounters, same COMBAT/LOOT/COMBAT/SHOP/COMBAT/boss-COMBAT rhythm as
 ## the fixed level (that pacing was already tuned - only which enemies fill
@@ -765,9 +810,9 @@ func _build_endless_level(level_number: int) -> LevelDef:
 	var lvl := LevelDef.new()
 	lvl.display_name = "The Endless Wood — Depth %d" % level_number
 
-	var pool: Array[StringName] = ENDLESS_EARLY_POOL.duplicate()
+	var pool: Array[StringName] = ENDLESS_EARLY_POOL.resolve()
 	if level_number >= 2:
-		pool.append_array(ENDLESS_MID_POOL)
+		pool.append_array(ENDLESS_MID_POOL.resolve())
 	@warning_ignore("integer_division")
 	var enemy_count := mini(2 + level_number / 3, 3)
 
@@ -810,7 +855,7 @@ func _build_endless_level(level_number: int) -> LevelDef:
 
 	# Boss listed first so it lands at the leftmost enemy slot (spec 7.3),
 	# same convention as the fixed level's boss encounter.
-	var boss_id: StringName = RNG.pick(BOSS_POOL)
+	var boss_id: StringName = RNG.pick(BOSS_POOL.resolve())
 	var e5_ids: Array[StringName] = [boss_id]
 	e5_ids.append_array(_random_enemies(pool, mini(enemy_count, 2)))
 	var e5 := EncounterDef.new()
@@ -871,7 +916,7 @@ func _build_whispering_wood_level() -> LevelDef:
 	var e5 := EncounterDef.new()
 	e5.type = EncounterDef.Type.COMBAT
 	e5.is_boss = true
-	e5.enemy_stat_ids = [RNG.pick(BOSS_POOL), &"shadow_monster"]
+	e5.enemy_stat_ids = [RNG.pick(BOSS_POOL.resolve()), &"shadow_monster"]
 	e5.travel_duration = 4.0
 
 	lvl.encounters = [e0, e1, e2, e3, e4, e5]

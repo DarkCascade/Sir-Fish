@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="RigProfile" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/rig_profile.gd" id="1_rig"]
+
+[resource]
+script = ExtResource("1_rig")
+source = 1
+skeleton_path = "Rig/Model/SporecapRig/Skeleton3D"
+clips = {
+&"idle": {"builder": "humanoid_idle"},
+&"run": {"builder": "humanoid_run"},
+&"attack": {"builder": "sporecap_attack"},
+&"hurt": {"builder": "humanoid_hurt"},
+&"die": {"builder": "humanoid_die"}
+}

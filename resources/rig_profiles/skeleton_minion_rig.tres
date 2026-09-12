@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="RigProfile" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/rig_profile.gd" id="1_rig"]
+[ext_resource type="Resource" path="res://resources/rig_profiles/kaykit_skeleton_base.tres" id="2_base"]
+
+[resource]
+script = ExtResource("1_rig")
+inherits = ExtResource("2_base")
+source = 0
+clips = {
+&"attack": {"clip": "Unarmed_Melee_Attack_Kick", "length": 0.55, "loop": false, "impact": 0.2}
+}

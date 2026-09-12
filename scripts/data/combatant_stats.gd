@@ -16,6 +16,14 @@ enum AttackStyle { MELEE, RANGED, MAGIC }
 @export var display_name: String = ""
 @export var is_hero: bool = false
 
+## [content phase 0] Where this hero sits in the derived roster
+## (GameState.PARTY_ORDER), lowest first (spec §3 Step 5 / D3). Hero-only -
+## meaningless on an enemy. Authored so the derived roster reproduces today's
+## fixed mage/ranger/warrior order exactly; do not rely on alphabetical order
+## happening to match. Moves onto ClassDef with the rest of a class's
+## identity in Phase 1.
+@export var roster_order: int = 0
+
 ## [levels] Level-1 base stats. Growth per level above 1 lives in the matching
 ## `*_per_level` field below - see `at_level()` / `hp_at()` / `weapon_power_at()`
 ## / `magic_power_at()`, the ONLY place a level and a base+growth pair combine
@@ -41,26 +49,25 @@ enum AttackStyle { MELEE, RANGED, MAGIC }
 ## `real cycle` column of spec 5.2, which is the authoritative balance figure.
 @export var attack_cooldown: float = 1.5
 @export var special_every_n_actions: int = 0  # 0 = no special
-## [v3] Gate the special on "some living ally (incl. self) is below max HP"
-## before it can fire. Mage-only: true only on mage.tres. Applying this
-## universally would suppress the warrior's Defend at full party HP, which
-## is backwards - Defend is pre-emptive mitigation, most useful before anyone
-## is hurt (spec 4.1 / 10.2, V6).
-@export var special_requires_wounded_ally: bool = false
-## [v3] Whether this character's special needs a living opponent to fire.
-## True by default (ranger's bomb arrow is aimed). False for the warrior
-## (Defend buffs itself) and the mage (Heal targets an ally) - neither
-## should abort just because no enemy is alive (spec 4.1 / 10.2, V6).
-@export var special_targets_opponent: bool = true
-## [v3.5 F6] Whether this character plays a telegraph beat (darken pass +
-## warning glow) before its special resolves. Mage-only; replaces a
-## hardcoded `stats.id == &"mage"` branch in ability.gd (spec 2.6).
-@export var telegraphs_primary: bool = false
+## [content phase 0] The character's authored abilities (spec §3 Step 2) -
+## replaces the id-keyed match in ability.gd. `primary` answers every
+## ordinary action; `special` is read only when special_every_n_actions > 0.
+## special_requires_wounded_ally, special_targets_opponent and
+## telegraphs_primary now live on AbilityDef, since they are facts about the
+## ability, not the character - see ability_def.gd.
+@export var primary: AbilityDef
+@export var special: AbilityDef
 @export var attack_style: AttackStyle = AttackStyle.MELEE
 @export var model_scale: float = 1.0
 @export var body_color: Color = Color.WHITE
 @export var accent_color: Color = Color.WHITE
 @export var scene_path: String = ""
+
+## [content phase 0] Replaces the three parallel animation-binding registries
+## CombatantAnimations.build() used to try in order
+## (CombatantBakedAnimations.CLIPS, CombatantSkeletonAnimations.SKELETON_PATH,
+## the shadow-monster-only fallback) - see rig_profile.gd (spec §3 Step 3).
+@export var rig_profile: RigProfile
 
 ## [drops] Probability this combatant leaves an item when it dies. Rolled once,
 ## at death, and banked until the fight is won (§5) - a party that wipes carries
@@ -75,6 +82,28 @@ enum AttackStyle { MELEE, RANGED, MAGIC }
 ## this floor, so a floor of 1 does not flatten the curve above it - it only
 ## removes Commons. Only the boss sets it.
 @export_range(0, 3, 1) var drop_rarity_floor: int = 0
+
+## [content phase 0] Free-form descriptors an EnemyPool can filter on (spec §3
+## Step 4) - &"undead", &"fungal", &"caster", &"brute", &"swarm",
+## &"skirmisher", &"orc" today. No tag is load-bearing on its own; a monster
+## with no tags simply never matches a require_tags filter, which is the
+## correct behaviour for a hero (heroes carry no tags) and for a future enemy
+## that predates whatever filter a new quest wants.
+@export var tags: Array[StringName] = []
+
+## [content phase 0] A rough encounter-budget cost (spec §3 Step 4) - bigger
+## for a tougher combatant, authored per character rather than derived from
+## HP/power, since "how much of an encounter's budget this costs" is a design
+## call, not an arithmetic one. Not consumed anywhere yet; Phase 1's generated
+## encounters are the first reader.
+@export var threat: int = 1
+
+## [content phase 0] An optional named boss form of this combatant (spec §3
+## Step 4) - e.g. a skeleton_warrior's own elite variant, distinct from the
+## runtime HP/scale multiply BattleDirector.start_combat() applies to
+## whichever unit fills a boss slot. Unused by anything in Phase 0; left null
+## everywhere until Phase 1 authors one.
+@export var elite_variant: CombatantStats
 
 ## The exact set of animation names this character must expose (spec 8.3 / Q5).
 ##

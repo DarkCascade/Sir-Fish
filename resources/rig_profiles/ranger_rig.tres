@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="RigProfile" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/rig_profile.gd" id="1_rig"]
+
+[resource]
+script = ExtResource("1_rig")
+source = 0
+clips = {
+&"idle": {"clip": "Idle", "length": 1.6, "loop": true},
+&"run": {"clip": "Running_A", "length": 0.7, "loop": true},
+&"attack": {"clip": "1H_Ranged_Shoot", "length": 0.8, "loop": false, "impact": 0.3},
+&"special": {"clip": "1H_Ranged_Shoot", "length": 0.8, "loop": false, "impact": 0.3, "cast": 0.0},
+&"hurt": {"clip": "Hit_A", "length": 0.3, "loop": false},
+&"die": {"clip": "Death_A", "length": 0.8, "loop": false}
+}
+hidden_parts = PackedStringArray("2H_Crossbow", "Knife", "Throwable", "Knife_Offhand")
