@@ -1,4 +1,4 @@
-[gd_scene load_steps=4 format=3]
+[gd_scene format=3]
 
 ; [reliquary] Re-dressed from the teal/gold "well" look to the modal layer's
 ; arcane-reliquary chrome: a plum-black panel under a crystal/thorn corner
@@ -8,18 +8,27 @@
 ; inventory_modal.tscn) - the Godot editor keeps a shared theme.tres cached and
 ; overwrites out-of-editor edits to it, so per-scene is the safe home.
 
-; [ui-project-longshot] Was a 560 x 460 stack of labels - "Equipped" above
-; "This Item", read top to bottom, dismissed only by tapping the scrim. It is
-; reached by a deliberate button press now (shop_buy_card / shop_sell_row's
-; CompareButton) rather than by a stray tap on a card, so it is dressed as the
-; dialog it always actually was: titled, closable, and laid out as an actual
-; COMPARISON - the two items side by side in matching wells, with the change
-; each modifier would undergo spelled out underneath.
+; [item-row] Now the DETAIL VIEW, opened by tapping a strip in any list, rather
+; than a dialog reached by a Compare button. Two things changed with that.
+;
+; The two side-by-side wells are gone. Showing both items in full and letting
+; the change list underneath do the subtraction meant the same rolls were drawn
+; three times over; the candidate is shown once, in the header, and every number
+; below it is already the comparison. The verdict word replaces the static
+; "COMPARE" title, so the conclusion is the first thing read rather than
+; something assembled from the rows.
+;
+; The header's headline figure is the item's characteristic magnitude - the base
+; slot icon's value - NOT that plus its modifier rolls. A modifier is its own
+; icon in the bag; summing the two would print a number the game never computes.
+; See ItemCompare.headline_value.
 
 [ext_resource type="Script" path="res://scripts/modals/compare_flyout.gd" id="1_flyout"]
 [ext_resource type="Shader" path="res://assets/shaders/reliquary_mist.gdshader" id="2_mist"]
 [ext_resource type="PackedScene" path="res://scenes/modals/reliquary_frame.tscn" id="3_frame"]
 [ext_resource type="Texture2D" path="res://assets/ui/reliquary/fleuron.png" id="4_fleuron"]
+[ext_resource type="Script" uid="uid://cqeao7bjt6s2m" path="res://scripts/modals/item_glyph.gd" id="5_glyph"]
+[ext_resource type="Texture2D" uid="uid://dqcrm8u30i7sv" path="res://assets/ui/reliquary/card_medallion.png" id="6_medallion"]
 
 [sub_resource type="ShaderMaterial" id="mist_mat"]
 shader = ExtResource("2_mist")
@@ -47,12 +56,14 @@ corner_radius_top_right = 22
 corner_radius_bottom_right = 22
 corner_radius_bottom_left = 22
 
-; Recessed well, one step darker than the panel, trimmed in deep amethyst.
+; Recessed well, one step darker than the panel, trimmed in deep amethyst. One
+; change row wears it; RowTemplate is duplicated per row so the styling stays
+; authored here rather than rebuilt in code.
 [sub_resource type="StyleBoxFlat" id="rel_well"]
 content_margin_left = 20.0
-content_margin_top = 16.0
+content_margin_top = 12.0
 content_margin_right = 20.0
-content_margin_bottom = 16.0
+content_margin_bottom = 12.0
 bg_color = Color(0.054902, 0.043137, 0.086275, 1)
 border_width_left = 2
 border_width_top = 2
@@ -118,12 +129,12 @@ anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
 offset_left = -470.0
-offset_top = -450.0
+offset_top = -350.0
 offset_right = 470.0
-offset_bottom = 450.0
+offset_bottom = 350.0
 grow_horizontal = 2
 grow_vertical = 2
-pivot_offset = Vector2(470, 450)
+pivot_offset = Vector2(470, 350)
 theme_override_styles/panel = SubResource("rel_panel")
 
 [node name="Layout" type="VBoxContainer" parent="Panel"]
@@ -135,17 +146,20 @@ custom_minimum_size = Vector2(0, 76)
 layout_mode = 2
 theme_override_constants/separation = 16
 
-[node name="Title" type="Label" parent="Panel/Layout/Header"]
+; [item-row] Was a static "COMPARE". The verdict IS this dialog's title now -
+; UPGRADE / MIXED / WORSE / NO CHANGE / NEW / EQUIPPED - so the answer is read
+; before any row is. Sign-only, never a weighted score; see ItemCompare.verdict.
+[node name="VerdictLabel" type="Label" parent="Panel/Layout/Header"]
 layout_mode = 2
 theme_type_variation = &"DisplayLabel"
 theme_override_colors/font_color = Color(0.847059, 0.705882, 0.996078, 1)
 theme_override_font_sizes/font_size = 64
-text = "COMPARE"
+text = "UPGRADE"
 vertical_alignment = 1
 
 ; Which hero this comparison is even about. Right-aligned against the close
-; button rather than given its own line - it is a qualifier on the title, not a
-; statement of its own.
+; button rather than given its own line - it is a qualifier on the verdict, not
+; a statement of its own.
 [node name="ForLabel" type="Label" parent="Panel/Layout/Header"]
 layout_mode = 2
 size_flags_horizontal = 3
@@ -166,93 +180,101 @@ theme_override_styles/hover = SubResource("rel_close")
 theme_override_styles/pressed = SubResource("rel_close")
 text = "X"
 
-[node name="Columns" type="HBoxContainer" parent="Panel/Layout"]
-layout_mode = 2
-size_flags_vertical = 3
-theme_override_constants/separation = 18
-
-[node name="Equipped" type="PanelContainer" parent="Panel/Layout/Columns"]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_styles/panel = SubResource("rel_well")
-
-[node name="Body" type="VBoxContainer" parent="Panel/Layout/Columns/Equipped"]
-layout_mode = 2
-size_flags_vertical = 0
-theme_override_constants/separation = 6
-
-[node name="Header" type="Label" parent="Panel/Layout/Columns/Equipped/Body"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.611765, 0.690196, 0.67451, 1)
-theme_override_font_sizes/font_size = 40
-text = "EQUIPPED"
-
-; The rarity stripe from the shop card, turned on its side. It is the fastest
-; read in the window - two bars of different colours say "this is a step up"
-; before a single word has been parsed.
-[node name="Rule" type="ColorRect" parent="Panel/Layout/Columns/Equipped/Body"]
-custom_minimum_size = Vector2(0, 5)
-layout_mode = 2
-color = Color(0.721569, 0.698039, 0.768627, 1)
-
-[node name="NameLabel" type="Label" parent="Panel/Layout/Columns/Equipped/Body"]
+; Full width, ABOVE the medallion row rather than sharing a column with it. The
+; display font runs about 0.83em per character, so a generated name needs most
+; of the panel's 796px interior: sharing the row left it roughly 440px, and
+; names as short as "Weeping Blade" wrapped to two lines there.
+[node name="NameLabel" type="Label" parent="Panel/Layout"]
 layout_mode = 2
 theme_type_variation = &"DisplayLabel"
 theme_override_font_sizes/font_size = 46
+text = "Grumbling Longsword"
 autowrap_mode = 3
 
-[node name="SubtitleLabel" type="Label" parent="Panel/Layout/Columns/Equipped/Body"]
+; Identity and headline. The medallion is the list strip's ring at full size, so
+; the row and the detail it opens are visibly the same item.
+[node name="Hero" type="HBoxContainer" parent="Panel/Layout"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 40
-autowrap_mode = 3
+theme_override_constants/separation = 20
 
-[node name="Mods" type="HFlowContainer" parent="Panel/Layout/Columns/Equipped/Body"]
+; 140, not the card's 180: what is left after the headline figure has its column
+; still has to seat two lines of body text without wrapping them.
+[node name="Medallion" type="Control" parent="Panel/Layout/Hero"]
+custom_minimum_size = Vector2(140, 140)
 layout_mode = 2
-theme_override_constants/h_separation = 16
-theme_override_constants/v_separation = 16
+size_flags_vertical = 4
+mouse_filter = 2
 
-[node name="NoneLabel" type="Label" parent="Panel/Layout/Columns/Equipped/Body"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.611765, 0.690196, 0.67451, 1)
-theme_override_font_sizes/font_size = 40
-text = "Nothing equipped"
+[node name="Glyph" type="Control" parent="Panel/Layout/Hero/Medallion"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -40.0
+offset_top = -40.0
+offset_right = 40.0
+offset_bottom = 40.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("5_glyph")
 
-[node name="Candidate" type="PanelContainer" parent="Panel/Layout/Columns"]
+[node name="Ring" type="TextureRect" parent="Panel/Layout/Hero/Medallion"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("6_medallion")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Identity" type="VBoxContainer" parent="Panel/Layout/Hero"]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_styles/panel = SubResource("rel_well")
+size_flags_vertical = 4
+theme_override_constants/separation = 4
 
-[node name="Body" type="VBoxContainer" parent="Panel/Layout/Columns/Candidate"]
+[node name="MetaLabel" type="Label" parent="Panel/Layout/Hero/Identity"]
 layout_mode = 2
-size_flags_vertical = 0
-theme_override_constants/separation = 6
-
-[node name="Header" type="Label" parent="Panel/Layout/Columns/Candidate/Body"]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.847059, 0.705882, 0.996078, 1)
-theme_override_font_sizes/font_size = 40
-text = "THIS ITEM"
-
-[node name="Rule" type="ColorRect" parent="Panel/Layout/Columns/Candidate/Body"]
-custom_minimum_size = Vector2(0, 5)
-layout_mode = 2
-color = Color(0.721569, 0.698039, 0.768627, 1)
-
-[node name="NameLabel" type="Label" parent="Panel/Layout/Columns/Candidate/Body"]
-layout_mode = 2
-theme_type_variation = &"DisplayLabel"
-theme_override_font_sizes/font_size = 46
+theme_override_colors/font_color = Color(0.709804, 0.823529, 0.784314, 1)
+theme_override_font_sizes/font_size = 30
+text = "Rare Sword  ·  Lv 7  ·  Warrior"
 autowrap_mode = 3
 
-[node name="SubtitleLabel" type="Label" parent="Panel/Layout/Columns/Candidate/Body"]
+; "replacing Fat Blade (Lv 5)", or what stands in for it when there is nothing
+; in the slot. The comparison's other half, named rather than drawn as a second
+; full column of its own.
+[node name="RivalLabel" type="Label" parent="Panel/Layout/Hero/Identity"]
 layout_mode = 2
-theme_override_font_sizes/font_size = 40
+theme_override_colors/font_color = Color(0.611765, 0.690196, 0.67451, 1)
+theme_override_font_sizes/font_size = 30
+text = "replacing Fat Blade (Lv 5)"
 autowrap_mode = 3
 
-[node name="Mods" type="HFlowContainer" parent="Panel/Layout/Columns/Candidate/Body"]
+[node name="Headline" type="VBoxContainer" parent="Panel/Layout/Hero"]
+custom_minimum_size = Vector2(170, 0)
 layout_mode = 2
-theme_override_constants/h_separation = 16
-theme_override_constants/v_separation = 16
+size_flags_vertical = 4
+theme_override_constants/separation = 0
+
+[node name="Value" type="Label" parent="Panel/Layout/Hero/Headline"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.937255, 0.839216, 0.580392, 1)
+theme_override_font_sizes/font_size = 88
+text = "58"
+horizontal_alignment = 2
+
+[node name="Unit" type="Label" parent="Panel/Layout/Hero/Headline"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.709804, 0.823529, 0.784314, 1)
+theme_override_font_sizes/font_size = 26
+text = "DAMAGE"
+horizontal_alignment = 2
 
 ; rule - fleuron - rule, matching the reference's identity/stats divider. The
 ; centre ornament is Meshy (assets/ui/reliquary/fleuron.png); until it exists
@@ -289,7 +311,55 @@ text = "IF YOU EQUIP THIS"
 [node name="ChangeList" type="VBoxContainer" parent="Panel/Layout"]
 custom_minimum_size = Vector2(0, 190)
 layout_mode = 2
-theme_override_constants/separation = 4
+theme_override_constants/separation = 6
+
+; Hidden master copy, duplicated once per change row. Authored rather than
+; built in code so the well styling, the column widths and the font sizes all
+; stay inspector-editable (CLAUDE.md best practice 1).
+[node name="RowTemplate" type="PanelContainer" parent="Panel/Layout/ChangeList"]
+visible = false
+layout_mode = 2
+theme_override_styles/panel = SubResource("rel_well")
+
+[node name="Box" type="HBoxContainer" parent="Panel/Layout/ChangeList/RowTemplate"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="Icon" type="TextureRect" parent="Panel/Layout/ChangeList/RowTemplate/Box"]
+custom_minimum_size = Vector2(52, 52)
+layout_mode = 2
+size_flags_vertical = 4
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Caption" type="Label" parent="Panel/Layout/ChangeList/RowTemplate/Box"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+theme_override_colors/font_color = Color(0.94902, 0.913725, 0.815686, 1)
+theme_override_font_sizes/font_size = 34
+text = "Weapon Damage"
+clip_text = true
+text_overrun_behavior = 3
+
+; The candidate's own magnitude, so the row says what the item HAS as well as
+; what it would change - a delta alone cannot answer "how big is this".
+[node name="Value" type="Label" parent="Panel/Layout/ChangeList/RowTemplate/Box"]
+custom_minimum_size = Vector2(100, 0)
+layout_mode = 2
+size_flags_vertical = 4
+theme_override_colors/font_color = Color(0.937255, 0.839216, 0.580392, 1)
+theme_override_font_sizes/font_size = 38
+text = "58"
+horizontal_alignment = 2
+
+[node name="Delta" type="Label" parent="Panel/Layout/ChangeList/RowTemplate/Box"]
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 2
+size_flags_vertical = 4
+theme_override_font_sizes/font_size = 38
+text = "+12"
+horizontal_alignment = 2
 
 ; [reliquary] Corner ornaments, as a sibling overlaying the panel exactly so
 ; the PanelContainer content margin does not inset them off the panel edge.
@@ -300,8 +370,8 @@ anchor_top = 0.5
 anchor_right = 0.5
 anchor_bottom = 0.5
 offset_left = -470.0
-offset_top = -450.0
+offset_top = -350.0
 offset_right = 470.0
-offset_bottom = 450.0
+offset_bottom = 350.0
 grow_horizontal = 2
 grow_vertical = 2

@@ -80,7 +80,10 @@ static func do_buy(card: Control, item: Item) -> bool:
 	card.set_spent(true)
 	card.set_action_disabled(&"buy", true)
 	card.set_action_text(&"buy", "Sold")
-	card.spawn_burst(card.get_node("Actions/Buy"))
+	# action_button(), not a node path: the Buy button sits at a different depth
+	# in the list strip than it did in the card, and a helper shared by both must
+	# not hard-code either one's tree.
+	card.spawn_burst(card.action_button(&"buy"))
 	# A Common buy stays quiet: the wash is the shop's only cue that a
 	# Magic-or-better purchase was a bigger deal than an ordinary one.
 	if item.rarity >= Item.Rarity.MAGIC:

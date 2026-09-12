@@ -1,0 +1,281 @@
+[gd_scene format=3]
+
+; [item-row] The dense list entry that replaces the full item card in every
+; LIST - shop Buy/Sell, inventory, forge, blacksmith Scrap/Sell. The card stays
+; as the detail view the strip opens (compare_flyout.tscn).
+;
+; Roughly 230px tall with its action bar against the card's ~500, so eight items
+; share a 1920px screen instead of three. The saving is the four stat tiles the
+; card drew: they summed the modifier rows printed right beneath them, and an
+; item fills one or two of the four, so half of that block was dimmed zeroes at
+; 52pt. The rolls survive as icon pips whose COUNT is the rarity; the magnitudes
+; live one tap away.
+;
+; Every visual node carries mouse_filter = 2 so a tap falls through to Body,
+; which is the only STOP in the tree and is what opens the detail view. The
+; action buttons are the exception - they take their own presses first, which is
+; why a press on Buy never also opens the detail.
+
+[ext_resource type="Script" path="res://scripts/modals/item_row.gd" id="1_row"]
+[ext_resource type="Script" uid="uid://cqeao7bjt6s2m" path="res://scripts/modals/item_glyph.gd" id="2_glyph"]
+[ext_resource type="Texture2D" uid="uid://dqcrm8u30i7sv" path="res://assets/ui/reliquary/card_medallion.png" id="3_medallion"]
+
+; The resting face. ItemCardStyle.apply() overrides the fill, border colour,
+; border width and halo per rarity - the same treatment the card wears, so the
+; two surfaces cannot drift apart on what a Rare looks like.
+[sub_resource type="StyleBoxFlat" id="row_backing"]
+bg_color = Color(0.101961, 0.082353, 0.14902, 1)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0.5, 0.5, 0.5, 1)
+corner_radius_top_left = 16
+corner_radius_top_right = 16
+corner_radius_bottom_right = 16
+corner_radius_bottom_left = 16
+
+[sub_resource type="ParticleProcessMaterial" id="burst_mat"]
+emission_shape = 1
+emission_sphere_radius = 6.0
+direction = Vector3(0, -1, 0)
+spread = 55.0
+initial_velocity_min = 180.0
+initial_velocity_max = 360.0
+gravity = Vector3(0, 620, 0)
+scale_min = 0.5
+scale_max = 1.15
+color = Color(0.960784, 0.874509, 0.627451, 1)
+
+[node name="ItemRow" type="VBoxContainer"]
+offset_right = 816.0
+offset_bottom = 228.0
+theme_override_constants/separation = 10
+script = ExtResource("1_row")
+
+; The strip proper. A plain Control with anchored children, so it takes no
+; minimum from them - setup() measures Content and sets the height. STOP, not
+; the children's IGNORE: this node is what hears the tap.
+[node name="Body" type="Control" parent="."]
+custom_minimum_size = Vector2(0, 150)
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Backing" type="PanelContainer" parent="Body"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("row_backing")
+
+[node name="Content" type="MarginContainer" parent="Body"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/margin_left = 24
+theme_override_constants/margin_top = 14
+theme_override_constants/margin_right = 24
+theme_override_constants/margin_bottom = 14
+
+[node name="Strip" type="HBoxContainer" parent="Body/Content"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 16
+
+; 112 against the card's 180. The ring art is the same asset at a smaller size,
+; so a row and the detail view it opens show the same medallion.
+[node name="Medallion" type="Control" parent="Body/Content/Strip"]
+custom_minimum_size = Vector2(112, 112)
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+
+[node name="Glyph" type="Control" parent="Body/Content/Strip/Medallion"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -32.0
+offset_top = -32.0
+offset_right = 32.0
+offset_bottom = 32.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("2_glyph")
+
+[node name="Ring" type="TextureRect" parent="Body/Content/Strip/Medallion"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("3_medallion")
+expand_mode = 1
+stretch_mode = 5
+
+; Takes whatever the fixed medallion and readout columns leave - about 420px of
+; an 816px list, which is what _fit_name measures the name against.
+[node name="Info" type="VBoxContainer" parent="Body/Content/Strip"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 4
+mouse_filter = 2
+theme_override_constants/separation = 2
+
+; Single-line with clip_text: a wrapped name would change the strip's height and
+; break the uniform list, so a name that will not fit at the floor size gets an
+; ellipsis instead. _fit_name picks the size.
+[node name="NameLabel" type="Label" parent="Body/Content/Strip/Info"]
+layout_mode = 2
+mouse_filter = 2
+theme_type_variation = &"DisplayLabel"
+theme_override_colors/font_color = Color(0.937255, 0.839216, 0.580392, 1)
+theme_override_font_sizes/font_size = 38
+text = "Grumbling Longsword"
+clip_text = true
+text_overrun_behavior = 3
+
+; "Rare Sword · Lv 7 · Warrior" - rarity, type, level and class restriction, the
+; last of which the card never showed at all.
+[node name="MetaLabel" type="Label" parent="Body/Content/Strip/Info"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.709804, 0.823529, 0.784314, 1)
+theme_override_font_sizes/font_size = 26
+text = "Rare Sword  ·  Lv 7  ·  Warrior"
+clip_text = true
+text_overrun_behavior = 3
+
+; One pip per rolled modifier, three authored because RARITY_MOD_COUNT tops out
+; at 3. Icon only: the count is the rarity, and the magnitudes are in the detail
+; view rather than shrunk to illegibility here.
+[node name="Pips" type="HBoxContainer" parent="Body/Content/Strip/Info"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 8
+
+[node name="Pip0" type="TextureRect" parent="Body/Content/Strip/Info/Pips"]
+custom_minimum_size = Vector2(36, 36)
+layout_mode = 2
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Pip1" type="TextureRect" parent="Body/Content/Strip/Info/Pips"]
+custom_minimum_size = Vector2(36, 36)
+layout_mode = 2
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Pip2" type="TextureRect" parent="Body/Content/Strip/Info/Pips"]
+custom_minimum_size = Vector2(36, 36)
+layout_mode = 2
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 5
+
+; The item's characteristic magnitude - Power for a weapon / trinket, flat
+; damage reduction for armor - with its unit under it and the swing against the
+; equipped item under that. See ItemCompare.headline_value for why this is NOT
+; power plus the modifier rolls.
+[node name="Readout" type="VBoxContainer" parent="Body/Content/Strip"]
+custom_minimum_size = Vector2(190, 0)
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+
+[node name="Value" type="Label" parent="Body/Content/Strip/Readout"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.937255, 0.839216, 0.580392, 1)
+theme_override_font_sizes/font_size = 54
+text = "58"
+horizontal_alignment = 2
+
+[node name="Unit" type="Label" parent="Body/Content/Strip/Readout"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.709804, 0.823529, 0.784314, 1)
+theme_override_font_sizes/font_size = 22
+text = "DAMAGE"
+horizontal_alignment = 2
+
+[node name="Badge" type="Label" parent="Body/Content/Strip/Readout"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_font_sizes/font_size = 26
+text = "▲ 12"
+horizontal_alignment = 2
+
+[node name="RarityFlash" type="ColorRect" parent="Body"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(1, 1, 1, 0)
+
+; Full width under the strip, exactly as the card had it. A narrow action column
+; beside the readout would have been denser still, but the forge's label carries
+; a rarity and two costs and only a full-width button takes it without clipping.
+[node name="Actions" type="HBoxContainer" parent="."]
+layout_mode = 2
+theme_override_constants/separation = 14
+
+[node name="Compare" type="Button" parent="Actions"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"SecondaryButton"
+text = "Compare"
+
+[node name="Equip" type="Button" parent="Actions"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Equip"
+
+[node name="Unequip" type="Button" parent="Actions"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"SecondaryButton"
+text = "Unequip"
+
+[node name="Buy" type="Button" parent="Actions"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Buy"
+clip_text = true
+
+[node name="Sell" type="Button" parent="Actions"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Sell"
+clip_text = true
+
+[node name="Forge" type="Button" parent="Actions"]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Forge"
+clip_text = true
+
+[node name="Burst" type="GPUParticles2D" parent="."]
+emitting = false
+amount = 22
+lifetime = 0.7
+one_shot = true
+explosiveness = 0.9
+process_material = SubResource("burst_mat")

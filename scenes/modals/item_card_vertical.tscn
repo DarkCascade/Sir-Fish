@@ -1,0 +1,408 @@
+[gd_scene format=3 uid="uid://bfu5poa6ks5of"]
+
+[ext_resource type="Script" uid="uid://bb3qjyb0fv6e0" path="res://scripts/modals/item_card.gd" id="1_card"]
+[ext_resource type="Script" uid="uid://cqeao7bjt6s2m" path="res://scripts/modals/item_glyph.gd" id="2_glyph"]
+[ext_resource type="Texture2D" uid="uid://hs61djh243gv" path="res://assets/ui/reliquary/card_frame.png" id="3_frame"]
+[ext_resource type="Texture2D" uid="uid://dqcrm8u30i7sv" path="res://assets/ui/reliquary/card_medallion.png" id="4_med"]
+[ext_resource type="Texture2D" uid="uid://d20vnoyswmwcs" path="res://assets/icons/bonus_sword.png" id="5_atk"]
+[ext_resource type="Texture2D" uid="uid://cwye60w72sa76" path="res://assets/icons/bonus_bolt.png" id="6_mag"]
+[ext_resource type="Texture2D" uid="uid://bxu3rwp6ea2n" path="res://assets/icons/glyph_heal.png" id="7_hp"]
+[ext_resource type="Texture2D" uid="uid://dthchbidk1cbw" path="res://assets/icons/glyph_shield.png" id="8_def"]
+
+[sub_resource type="StyleBoxFlat" id="backing"]
+bg_color = Color(0.101961, 0.082353, 0.14902, 1)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0.5, 0.5, 0.5, 1)
+corner_radius_top_left = 20
+corner_radius_top_right = 20
+corner_radius_bottom_right = 20
+corner_radius_bottom_left = 20
+
+[sub_resource type="StyleBoxFlat" id="tile"]
+content_margin_left = 8.0
+content_margin_top = 10.0
+content_margin_right = 8.0
+content_margin_bottom = 10.0
+bg_color = Color(0.14902, 0.117647, 0.219608, 1)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0.478431, 0.407843, 0.235294, 1)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+
+[sub_resource type="StyleBoxFlat" id="chip"]
+content_margin_left = 6.0
+content_margin_top = 6.0
+content_margin_right = 6.0
+content_margin_bottom = 6.0
+bg_color = Color(0.14902, 0.117647, 0.219608, 1)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0.5, 0.5, 0.5, 1)
+corner_radius_top_left = 10
+corner_radius_top_right = 10
+corner_radius_bottom_right = 10
+corner_radius_bottom_left = 10
+
+[sub_resource type="ParticleProcessMaterial" id="burst_mat"]
+emission_shape = 1
+emission_sphere_radius = 6.0
+direction = Vector3(0, -1, 0)
+spread = 55.0
+initial_velocity_min = 180.0
+initial_velocity_max = 360.0
+gravity = Vector3(0, 620, 0)
+scale_min = 0.5
+scale_max = 1.15
+color = Color(0.960784, 0.874509, 0.627451, 1)
+
+[node name="ItemCard" type="VBoxContainer" unique_id=1289148518]
+theme_override_constants/separation = 18
+script = ExtResource("1_card")
+
+[node name="Card" type="Control" parent="." unique_id=246588221]
+custom_minimum_size = Vector2(0, 510)
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+
+[node name="Backing" type="PanelContainer" parent="Card" unique_id=171392484]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 21.0
+offset_top = 21.0
+offset_right = -21.0
+offset_bottom = -21.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("backing")
+
+[node name="Content" type="MarginContainer" parent="Card" unique_id=1998999149]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/margin_left = 40
+theme_override_constants/margin_top = 40
+theme_override_constants/margin_right = 40
+theme_override_constants/margin_bottom = 70
+
+[node name="Layout" type="VBoxContainer" parent="Card/Content" unique_id=879346019]
+layout_mode = 2
+size_flags_vertical = 0
+theme_override_constants/separation = 12
+
+[node name="TopRow" type="HBoxContainer" parent="Card/Content/Layout" unique_id=723181535]
+layout_mode = 2
+size_flags_vertical = 4
+offset_transform_enabled = true
+offset_transform_position = Vector2(0, 25)
+theme_override_constants/separation = 24
+
+[node name="MedallionCol" type="VBoxContainer" parent="Card/Content/Layout/TopRow" unique_id=1763403771]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Medallion" type="Control" parent="Card/Content/Layout/TopRow/MedallionCol" unique_id=1035297090]
+custom_minimum_size = Vector2(180, 180)
+layout_mode = 2
+size_flags_horizontal = 4
+mouse_filter = 2
+
+[node name="Glyph" type="Control" parent="Card/Content/Layout/TopRow/MedallionCol/Medallion" unique_id=1908157420]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -52.0
+offset_top = -52.0
+offset_right = 52.0
+offset_bottom = 52.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("2_glyph")
+
+[node name="Ring" type="TextureRect" parent="Card/Content/Layout/TopRow/MedallionCol/Medallion" unique_id=1207437035]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("4_med")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="LevelPlate" type="PanelContainer" parent="Card/Content/Layout/TopRow/MedallionCol" unique_id=198088333]
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_styles/panel = SubResource("tile")
+
+[node name="SubtitleLabel" type="Label" parent="Card/Content/Layout/TopRow/MedallionCol/LevelPlate" unique_id=2038753911]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.709804, 0.823529, 0.784314, 1)
+theme_override_font_sizes/font_size = 32
+text = "Lv 1"
+horizontal_alignment = 1
+
+[node name="Info" type="VBoxContainer" parent="Card/Content/Layout/TopRow" unique_id=1902052009]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 16
+
+[node name="NameLabel" type="Label" parent="Card/Content/Layout/TopRow/Info" unique_id=1943528179]
+layout_mode = 2
+theme_type_variation = &"DisplayLabel"
+theme_override_colors/font_color = Color(0.937255, 0.839216, 0.580392, 1)
+theme_override_font_sizes/font_size = 54
+text = "Grumbling Longsword"
+clip_text = true
+text_overrun_behavior = 3
+
+[node name="ModRow" type="HBoxContainer" parent="Card/Content/Layout/TopRow/Info" unique_id=452432485]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Chip0" type="PanelContainer" parent="Card/Content/Layout/TopRow/Info/ModRow" unique_id=1955660879]
+custom_minimum_size = Vector2(68, 68)
+layout_mode = 2
+theme_override_styles/panel = SubResource("chip")
+
+[node name="Icon" type="TextureRect" parent="Card/Content/Layout/TopRow/Info/ModRow/Chip0" unique_id=1892569870]
+layout_mode = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Chip1" type="PanelContainer" parent="Card/Content/Layout/TopRow/Info/ModRow" unique_id=237460304]
+custom_minimum_size = Vector2(68, 68)
+layout_mode = 2
+theme_override_styles/panel = SubResource("chip")
+
+[node name="Icon" type="TextureRect" parent="Card/Content/Layout/TopRow/Info/ModRow/Chip1" unique_id=261791299]
+layout_mode = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Chip2" type="PanelContainer" parent="Card/Content/Layout/TopRow/Info/ModRow" unique_id=2008872923]
+custom_minimum_size = Vector2(68, 68)
+layout_mode = 2
+theme_override_styles/panel = SubResource("chip")
+
+[node name="Icon" type="TextureRect" parent="Card/Content/Layout/TopRow/Info/ModRow/Chip2" unique_id=1489578249]
+layout_mode = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Chip3" type="PanelContainer" parent="Card/Content/Layout/TopRow/Info/ModRow" unique_id=980656086]
+custom_minimum_size = Vector2(68, 68)
+layout_mode = 2
+theme_override_styles/panel = SubResource("chip")
+
+[node name="Icon" type="TextureRect" parent="Card/Content/Layout/TopRow/Info/ModRow/Chip3" unique_id=909790833]
+layout_mode = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="StatRow" type="HBoxContainer" parent="Card/Content/Layout" unique_id=103286228]
+layout_mode = 2
+size_flags_horizontal = 0
+size_flags_vertical = 0
+theme_override_constants/separation = 15
+
+[node name="Attack" type="PanelContainer" parent="Card/Content/Layout/StatRow" unique_id=1372272251]
+layout_mode = 2
+size_flags_vertical = 0
+theme_override_styles/panel = SubResource("tile")
+
+[node name="Box" type="HBoxContainer" parent="Card/Content/Layout/StatRow/Attack" unique_id=849825118]
+layout_mode = 2
+size_flags_horizontal = 0
+theme_override_constants/separation = 0
+
+[node name="Icon" type="TextureRect" parent="Card/Content/Layout/StatRow/Attack/Box" unique_id=1264785311]
+custom_minimum_size = Vector2(80, 0)
+layout_mode = 2
+size_flags_vertical = 3
+texture = ExtResource("5_atk")
+expand_mode = 1
+stretch_mode = 4
+
+[node name="Value" type="Label" parent="Card/Content/Layout/StatRow/Attack/Box" unique_id=490404622]
+custom_minimum_size = Vector2(80, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.937255, 0.839216, 0.580392, 1)
+theme_override_font_sizes/font_size = 52
+text = "0"
+horizontal_alignment = 1
+
+[node name="Magic" type="PanelContainer" parent="Card/Content/Layout/StatRow" unique_id=1316502404]
+layout_mode = 2
+size_flags_vertical = 0
+theme_override_styles/panel = SubResource("tile")
+
+[node name="Box" type="HBoxContainer" parent="Card/Content/Layout/StatRow/Magic" unique_id=1869237318]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Icon" type="TextureRect" parent="Card/Content/Layout/StatRow/Magic/Box" unique_id=379419707]
+custom_minimum_size = Vector2(80, 54)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+texture = ExtResource("6_mag")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Value" type="Label" parent="Card/Content/Layout/StatRow/Magic/Box" unique_id=1699223618]
+custom_minimum_size = Vector2(80, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.937255, 0.839216, 0.580392, 1)
+theme_override_font_sizes/font_size = 52
+text = "0"
+horizontal_alignment = 1
+
+[node name="StatRowBottom" type="HBoxContainer" parent="Card/Content/Layout" unique_id=657207592]
+layout_mode = 2
+size_flags_horizontal = 0
+size_flags_vertical = 0
+theme_override_constants/separation = 16
+
+[node name="Health" type="PanelContainer" parent="Card/Content/Layout/StatRowBottom" unique_id=513605059]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/panel = SubResource("tile")
+
+[node name="Box" type="HBoxContainer" parent="Card/Content/Layout/StatRowBottom/Health" unique_id=1865222865]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Icon" type="TextureRect" parent="Card/Content/Layout/StatRowBottom/Health/Box" unique_id=1827024550]
+custom_minimum_size = Vector2(80, 54)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+texture = ExtResource("7_hp")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Value" type="Label" parent="Card/Content/Layout/StatRowBottom/Health/Box" unique_id=1749943097]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.937255, 0.839216, 0.580392, 1)
+theme_override_font_sizes/font_size = 52
+text = "0"
+horizontal_alignment = 1
+
+[node name="Defense" type="PanelContainer" parent="Card/Content/Layout/StatRowBottom" unique_id=1710026171]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_styles/panel = SubResource("tile")
+
+[node name="Box" type="HBoxContainer" parent="Card/Content/Layout/StatRowBottom/Defense" unique_id=572710795]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Icon" type="TextureRect" parent="Card/Content/Layout/StatRowBottom/Defense/Box" unique_id=136563450]
+custom_minimum_size = Vector2(80, 54)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+texture = ExtResource("8_def")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Value" type="Label" parent="Card/Content/Layout/StatRowBottom/Defense/Box" unique_id=476628479]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.937255, 0.839216, 0.580392, 1)
+theme_override_font_sizes/font_size = 52
+text = "0"
+horizontal_alignment = 1
+
+[node name="Frame" type="NinePatchRect" parent="Card" unique_id=1696214765]
+layout_mode = 1
+anchors_preset = -1
+anchor_right = 2.0
+anchor_bottom = 2.0
+scale = Vector2(0.5, 0.5)
+texture = ExtResource("3_frame")
+patch_margin_left = 75
+patch_margin_top = 75
+patch_margin_right = 75
+patch_margin_bottom = 75
+axis_stretch_horizontal = 2
+axis_stretch_vertical = 2
+
+[node name="RarityFlash" type="ColorRect" parent="Card" unique_id=981403629]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(1, 1, 1, 0)
+
+[node name="Actions" type="HBoxContainer" parent="." unique_id=1562243840]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="Compare" type="Button" parent="Actions" unique_id=123918922]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"SecondaryButton"
+text = "Compare"
+
+[node name="Equip" type="Button" parent="Actions" unique_id=437912527]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Equip"
+
+[node name="Unequip" type="Button" parent="Actions" unique_id=726906601]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_type_variation = &"SecondaryButton"
+text = "Unequip"
+
+[node name="Buy" type="Button" parent="Actions" unique_id=647082131]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Buy"
+clip_text = true
+
+[node name="Sell" type="Button" parent="Actions" unique_id=1321693373]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Sell"
+clip_text = true
+
+[node name="Forge" type="Button" parent="Actions" unique_id=315188593]
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Forge"
+clip_text = true
+
+[node name="Burst" type="GPUParticles2D" parent="." unique_id=1829547994]
+emitting = false
+amount = 22
+lifetime = 0.7
+one_shot = true
+explosiveness = 0.9
+process_material = SubResource("burst_mat")
