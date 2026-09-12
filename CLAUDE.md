@@ -218,7 +218,10 @@ mesh; **the rig is hand-built in Blender**, not by Meshy.
    `skeleton_path = "Rig/Model/<Name>Rig/Skeleton3D"`, `clips` naming the shared
    `humanoid_idle/run/hurt/die` builders plus your own attack builder in
    `CombatantSkeletonAnimations`), referenced from the stats resource's `rig_profile`
-   field, and the id added to a pool in `game_state.gd`. There is no `IMPACT_DELAYS` table
+   field, and the id added to the `explicit_ids` of an `EnemyPool` under `resources/pools/`
+   (`endless_early`, `endless_mid` or `boss_pool`). Those three pools are hand-pinned
+   rosters, so authoring `tags` on the stats resource does not put the enemy into rotation
+   by itself — `explicit_ids` bypasses the tag filter. There is no `IMPACT_DELAYS` table
    to update any more (content-phase-0 §1.1/§3 Step 3 deleted it) — the attack clip's own
    `_anim_impact` call track, authored inside your attack builder, is the only impact
    timing that has ever actually fired.

@@ -197,6 +197,57 @@ func _ready() -> void:
 			purse_in_reel = true
 	t.check(not purse_in_reel, "S6: the party modal's reel readout skips slot_purse")
 
+	# --- S7: [content phase 0] the migration chain ----------------------------
+	# MIGRATIONS stays empty until the first VERSION bump, so the chain is driven
+	# through migrate() with stand-in steps rather than waiting for a real one.
+	# The chain owns the version number: a step that forgets to bump "version",
+	# or sets it wrong, must not re-run forever - the boot hang the loop had
+	# before migrate() took over the bump. If that regresses, this section
+	# hangs instead of failing.
+	var order := []
+	var rename_step := func(p: Dictionary) -> Dictionary:
+		order.append(1)
+		p["renamed"] = p.get("old", 0)
+		p.erase("old")
+		return p
+	var wrong_version_step := func(p: Dictionary) -> Dictionary:
+		order.append(2)
+		p["version"] = 1      # deliberately wrong - the chain must overrule it
+		return p
+	var walked: Variant = SaveGame.migrate({"version": 1, "old": 7}, 3,
+		{1: rename_step, 2: wrong_version_step})
+	t.check(walked is Dictionary, "S7: a v1 payload walks a two-step chain to v3")
+	if walked is Dictionary:
+		t.check(order == [1, 2], "S7: each step runs exactly once, in version order (got %s)" % [order])
+		t.check(int(walked["version"]) == 3,
+			"S7: the chain, not the step, sets the final version (got %s)" % [walked["version"]])
+		t.check(int(walked.get("renamed", -1)) == 7 and not walked.has("old"),
+			"S7: a step's own edits survive the chain")
+
+	var untouched_step := func(p: Dictionary) -> Dictionary:
+		return p      # never touches "version"
+	t.check(SaveGame.migrate({"version": 1}, 3, {1: untouched_step, 2: untouched_step}) is Dictionary,
+		"S7: steps that never touch \"version\" still terminate")
+	t.check(SaveGame.migrate({"version": 1}, 3, {1: untouched_step}) == null,
+		"S7: a gap in the chain rejects the save")
+	t.check(SaveGame.migrate({"version": 4}, 3, {}) == null,
+		"S7: a version from the future is rejected")
+	var not_a_dict_step := func(_p: Dictionary) -> Variant:
+		return null
+	t.check(SaveGame.migrate({"version": 1}, 2, {1: not_a_dict_step}) == null,
+		"S7: a step returning a non-Dictionary rejects the save")
+	var current := {"version": 3, "gold": 5}
+	t.check(SaveGame.migrate(current, 3, {}) == current,
+		"S7: a payload already at the target passes through unchanged")
+
+	# Every real entry must name a method SaveGame actually has, below VERSION -
+	# a typo here would only surface on a player's first post-bump launch.
+	var chain_ok := true
+	for v: Variant in SaveGame.MIGRATIONS:
+		if int(v) >= SaveGame.VERSION or not SaveGame.has_method(StringName(SaveGame.MIGRATIONS[v])):
+			chain_ok = false
+	t.check(chain_ok, "S7: every SaveGame.MIGRATIONS entry names a real method below VERSION")
+
 	# Clean up so the next headless run starts fresh.
 	if FileAccess.file_exists(path):
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(path))

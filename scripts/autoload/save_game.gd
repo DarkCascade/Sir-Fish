@@ -51,7 +51,46 @@ const VERSION := 4
 ## next bump needs one migration function and one entry here, not a rejected
 ## player file. A version with no entry (and no exact match) still falls back
 ## to new_profile(), same as before.
+##
+## A migration function does NOT set "version" - migrate() advances it after
+## every step. test_profile_save.gd's S7 asserts every entry here names a real
+## method, so a typo fails the suite rather than a player's first launch.
 const MIGRATIONS := {}
+
+## Walks payload `d` from its own "version" up to `target`, one step per
+## version. `steps` maps a version to a Callable taking that version's payload
+## and returning the next version's. Returns the migrated payload, or null
+## when the save is from the future, a step is missing, or a step returns
+## something other than a Dictionary - every one of which load_profile()
+## treats as "start a new profile".
+##
+## The chain owns the version number, not each step. When the loop re-read
+## "version" from the step's output instead, a migration that forgot to bump
+## it re-ran the same step forever - a hang at boot, not a rejected save.
+##
+## Takes `steps` rather than reading MIGRATIONS so S7 can drive it with
+## stand-in steps while the real table is still empty.
+func migrate(d: Dictionary, target: int, steps: Dictionary) -> Variant:
+	var version: int = int(d.get("version", 0))
+	if version > target:
+		return null
+	while version < target:
+		if not steps.has(version):
+			return null
+		var out: Variant = (steps[version] as Callable).call(d)
+		if not (out is Dictionary):
+			return null
+		d = out
+		version += 1
+		d["version"] = version
+	return d
+
+## MIGRATIONS' method names, bound to this node - the shape migrate() takes.
+func _migration_steps() -> Dictionary:
+	var steps := {}
+	for v: Variant in MIGRATIONS:
+		steps[v] = Callable(self, StringName(MIGRATIONS[v]))
+	return steps
 
 ## Every profile mutation in town saves (spec 2.4's "When to save" list); this
 ## is also called from GameState.new_profile(), from start_expedition() and the
@@ -113,14 +152,10 @@ func load_profile() -> bool:
 	# (never guess forward), but anything older walks MIGRATIONS one step at
 	# a time until it reaches VERSION or runs out of path, in which case it
 	# falls back to new_profile() exactly as an exact-match miss always has.
-	var file_version: int = int(d.get("version", 0))
-	if file_version > VERSION:
+	var migrated: Variant = migrate(d, VERSION, _migration_steps())
+	if migrated == null:
 		return false
-	while file_version < VERSION:
-		if not MIGRATIONS.has(file_version):
-			return false
-		d = call(MIGRATIONS[file_version], d)
-		file_version = int(d.get("version", file_version))
+	d = migrated
 
 	GameState.gold = int(d.get("gold", 0))
 	GameState.scrap = int(d.get("scrap", 0))
