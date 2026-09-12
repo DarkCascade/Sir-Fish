@@ -200,10 +200,9 @@ func _slot_icon_for(token: String) -> Dictionary:
 		"blank", "-", "_", "":
 			return SlotIcon.blank()
 		"innate_dmg":
-			# [levels] A mid roll for the forced debug icon, same convention as
-			# the modifier branch below - the real magnitude is now
-			# GameState.hero_weapon_power() * SLOT_INNATE_POWER_FRACTION, which
-			# needs a hero class this token does not carry.
+			# A mid roll for the forced debug icon - the real magnitude is now
+			# the hero's equipped weapon Power (GameState.hero_weapon_power()),
+			# which needs a hero class this token does not carry.
 			return { "id": SlotIcon.INNATE_DAMAGE, "roll": 6,
 				"enhanced": false, "innate": true }
 		"innate_heal":
@@ -346,7 +345,6 @@ func _cmd_drops(args: Array) -> void:
 func _parse_rarity(token: String) -> int:
 	match token.to_lower():
 		"common": return Item.Rarity.COMMON
-		"uncommon": return Item.Rarity.UNCOMMON
 		"magic": return Item.Rarity.MAGIC
 		"rare": return Item.Rarity.RARE
 		_: return clampi(int(token), 0, Item.Rarity.RARE)

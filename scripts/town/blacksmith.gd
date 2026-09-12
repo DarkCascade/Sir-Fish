@@ -9,9 +9,9 @@ extends Control
 ##   - Buy: FORGE_SHOP_SLOTS cards from Itemizer.generate_forge_stock(), cached on
 ##     GameState.forge_stock and rerolled ONLY by the refresh button, which costs
 ##     SHOP_REFRESH_COST gold (spec 7.4). Walking out and back in never rerolls.
-##   - Scrap: [item-card] one ItemCard per inventory item in
-##     Mode.SCRAP - the primary bar melts the item down for Item.scrap_value()
-##     scrap (a quarter of its gold sell price).
+##   - Scrap: [item-row] one ItemRow per inventory item in Mode.SCRAP - the
+##     primary bar melts the item down for Item.scrap_value() scrap (a quarter
+##     of its gold sell price).
 ##   - Sell: [refinement-pass-3] the same rows in Mode.SELL, identical to the
 ##     expedition shop's Sell tab - the merchant at the quest shop is no longer
 ##     the only place to offload loot.
@@ -21,7 +21,7 @@ extends Control
 ## darkening Vignette scrim are authored in blacksmith.tscn - the Meshy art
 ## pass, spec 12.1 (step 11).
 
-const ITEM_CARD := preload("res://scenes/modals/item_card.tscn")
+const ITEM_ROW := preload("res://scenes/modals/item_row.tscn")
 ## The shared transactions behind the card buttons, and the Mode enum the
 ## Scrap and Sell tabs differ by.
 const CardActions := preload("res://scripts/ui/item_card_actions.gd")
@@ -93,7 +93,7 @@ func _build_forge() -> void:
 		if worn == null:
 			_forge_list.add_child(_empty_slot_row(s))
 			continue
-		var card := ITEM_CARD.instantiate()
+		var card := ITEM_ROW.instantiate()
 		_forge_list.add_child(card)
 		card.setup(worn)
 		var acts: Array[StringName] = [&"forge"]
@@ -117,9 +117,15 @@ func _empty_slot_row(s: Item.Slot) -> Control:
 	panel.add_child(l)
 	return panel
 
-## [item-card] Takes the action id the universal card emits, then the item it
-## was bound to. The id is ignored - the Forge card offers exactly one action.
-func _on_forge_pressed(_id: StringName, item: Item) -> void:
+## [item-row] Takes the action id the strip emits, then the item it was bound
+## to. The id can no longer be ignored the way it was when Forge was the row's
+## only action: a tap on the strip itself arrives here as `compare`, and
+## forging the player's equipped gear because they wanted to look at it would
+## spend their scrap without being asked.
+func _on_forge_pressed(id: StringName, item: Item) -> void:
+	if id == &"compare":
+		_on_compare_requested(item)
+		return
 	var slot := item.slot()
 	if not Itemizer.forge(item):
 		return
@@ -163,17 +169,19 @@ func _refresh_forge_card(card: Control) -> void:
 	var short_gold: int = maxi(0, need_gold - GameState.gold)
 	if short_scrap == 0 and short_gold == 0:
 		card.set_action_disabled(&"forge", false)
-		card.set_action_text(&"forge", "FORGE  →  %s        %d scrap  ·  %d gold"
+		card.set_action_text(&"forge", "Forge → %s   ·   %d scrap, %d gold"
 			% [to_name, need_scrap, need_gold])
 	else:
+		# Can't afford it: the destination rarity is on the card's own flash;
+		# what the player needs here is the shortfall, kept short so a long
+		# "need N scrap and M gold" can never blow the card wider than the list.
 		card.set_action_disabled(&"forge", true)
 		var parts: PackedStringArray = []
 		if short_scrap > 0:
-			parts.append("%d more scrap" % short_scrap)
+			parts.append("%d scrap" % short_scrap)
 		if short_gold > 0:
-			parts.append("%d more gold" % short_gold)
-		card.set_action_text(&"forge", "FORGE  →  %s   (need %s)"
-			% [to_name, " and ".join(parts)])
+			parts.append("%d gold" % short_gold)
+		card.set_action_text(&"forge", "Need %s" % ", ".join(parts))
 
 # --- buy tab ---------------------------------------------------------------
 
@@ -184,10 +192,12 @@ func _build_buy() -> void:
 	_buy_empty.visible = GameState.forge_stock.is_empty()
 	var index := 0
 	for item: Item in GameState.forge_stock:
-		var card := ITEM_CARD.instantiate()
+		var card := ITEM_ROW.instantiate()
 		_buy_list.add_child(card)
 		card.setup(item)
-		var acts: Array[StringName] = [&"compare", &"buy"]
+		# [item-row] Buy only - comparing is a tap on the strip, which reports
+		# itself as the `compare` action to _on_buy_action below.
+		var acts: Array[StringName] = [&"buy"]
 		card.set_actions(acts)
 		card.set_action_text(&"buy", CardActions.buy_label(item))
 		card.action_pressed.connect(_on_buy_action.bind(card, item))
@@ -259,10 +269,10 @@ func _build_item_rows(list: VBoxContainer, empty: Label, mode: int,
 	empty.visible = items.is_empty()
 	var index := 0
 	for item: Item in items:
-		var card := ITEM_CARD.instantiate()
+		var card := ITEM_ROW.instantiate()
 		list.add_child(card)
 		card.setup(item)
-		var acts: Array[StringName] = [&"compare"]
+		var acts: Array[StringName] = []
 		var eq := CardActions.equip_action(item)
 		if eq != &"":
 			acts.append(eq)

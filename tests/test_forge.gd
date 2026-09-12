@@ -50,7 +50,7 @@ func _test_ladder() -> void:
 		"a fresh Common starts at rarity 0 with 0 modifiers")
 
 	var forged_before := int(GameState.run_stats["items_forged"])
-	for step: int in range(4):
+	for step: int in range(3):
 		var ok := Itemizer.forge(item)
 		_t.check(ok, "forge step %d succeeds" % (step + 1))
 		_t.check(int(item.rarity) == step + 1,
@@ -62,9 +62,9 @@ func _test_ladder() -> void:
 			"step %d: forge_count is %d" % [step + 1, item.forge_count])
 
 	_t.check(item.rarity == Item.Rarity.ENHANCED,
-		"four steps from COMMON reach ENHANCED, and no more")
-	_t.check(int(GameState.run_stats["items_forged"]) == forged_before + 4,
-		"run_stats.items_forged counted all four forges")
+		"three steps from COMMON reach ENHANCED, and no more")
+	_t.check(int(GameState.run_stats["items_forged"]) == forged_before + 3,
+		"run_stats.items_forged counted all three forges")
 
 	var gold_at_cap := GameState.gold
 	var scrap_at_cap := GameState.scrap
@@ -74,25 +74,34 @@ func _test_ladder() -> void:
 
 func _test_no_duplicate_ids() -> void:
 	_be_rich()
-	var dupes := 0
+	var wrong := 0
 	for i: int in range(1000):
 		var item := _fresh_common()
-		for _s: int in range(4):
+		for _s: int in range(3):
 			Itemizer.forge(item)
 		var seen := {}
+		var dups := 0
 		for m: Dictionary in item.modifiers:
 			if seen.has(m["id"]):
-				dupes += 1
+				dups += 1
 			seen[m["id"]] = true
-	_t.check(dupes == 0,
-		"no item carries the same modifier id twice after a full forge (%d/1000)" % dupes)
+		# [armor items] Armor's pool is only {block, life}, so the last rung of a
+		# full forge HAS to repeat one - at most once. Weapons / trinkets (a
+		# 7-mod pool) must never repeat.
+		if item.slot() == Item.Slot.ARMOR:
+			if dups > 1:
+				wrong += 1
+		elif dups > 0:
+			wrong += 1
+	_t.check(wrong == 0,
+		"weapons never repeat a modifier; armor repeats at most once to reach ENHANCED (%d/1000)" % wrong)
 
 # --- rejection paths -------------------------------------------------------
 
 func _test_enhanced_rejects() -> void:
 	_be_rich()
 	var item := _fresh_common()
-	for _s: int in range(4):
+	for _s: int in range(3):
 		Itemizer.forge(item)
 	var rarity := item.rarity
 	var mods := item.modifiers.size()
@@ -149,27 +158,38 @@ func _test_enhanced_marker_and_rolls() -> void:
 	var out_of_range := 0
 	for i: int in range(300):
 		var item := _fresh_common()
-		for step: int in range(4):
+		for step: int in range(3):
 			Itemizer.forge(item)
 			var last: Dictionary = item.modifiers[item.modifiers.size() - 1]
-			var is_final := step == 3
+			var is_final := step == 2
 			if not is_final and last.get("enhanced", false):
 				early_enhanced += 1
 			if is_final and not last.get("enhanced", false):
 				final_plain += 1
 			if is_final:
+				# [item power model] The enhanced icon is locked to the max
+				# bonus: FORGE_ICON_POWER_MAX of the item's Power for a DAMAGE /
+				# DAMAGE_ALL icon, or the top of the modifier's roll range for a
+				# HEAL / MULT icon.
 				var def: Dictionary = mods_by_id[last["id"]]
-				var lo := int(def["roll"][0]) * Tuning.FORGE_ENHANCED_MULT
-				var hi := int(def["roll"][1]) * Tuning.FORGE_ENHANCED_MULT
-				if int(last["roll"]) < lo or int(last["roll"]) > hi:
+				var kind: int = SlotIcon.kind_of(StringName(last["id"]))
+				var want: int
+				if kind == SlotIcon.Kind.DAMAGE or kind == SlotIcon.Kind.DAMAGE_ALL:
+					want = maxi(1, int(round(float(item.power()) * Tuning.FORGE_ICON_POWER_MAX)))
+				elif kind == SlotIcon.Kind.BLOCK:
+					# [armor items] block scales off armor_value, like damage off Power.
+					want = maxi(1, int(round(float(item.armor_value()) * Tuning.FORGE_ICON_POWER_MAX)))
+				else:
+					want = int(def["roll"][1])
+				if int(last["roll"]) != want:
 					out_of_range += 1
 
 	_t.check(early_enhanced == 0,
-		"steps 1-3 never produce an enhanced modifier (%d/900)" % early_enhanced)
+		"steps 1-2 never produce an enhanced modifier (%d/600)" % early_enhanced)
 	_t.check(final_plain == 0,
-		"step 4 always produces an enhanced modifier (%d/300 missed)" % final_plain)
+		"step 3 always produces an enhanced modifier (%d/300 missed)" % final_plain)
 	_t.check(out_of_range == 0,
-		"every enhanced roll falls in [min x2, max x2] of its definition (%d/300 out)" % out_of_range)
+		"every enhanced roll is locked to the max bonus (%d/300 off)" % out_of_range)
 
 # --- the arbitrage gate (spec 10.5) -------------------------------------------
 
@@ -180,7 +200,7 @@ func _test_arbitrage_gate() -> void:
 	for i: int in range(1000):
 		var item := _fresh_common()
 		var gold_spent := item.buy_price()
-		for r: int in range(4):
+		for r: int in range(3):   # [rarity] 3 rungs since UNCOMMON was removed
 			gold_spent += int(Tuning.FORGE_COSTS[item.rarity][1])
 			Itemizer.forge(item)
 		var recovered := item.sell_price()

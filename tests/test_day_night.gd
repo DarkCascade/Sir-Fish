@@ -176,6 +176,7 @@ func _ready() -> void:
 
 	# 19. party_bonuses() carries meal_pct separately from dmg_pct.
 	GameState.new_profile()
+	GameState.inventory.clear()   # drop the starting weapon - this case isolates the meal
 	GameState.gold = 10_000
 	GameState.buy_meal()
 	var b: Dictionary = GameState.party_bonuses()

@@ -14,7 +14,7 @@ extends Control
 
 signal closed()
 
-const ITEM_CARD := preload("res://scenes/modals/item_card.tscn")
+const ITEM_ROW := preload("res://scenes/modals/item_row.tscn")
 const CardActions := preload("res://scripts/ui/item_card_actions.gd")
 const NUMBER_SCENE := preload("res://scenes/overlay/damage_number.tscn")
 
@@ -108,16 +108,15 @@ func _build_buy() -> void:
 	_cards.clear()
 	var index := 0
 	for item: Item in _encounter.cached_shop_items:
-		var card := ITEM_CARD.instantiate()
+		var card := ITEM_ROW.instantiate()
 		buy_list.add_child(card)
 		card.setup(item)
-		var acts: Array[StringName] = [&"compare", &"buy"]
+		# [item-row] Buy only. Comparing is a tap on the strip itself, which the
+		# strip reports as the `compare` action - see _on_buy_action, unchanged.
+		var acts: Array[StringName] = [&"buy"]
 		card.set_actions(acts)
 		card.set_action_text(&"buy", CardActions.buy_label(item))
 		card.action_pressed.connect(_on_buy_action.bind(card, item))
-		# Staggered pop-in. The one-time swipe teach went with the swipe layer:
-		# the card puts Compare on a button now, so there is no hidden gesture
-		# left to teach.
 		card.play_entrance(index)
 		_cards.append(card)
 		index += 1
@@ -155,10 +154,10 @@ func _build_sell() -> void:
 	sell_empty.visible = items.is_empty()
 	var index := 0
 	for item: Item in items:
-		var card := ITEM_CARD.instantiate()
+		var card := ITEM_ROW.instantiate()
 		sell_list.add_child(card)
 		card.setup(item)
-		var acts: Array[StringName] = [&"compare"]
+		var acts: Array[StringName] = []
 		var eq := CardActions.equip_action(item)
 		if eq != &"":
 			acts.append(eq)

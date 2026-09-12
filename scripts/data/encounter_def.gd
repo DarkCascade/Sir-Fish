@@ -23,7 +23,7 @@ enum Type { COMBAT, LOOT, SHOP }
 ## to 1 so the endless / fixed bosses keep their "never Common" floor untouched;
 ## _build_quest_level() raises it to the quest's boss_drop_rarity_floor (spec
 ## 8.2 / 8.3), which is how hard guarantees a Rare base item.
-@export_range(0, 4, 1) var boss_drop_rarity_floor: int = 1
+@export_range(0, 3, 1) var boss_drop_rarity_floor: int = 1
 
 ## Shop stock is generated once per encounter and cached here, so reopening a
 ## tab never rerolls (spec 21-D11). Not exported - it is runtime-only state.

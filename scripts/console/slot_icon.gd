@@ -28,13 +28,17 @@ const BASE_ARMOR := &"base_armor"
 const BASE_TRINKET := &"base_trinket"
 
 ## The equipped-modifier ids that map to a board icon. `dmg_pct` is here — it is
-## the multiplier icon. `slot_purse` is deliberately absent (§5).
+## the multiplier icon. `slot_purse` is deliberately absent (§5). [armor items]
+## `armor_block` is here (a BLOCK icon); `armor_life` is NOT - it is a passive
+## max-hp boost read straight off item.modifiers, never a board icon.
 const KNOWN_MODIFIER_IDS: Array[StringName] = [
 	&"dmg_flat", &"dmg_pct", &"elem_fire", &"elem_ice", &"elem_light",
-	&"slot_bolt", &"slot_mend",
+	&"slot_bolt", &"slot_mend", &"armor_block",
 ]
 
-enum Kind { BLANK, DAMAGE, DAMAGE_ALL, HEAL, MULT }
+## [armor items] BLOCK: an armor icon that grants the party a temporary flat
+## damage reduction when it resolves (SlotMachine._grant_block).
+enum Kind { BLANK, DAMAGE, DAMAGE_ALL, HEAL, MULT, BLOCK }
 
 ## The reliquary chip art, one PNG per modifier id (already on disk, drawn by the
 ## compare flyout's stat chips). The two innate ids borrow the closest chip.
@@ -47,8 +51,10 @@ static func kind_of(id: StringName) -> Kind:
 			return Kind.DAMAGE
 		&"slot_bolt":
 			return Kind.DAMAGE_ALL
-		&"slot_mend", INNATE_HEAL, BASE_ARMOR:
+		&"slot_mend", INNATE_HEAL:
 			return Kind.HEAL
+		BASE_ARMOR, &"armor_block":
+			return Kind.BLOCK
 		&"dmg_pct":
 			return Kind.MULT
 		_:
@@ -82,72 +88,50 @@ static func base_for(slot: Item.Slot) -> StringName:
 static func is_base(id: StringName) -> bool:
 	return id == BASE_WEAPON or id == BASE_ARMOR or id == BASE_TRINKET
 
-## [levels] The item-level contribution to an icon of `kind`'s magnitude -
-## three different units, never interchangeable. This is the one seam that
-## dispatches on Kind so from_item_base() and from_modifier() below never have
-## to.
-##
-## HEAL reads `roll` as a PERCENT OF MAX HP (slot_machine._heal_lowest());
-## feeding base_power()'s unbounded, level-scaling flat value (up to 180 at
-## level 30) into that field would mean a single mid-level armor piece
-## instantly full-heals every time it resolves - see Item.base_heal_pct().
-##
-## MULT (dmg_pct) reads `roll` as a percent BOOST applied to every damage icon
-## resolving this spin, item's own included. Adding this item's base_power()
-## to it would compound multiplicatively on top of damage icons that are
-## already scaled by their own item levels - dmg_pct stays exactly the
-## modifier's own rolled percent, zero item-level contribution.
-static func _item_level_contribution(item: Item, kind: Kind) -> int:
-	match kind:
-		Kind.HEAL: return item.base_heal_pct()
-		Kind.MULT: return 0
-		_: return item.base_power()
+## The base slot icon's magnitude - 100% of the item's characteristic value:
+## Power for a DAMAGE icon (weapon, trinket), armor_value for a BLOCK icon
+## (armor). [armor items] Armor's base icon used to be a percent-of-max-hp
+## heal; it is a flat block now.
+static func _base_icon_roll(item: Item, kind: Kind) -> int:
+	if kind == Kind.BLOCK:
+		return item.armor_value()
+	return item.power()
 
 ## [levels] Every equipped item's guaranteed slot icon (spec §4.3) - a Common
 ## with zero modifiers still puts exactly one icon in the bag, which is the
 ## whole fix for a Common contributing nothing.
 static func from_item_base(item: Item) -> Dictionary:
 	var id := base_for(item.slot())
-	return { "id": id, "roll": _item_level_contribution(item, kind_of(id)), "enhanced": false }
+	return { "id": id, "roll": _base_icon_roll(item, kind_of(id)), "enhanced": false }
 
 ## An icon dict from an equipped modifier entry (see Itemizer.MODIFIERS).
 ## Returns an empty dict for an id with no board icon — callers skip those.
 ##
-## [levels] `item` is required now: every icon's resolved magnitude is the
-## item's own level contribution PLUS the modifier's own rolled value (spec
-## §4.4), so even a modifier icon carries its item's level - `slot_mend` is
-## HEAL-kind, so it takes base_heal_pct(), same unit rule as the armor base
-## icon. The raw modifier roll survives separately as `mod_roll`, for the party
-## modal's per-item readout ("+4 Damage" on the card) to stay truthfully
-## sourced from what the item itself rolled, distinct from what resolves on
-## the board.
-static func from_modifier(mod: Dictionary, item: Item) -> Dictionary:
+## [item power model] The modifier's `roll` is already the final resolved
+## magnitude - Itemizer._roll_icon_magnitude() baked it at generation / forge
+## time (125-175% of the item's Power for a DAMAGE / DAMAGE_ALL icon, its own
+## percent for HEAL / MULT). `_item` is no longer read; the signature stays
+## two-arg for the call sites and for the day a per-icon recompute returns.
+static func from_modifier(mod: Dictionary, _item: Item = null) -> Dictionary:
 	var id := StringName(mod.get("id", &""))
 	if not KNOWN_MODIFIER_IDS.has(id):
 		return {}
-	var mod_roll := int(mod.get("roll", 0))
 	return {
 		"id": id,
-		"roll": _item_level_contribution(item, kind_of(id)) + mod_roll,
-		"mod_roll": mod_roll,
+		"roll": int(mod.get("roll", 0)),
 		"enhanced": bool(mod.get("enhanced", false)),
 	}
 
-## An innate icon dict for a hero class. Magnitude is the fixed Tuning constant —
-## damage as a flat value, heal as a percent of max hp.
-## [levels] `weapon_power` is the hero's own RAW Weapon Power at their current
-## level (GameState.hero_weapon_power(hero_class)) - precomputed by the caller
-## rather than looked up here, since a caller mid-combat and one in town
-## resolve "the hero's level" from different places (spec §4.4). Only the
-## DAMAGE branch (a non-mage hero) uses it; the mage's heal keeps its flat
-## SLOT_INNATE_HEAL_PCT, unrelated to weapon power.
+## An innate icon dict for a hero class: one per living hero, the floor that
+## keeps the bag from ever being empty of icons.
+## [item power model] `weapon_power` is now 100% of the hero's EQUIPPED weapon
+## Power (GameState.hero_weapon_power(hero_class)), precomputed by the caller -
+## the hero's own stats no longer feed combat. 0 when the hero is unarmed
+## (handled later). Only the DAMAGE branch uses it; the mage's heal keeps its
+## flat SLOT_INNATE_HEAL_PCT.
 static func innate(hero_class: StringName, weapon_power: int = 0) -> Dictionary:
 	var id := innate_for(hero_class)
-	var roll: int
-	if id == INNATE_DAMAGE:
-		roll = int(round(float(weapon_power) * Tuning.SLOT_INNATE_POWER_FRACTION))
-	else:
-		roll = Tuning.SLOT_INNATE_HEAL_PCT
+	var roll: int = weapon_power if id == INNATE_DAMAGE else Tuning.SLOT_INNATE_HEAL_PCT
 	return { "id": id, "roll": roll, "enhanced": false, "innate": true }
 
 static func blank() -> Dictionary:
@@ -159,10 +143,16 @@ static func is_blank(icon: Dictionary) -> bool:
 ## The chip texture path for an icon id, or "" if none applies (blank). Innate
 ## ids borrow the nearest modifier chip.
 static func chip_path(id: StringName) -> String:
+	# [armor items] No reliquary chip art for block / life yet - borrow the
+	# shield and heart glyphs from the item card's stat-tile set.
+	if id == BASE_ARMOR or id == &"armor_block":
+		return "res://assets/icons/glyph_shield.png"
+	if id == &"armor_life":
+		return "res://assets/icons/glyph_heal.png"
 	var key := id
 	if id == INNATE_DAMAGE or id == BASE_WEAPON:
 		key = &"dmg_flat"
-	elif id == INNATE_HEAL or id == BASE_ARMOR:
+	elif id == INNATE_HEAL:
 		key = &"slot_mend"
 	elif id == BASE_TRINKET:
 		key = &"elem_light"
@@ -188,12 +178,13 @@ static func short_label(id: StringName) -> String:
 		&"slot_bolt": return "Chain"
 		&"slot_mend", INNATE_HEAL: return "Mend"
 		BASE_WEAPON: return "Strike"
-		BASE_ARMOR: return "Ward"
+		BASE_ARMOR, &"armor_block": return "Block"
+		&"armor_life": return "Life"
 		BASE_TRINKET: return "Focus"
 	return ""
 
 ## Percent-magnitude icons render their roll as "+N%"; the rest as "+N".
-## [levels] BASE_ARMOR heals a percent of max hp, same shape as slot_mend /
-## INNATE_HEAL (spec §4.3).
+## [armor items] BASE_ARMOR / armor_block are flat now (a block amount, not a
+## percent); armor_life IS a percent (of max hp).
 static func is_percent(id: StringName) -> bool:
-	return id == &"dmg_pct" or id == &"slot_mend" or id == INNATE_HEAL or id == BASE_ARMOR
+	return id == &"dmg_pct" or id == &"slot_mend" or id == INNATE_HEAL or id == &"armor_life"

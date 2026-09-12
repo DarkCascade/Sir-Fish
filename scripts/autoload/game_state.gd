@@ -492,16 +492,42 @@ func hero_xp_for(id: StringName) -> int:
 func default_item_level() -> int:
 	return hero_level()
 
-## [levels] `id`'s Weapon Power at their current level - the RAW stat, not a
-## live Combatant's buffed compute_damage() (no meal multiplier, no
-## bonus_flat_damage). This is what the slot board's innate damage icon reads
-## (spec §4.4): a level does not change mid-combat, so reading it off the
-## stats resource works identically in town (attract mode) and in a live fight,
-## and staying off the buffed value keeps the innate icon a pure function of
-## hero level, not of what happens to be equipped that spin.
+## [item power model] The Power of the weapon `id` currently has equipped, or 0
+## when unarmed. This is what the slot board's innate damage icon is worth -
+## the hero's own stats no longer feed combat, so an unequipped hero swings for
+## nothing (an unarmed baseline is a later concern). Equipping / forging a
+## weapon fires party_bonuses_changed, so the bag picks the new number up on
+## its next rebuild.
 func hero_weapon_power(id: StringName) -> int:
+	var w := equipped_item(id, Item.Slot.WEAPON)
+	return 0 if w == null else w.power()
+
+## [armor items] Flat damage reduction from `id`'s equipped armor - the passive
+## half of Combatant.armor (the temporary half comes from BLOCK icons).
+func hero_armor(id: StringName) -> int:
+	var a := equipped_item(id, Item.Slot.ARMOR)
+	return 0 if a == null else a.armor_value()
+
+## [armor items] Percent added to `id`'s max hp by equipped armor_life modifiers.
+func hero_life_pct(id: StringName) -> int:
+	var a := equipped_item(id, Item.Slot.ARMOR)
+	return 0 if a == null else a.life_bonus_pct()
+
+## [armor items] `id`'s full max hp: the level-resolved stat base times the
+## armor_life percent boost. The single answer for hero_runtime
+## (_reset_hero_runtime / _apply_xp_to_hero / party_status) AND for
+## Combatant.apply_party_bonuses - which also lets combat finally honour hero
+## level, a pre-existing gap spawn_party() left (it spawns at level 1).
+func hero_max_hp(id: StringName) -> int:
+	return _leveled_max_hp(id, hero_level(id))
+
+## hero_max_hp() at an explicit level - _apply_xp_to_hero needs the OLD and NEW
+## max across a level change, and hero_max_hp reads the already-updated level.
+func _leveled_max_hp(id: StringName, lvl: int) -> int:
 	var s := get_stats(id)
-	return 0 if s == null else s.weapon_power_at(hero_level(id))
+	if s == null:
+		return 1
+	return int(round(float(s.hp_at(lvl)) * (1.0 + float(hero_life_pct(id)) / 100.0)))
 
 ## XP needed to advance FROM `lvl` TO `lvl + 1` (spec §3.2). Parameter named
 ## `lvl`, not `level` - this class already has a `level: LevelDef` field and
@@ -546,8 +572,10 @@ func _apply_xp_to_hero(id: StringName, amount: int) -> void:
 	var entry := hero_entry(id)
 	if entry.is_empty():
 		return
-	var old_max: int = int(entry.get("max_hp", s.hp_at(old_level)))
-	var new_max: int = s.hp_at(new_level)
+	# [armor items] via hero_max_hp so the armor_life boost rides along - but
+	# hero_levels[id] was already set above, so pass the level explicitly.
+	var old_max: int = int(entry.get("max_hp", _leveled_max_hp(id, old_level)))
+	var new_max: int = _leveled_max_hp(id, new_level)
 	entry["max_hp"] = new_max
 	if bool(entry.get("alive", false)):
 		entry["current_hp"] = clampi(int(entry.get("current_hp", 0)) + (new_max - old_max), 1, new_max)
@@ -572,7 +600,7 @@ func party_status() -> Array[Dictionary]:
 		# hero's CURRENT level, not the level-1 s.max_hp - an un-run profile's
 		# hero is whole at whatever level it has earned, which is the same
 		# "honest thing to show" this fallback already existed for.
-		var top: int = int(entry.get("max_hp", s.hp_at(hero_level(id))))
+		var top: int = int(entry.get("max_hp", hero_max_hp(id)))
 		var cur: int = int(entry.get("current_hp", top))
 		out.append({
 			"stats_id": id,
@@ -891,6 +919,21 @@ func new_profile() -> void:
 	forge_stock.clear()          # the blacksmith regenerates on first visit (spec 7.4)
 	forge_stock_generated = false
 	active_party = [&"warrior"] as Array[StringName]
+	# [item power model] A fresh profile ships one weapon, already equipped.
+	# Since the combat loop redesign a hero's entire offense is its equipped
+	# weapon's Power - an unarmed start plays as "the game is broken". A level-1
+	# Magic sword: the base strike icon plus one modifier forced to a plain
+	# damage add ([balance pass]) so a fresh run is never a dead roll. Level is
+	# pinned to 1 so a retry off a leveled profile still starts fresh;
+	# add_item() auto-equips it into the warrior's empty slot.
+	var starter_weapon := Itemizer.generate_typed_item(&"sword", Item.Rarity.MAGIC, 1)
+	Itemizer.force_modifier(starter_weapon, 0, &"dmg_flat")
+	add_item(starter_weapon)
+	# [balance pass] ...and a plain shield. Its base armor icon is a heal
+	# (percent of max hp), the ONLY sustain a fresh solo warrior has - without
+	# it the first quest's boss is an unwinnable healless slog (sim_easy_
+	# attempts). Common, so no modifier roll: just the one heal icon.
+	add_item(Itemizer.generate_typed_item(&"shield", Item.Rarity.COMMON, 1))
 	# [day-night] a fresh profile starts a fresh first day, unfed, no night owed.
 	day_phase = DayPhase.DAY
 	day_number = 1
@@ -970,8 +1013,8 @@ func _reset_hero_runtime(full_heal: bool) -> void:
 			continue
 		# [levels] hp_at(hero_level(id)), not the level-1 s.max_hp - a leveled
 		# hero's max HP must survive both a full heal and a carried-over
-		# current_hp (spec §3.3).
-		var top: int = s.hp_at(hero_level(id))
+		# current_hp (spec §3.3). [armor items] hero_max_hp folds in armor_life.
+		var top: int = hero_max_hp(id)
 		var hp: int = top
 		if not full_heal:
 			for entry: Dictionary in previous:

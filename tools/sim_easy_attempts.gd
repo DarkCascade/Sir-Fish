@@ -5,12 +5,13 @@ extends Node
 ##
 ##     godot --headless --path "C:/Projects/Godot/Sir Fish" res://tools/sim_easy_attempts.tscn
 ##
-## [STALE as of BattleDirector.turn_based_combat defaulting true] Every combat
-## event below fires each actor independently at its own attack_cooldown -
-## the real-time model this was written against. Turn-based mode serializes
-## heroes AND enemies through one shared queue instead (one actor's whole
-## animation must finish before the next starts), which this resolver does
-## not represent. Re-run before trusting the attempt-count result again.
+## Every combat event below fires each actor independently at its own
+## attack_cooldown - the real-time model this was written against, which
+## BattleDirector.turn_based_combat defaulting false again ([combat loop
+## redesign]) matches. NOTE: this resolver still models a hero meleeing off
+## its own cooldown, which the redesign is removing in favour of slot-only
+## party actions - re-derive the hero-output term against that before trusting
+## the attempt-count result.
 ##
 ## Reuses the real systems wherever they work headless: GameState for
 ## profile/expedition/XP/leveling state, Itemizer for every item generated,
@@ -99,10 +100,14 @@ func _run_expedition() -> bool:
 	var stats := GameState.get_stats(&"warrior")
 	var level := GameState.hero_level(&"warrior")
 	var entry := GameState.hero_entry(&"warrior")
+	# [armor items] max hp folds in armor_life; every enemy hit is flat-reduced
+	# by the passive armor. BLOCK icons (temporary armor) are left unmodelled -
+	# conservative for "how many attempts".
 	var hero := {
-		"max_hp": stats.hp_at(level),
-		"hp": int(entry.get("current_hp", stats.hp_at(level))),
+		"max_hp": GameState.hero_max_hp(&"warrior"),
+		"hp": int(entry.get("current_hp", GameState.hero_max_hp(&"warrior"))),
 		"level": level,
+		"armor": GameState.hero_armor(&"warrior"),
 	}
 	var won := true
 	for enc: EncounterDef in GameState.level.encounters:
@@ -160,26 +165,27 @@ func _spawn_enemies(enc: EncounterDef) -> Array:
 
 const _SPIN_CYCLE := Tuning.SLOT_SPIN_DURATION + Tuning.SLOT_REEL_STAGGER * 2.0 + Tuning.SLOT_RESULT_HOLD
 
+## [balance pass] The hero no longer melees off its own cooldown - the slot
+## spin is the party's ONLY action (Defend went with it, shelved). The
+## resolver is just "slot spins vs enemy swings" now. Enemies pay their attack
+## clip on top of attack_cooldown, matching test_level_curves' ENEMY_ATTACK_CLIP.
+const _ENEMY_ATTACK_CLIP := 0.8
+
 ## `hero` is mutated in place (hp). Returns true if every enemy dies before
 ## the hero's hp reaches 0.
 func _run_combat(enc: EncounterDef, hero: Dictionary) -> bool:
 	var enemies := _spawn_enemies(enc)
 	if enemies.is_empty():
 		return true
-	var warrior_stats := GameState.get_stats(&"warrior")
 
 	var t := 0.0
-	var hero_next_melee: float = warrior_stats.attack_cooldown * Tuning.COOLDOWN_START_FRACTION \
-		* RNG.randf_range(1.0 - Tuning.COOLDOWN_START_JITTER, 1.0 + Tuning.COOLDOWN_START_JITTER)
 	var hero_next_spin: float = _SPIN_CYCLE
-	var hero_action_count := 0
-	var hero_defend_expiry := -1.0
 
 	var guard := 0
 	while hero["hp"] > 0 and _living(enemies) and guard < 20000:
 		guard += 1
-		# Find the next event among: hero melee, hero slot spin, every living enemy.
-		var next_t: float = minf(hero_next_melee, hero_next_spin)
+		# The next event is the hero's slot spin or the soonest enemy swing.
+		var next_t: float = hero_next_spin
 		var acting_enemy: Dictionary = {}
 		for e: Dictionary in enemies:
 			if e["hp"] > 0 and e["next_action"] < next_t:
@@ -188,31 +194,14 @@ func _run_combat(enc: EncounterDef, hero: Dictionary) -> bool:
 		t = next_t
 
 		if not acting_enemy.is_empty():
-			acting_enemy["next_action"] = t + acting_enemy["attack_cooldown"]
-			var reduction: float = Tuning.WARRIOR_DEFEND_REDUCTION if t < hero_defend_expiry else 0.0
+			acting_enemy["next_action"] = t + acting_enemy["attack_cooldown"] + _ENEMY_ATTACK_CLIP
 			var raw: float = float(acting_enemy["weapon_power"]) \
 				* RNG.randf_range(1.0 - Tuning.DAMAGE_VARIANCE, 1.0 + Tuning.DAMAGE_VARIANCE)
-			var dmg: int = maxi(1, int(round(raw * (1.0 - reduction))))
-			hero["hp"] -= dmg
-		elif is_equal_approx(t, hero_next_melee):
-			hero_next_melee = t + warrior_stats.attack_cooldown
-			hero_action_count += 1
-			# Warrior's Defend special (spec 9.1): every 3rd action replaces the
-			# attack entirely - no damage dealt, damage_reduction for 4s.
-			if warrior_stats.special_every_n_actions > 0 \
-					and hero_action_count % warrior_stats.special_every_n_actions == 0:
-				hero_defend_expiry = t + Tuning.WARRIOR_DEFEND_DURATION
-			else:
-				var target = _random_living(enemies)
-				if target != null:
-					var raw: float = float(warrior_stats.weapon_power_at(hero["level"])) \
-						* GameState.meal_multiplier() \
-						* RNG.randf_range(1.0 - Tuning.DAMAGE_VARIANCE, 1.0 + Tuning.DAMAGE_VARIANCE)
-					var dmg: int = maxi(1, int(round(raw)))
-					target["hp"] -= dmg
+			var block: int = int(hero.get("block", 0)) if t < float(hero.get("block_until", -1.0)) else 0
+			hero["hp"] -= maxi(1, int(round(raw)) - int(hero["armor"]) - block)
 		else:
 			hero_next_spin = t + _SPIN_CYCLE
-			_resolve_spin(hero, enemies)
+			_resolve_spin(hero, enemies, t)
 
 		# One death check per event, after whichever branch above ran - this is
 		# the ONLY place _on_enemy_died() is called, so a kill is counted
@@ -282,7 +271,7 @@ func _on_enemy_died(e: Dictionary, hero: Dictionary) -> void:
 ## DAMAGE_ALL / HEAL icon - the same shape as slot_machine._resolve_board(),
 ## minus the payline-triple double-resolve (a conservative, few-percent
 ## underestimate of party output).
-func _resolve_spin(hero: Dictionary, enemies: Array) -> void:
+func _resolve_spin(hero: Dictionary, enemies: Array, now: float) -> void:
 	var bag := _build_bag(hero["level"])
 	var board: Array = SlotMachineScript.draw_nine(bag)
 	var pct := 0
@@ -290,6 +279,7 @@ func _resolve_spin(hero: Dictionary, enemies: Array) -> void:
 		if SlotIcon.kind_of(StringName(ic.get("id", &""))) == SlotIcon.Kind.MULT:
 			pct += int(ic.get("roll", 0))
 	var mult := (1.0 + float(pct) / 100.0) * Upgrades.overcharge_mult()
+	var block := 0
 	for ic: Dictionary in board:
 		var kind: int = SlotIcon.kind_of(StringName(ic.get("id", &"")))
 		var roll := int(ic.get("roll", 0))
@@ -305,9 +295,19 @@ func _resolve_spin(hero: Dictionary, enemies: Array) -> void:
 			SlotIcon.Kind.HEAL:
 				var amount: int = maxi(1, int(round(float(hero["max_hp"]) * float(roll) / 100.0)))
 				hero["hp"] = mini(hero["max_hp"], hero["hp"] + amount)
+			SlotIcon.Kind.BLOCK:
+				block += maxi(1, roll)
+	# [armor items] a spin's BLOCK icons grant temporary flat armor for
+	# BLOCK_DURATION - the LARGER of old and new, not a sum (Combatant.
+	# add_temp_armor), so it cannot pile up spin over spin.
+	if block > 0:
+		var carried: int = int(hero.get("block", 0)) if now < float(hero.get("block_until", -1.0)) else 0
+		hero["block"] = maxi(carried, block)
+		hero["block_until"] = now + Tuning.BLOCK_DURATION
 
 func _rolled(roll: int, mult: float) -> int:
-	var base := maxi(1, int(round(float(roll) * mult)))
+	# [balance pass] + the flat per-attack-icon floor (slot_machine._strike).
+	var base := maxi(1, int(round(float(roll) * mult))) + Tuning.SLOT_ATTACK_ICON_FLOOR
 	return maxi(1, int(round(float(base) * RNG.randf_range(
 		1.0 - Tuning.DAMAGE_VARIANCE, 1.0 + Tuning.DAMAGE_VARIANCE))))
 

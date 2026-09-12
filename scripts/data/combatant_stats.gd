@@ -21,6 +21,10 @@ enum AttackStyle { MELEE, RANGED, MAGIC }
 ## / `magic_power_at()`, the ONLY place a level and a base+growth pair combine
 ## (levels & stats spec §1.1). Replaces `base_damage`, which named a single
 ## number for an attack that is now school-specific.
+##
+## [item power model] weapon_power / magic_power are ENEMY-only now. A hero's
+## swing damage comes entirely from its equipped weapon's Item.power(); the
+## hero .tres rows carry 0 here. hp_at() still applies to both sides.
 @export var max_hp: int = 100
 @export var weapon_power: int = 10
 @export var magic_power: int = 0

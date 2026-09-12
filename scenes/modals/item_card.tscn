@@ -407,16 +407,19 @@ text = "Unequip"
 [node name="Buy" type="Button" parent="Actions"]
 layout_mode = 2
 size_flags_horizontal = 3
+clip_text = true
 text = "Buy"
 
 [node name="Sell" type="Button" parent="Actions"]
 layout_mode = 2
 size_flags_horizontal = 3
+clip_text = true
 text = "Sell"
 
 [node name="Forge" type="Button" parent="Actions"]
 layout_mode = 2
 size_flags_horizontal = 3
+clip_text = true
 text = "Forge"
 
 [node name="Burst" type="GPUParticles2D" parent="."]

@@ -51,17 +51,13 @@ func launch(source: Combatant, target: Combatant, director, bomb: bool) -> void:
 	global_position = _start
 	_t = 0.0
 	_flying = true
-	# Held until _impact() so the target can't start its own attack (and
-	# possibly blink away) while this is still chasing it.
-	if _target != null and is_instance_valid(_target):
-		_target.begin_incoming_attack()
 
 func _process(delta: float) -> void:
 	if not _flying:
 		return
 	_t = minf(1.0, _t + delta / FLIGHT_TIME)
-	# Re-read a living target's position so the arrow tracks a moving body -
-	# which under the overhead camera it will be, since melee fighters blink.
+	# Re-read a living target's position each frame so the arrow still lands
+	# true if anything nudges the target mid-flight (knockback, a death topple).
 	if _target != null and is_instance_valid(_target) and _target.is_alive():
 		_end = _target.hit_world_position()
 	var prev := global_position
@@ -87,8 +83,6 @@ func _process(delta: float) -> void:
 		_impact()
 
 func _impact() -> void:
-	if _target != null and is_instance_valid(_target):
-		_target.end_incoming_attack()
 	if is_bomb:
 		# Staggered, so it must finish before the node goes away.
 		await _explode()

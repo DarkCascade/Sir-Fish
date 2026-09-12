@@ -44,10 +44,6 @@ func launch(source: Combatant, target: Combatant, director, _is_special: bool) -
 	_t = 0.0
 	_flying = true
 	_tint()
-	# Held until _impact() so the target can't start its own attack (and
-	# possibly blink away) while this is still chasing it.
-	if _target != null and is_instance_valid(_target):
-		_target.begin_incoming_attack()
 
 func _ready() -> void:
 	_tint()
@@ -75,8 +71,8 @@ func _process(delta: float) -> void:
 	if not _flying:
 		return
 	_t = minf(1.0, _t + delta / _flight_time)
-	# Re-read a living target's position so the bolt tracks a moving body -
-	# which under this camera it will be, since melee fighters blink around.
+	# Re-read a living target's position each frame so the bolt still lands true
+	# if anything nudges the target mid-flight (knockback, a death topple).
 	if _target != null and is_instance_valid(_target) and _target.is_alive():
 		_end = _target.hit_world_position()
 
@@ -91,8 +87,6 @@ func _process(delta: float) -> void:
 		_impact()
 
 func _impact() -> void:
-	if _target != null and is_instance_valid(_target):
-		_target.end_incoming_attack()
 	BattleVfx.magic_burst(global_position, _color)
 	var victim: Combatant = _target
 	# Same retarget rule the arrow uses (spec 9.2 / 21-D8) - the most common

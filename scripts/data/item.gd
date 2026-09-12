@@ -3,11 +3,16 @@ extends Resource
 
 ## COMMON..RARE are the rolled rarities (Itemizer.RARITY_WEIGHTS). ENHANCED is
 ## [town]: forge-only, never generated (its weight is 0), reached only by walking
-## an item up the full ladder (spec 10.1 / 10.2). Five index-addressed arrays
+## an item up the full ladder (spec 10.1 / 10.2). Four index-addressed arrays
 ## are keyed by this enum and must all carry an ENHANCED slot -
 ## Item.rarity_name(), Tuning.RARITY_COLORS, and Itemizer's RARITY_WEIGHTS /
 ## RARITY_MOD_COUNT / RARITY_VALUE_MULT.
-enum Rarity { COMMON, UNCOMMON, MAGIC, RARE, ENHANCED }
+##
+## [item power model] The UNCOMMON tier was removed - the forge ladder is three
+## rungs now (Common -> Magic -> Rare -> Enhanced), each adding one slot icon.
+## A saved item stores rarity as a raw int, so this reindex is a save-breaking
+## change: SaveGame.VERSION was bumped and pre-existing saves are rejected.
+enum Rarity { COMMON, MAGIC, RARE, ENHANCED }
 enum Kind { WEAPON, POTION, RELIC }
 
 ## [town] Which of the hero's three equipment slots this item occupies (spec
@@ -105,26 +110,39 @@ static func from_dict(data: Dictionary) -> Item:
 func subtitle() -> String:
 	# "Lv 5 Magic Sword - Warrior". The class half is what makes an item legible
 	# as "this one is for someone" while equipping does not exist to enforce it.
-	return "Lv %d %s %s - %s" % [level, rarity_name(), type_name(), class_label()]
+	# Weapons carry the swing number, armor carries its flat damage reduction.
+	var head := "Lv %d %s %s" % [level, rarity_name(), type_name()]
+	if slot() == Slot.WEAPON:
+		head += "  ·  %d dmg" % power()
+	elif slot() == Slot.ARMOR:
+		head += "  ·  %d armor" % armor_value()
+	return "%s - %s" % [head, class_label()]
 
-## [levels] Flat power every board icon this item supplies adds to its rolled
-## value (levels & stats spec §4.1/§4.4/§4.3). The whole of what item level
-## does - gear still gives no stat increases (spec §8), it gives icons, and
-## this is how much each icon is worth.
-func base_power() -> int:
-	return Tuning.ITEM_BASE_POWER * maxi(level, 1)
+## [item power model] A weapon / trinket's Power at its level: the type's
+## authored base (ITEM_TYPES[type].power) times item level. The base slot icon
+## is worth 100% of this; each rarity icon rolls 125-175% of it. Weapons
+## display it as "Weapon Damage" and it is the entire magnitude of a hero's
+## swing. 0 for armor (which has no `power` row - see armor_value()).
+func power() -> int:
+	var entry: Dictionary = Itemizer.ITEM_TYPES.get(weapon_type, {})
+	return int(entry.get("power", 0)) * maxi(level, 1)
 
-## [levels] The other unit an icon can resolve in: a HEAL-kind icon's `roll`
-## (armor's base icon, and the existing slot_mend modifier) is read as a
-## PERCENT OF MAX HP, not a flat number - see slot_machine._heal_lowest().
-## base_power() must never feed that path directly: it is unbounded and grows
-## with level (up to 180 at level 30), which as a raw percent would mean a
-## single mid-level armor piece instantly full-heals every time it resolves.
-## Bounded and much shallower per level instead - SlotIcon.from_item_base() /
-## from_modifier() pick this over base_power() whenever the icon's kind is HEAL.
-func base_heal_pct() -> int:
-	return clampi(int(round(Tuning.ITEM_HEAL_PCT_PER_LEVEL * float(maxi(level, 1)))),
-		1, Tuning.ITEM_HEAL_PCT_CAP)
+## [armor items] An armor piece's flat damage reduction at its level -
+## ITEM_TYPES[type].armor times item level. Applied to the wearer while
+## equipped (Combatant.armor) and read as 100% by the base BLOCK icon; a block
+## modifier rolls 125-175% of it. 0 for weapons / trinkets.
+func armor_value() -> int:
+	var entry: Dictionary = Itemizer.ITEM_TYPES.get(weapon_type, {})
+	return int(entry.get("armor", 0)) * maxi(level, 1)
+
+## [armor items] Percent added to the wearer's max hp by this item's `armor_life`
+## modifiers (never a board icon - read straight off the modifier list).
+func life_bonus_pct() -> int:
+	var total := 0
+	for m: Dictionary in modifiers:
+		if StringName(m.get("id", &"")) == &"armor_life":
+			total += int(m.get("roll", 0))
+	return total
 
 ## Which hero classes can wield this item. DERIVED from the weapon type rather
 ## than stored on the resource, for the reason CombatantStats.required_anims()
@@ -168,7 +186,7 @@ func class_label() -> String:
 ## naming the step's destination, rarity + 1) has one owner for the array
 ## instead of a copy (D4).
 static func rarity_name_for(r: int) -> String:
-	return ["Common", "Uncommon", "Magic", "Rare", "Enhanced"][r]
+	return ["Common", "Magic", "Rare", "Enhanced"][r]
 
 func rarity_name() -> String:
 	return rarity_name_for(rarity)

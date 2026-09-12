@@ -91,25 +91,29 @@ const XP_BOSS_MULT := 3.0
 const XP_CURVE_BASE := 100
 const HERO_MAX_LEVEL := 40
 
-## [levels] Flat power every icon an item supplies adds to its rolled value:
-## item.base_power() = ITEM_BASE_POWER * item.level (spec §4.1/§4.4).
+## [item power model] Every item has a Power that scales with level:
+## item.power() = ITEM_TYPES[type].power * item.level. Weapons surface it on
+## the card as "Weapon Damage". ITEM_BASE_POWER is the fallback for a type row
+## that omits its own `power` key. The base slot icon is worth 100% of an
+## item's Power; each rarity icon rolls 125-175% of it (FORGE_ICON_POWER_*).
 const ITEM_BASE_POWER := 6
 ## Item value scales with level too, or a level-30 Common sells for the same
 ## price as a level-1 one and the economy stops tracking power (spec §4.2).
 ## value *= 1 + ITEM_VALUE_PER_LEVEL * (level - 1).
 const ITEM_VALUE_PER_LEVEL := 0.35
-## The innate slot icon's damage is a fraction of the living hero's own
-## power(WEAPON) at their level, replacing the old flat SLOT_INNATE_DAMAGE
-## constant (spec §4.4).
-const SLOT_INNATE_POWER_FRACTION := 0.5
+## [item power model] A rarity icon (one added per rarity step, by forging or
+## already present on a found item of that rarity) rolls this fraction of the
+## item's Power - stronger than the base icon. The Enhanced step's own added
+## icon is locked at the max; the others on an Enhanced item keep their rolled
+## fraction. DAMAGE / DAMAGE_ALL icons only - HEAL (mend) and MULT (boost)
+## modifiers keep their own percent rolls from Itemizer.MODIFIERS.
+const FORGE_ICON_POWER_MIN := 1.25
+const FORGE_ICON_POWER_MAX := 1.75
 
-## [levels] Item.base_heal_pct()'s curve - a HEAL-kind board icon reads its
-## `roll` as a percent of max hp, never as a flat number, so a level-scaling
-## item base cannot be applied to it the way base_power() is to a DAMAGE icon.
-## Capped well under 100: a single icon should meaningfully help, not
-## trivialise the heal-lowest choice at high level.
-const ITEM_HEAL_PCT_PER_LEVEL := 1.0
-const ITEM_HEAL_PCT_CAP := 35
+## [armor items] How long a BLOCK slot icon's temporary flat armor lasts on a
+## hero (Combatant.add_temp_armor). Blocks within the window add together;
+## each one refreshes this single expiry rather than stacking a second timer.
+const BLOCK_DURATION := 5.0
 
 # --- 5.3c Overworld field [overworld prototype] -----------------------------
 ## The battle is laid out on the XZ ground plane under an overhead camera, not
@@ -218,21 +222,6 @@ const ENEMY_ENTRY_DISTANCE := 12.0
 const ENEMY_ENTRY_TIME := 1.15
 const ENEMY_ENTRY_STAGGER := 0.13         # gap between each enemy's departure
 
-# --- 5.3d Melee teleport [overworld prototype] ------------------------------
-## Melee attackers do not walk to their target - they instantly reposition to
-## it (Combatant._blink_strike/_blink_home). Ranged and magic attackers never
-## teleport; they fire something that flies instead.
-##
-## The vanish/reform VFX that used to dress this move (BattleVfx.blink_out/
-## blink_in/blink_trail, and the TELEPORT_OUT_TIME/IN_TIME/GHOSTS/GHOST_FADE
-## constants that timed them) is gone - the reposition is a plain, un-effected
-## snap now. TELEPORT_STRIKE_GAP and TELEPORT_RETURN_DELAY survive: the first
-## is spatial (how close a hit lands, unrelated to any effect), the second is
-## a combat-readability beat (time for the hit to register before the
-## attacker leaves), not part of what was removed.
-const TELEPORT_STRIKE_GAP := 1.35         # how far short of the target it lands
-const TELEPORT_RETURN_DELAY := 0.14       # beat spent at the target after impact
-
 # --- 5.3e Magic bolt [overworld prototype] ----------------------------------
 ## The mage's primary is an aimed bolt now, not a pillar dropped from the
 ## sky. The sky-drop version survives only as the slot machine's payout, which
@@ -309,15 +298,19 @@ const MEAL_COST_PER_HERO := 30
 ## [scrap, gold] to raise an item FROM rarity index i to i + 1. Indexed by the
 ## item's CURRENT rarity, so the array is one shorter than Item.Rarity - there
 ## is no step out of ENHANCED (spec 10.2).
+## [item power model] Uncommon removed - the ladder is three rungs now.
+## Common -> Magic folds the old Common -> Uncommon -> Magic pair (5+10 scrap,
+## 20+40 gold) into one step; the upper two rungs are unchanged.
 const FORGE_COSTS := [
-	[5, 20],      # Common   -> Uncommon
-	[10, 40],     # Uncommon -> Magic
-	[18, 70],     # Magic    -> Rare
-	[30, 120],    # Rare     -> Enhanced
+	[15, 60],     # Common -> Magic
+	[18, 70],     # Magic  -> Rare
+	[30, 120],    # Rare   -> Enhanced
 ]
-## The final rung's modifier rolls at double magnitude, and carries an
-## `enhanced: true` marker the UI tints (spec 10.3).
-const FORGE_ENHANCED_MULT := 2
+## [item power model] The final rung's added icon carries an `enhanced: true`
+## marker the UI tints, and its magnitude is locked to the maximum bonus:
+## FORGE_ICON_POWER_MAX of the item's Power for a DAMAGE / DAMAGE_ALL icon, or
+## the top of the modifier's roll range for a HEAL / MULT icon. Only that one
+## icon is maxed - the other rungs on an Enhanced item keep their rolls.
 
 # --- [town] Combat pickups (spec 9) ----------------------------------------------
 ## VALUE rolled per kill, NOT an object count (spec 9.3): spawn
@@ -372,9 +365,18 @@ const DROP_LABEL_FONT_SIZE := 46
 ## (spec: Slot Phase 2). The match-to-win payline survives only as a bonus -
 ## three of a kind on the centre row resolve twice. Slot gold is gone entirely.
 
-const SLOT_SPIN_DURATION := 1.10          # reel 1 stop time
-const SLOT_REEL_STAGGER := 0.28           # reel 2 stops +0.28s, reel 3 stops +0.56s
-const SLOT_RESULT_HOLD := 0.85            # pause after reel 3 stops before the next spin
+const SLOT_SPIN_DURATION := 1.05          # reel 1 stop time
+const SLOT_REEL_STAGGER := 0.26           # reel 2 stops +0.26s, reel 3 stops +0.52s
+## [balance pass] 0.85 -> 0.65. The party's whole DPS is now the board's output
+## over one spin cycle (heroes stopped meleeing off their own cooldown), so
+## trimming dead air at the end of the cycle is a clean, level-flat lift to
+## party throughput - it does not touch how strong any one icon is.
+const SLOT_RESULT_HOLD := 0.65            # pause after reel 3 stops before the next spin
+## [combat loop redesign] After the board's attack icons are summed and the
+## front-line hero is told to swing, the resolve coroutine waits this long so
+## the swing's impact and damage number land inside SLOT_RESULT_HOLD rather
+## than bleeding into the next spin. Roughly the warrior chop's impact_delay.
+const SLOT_SWING_SETTLE := 0.45
 
 ## The nine scoring cells: _cells[1], _cells[2], _cells[3] on each of the three
 ## reels (offsets -1 / 0 / +1 from the payline). _cells[0] / _cells[4] are
@@ -385,8 +387,20 @@ const SLOT_BOARD_CELLS := 9
 ## empty; the `polish` upgrade (§6) buys it down toward the floor, two blanks a
 ## level. Draw-without-replacement over the bag is what keeps a cold streak
 ## from ever leaving the party with no output at all.
-const SLOT_BLANK_PAD_START := 12
-const SLOT_BLANK_PAD_FLOOR := 4
+## [balance pass] 12 -> 9 start, 4 -> 3 floor. Fewer blanks is a mildly
+## REGRESSIVE lift - a sparse early bag gains more icons/spin per blank removed
+## than a dense late one - which is the shape the curve needs after hero melee
+## left the low end. polish still has room to work (9 -> 3 over its levels).
+const SLOT_BLANK_PAD_START := 9
+const SLOT_BLANK_PAD_FLOOR := 3
+
+## [balance pass] Flat damage every attack icon adds to the hero swing, ON TOP
+## of its rolled (power-scaled) value - chain-bolt hits too. Level-INDEPENDENT
+## on purpose: it is ~40% of a fresh L1 icon and ~1% of an L30 one, so it lifts
+## the cold-board early game (where the party lost its melee contribution) and
+## fades to nothing once icons scale with item level. Not shown on item cards -
+## it is a property of the swing, not of any one item.
+const SLOT_ATTACK_ICON_FLOOR := 7
 
 ## Innate icons (§2): every living hero puts ONE icon in the bag regardless of
 ## gear - a damage icon for the warrior and ranger, a heal icon for the mage.
@@ -394,10 +408,9 @@ const SLOT_BLANK_PAD_FLOOR := 4
 ## read off a modifier `roll`. This is the floor that reconnects party
 ## composition to the slot and guarantees the bag is never empty of icons.
 ##
-## [levels] SLOT_INNATE_DAMAGE (the old flat magnitude) is gone - the innate
-## damage icon now reads GameState.hero_weapon_power(id) *
-## SLOT_INNATE_POWER_FRACTION (spec §4.4), making hero level the one place
-## outside gear that reaches the board.
+## [item power model] The innate DAMAGE icon is 100% of the hero's equipped
+## weapon Power (GameState.hero_weapon_power(id) -> Item.power()); only the
+## innate HEAL icon (the mage) still uses a fixed constant, this one.
 const SLOT_INNATE_HEAL_PCT := 8         # percent of max hp to the lowest-hp hero
 ## [v2] Attract mode (spec 16.6 / Q17): out of combat the reels drift instead of
 ## stopping. "Does nothing" means nothing that affects the game - not dead air.
@@ -864,7 +877,6 @@ const ENEMY_DEATH_FADE_RUSH := 0.45       # 0.30 + 0.45 = 0.75, inside ENCOUNTER
 ## thing at a glance. item_glyph.gd picks this up for free via rarity_color().
 const RARITY_COLORS := [
 	Color("B8B2C4"),  # Common
-	Color("4CC38A"),  # Uncommon
 	Color("4A9BE8"),  # Magic
 	Color("F2C230"),  # Rare
 	Color("FF6B4A"),  # Enhanced [town] - forge-hot

@@ -1,13 +1,12 @@
 extends Node
-## The ENHANCED rarity, added weight-0 (spec 10.1, build-order step 3).
+## The ENHANCED rarity: weight-0, generator-unreachable, forge-only.
 ##
-## Step 3's whole job is additive: a fifth Item.Rarity that the generators can
-## never produce and that keeps every rarity-indexed array the same length. This
-## test pins exactly that - "nothing moved" is the acceptance bar, so the thing
-## worth asserting is that ENHANCED is present in the arrays AND absent from
-## every generated item. Itemizer.forge(), the only thing that ever mints an
-## ENHANCED item, lands with scrap (spec 10.2) and is covered by test_forge.gd
-## then; this test does not touch it.
+## [item power model] UNCOMMON was removed, so Item.Rarity is
+## { COMMON, MAGIC, RARE, ENHANCED } and every rarity-indexed array is 4 long.
+## This test pins that ENHANCED is the last index of each array, is present but
+## unreachable by any generator, and that each forge rung still adds exactly
+## one modifier (RARITY_MOD_COUNT = [0, 1, 2, 3]). Itemizer.forge() itself is
+## covered by test_forge.gd.
 ##
 ##     godot --headless --path "C:/Projects/Godot/Sir Fish" res://tests/test_enhanced_rarity.tscn
 
@@ -19,14 +18,14 @@ func _ready() -> void:
 	var t := TestSupport.new()
 
 	# --- the enum ---------------------------------------------------------------
-	t.check(Item.Rarity.ENHANCED == 4, "Item.Rarity.ENHANCED is index 4 (got %d)" % Item.Rarity.ENHANCED)
-	t.check(Item.Rarity.RARE == 3, "RARE stays index 3 - ENHANCED was appended, not inserted")
+	t.check(Item.Rarity.ENHANCED == 3, "Item.Rarity.ENHANCED is index 3 (got %d)" % Item.Rarity.ENHANCED)
+	t.check(Item.Rarity.RARE == 2, "RARE is index 2 - UNCOMMON was removed, so MAGIC/RARE/ENHANCED shifted down")
 
-	# --- the five index-addressed arrays grow in lockstep (spec 10.1) ---------
-	t.check(Tuning.RARITY_COLORS.size() == 5, "Tuning.RARITY_COLORS has 5 entries")
-	t.check(Itemizer.RARITY_WEIGHTS.size() == 5, "Itemizer.RARITY_WEIGHTS has 5 entries")
-	t.check(Itemizer.RARITY_MOD_COUNT.size() == 5, "Itemizer.RARITY_MOD_COUNT has 5 entries")
-	t.check(Itemizer.RARITY_VALUE_MULT.size() == 5, "Itemizer.RARITY_VALUE_MULT has 5 entries")
+	# --- the four index-addressed arrays grow in lockstep (spec 10.1) ---------
+	t.check(Tuning.RARITY_COLORS.size() == 4, "Tuning.RARITY_COLORS has 4 entries")
+	t.check(Itemizer.RARITY_WEIGHTS.size() == 4, "Itemizer.RARITY_WEIGHTS has 4 entries")
+	t.check(Itemizer.RARITY_MOD_COUNT.size() == 4, "Itemizer.RARITY_MOD_COUNT has 4 entries")
+	t.check(Itemizer.RARITY_VALUE_MULT.size() == 4, "Itemizer.RARITY_VALUE_MULT has 4 entries")
 
 	var probe := Item.new()
 	probe.rarity = Item.Rarity.ENHANCED
@@ -43,10 +42,10 @@ func _ready() -> void:
 	# --- weight 0 keeps ENHANCED unreachable (spec 10.1) ----------------------
 	t.check(int(Itemizer.RARITY_WEIGHTS[Item.Rarity.ENHANCED]) == 0,
 		"RARITY_WEIGHTS[ENHANCED] is 0")
-	t.check(int(Itemizer.RARITY_MOD_COUNT[Item.Rarity.ENHANCED]) == 4,
-		"RARITY_MOD_COUNT[ENHANCED] is 4 (the four-step ladder's endpoint)")
+	t.check(int(Itemizer.RARITY_MOD_COUNT[Item.Rarity.ENHANCED]) == 3,
+		"RARITY_MOD_COUNT[ENHANCED] is 3 (the three-step ladder's endpoint)")
 
-	# --- the four-step ladder's whole justification (spec 0.4, 10.2) ----------
+	# --- the three-step ladder's whole justification (spec 0.4, 10.2) --------
 	# "A forged item and a found item of the same rarity carry the same number
 	# of modifiers, so the rarity name never lies about power." Each forge rung
 	# raises rarity by one and adds exactly one modifier, so that claim holds iff
@@ -71,7 +70,7 @@ func _ready() -> void:
 	# rather than by leaking ENHANCED gear into a chest.
 	var last_index_hits := 0
 	for i: int in range(20000):
-		if RNG.weighted_index([50, 30, 15, 5, 0]) == 4:
+		if RNG.weighted_index([60, 30, 10, 0]) == 3:
 			last_index_hits += 1
 	t.check(last_index_hits == 0,
 		"weighted_index() never returns a trailing zero-weight index (%d/20000)" % last_index_hits)

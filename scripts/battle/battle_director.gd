@@ -23,26 +23,21 @@ var pending_drops: Array[Dictionary] = []
 ## fields two warlords mid-level must not hand out two boss drops.
 var _boss_fight: bool = false
 
-## Dev-only combat-mode toggle (not exposed to the player in any way). True:
-## combatants request a turn on cooldown expiry and the director dispatches
-## them one at a time via _turn_queue, below. False: a combatant acts the
-## instant its cooldown expires, same as before turn-based combat existed -
-## multiple combatants can act simultaneously.
+## Dev-only combat-mode toggle (not exposed to the player in any way). False
+## (the shipped default): a combatant acts the instant its cooldown expires and
+## multiple combatants can act simultaneously. True: combatants request a turn
+## on cooldown expiry and the director dispatches them one at a time via
+## _turn_queue, below.
 ##
-## Defaults true - this is now the shipped mode. Heroes and enemies share ONE
-## queue (request_turn()), so this throttles BOTH sides' throughput, not just
-## the enemies' - a solo hero's own action rate drops from "every
-## attack_cooldown, always" to "roughly 1-of-(N enemies + 1) turns", same as
-## every enemy's. Net effect on outcomes is not simply "safer for the party":
-## it removes simultaneous multi-enemy bursts (which were previously the
-## bigger threat to a solo hero) while also slowing the hero's own melee
-## contribution - slot spins are untouched either way, they never went through
-## this queue. The levels & stats spec's Phase 6 balance harness
-## (test_level_curves.gd) and tools/sim_easy_attempts.gd both modeled the old
-## real-time default explicitly (see their own now-stale
-## "turn_based_combat defaults false" comments) and have not been re-run
-## against this change.
-@export var turn_based_combat: bool = true
+## [combat loop redesign] Back to false. Turn-based was tried as the shipped
+## mode and is being reverted as part of moving the party's actions entirely
+## onto the slot machine: a shared one-at-a-time queue across both sides adds a
+## serialisation beat between swings that the redesigned loop does not want.
+## The queue code below is kept, unused, behind this flag in case a future
+## design wants it back. test_level_curves.gd and tools/sim_easy_attempts.gd
+## were both written against this real-time default and are valid against it
+## again.
+@export var turn_based_combat: bool = false
 
 ## Turn-based combat. Combatants no longer act the instant their cooldown
 ## expires - they request a turn, the director queues requests in the order
@@ -339,6 +334,12 @@ func _process(delta: float) -> void:
 		if not c.is_alive():
 			continue
 		c.tick(delta)
+		# [combat loop redesign] The party's only actions come from the slot
+		# machine now - heroes never act off their own cooldown. They still
+		# tick above (HURT -> IDLE recovery) and stay valid enemy targets; the
+		# director schedules the enemy side only.
+		if c.is_hero:
+			continue
 		# [v2] Q8. v1 decremented the cooldown during an attack and then overwrote
 		# it on animation finish, so the decrement was always discarded - dead code
 		# that made the loop read as if the cooldown ran concurrently with the
@@ -362,14 +363,13 @@ func _process(delta: float) -> void:
 ## there is no queueing - the combatant acts immediately, same as before
 ## turn-based combat existed.
 func request_turn(c: Combatant) -> void:
+	# [combat loop redesign] Heroes act only through the slot machine
+	# (SlotMachine._hero_swing -> Combatant.slot_attack). Nothing in the loop
+	# above requests a turn for a hero any more; this guard keeps the public
+	# entry point honest if some other caller ever does.
+	if c.is_hero:
+		return
 	if not turn_based_combat:
-		# A combatant with an arrow/bolt already chasing it must let that attack
-		# land first - see Combatant.is_expecting_attack(). The per-frame loop
-		# calls request_turn() again next frame (cooldown stays expired and
-		# state stays IDLE), so this naturally retries until it clears, or the
-		# combatant dies first.
-		if c.is_expecting_attack():
-			return
 		_take_action(c)
 		return
 	if c == _acting or _turn_queue.has(c):
@@ -388,14 +388,6 @@ func _advance_turn_queue() -> void:
 	var c: Combatant = _turn_queue[0]
 	if not is_instance_valid(c) or not c.is_alive():
 		_turn_queue.pop_front()
-		return
-	# Hold the front of the queue if an attack is already inbound for this
-	# combatant (a ranged/magic shot fired before it was its turn to act - its
-	# own animation and turn-lock end well before the projectile lands). It
-	# must not blink off to strike an enemy while something is still chasing
-	# it home; it waits here, which can mean the incoming hit kills it before
-	# it ever reaches the front of the line uncontested.
-	if c.is_expecting_attack():
 		return
 	_turn_queue.pop_front()
 	_take_action(c)

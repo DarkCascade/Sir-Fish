@@ -8,21 +8,30 @@ extends Node
 ## classes: [&"warrior"] rather than [] so usable_by() / weapon_types_for() /
 ## _maybe_auto_equip() keep working untouched; the mage and ranger get their own
 ## rows here when they return (spec 15).
+## [item power model] `power` is a weapon/trinket type's level-1 Power;
+## item.power() scales it by level and the card shows it as "Weapon Damage".
+## [armor items] ARMOR rows carry `armor` instead - a flat damage reduction
+## that item.armor_value() scales by level, shown as "Armor". Armor's base slot
+## icon is a BLOCK (a temporary flat-armor buff), never a strike, and armor
+## only rolls block / life modifiers - see Itemizer.MODIFIERS' `slots` field.
 const ITEM_TYPES := {
-	# --- weapons (unchanged from WEAPON_TYPES) ---
-	&"axe":    { "slot": Item.Slot.WEAPON,  "base_value": 20, "classes": [&"warrior"], "nouns": ["Axe", "Hatchet", "Cleaver", "Chopper"] },
-	&"sword":  { "slot": Item.Slot.WEAPON,  "base_value": 22, "classes": [&"warrior"], "nouns": ["Sword", "Blade", "Saber", "Longsword"] },
-	&"bow":    { "slot": Item.Slot.WEAPON,  "base_value": 20, "classes": [&"ranger"],  "nouns": ["Bow", "Longbow", "Shortbow", "Recurve"] },
-	&"dagger": { "slot": Item.Slot.WEAPON,  "base_value": 18, "classes": [&"ranger"],  "nouns": ["Dagger", "Knife", "Dirk", "Shiv"] },
-	&"staff":  { "slot": Item.Slot.WEAPON,  "base_value": 25, "classes": [&"mage"],    "nouns": ["Staff", "Rod", "Cane", "Scepter"] },
-	# --- armor [town] ---
-	&"helm":   { "slot": Item.Slot.ARMOR,   "base_value": 18, "classes": [&"warrior"], "nouns": ["Helm", "Casque", "Barbute", "Coif"] },
-	&"mail":   { "slot": Item.Slot.ARMOR,   "base_value": 24, "classes": [&"warrior"], "nouns": ["Mail", "Hauberk", "Cuirass", "Plate"] },
-	&"shield": { "slot": Item.Slot.ARMOR,   "base_value": 22, "classes": [&"warrior"], "nouns": ["Shield", "Buckler", "Targe", "Kite"] },
+	# --- weapons ---
+	&"axe":    { "slot": Item.Slot.WEAPON,  "base_value": 20, "power": 6, "classes": [&"warrior"], "nouns": ["Axe", "Hatchet", "Cleaver", "Chopper"] },
+	&"sword":  { "slot": Item.Slot.WEAPON,  "base_value": 22, "power": 6, "classes": [&"warrior"], "nouns": ["Sword", "Blade", "Saber", "Longsword"] },
+	&"bow":    { "slot": Item.Slot.WEAPON,  "base_value": 20, "power": 5, "classes": [&"ranger"],  "nouns": ["Bow", "Longbow", "Shortbow", "Recurve"] },
+	&"dagger": { "slot": Item.Slot.WEAPON,  "base_value": 18, "power": 5, "classes": [&"ranger"],  "nouns": ["Dagger", "Knife", "Dirk", "Shiv"] },
+	&"staff":  { "slot": Item.Slot.WEAPON,  "base_value": 25, "power": 4, "classes": [&"mage"],    "nouns": ["Staff", "Rod", "Cane", "Scepter"] },
+	# --- armor [armor items] - `armor` is flat damage reduction / level. Kept
+	# well under an enemy's weapon_power_per_level (6) so mitigation is a chip
+	# (~25-35% of a hit), never a wall - a fully-armored party still has to
+	# race the enemy's dps, not ignore it (see test_level_curves' ttd band). ---
+	&"helm":   { "slot": Item.Slot.ARMOR,   "base_value": 18, "armor": 2, "classes": [&"warrior"], "nouns": ["Helm", "Casque", "Barbute", "Coif"] },
+	&"mail":   { "slot": Item.Slot.ARMOR,   "base_value": 24, "armor": 2, "classes": [&"warrior"], "nouns": ["Mail", "Hauberk", "Cuirass", "Plate"] },
+	&"shield": { "slot": Item.Slot.ARMOR,   "base_value": 22, "armor": 2, "classes": [&"warrior"], "nouns": ["Shield", "Buckler", "Targe", "Kite"] },
 	# --- trinkets [town] ---
-	&"ring":   { "slot": Item.Slot.TRINKET, "base_value": 19, "classes": [&"warrior"], "nouns": ["Ring", "Band", "Signet", "Loop"] },
-	&"amulet": { "slot": Item.Slot.TRINKET, "base_value": 21, "classes": [&"warrior"], "nouns": ["Amulet", "Pendant", "Charm", "Talisman"] },
-	&"idol":   { "slot": Item.Slot.TRINKET, "base_value": 23, "classes": [&"warrior"], "nouns": ["Idol", "Fetish", "Totem", "Effigy"] },
+	&"ring":   { "slot": Item.Slot.TRINKET, "base_value": 19, "power": 4, "classes": [&"warrior"], "nouns": ["Ring", "Band", "Signet", "Loop"] },
+	&"amulet": { "slot": Item.Slot.TRINKET, "base_value": 21, "power": 4, "classes": [&"warrior"], "nouns": ["Amulet", "Pendant", "Charm", "Talisman"] },
+	&"idol":   { "slot": Item.Slot.TRINKET, "base_value": 23, "power": 5, "classes": [&"warrior"], "nouns": ["Idol", "Fetish", "Totem", "Effigy"] },
 }
 
 const ADJECTIVES := [
@@ -35,22 +44,28 @@ const ADJECTIVES := [
 # the chip's corner badge is "+%d" or "+%d%%" of the roll, and `caption` is the
 # short label under it. `label` stays the source of truth for every text
 # renderer (inventory row count, the change list); the two new keys are additive.
+## [armor items] Each def carries `slots` - the Item.Slot values that may roll
+## it. WEAPON and TRINKET share the damage / slot pool; ARMOR rolls only its
+## own two (block / life) and never an attack or magic modifier. _generate_typed
+## and forge() filter on this before picking.
 const MODIFIERS := [
-	# Hero-damage modifiers
-	{ "id": &"dmg_flat",   "label": "+%d Damage",        "caption": "Damage",        "pct": false, "roll": [2, 9],   "value_mult": [0.28, 0.55] },
-	{ "id": &"dmg_pct",    "label": "+%d%% Damage",      "caption": "Damage",        "pct": true,  "roll": [5, 18],  "value_mult": [0.30, 0.60] },
-	{ "id": &"elem_fire",  "label": "+%d Fire Damage",   "caption": "Fire Damage",   "pct": false, "roll": [3, 11],  "value_mult": [0.35, 0.70] },
-	{ "id": &"elem_ice",   "label": "+%d Ice Damage",    "caption": "Ice Damage",    "pct": false, "roll": [3, 11],  "value_mult": [0.35, 0.70] },
-	{ "id": &"elem_light", "label": "+%d Lightning Dmg", "caption": "Lightning Dmg", "pct": false, "roll": [3, 11],  "value_mult": [0.35, 0.70] },
-	# Slot modifiers [v2] - these are what make the initial vision's core loop
-	# real: finding items in the world adds icons to the reel.
+	# Weapon / trinket - hero-damage + slot modifiers
+	{ "id": &"dmg_flat",   "label": "+%d Damage",        "caption": "Damage",        "pct": false, "roll": [2, 9],   "value_mult": [0.28, 0.55], "slots": [Item.Slot.WEAPON, Item.Slot.TRINKET] },
+	{ "id": &"dmg_pct",    "label": "+%d%% Damage",      "caption": "Damage",        "pct": true,  "roll": [5, 18],  "value_mult": [0.30, 0.60], "slots": [Item.Slot.WEAPON, Item.Slot.TRINKET] },
+	{ "id": &"elem_fire",  "label": "+%d Fire Damage",   "caption": "Fire Damage",   "pct": false, "roll": [3, 11],  "value_mult": [0.35, 0.70], "slots": [Item.Slot.WEAPON, Item.Slot.TRINKET] },
+	{ "id": &"elem_ice",   "label": "+%d Ice Damage",    "caption": "Ice Damage",    "pct": false, "roll": [3, 11],  "value_mult": [0.35, 0.70], "slots": [Item.Slot.WEAPON, Item.Slot.TRINKET] },
+	{ "id": &"elem_light", "label": "+%d Lightning Dmg", "caption": "Lightning Dmg", "pct": false, "roll": [3, 11],  "value_mult": [0.35, 0.70], "slots": [Item.Slot.WEAPON, Item.Slot.TRINKET] },
 	# [slot phase 2] `slot_purse` ("+%d Coin Yield") was removed here - the slot
-	# no longer produces gold (§3/§5). The pool drops from 8 ids to 7, still
-	# comfortably above RARITY_MOD_COUNT's max of 4 distinct picks. Items on disk
-	# still carrying a `slot_purse` modifier load verbatim (Item.from_dict) and
-	# resolve to NO icon on the board - see slot_machine.gd's KNOWN_ICON_IDS.
-	{ "id": &"slot_bolt",  "label": "+%d Bolt Power",    "caption": "Bolt Power",    "pct": false, "roll": [2, 8],   "value_mult": [0.40, 0.75] },
-	{ "id": &"slot_mend",  "label": "+%d%% Mend Power",  "caption": "Mend Power",    "pct": true,  "roll": [3, 9],   "value_mult": [0.40, 0.75] },
+	# no longer produces gold (§3/§5). Items on disk still carrying it load
+	# verbatim (Item.from_dict) and resolve to NO icon - see SlotIcon.
+	{ "id": &"slot_bolt",  "label": "+%d Bolt Power",    "caption": "Bolt Power",    "pct": false, "roll": [2, 8],   "value_mult": [0.40, 0.75], "slots": [Item.Slot.WEAPON, Item.Slot.TRINKET] },
+	{ "id": &"slot_mend",  "label": "+%d%% Mend Power",  "caption": "Mend Power",    "pct": true,  "roll": [3, 9],   "value_mult": [0.40, 0.75], "slots": [Item.Slot.WEAPON, Item.Slot.TRINKET] },
+	# [armor items] Armor only. `armor_block` is a BLOCK slot icon (temporary
+	# flat armor, scales off the item's armor_value like a damage icon scales
+	# off Power). `armor_life` is NOT a slot icon - it is a passive percent
+	# boost to the wearer's max hp, read straight off item.modifiers.
+	{ "id": &"armor_block", "label": "+%d Block",        "caption": "Block",         "pct": false, "roll": [3, 9],   "value_mult": [0.35, 0.70], "slots": [Item.Slot.ARMOR] },
+	{ "id": &"armor_life",  "label": "+%d%% Life",       "caption": "Life",          "pct": true,  "roll": [3, 8],   "value_mult": [0.35, 0.70], "slots": [Item.Slot.ARMOR] },
 ]
 
 # 13.2 Rarity: weight, modifier count, value multiplier range.
@@ -63,13 +78,16 @@ const MODIFIERS := [
 # (spec 10.2, lands with scrap). RARITY_VALUE_MULT's ENHANCED row is never read
 # (forging adds gold to value directly, spec 10.5) but the array has to match
 # the others in length or an index goes stale.
-const RARITY_WEIGHTS := [50, 30, 15, 5, 0]
-const RARITY_MOD_COUNT := [0, 1, 2, 3, 4]
+#
+# [item power model] UNCOMMON removed. Its 30 weight folds mostly into Common;
+# Magic is now the "one icon" tier (RARITY_MOD_COUNT 1) and takes the frequency
+# the old Uncommon had, with the value range lifted toward the old Magic row.
+const RARITY_WEIGHTS := [60, 30, 10, 0]
+const RARITY_MOD_COUNT := [0, 1, 2, 3]
 const RARITY_VALUE_MULT := [
 	[1.0, 1.0],
-	[1.6, 2.2],
-	[2.8, 3.6],
-	[4.5, 6.0],
+	[1.8, 2.6],
+	[3.4, 4.6],
 	[6.5, 8.0],   # ENHANCED - never read, present for length parity
 ]
 
@@ -99,6 +117,12 @@ func generate_item_with_rarity(rarity_index: int, level: int = -1) -> Item:
 	rarity_index = clampi(rarity_index, 0, Item.Rarity.RARE)
 	return _roll_typed(GameState.active_party, rarity_index, level)
 
+## [item power model] One item of an EXACT type at an exact rarity, skipping the
+## slot-first roll - the caller has already decided what it wants. Used for the
+## starting weapon a fresh profile ships with (GameState.new_profile()).
+func generate_typed_item(wtype: StringName, rarity_index: int, level: int = -1) -> Item:
+	return _generate_typed(wtype, clampi(rarity_index, 0, Item.Rarity.RARE), level)
+
 ## The whole of the old generate_item_with_rarity() body from `item.weapon_type`
 ## onward, with the type handed in. Nothing else moves.
 ##
@@ -120,14 +144,16 @@ func _generate_typed(wtype: StringName, rarity_index: int, level: int = -1) -> I
 
 	var mods: Array[Dictionary] = []
 	var mod_sum: float = 0.0
-	var pool: Array = MODIFIERS.duplicate()
+	var pool: Array = _modifiers_for_slot(int(ITEM_TYPES[wtype]["slot"]))
 	for i: int in range(RARITY_MOD_COUNT[rarity_index]):
 		if pool.is_empty():
 			break
 		var pick_index: int = RNG.randi_range(0, pool.size() - 1)
 		var def: Dictionary = pool[pick_index]
 		pool.remove_at(pick_index)          # never roll the same modifier twice on one item
-		var roll: int = RNG.randi_range(int(def["roll"][0]), int(def["roll"][1]))
+		# [item power model] Generation never rolls the enhanced icon - that is
+		# the forge's final rung only.
+		var roll: int = _roll_icon_magnitude(def, item, false)
 		var vm: float = RNG.randf_range(float(def["value_mult"][0]), float(def["value_mult"][1]))
 		mod_sum += vm
 		mods.append({
@@ -182,7 +208,7 @@ func forge(item: Item) -> bool:
 		GameState.add_scrap(int(cost[0]))  # refund - never half-charge
 		return false
 	var enhanced: bool = item.rarity == Item.Rarity.RARE
-	item.modifiers.append(_roll_modifier(pool, enhanced))
+	item.modifiers.append(_roll_modifier(pool, item, enhanced))
 	item.rarity = (item.rarity + 1) as Item.Rarity
 	item.forge_count += 1
 	item.value += int(cost[1])             # spec 10.5 - the gold half only
@@ -198,24 +224,59 @@ func forge(item: Item) -> bool:
 
 ## The MODIFIERS entries whose id `item` does not already carry.
 func _modifier_pool_excluding(item: Item) -> Array:
+	var slot_pool: Array = _modifiers_for_slot(int(item.slot()))
 	var have: Dictionary = {}
 	for m: Dictionary in item.modifiers:
 		have[m["id"]] = true
 	var pool: Array = []
-	for def: Dictionary in MODIFIERS:
+	for def: Dictionary in slot_pool:
 		if not have.has(def["id"]):
 			pool.append(def)
-	return pool
+	# [armor items] Armor's slot pool is only {block, life}; once both are
+	# carried, the last forge rung (Rare -> Enhanced) has to repeat a roll
+	# rather than stall the ladder short of Enhanced. Weapons never hit this -
+	# their pool of 7 always outlasts the 3 distinct picks a full ladder needs.
+	return pool if not pool.is_empty() else slot_pool
+
+## [armor items] The MODIFIERS entries an item in `slot` may roll - armor never
+## sees the damage / magic pool, and weapons / trinkets never see block / life.
+func _modifiers_for_slot(slot: int) -> Array:
+	var out: Array = []
+	for def: Dictionary in MODIFIERS:
+		if (def["slots"] as Array).has(slot):
+			out.append(def)
+	return out
+
+## [item power model] One rarity icon's magnitude, shared by generation and
+## forge() so a found item and a forged item of the same rarity roll their
+## icons identically. DAMAGE / DAMAGE_ALL icons scale off the item's Power
+## (125-175%, locked to 175% for the enhanced icon); HEAL (mend) and MULT
+## (boost) icons keep their own percent roll from the modifier's range
+## (enhanced -> the top of that range).
+func _roll_icon_magnitude(def: Dictionary, item: Item, enhanced: bool) -> int:
+	var kind: int = SlotIcon.kind_of(StringName(def["id"]))
+	# [armor items] BLOCK scales off armor_value the way DAMAGE scales off Power.
+	var basis: int = 0
+	if kind == SlotIcon.Kind.DAMAGE or kind == SlotIcon.Kind.DAMAGE_ALL:
+		basis = item.power()
+	elif kind == SlotIcon.Kind.BLOCK:
+		basis = item.armor_value()
+	if basis > 0:
+		var frac: float = Tuning.FORGE_ICON_POWER_MAX if enhanced \
+			else RNG.randf_range(Tuning.FORGE_ICON_POWER_MIN, Tuning.FORGE_ICON_POWER_MAX)
+		return maxi(1, int(round(float(basis) * frac)))
+	# HEAL / MULT / armor_life keep their own percent roll.
+	return int(def["roll"][1]) if enhanced \
+		else RNG.randi_range(int(def["roll"][0]), int(def["roll"][1]))
 
 ## [town] spec 10.3: Enhanced modifiers are the SAME ids as the normal pool,
-## with the roll doubled and an `enhanced: true` marker - not a second table.
-## party_bonuses() and compare_flyout read `id` / `roll` and need no edit; the
-## marker is only what the UI tints.
-func _roll_modifier(pool: Array, enhanced: bool) -> Dictionary:
-	var def: Dictionary = pool[RNG.randi_range(0, pool.size() - 1)]
-	var roll: int = RNG.randi_range(int(def["roll"][0]), int(def["roll"][1]))
-	if enhanced:
-		roll *= Tuning.FORGE_ENHANCED_MULT
+## with an `enhanced: true` marker the UI tints - not a second table.
+## party_bonuses() and compare_flyout read `id` / `roll` and need no edit.
+func _roll_modifier(pool: Array, item: Item, enhanced: bool) -> Dictionary:
+	return _build_modifier(pool[RNG.randi_range(0, pool.size() - 1)], item, enhanced)
+
+func _build_modifier(def: Dictionary, item: Item, enhanced: bool) -> Dictionary:
+	var roll: int = _roll_icon_magnitude(def, item, enhanced)
 	return {
 		"id": def["id"],
 		"label": (def["label"] as String) % roll,
@@ -225,6 +286,19 @@ func _roll_modifier(pool: Array, enhanced: bool) -> Dictionary:
 		"value_mult": RNG.randf_range(float(def["value_mult"][0]), float(def["value_mult"][1])),
 		"enhanced": enhanced,
 	}
+
+## [balance pass] Rewrites modifier slot `idx` with a fresh roll of `id`. The
+## starting weapon (GameState.new_profile()) uses this to guarantee its one
+## modifier is a plain damage add - a fresh run is never handed a dead roll
+## (a boost with nothing to boost, a mend on a solo warrior's damage bag).
+func force_modifier(item: Item, idx: int, id: StringName) -> void:
+	if item == null or idx < 0 or idx >= item.modifiers.size():
+		return
+	for def: Dictionary in MODIFIERS:
+		if def["id"] == id:
+			item.modifiers[idx] = _build_modifier(
+				def, item, bool(item.modifiers[idx].get("enhanced", false)))
+			return
 
 # --- class-first generation (enemy drops) -----------------------------------
 
@@ -308,7 +382,7 @@ func generate_drop(hero_class: StringName, rarity_floor: int = 0, level: int = -
 ## which would make the shop feel like it was reading the player's wallet.
 func generate_shop_stock(level: int = -1) -> Array[Item]:
 	var stock: Array[Item] = [
-		_generate_in_bucket([Item.Rarity.COMMON, Item.Rarity.UNCOMMON], level),   # affordable
+		_generate_in_bucket([Item.Rarity.COMMON, Item.Rarity.MAGIC], level),      # affordable
 		generate_item(level),                                                     # free roll
 		_generate_in_bucket([Item.Rarity.MAGIC, Item.Rarity.RARE], level),        # teaser
 	]
@@ -347,9 +421,9 @@ func generate_forge_stock(level: int = -1) -> Array[Item]:
 	@warning_ignore("integer_division")
 	var per_bucket: int = Tuning.FORGE_SHOP_SLOTS / 3
 	for bucket: Array in [
-		[Item.Rarity.COMMON,   Item.Rarity.UNCOMMON],   # cheap
-		[Item.Rarity.UNCOMMON, Item.Rarity.MAGIC],      # average
-		[Item.Rarity.MAGIC,    Item.Rarity.RARE],       # dear
+		[Item.Rarity.COMMON, Item.Rarity.MAGIC],                 # cheap
+		[Item.Rarity.COMMON, Item.Rarity.MAGIC, Item.Rarity.RARE],  # average (a normal roll)
+		[Item.Rarity.MAGIC,  Item.Rarity.RARE],                  # dear
 	]:
 		for _i: int in range(per_bucket):
 			stock.append(_generate_in_bucket(bucket, level))

@@ -1,20 +1,19 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene format=3 uid="uid://dgx46v0iklfqg"]
 
-[ext_resource type="Script" path="res://scripts/modals/inventory_modal.gd" id="1_modal"]
+[ext_resource type="Script" uid="uid://dycv0wwr3pbqa" path="res://scripts/modals/inventory_modal.gd" id="1_modal"]
 [ext_resource type="PackedScene" path="res://scenes/modals/compare_flyout.tscn" id="2_compare"]
-[ext_resource type="Shader" path="res://assets/shaders/reliquary_mist.gdshader" id="4_mist"]
+[ext_resource type="FontFile" uid="uid://bv5mowftmyw06" path="res://assets/fonts/Crimson-Bold.ttf" id="3_jnyau"]
+[ext_resource type="Shader" uid="uid://bdysf21ort1yh" path="res://assets/shaders/reliquary_mist.gdshader" id="4_mist"]
 [ext_resource type="PackedScene" path="res://scenes/modals/reliquary_frame.tscn" id="5_frame"]
 
 [sub_resource type="ShaderMaterial" id="mist_mat"]
 shader = ExtResource("4_mist")
-shader_parameter/fog_color = Color(0.545, 0.361, 0.965, 1.0)
-shader_parameter/deep_color = Color(0.141, 0.082, 0.239, 1.0)
+shader_parameter/fog_color = Color(0.545, 0.361, 0.965, 1)
+shader_parameter/deep_color = Color(0.141, 0.082, 0.239, 1)
 shader_parameter/density = 0.34
 shader_parameter/drift_speed = 0.045
 shader_parameter/scale = 2.4
 
-; [reliquary] Plum-black panel + crystal-rimmed X, inlined per scene (the Godot
-; editor overwrites out-of-editor edits to a shared theme.tres).
 [sub_resource type="StyleBoxFlat" id="rel_panel"]
 content_margin_left = 72.0
 content_margin_top = 48.0
@@ -43,7 +42,7 @@ corner_radius_top_right = 36
 corner_radius_bottom_right = 36
 corner_radius_bottom_left = 36
 
-[node name="InventoryModal" type="Control"]
+[node name="InventoryModal" type="Control" unique_id=516882305]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -52,7 +51,7 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_modal")
 
-[node name="Scrim" type="ColorRect" parent="."]
+[node name="Scrim" type="ColorRect" parent="." unique_id=601053989]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -61,7 +60,7 @@ grow_horizontal = 2
 grow_vertical = 2
 color = Color(0.141176, 0.094118, 0.196078, 0.76)
 
-[node name="Mist" type="ColorRect" parent="."]
+[node name="Mist" type="ColorRect" parent="." unique_id=173729779]
 material = SubResource("mist_mat")
 layout_mode = 1
 anchors_preset = 15
@@ -71,7 +70,7 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 
-[node name="Panel" type="PanelContainer" parent="."]
+[node name="Panel" type="PanelContainer" parent="." unique_id=57087575]
 layout_mode = 0
 offset_left = 60.0
 offset_top = 300.0
@@ -80,30 +79,33 @@ offset_bottom = 1620.0
 pivot_offset = Vector2(480, 660)
 theme_override_styles/panel = SubResource("rel_panel")
 
-[node name="Layout" type="VBoxContainer" parent="Panel"]
+[node name="Layout" type="VBoxContainer" parent="Panel" unique_id=504721368]
 layout_mode = 2
 theme_override_constants/separation = 16
 
-[node name="Header" type="HBoxContainer" parent="Panel/Layout"]
+[node name="Header" type="HBoxContainer" parent="Panel/Layout" unique_id=951914003]
 custom_minimum_size = Vector2(0, 80)
 layout_mode = 2
 theme_override_constants/separation = 20
 
-[node name="Title" type="Label" parent="Panel/Layout/Header"]
+[node name="Title" type="Label" parent="Panel/Layout/Header" unique_id=2096072979]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"DisplayLabel"
-theme_override_colors/font_color = Color(0.847059, 0.705882, 0.996078, 1)
-theme_override_font_sizes/font_size = 78
+theme_override_colors/font_color = Color(0.8627451, 0.75686276, 0.96862745, 1)
+theme_override_fonts/font = ExtResource("3_jnyau")
+theme_override_font_sizes/font_size = 58
 text = "INVENTORY"
 vertical_alignment = 1
+clip_text = true
+text_overrun_behavior = 3
 
-[node name="Currency" type="HBoxContainer" parent="Panel/Layout/Header"]
+[node name="Currency" type="HBoxContainer" parent="Panel/Layout/Header" unique_id=1871900280]
 layout_mode = 2
 theme_override_constants/separation = 16
 alignment = 2
 
-[node name="GoldLabel" type="Label" parent="Panel/Layout/Header/Currency"]
+[node name="GoldLabel" type="Label" parent="Panel/Layout/Header/Currency" unique_id=1600942542]
 layout_mode = 2
 theme_type_variation = &"DisplayLabel"
 theme_override_colors/font_color = Color(0.941176, 0.835294, 0.533333, 1)
@@ -111,7 +113,7 @@ theme_override_font_sizes/font_size = 54
 text = "0 G"
 vertical_alignment = 1
 
-[node name="ScrapLabel" type="Label" parent="Panel/Layout/Header/Currency"]
+[node name="ScrapLabel" type="Label" parent="Panel/Layout/Header/Currency" unique_id=652303646]
 layout_mode = 2
 theme_type_variation = &"DisplayLabel"
 theme_override_colors/font_color = Color(0.623529, 0.698039, 0.745098, 1)
@@ -119,61 +121,60 @@ theme_override_font_sizes/font_size = 54
 text = "0 S"
 vertical_alignment = 1
 
-[node name="CloseButton" type="Button" parent="Panel/Layout/Header"]
+[node name="CloseButton" type="Button" parent="Panel/Layout/Header" unique_id=1210996186]
 custom_minimum_size = Vector2(72, 72)
 layout_mode = 2
 size_flags_vertical = 4
 theme_override_colors/font_color = Color(0.94902, 0.913725, 0.815686, 1)
-theme_override_colors/font_hover_color = Color(0.847059, 0.705882, 0.996078, 1)
 theme_override_colors/font_pressed_color = Color(0.545098, 0.360784, 0.964706, 1)
+theme_override_colors/font_hover_color = Color(0.847059, 0.705882, 0.996078, 1)
 theme_override_font_sizes/font_size = 54
 theme_override_styles/normal = SubResource("rel_close")
-theme_override_styles/hover = SubResource("rel_close")
 theme_override_styles/pressed = SubResource("rel_close")
+theme_override_styles/hover = SubResource("rel_close")
 text = "X"
 
-[node name="Scroll" type="ScrollContainer" parent="Panel/Layout"]
+[node name="Scroll" type="ScrollContainer" parent="Panel/Layout" unique_id=402701859]
 layout_mode = 2
 size_flags_vertical = 3
 horizontal_scroll_mode = 0
 scroll_deadzone = 24
 
-[node name="Body" type="VBoxContainer" parent="Panel/Layout/Scroll"]
+[node name="Body" type="VBoxContainer" parent="Panel/Layout/Scroll" unique_id=1565764846]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 16
 
-[node name="EquippedHeader" type="Label" parent="Panel/Layout/Scroll/Body"]
+[node name="EquippedHeader" type="Label" parent="Panel/Layout/Scroll/Body" unique_id=726882197]
 layout_mode = 2
 theme_type_variation = &"DisplayLabel"
 theme_override_colors/font_color = Color(0.847059, 0.705882, 0.996078, 1)
 theme_override_font_sizes/font_size = 46
 text = "Equipped"
 
-[node name="Equipped" type="VBoxContainer" parent="Panel/Layout/Scroll/Body"]
+[node name="Equipped" type="VBoxContainer" parent="Panel/Layout/Scroll/Body" unique_id=1896766098]
 layout_mode = 2
 theme_override_constants/separation = 12
 
-[node name="CarriedHeader" type="Label" parent="Panel/Layout/Scroll/Body"]
+[node name="CarriedHeader" type="Label" parent="Panel/Layout/Scroll/Body" unique_id=871350484]
 layout_mode = 2
 theme_type_variation = &"DisplayLabel"
 theme_override_colors/font_color = Color(0.847059, 0.705882, 0.996078, 1)
 theme_override_font_sizes/font_size = 46
 text = "Carried"
 
-[node name="Carried" type="VBoxContainer" parent="Panel/Layout/Scroll/Body"]
+[node name="Carried" type="VBoxContainer" parent="Panel/Layout/Scroll/Body" unique_id=311957319]
 layout_mode = 2
 theme_override_constants/separation = 12
 
-[node name="CarriedEmpty" type="Label" parent="Panel/Layout/Scroll/Body"]
+[node name="CarriedEmpty" type="Label" parent="Panel/Layout/Scroll/Body" unique_id=800904345]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.611765, 0.686275, 0.643137, 1)
 theme_override_font_sizes/font_size = 46
 text = "Nothing carried."
 
-; [reliquary] Corner ornaments, as a sibling overlaying the panel exactly so
-; the PanelContainer content margin does not inset them off the panel edge.
-[node name="Frame" parent="." instance=ExtResource("5_frame")]
+[node name="Frame" parent="." unique_id=563331091 instance=ExtResource("5_frame")]
+layout_mode = 0
 anchors_preset = 0
 anchor_right = 0.0
 anchor_bottom = 0.0
@@ -181,6 +182,8 @@ offset_left = 60.0
 offset_top = 300.0
 offset_right = 1020.0
 offset_bottom = 1620.0
+grow_horizontal = 1
+grow_vertical = 1
 
-[node name="CompareFlyout" parent="." instance=ExtResource("2_compare")]
+[node name="CompareFlyout" parent="." unique_id=590575813 instance=ExtResource("2_compare")]
 layout_mode = 1
