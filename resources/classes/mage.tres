@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ClassDef" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/class_def.gd" id="1_cdef"]
+[ext_resource type="Texture2D" path="res://assets/icons/glyph_heal.png" id="2_glyph"]
+
+[resource]
+script = ExtResource("1_cdef")
+id = &"mage"
+roster_order = 0
+innate_icon = &"innate_heal"
+executes = Array[int]([3])
+glyph = ExtResource("2_glyph")
+glyph_box_fraction = 0.66
+bar_color = Color(0.33333334, 0.7882353, 0.2901961, 1)
+item_types = Array[StringName]([&"staff", &"shield", &"amulet"])

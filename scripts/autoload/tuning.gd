@@ -257,6 +257,13 @@ const PROFILE_STARTING_SCRAP := 0
 const SHOP_REFRESH_COST := 100
 const FORGE_SHOP_SLOTS := 6
 
+## [content phase 1] The mayor's generated board (spec §3 Step 3) - how many
+## QuestGenerator rolls sit beside the three hand-authored quests. Generated
+## once per profile, same "generate once, cache, reroll only on an explicit
+## action" rule the forge stock follows (spec §1.6); see
+## GameState.quest_board_offers().
+const QUEST_BOARD_SIZE := 3
+
 ## [town] The inn's paid full heal (spec 7.2), multiplied by active_party.size()
 ## - 50 with a solo warrior. Its caller moved to resolve_night() in the
 ## day/night pass; the constant, its name and its value did not.

@@ -69,12 +69,6 @@ static func element_of(id: StringName) -> StringName:
 		&"elem_light": return &"light"
 	return &""
 
-## The innate icon id a living hero of `hero_class` contributes (§2): the mage
-## heals, everyone else deals damage. Unknown classes fall back to damage so the
-## bag is never left without a floor.
-static func innate_for(hero_class: StringName) -> StringName:
-	return INNATE_HEAL if hero_class == &"mage" else INNATE_DAMAGE
-
 static func is_innate(id: StringName) -> bool:
 	return id == INNATE_DAMAGE or id == INNATE_HEAL
 
@@ -123,14 +117,19 @@ static func from_modifier(mod: Dictionary, _item: Item = null) -> Dictionary:
 	}
 
 ## An innate icon dict for a hero class: one per living hero, the floor that
-## keeps the bag from ever being empty of icons.
-## [item power model] `weapon_power` is now 100% of the hero's EQUIPPED weapon
+## keeps the bag from ever being empty of icons. [content phase 1] The icon id
+## comes from GameState.get_class_def(hero_class).innate_icon now - replaces
+## the mage/damage ternary SlotIcon.innate_for() used to hardcode (spec §3
+## Step 2). A class with no ClassDef (should not happen for a real hero) falls
+## back to damage, same floor the old ternary's default arm gave.
+## [item power model] `weapon_power` is 100% of the hero's EQUIPPED weapon
 ## Power (GameState.hero_weapon_power(hero_class)), precomputed by the caller -
 ## the hero's own stats no longer feed combat. 0 when the hero is unarmed
-## (handled later). Only the DAMAGE branch uses it; the mage's heal keeps its
+## (handled later). Only the DAMAGE branch uses it; a HEAL innate keeps its
 ## flat SLOT_INNATE_HEAL_PCT.
 static func innate(hero_class: StringName, weapon_power: int = 0) -> Dictionary:
-	var id := innate_for(hero_class)
+	var cdef := GameState.get_class_def(hero_class)
+	var id: StringName = cdef.innate_icon if cdef != null and cdef.innate_icon != &"" else INNATE_DAMAGE
 	var roll: int = weapon_power if id == INNATE_DAMAGE else Tuning.SLOT_INNATE_HEAL_PCT
 	return { "id": id, "roll": roll, "enhanced": false, "innate": true }
 

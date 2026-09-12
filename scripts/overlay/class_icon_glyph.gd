@@ -5,35 +5,25 @@ extends Control
 ## the ranger, a shield for the warrior.
 ##
 ## [meshy-experiment] Was procedurally drawn (a cross/bow/shield built from
-## polygons and arcs, matching slot_symbol.gd's approach) - now flat
-## Meshy-generated icons instead, in the same cream-on-near-black style as
-## the shop's item glyphs and the console's bonus strip. The mage's icon is
-## the identical heal-cross art the bonus strip uses for slot_mend: the two
-## already meant the same thing (healing) and drawing it from two unrelated
-## hand-authored shapes was two things that could drift, not two features.
+## polygons and arcs, matching slot_symbol.gd's approach) - then flat
+## Meshy-generated icons keyed by a hardcoded per-class match.
+##
+## [content phase 1] The per-class texture/box-fraction match is gone - both
+## now come from data (ClassDef.glyph / glyph_box_fraction, spec §3 Step 2),
+## set directly via set_texture_data() rather than looked up here from a
+## class id string.
 
-const TEX_HEAL := preload("res://assets/icons/glyph_heal.png")
-const TEX_BOW := preload("res://assets/icons/glyph_bow.png")
-const TEX_SHIELD := preload("res://assets/icons/glyph_shield.png")
+var _texture: Texture2D = null
+var _box_fraction: float = 0.7
 
-@export var kind: StringName = &""
-
-func set_kind(value: StringName) -> void:
-	kind = value
+func set_texture_data(tex: Texture2D, box_fraction: float = 0.7) -> void:
+	_texture = tex
+	_box_fraction = box_fraction
 	queue_redraw()
 
 func _draw() -> void:
-	match kind:
-		&"mage":
-			_draw_texture(TEX_HEAL, 0.66)
-		&"ranger":
-			_draw_texture(TEX_BOW, 0.78)
-		&"warrior":
-			_draw_texture(TEX_SHIELD, 0.72)
-		_:
-			pass
-
-func _draw_texture(tex: Texture2D, box_fraction: float) -> void:
-	var box := minf(size.x, size.y) * box_fraction
+	if _texture == null:
+		return
+	var box := minf(size.x, size.y) * _box_fraction
 	var c := size * 0.5
-	draw_texture_rect(tex, Rect2(c - Vector2.ONE * box * 0.5, Vector2.ONE * box), false)
+	draw_texture_rect(_texture, Rect2(c - Vector2.ONE * box * 0.5, Vector2.ONE * box), false)

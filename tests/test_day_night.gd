@@ -67,43 +67,56 @@ func _ready() -> void:
 		"7: quest -> night resolves again")
 
 	# ================= the street formula (§3.3 table) ===================
+	# [content phase 1] hero_runtime[0] is the mage now (active_party defaults
+	# to the full roster - questions doc Q4), not the warrior, so these no
+	# longer hardcode the warrior's 120 max_hp: every expected value is
+	# re-derived from whichever hero is actually at index 0, the same
+	# ceil(half-missing) formula test_quest_flow.gd already computes
+	# dynamically rather than pinning to one class's numbers.
 
-	# 8. 120 max, before 10 -> after 65.
+	# 8. before 10 -> after 10 + ceil(half of (max - 10)).
 	GameState.new_profile()
 	GameState.start_expedition(q)
 	GameState.day_phase = DP.NIGHT_PENDING
+	var maxhp0: int = int(GameState.hero_runtime[0]["max_hp"])
 	GameState.hero_runtime[0]["current_hp"] = 10
 	GameState.resolve_night(NC.STREET)
-	t.check(int(GameState.hero_runtime[0]["current_hp"]) == 65, "8: 10 -> 65")
+	var want8: int = 10 + ceili(float(maxhp0 - 10) * Tuning.INN_STREET_HEAL_FRACTION)
+	t.check(int(GameState.hero_runtime[0]["current_hp"]) == want8,
+		"8: 10 -> %d (got %d)" % [want8, int(GameState.hero_runtime[0]["current_hp"])])
 
-	# 9. before 0, dead -> after 60, revived.
+	# 9. before 0, dead -> after ceil(half of max), revived.
 	GameState.start_expedition(q)
 	GameState.day_phase = DP.NIGHT_PENDING
 	GameState.hero_runtime[0]["current_hp"] = 0
 	GameState.hero_runtime[0]["alive"] = false
 	GameState.resolve_night(NC.STREET)
-	t.check(int(GameState.hero_runtime[0]["current_hp"]) == 60, "9: 0 -> 60")
+	var want9: int = ceili(float(maxhp0) * Tuning.INN_STREET_HEAL_FRACTION)
+	t.check(int(GameState.hero_runtime[0]["current_hp"]) == want9,
+		"9: 0 -> %d (got %d)" % [want9, int(GameState.hero_runtime[0]["current_hp"])])
 	t.check(GameState.hero_runtime[0]["alive"], "9: revived")
 
-	# 10. before 119 -> after 120, never above max.
+	# 10. before max-1 -> after max, never above max.
 	GameState.start_expedition(q)
 	GameState.day_phase = DP.NIGHT_PENDING
-	GameState.hero_runtime[0]["current_hp"] = 119
+	GameState.hero_runtime[0]["current_hp"] = maxhp0 - 1
 	GameState.resolve_night(NC.STREET)
-	t.check(int(GameState.hero_runtime[0]["current_hp"]) == 120, "10: 119 -> 120")
+	t.check(int(GameState.hero_runtime[0]["current_hp"]) == maxhp0,
+		"10: %d -> %d (got %d)" % [maxhp0 - 1, maxhp0, int(GameState.hero_runtime[0]["current_hp"])])
 	t.check(int(GameState.hero_runtime[0]["current_hp"])
 		<= int(GameState.hero_runtime[0]["max_hp"]), "10: never above max_hp")
 
 	# ================= the inn ===========================================
 
-	# 11. Full heal 10/120 -> 120/120.
+	# 11. Full heal 10/max -> max/max.
 	GameState.new_profile()
 	GameState.start_expedition(q)
 	GameState.day_phase = DP.NIGHT_PENDING
+	var maxhp11: int = int(GameState.hero_runtime[0]["max_hp"])
 	GameState.hero_runtime[0]["current_hp"] = 10
 	GameState.gold = 10_000
 	GameState.resolve_night(NC.INN)
-	t.check(int(GameState.hero_runtime[0]["current_hp"]) == 120, "11: inn -> full heal")
+	t.check(int(GameState.hero_runtime[0]["current_hp"]) == maxhp11, "11: inn -> full heal")
 
 	# 12. Charges exactly INN_REST_COST_PER_HERO * party size.
 	GameState.start_expedition(q)
@@ -134,11 +147,12 @@ func _ready() -> void:
 	#     taken before the mutation.
 	GameState.start_expedition(q)
 	GameState.day_phase = DP.NIGHT_PENDING
+	var maxhp14: int = int(GameState.hero_runtime[0]["max_hp"])
 	GameState.hero_runtime[0]["current_hp"] = 20
 	GameState.gold = 10_000
 	var rep: Array = GameState.resolve_night(NC.INN)
 	t.check(int(rep[0]["before_hp"]) == 20, "14: report before_hp is pre-night")
-	t.check(int(rep[0]["after_hp"]) == 120, "14: report after_hp is post-night")
+	t.check(int(rep[0]["after_hp"]) == maxhp14, "14: report after_hp is post-night")
 	t.check(GameState.last_night_report.size() == rep.size(),
 		"14: last_night_report is the returned report")
 

@@ -94,6 +94,13 @@ var active_party: Array[StringName] = [&"warrior"]
 ## mayor's office and debug `quest` set it via start_expedition(q).
 var quest: QuestDef = null
 
+## [content phase 1] `quest`'s objectives, duplicated into fresh runtime
+## instances by start_expedition() - see QuestObjective's own header for why a
+## shared cached QuestDef's objectives array must never be mutated directly.
+## Empty outside a quest (endless / fixed dev path). Read by
+## quest_objectives_complete() and fanned events by QuestRuntime.
+var quest_objectives: Array[QuestObjective] = []
+
 ## [town] The quest that just ENDED, kept for QuestResult to read (spec 8.5).
 ## spec 8.5 nulls `quest` before routing home and presenting the modal, so the
 ## reward row and the "this was a quest" branch need a value that outlives that
@@ -197,10 +204,63 @@ var forge_stock: Array[Item] = []
 ## set by the blacksmith's first generation and by every reroll.
 var forge_stock_generated: bool = false
 
+## [content phase 1] The mayor's generated board (spec §3 Step 3) - the forge
+## stock pattern (spec §1.6) pointed at quests: generate once, cache on the
+## profile, reroll only on new_profile() - never on merely viewing the mayor's
+## office. Sits beside the three hand-authored quests, which mayor_office.gd
+## loads separately; QUEST_ORDER (a hardcoded easy/medium/hard array) is gone.
+## Profile-scoped and saved.
+var quest_board: Array[QuestDef] = []
+## Distinct from quest_board.is_empty() for the same reason
+## forge_stock_generated is distinct from forge_stock.is_empty() (spec §1.6) -
+## QuestGenerator.generate_board() returning nothing (no QuestTemplate on
+## disk) must not read as "never generated" and trigger a reroll loop.
+var quest_board_generated: bool = false
+
+## [content phase 1] `quest_board`, generating it once if this profile has
+## never had one. Called by mayor_office.gd.
+func quest_board_offers() -> Array[QuestDef]:
+	if not quest_board_generated:
+		quest_board = QuestGenerator.generate_board(Tuning.QUEST_BOARD_SIZE, ENDLESS_WOOD_AREA)
+		quest_board_generated = true
+	return quest_board
+
 var _stats_cache: Dictionary = {}   # StringName -> CombatantStats
+var _class_cache: Dictionary = {}   # StringName -> ClassDef
 
 func _ready() -> void:
+	# [content phase 1] Class defs before stats: _rebuild_party_order() (run at
+	# the end of _load_all_stats()) reads class_def.roster_order and must not
+	# see an empty cache.
+	_load_all_class_defs()
 	_load_all_stats()
+
+# --- class registry (content phase 1 spec §3 Step 2) ------------------------
+
+const CLASSES_DIR := "res://resources/classes/"
+
+func _load_all_class_defs() -> void:
+	_class_cache.clear()
+	var dir := DirAccess.open(CLASSES_DIR)
+	if dir == null:
+		push_error("GameState: cannot open %s" % CLASSES_DIR)
+		return
+	for file_name: String in dir.get_files():
+		var clean := file_name.trim_suffix(".remap")
+		if not clean.ends_with(".tres"):
+			continue
+		var res := load(CLASSES_DIR + clean)
+		if res is ClassDef:
+			_class_cache[(res as ClassDef).id] = res
+
+func get_class_def(id: StringName) -> ClassDef:
+	return _class_cache.get(id, null)
+
+func all_class_defs() -> Array[ClassDef]:
+	var out: Array[ClassDef] = []
+	for cdef: ClassDef in _class_cache.values():
+		out.append(cdef)
+	return out
 
 # --- stats registry ---------------------------------------------------------
 
@@ -219,19 +279,25 @@ func _load_all_stats() -> void:
 			_stats_cache[(res as CombatantStats).id] = res
 	_rebuild_party_order()
 
-## [content phase 0] PARTY_ORDER, derived from every hero CombatantStats
-## currently cached, sorted by roster_order (spec §3 Step 5 / D3).
+## [content phase 0/1] PARTY_ORDER, derived from every hero CombatantStats
+## currently cached, sorted by its class's roster_order (spec §3 Step 5 / D3;
+## roster_order itself moved from CombatantStats onto ClassDef in Phase 1
+## §3 Step 2). A hero with no class_def sorts last rather than erroring - it
+## simply cannot happen for a real hero (content lint checks every hero has one).
 func _rebuild_party_order() -> void:
 	var heroes: Array[CombatantStats] = []
 	for stats: CombatantStats in _stats_cache.values():
 		if stats.is_hero:
 			heroes.append(stats)
 	heroes.sort_custom(func(a: CombatantStats, b: CombatantStats) -> bool:
-		return a.roster_order < b.roster_order)
+		return _roster_order(a) < _roster_order(b))
 	var order: Array[StringName] = []
 	for stats: CombatantStats in heroes:
 		order.append(stats.id)
 	PARTY_ORDER = order
+
+func _roster_order(stats: CombatantStats) -> int:
+	return stats.class_def.roster_order if stats.class_def != null else 999
 
 func get_stats(id: StringName) -> CombatantStats:
 	if not _stats_cache.has(id):
@@ -758,6 +824,21 @@ func _build_quest_level(q: QuestDef) -> LevelDef:
 		lvl.encounters.append(enc)
 	return lvl
 
+## [content phase 1] Whether every one of quest_objectives reports complete
+## (spec §3 Step 1a: "won means every objective reports complete"). False with
+## no objectives at all - an empty list is never a win, it is a quest that
+## forgot to author one (content lint catches this, see test_content_registry).
+## Checked by RunController._next_encounter() at each encounter-resolution
+## boundary; see content-phase-1 questions doc Q1 for why that boundary,
+## rather than continuous mid-fight checking, is where this is asked.
+func quest_objectives_complete() -> bool:
+	if quest_objectives.is_empty():
+		return false
+	for obj: QuestObjective in quest_objectives:
+		if not obj.is_complete():
+			return false
+	return true
+
 ## Fallback travel ramp when a quest leaves travel_durations short: 2s in, 4s
 ## before the boss, 3s for everything between - the same shape the endless
 ## builder hardcodes.
@@ -777,26 +858,13 @@ func _interpolated_level(band: Vector2i, index: int, count: int) -> int:
 
 # --- endless mode (spec: Endless Mode) --------------------------------------
 
-## [content phase 0] Moved out of this file as EnemyPool resources (spec §3
-## Step 4) - game_state.gd no longer carries a const array of enemy ids.
-## Regular enemies available from the first level. skeleton_minion is the
-## other "weak" combatant alongside shadow_monster - a swarm of either reads
-## as an easy opener.
-const ENDLESS_EARLY_POOL: EnemyPool = preload("res://resources/pools/endless_early.tres")
-## Join the pool once the party has cleared at least one level, so depth 1
-## stays as gentle as the old fixed level's opening fight.
-##
-## The orc barbarian is out of the rotation: it is the last in-house model,
-## built from separate primitive blocks (O_Head, O_ArmL, O_Torso...), and
-## next to the KayKit skeletons it reads as a stick figure. The stats, scene
-## and rig branches all stay - nothing spawns it, so nothing renders it.
-const ENDLESS_MID_POOL: EnemyPool = preload("res://resources/pools/endless_mid.tres")
-## [UI pass] Was just the orc warlord. Any of the four KayKit skeletons can
-## anchor encounter 6 now - battle_director.start_combat() scales whichever
-## one gets picked up 150% for the boss slot (a runtime-duplicated
-## CombatantStats, never the shared cached one, so the regular-sized version
-## other encounters spawn from ENDLESS_MID_POOL is untouched).
-const BOSS_POOL: EnemyPool = preload("res://resources/pools/boss_pool.tres")
+## [content phase 1] The one area Phase 1 ships (spec §4 - new areas are a
+## future content pass with an art dependency). Endless mode and the quest
+## generator (QuestGenerator) both read this now; game_state.gd itself carries
+## no enemy ids or area naming any more (spec §3 Step 3.3) - "endless mode
+## stops being a separate content path and becomes an area with no objective
+## and no end."
+const ENDLESS_WOOD_AREA: AreaDef = preload("res://resources/areas/endless_wood.tres")
 
 ## Six encounters, same COMBAT/LOOT/COMBAT/SHOP/COMBAT/boss-COMBAT rhythm as
 ## the fixed level (that pacing was already tuned - only which enemies fill
@@ -808,11 +876,12 @@ const BOSS_POOL: EnemyPool = preload("res://resources/pools/boss_pool.tres")
 ## power alongside CombatantStats.
 func _build_endless_level(level_number: int) -> LevelDef:
 	var lvl := LevelDef.new()
-	lvl.display_name = "The Endless Wood — Depth %d" % level_number
+	lvl.display_name = "%s — Depth %d" % [ENDLESS_WOOD_AREA.display_name, level_number]
 
-	var pool: Array[StringName] = ENDLESS_EARLY_POOL.resolve()
-	if level_number >= 2:
-		pool.append_array(ENDLESS_MID_POOL.resolve())
+	var area := ENDLESS_WOOD_AREA
+	var pool: Array[StringName] = area.pool.resolve() if area.pool != null else []
+	if level_number >= 2 and area.mid_pool != null:
+		pool.append_array(area.mid_pool.resolve())
 	@warning_ignore("integer_division")
 	var enemy_count := mini(2 + level_number / 3, 3)
 
@@ -855,7 +924,7 @@ func _build_endless_level(level_number: int) -> LevelDef:
 
 	# Boss listed first so it lands at the leftmost enemy slot (spec 7.3),
 	# same convention as the fixed level's boss encounter.
-	var boss_id: StringName = RNG.pick(BOSS_POOL.resolve())
+	var boss_id: StringName = RNG.pick(area.boss_pool.resolve() if area.boss_pool != null else pool)
 	var e5_ids: Array[StringName] = [boss_id]
 	e5_ids.append_array(_random_enemies(pool, mini(enemy_count, 2)))
 	var e5 := EncounterDef.new()
@@ -916,7 +985,7 @@ func _build_whispering_wood_level() -> LevelDef:
 	var e5 := EncounterDef.new()
 	e5.type = EncounterDef.Type.COMBAT
 	e5.is_boss = true
-	e5.enemy_stat_ids = [RNG.pick(BOSS_POOL.resolve()), &"shadow_monster"]
+	e5.enemy_stat_ids = [RNG.pick(ENDLESS_WOOD_AREA.boss_pool.resolve()), &"shadow_monster"]
 	e5.travel_duration = 4.0
 
 	lvl.encounters = [e0, e1, e2, e3, e4, e5]
@@ -954,16 +1023,26 @@ func needs_forge_restock() -> bool:
 ## crash costs nothing - there is no state here worth persisting eagerly.
 ## Spec 2.4's own "When to save" list never names this function.
 ##
-## [town] spec 4.5 flipped active_party here to the solo warrior - this
-## assignment plus the field's initialiser are the value flip that makes the
-## party solo. PARTY_ORDER stays the canonical roster.
+## [content phase 1] Step 2c: the ranger and mage come back, so a fresh
+## profile's active_party is the full roster again - Phase 0 spec 4.5's flip
+## to a solo warrior was that phase's deliberate simplification while the
+## content-authoring infrastructure got built, not a permanent design.
+## PARTY_ORDER stays the canonical roster (unchanged by this) and this
+## assignment reads it directly rather than re-listing the three ids, so the
+## day a fourth hero's .tres lands, this line needs no edit. See
+## content-phase-1 questions doc Q4 for why this is the mechanism by which
+## "active_party grows past one" without a recruit feature.
 func new_profile() -> void:
 	gold = Tuning.PROFILE_STARTING_GOLD
 	scrap = Tuning.PROFILE_STARTING_SCRAP
 	inventory.clear()
 	forge_stock.clear()          # the blacksmith regenerates on first visit (spec 7.4)
 	forge_stock_generated = false
-	active_party = [&"warrior"] as Array[StringName]
+	# [content phase 1] The mayor's board regenerates on first visit too, same
+	# pattern (spec §3 Step 3 / §1.6).
+	quest_board.clear()
+	quest_board_generated = false
+	active_party = PARTY_ORDER.duplicate()
 	# [item power model] A fresh profile ships one weapon, already equipped.
 	# Since the combat loop redesign a hero's entire offense is its equipped
 	# weapon's Power - an unarmed start plays as "the game is broken". A level-1
@@ -974,11 +1053,15 @@ func new_profile() -> void:
 	var starter_weapon := Itemizer.generate_typed_item(&"sword", Item.Rarity.MAGIC, 1)
 	Itemizer.force_modifier(starter_weapon, 0, &"dmg_flat")
 	add_item(starter_weapon)
-	# [balance pass] ...and a plain shield. Its base armor icon is a heal
+	# [balance pass] ...and a plain armor piece. Its base armor icon is a heal
 	# (percent of max hp), the ONLY sustain a fresh solo warrior has - without
 	# it the first quest's boss is an unwinnable healless slog (sim_easy_
 	# attempts). Common, so no modifier roll: just the one heal icon.
-	add_item(Itemizer.generate_typed_item(&"shield", Item.Rarity.COMMON, 1))
+	# [content phase 1] &"mail", not &"shield" - Step 2b's item-type split
+	# (content-phase-1 questions doc Q3) moved &"shield" to the mage; &"mail"
+	# is the warrior's armor type now, and the intent here (a warrior-wearable
+	# starter armor piece) is otherwise unchanged.
+	add_item(Itemizer.generate_typed_item(&"mail", Item.Rarity.COMMON, 1))
 	# [day-night] a fresh profile starts a fresh first day, unfed, no night owed.
 	day_phase = DayPhase.DAY
 	day_number = 1
@@ -1021,6 +1104,16 @@ func start_expedition(q: QuestDef = null) -> void:
 	drops_by_class.clear()
 	Upgrades.reset()
 	level = build_level()
+	# [content phase 1] Fresh runtime instances, never the shared cached
+	# QuestDef's own array (QuestObjective's header) - bind() right after so
+	# each one can read whatever it needs from the level it will run against
+	# (e.g. ClearEncountersObjective's encounter count).
+	quest_objectives = []
+	if q != null:
+		for obj: QuestObjective in q.objectives:
+			var runtime_obj := obj.duplicate(true) as QuestObjective
+			runtime_obj.bind(q, level)
+			quest_objectives.append(runtime_obj)
 	_reset_hero_runtime(false)    # keep current HP - the inn is the heal
 
 	for key: String in run_stats.keys():

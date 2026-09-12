@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ClassDef" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/class_def.gd" id="1_cdef"]
+[ext_resource type="Texture2D" path="res://assets/icons/glyph_shield.png" id="2_glyph"]
+
+[resource]
+script = ExtResource("1_cdef")
+id = &"warrior"
+roster_order = 2
+innate_icon = &"innate_dmg"
+executes = Array[int]([1, 5])
+glyph = ExtResource("2_glyph")
+glyph_box_fraction = 0.72
+bar_color = Color(0.8509804, 0.65882355, 0.14509805, 1)
+item_types = Array[StringName]([&"axe", &"sword", &"mail", &"idol"])

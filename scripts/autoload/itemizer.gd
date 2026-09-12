@@ -14,24 +14,29 @@ extends Node
 ## that item.armor_value() scales by level, shown as "Armor". Armor's base slot
 ## icon is a BLOCK (a temporary flat-armor buff), never a strike, and armor
 ## only rolls block / life modifiers - see Itemizer.MODIFIERS' `slots` field.
+## [content phase 1] No `classes` key on any row any more (spec §3 Step 2b) -
+## class eligibility is read from ClassDef.item_types instead
+## (weapon_types_for() / Itemizer.classes_for_type()). Weapons stay one class
+## apiece; the six armor/trinket rows carry no class flavor in their naming,
+## so every ClassDef lists all six (content-phase-1 questions doc Q3).
 const ITEM_TYPES := {
 	# --- weapons ---
-	&"axe":    { "slot": Item.Slot.WEAPON,  "base_value": 20, "power": 6, "classes": [&"warrior"], "nouns": ["Axe", "Hatchet", "Cleaver", "Chopper"] },
-	&"sword":  { "slot": Item.Slot.WEAPON,  "base_value": 22, "power": 6, "classes": [&"warrior"], "nouns": ["Sword", "Blade", "Saber", "Longsword"] },
-	&"bow":    { "slot": Item.Slot.WEAPON,  "base_value": 20, "power": 5, "classes": [&"ranger"],  "nouns": ["Bow", "Longbow", "Shortbow", "Recurve"] },
-	&"dagger": { "slot": Item.Slot.WEAPON,  "base_value": 18, "power": 5, "classes": [&"ranger"],  "nouns": ["Dagger", "Knife", "Dirk", "Shiv"] },
-	&"staff":  { "slot": Item.Slot.WEAPON,  "base_value": 25, "power": 4, "classes": [&"mage"],    "nouns": ["Staff", "Rod", "Cane", "Scepter"] },
+	&"axe":    { "slot": Item.Slot.WEAPON,  "base_value": 20, "power": 6, "nouns": ["Axe", "Hatchet", "Cleaver", "Chopper"] },
+	&"sword":  { "slot": Item.Slot.WEAPON,  "base_value": 22, "power": 6, "nouns": ["Sword", "Blade", "Saber", "Longsword"] },
+	&"bow":    { "slot": Item.Slot.WEAPON,  "base_value": 20, "power": 5, "nouns": ["Bow", "Longbow", "Shortbow", "Recurve"] },
+	&"dagger": { "slot": Item.Slot.WEAPON,  "base_value": 18, "power": 5, "nouns": ["Dagger", "Knife", "Dirk", "Shiv"] },
+	&"staff":  { "slot": Item.Slot.WEAPON,  "base_value": 25, "power": 4, "nouns": ["Staff", "Rod", "Cane", "Scepter"] },
 	# --- armor [armor items] - `armor` is flat damage reduction / level. Kept
 	# well under an enemy's weapon_power_per_level (6) so mitigation is a chip
 	# (~25-35% of a hit), never a wall - a fully-armored party still has to
 	# race the enemy's dps, not ignore it (see test_level_curves' ttd band). ---
-	&"helm":   { "slot": Item.Slot.ARMOR,   "base_value": 18, "armor": 2, "classes": [&"warrior"], "nouns": ["Helm", "Casque", "Barbute", "Coif"] },
-	&"mail":   { "slot": Item.Slot.ARMOR,   "base_value": 24, "armor": 2, "classes": [&"warrior"], "nouns": ["Mail", "Hauberk", "Cuirass", "Plate"] },
-	&"shield": { "slot": Item.Slot.ARMOR,   "base_value": 22, "armor": 2, "classes": [&"warrior"], "nouns": ["Shield", "Buckler", "Targe", "Kite"] },
+	&"helm":   { "slot": Item.Slot.ARMOR,   "base_value": 18, "armor": 2, "nouns": ["Helm", "Casque", "Barbute", "Coif"] },
+	&"mail":   { "slot": Item.Slot.ARMOR,   "base_value": 24, "armor": 2, "nouns": ["Mail", "Hauberk", "Cuirass", "Plate"] },
+	&"shield": { "slot": Item.Slot.ARMOR,   "base_value": 22, "armor": 2, "nouns": ["Shield", "Buckler", "Targe", "Kite"] },
 	# --- trinkets [town] ---
-	&"ring":   { "slot": Item.Slot.TRINKET, "base_value": 19, "power": 4, "classes": [&"warrior"], "nouns": ["Ring", "Band", "Signet", "Loop"] },
-	&"amulet": { "slot": Item.Slot.TRINKET, "base_value": 21, "power": 4, "classes": [&"warrior"], "nouns": ["Amulet", "Pendant", "Charm", "Talisman"] },
-	&"idol":   { "slot": Item.Slot.TRINKET, "base_value": 23, "power": 5, "classes": [&"warrior"], "nouns": ["Idol", "Fetish", "Totem", "Effigy"] },
+	&"ring":   { "slot": Item.Slot.TRINKET, "base_value": 19, "power": 4, "nouns": ["Ring", "Band", "Signet", "Loop"] },
+	&"amulet": { "slot": Item.Slot.TRINKET, "base_value": 21, "power": 4, "nouns": ["Amulet", "Pendant", "Charm", "Talisman"] },
+	&"idol":   { "slot": Item.Slot.TRINKET, "base_value": 23, "power": 5, "nouns": ["Idol", "Fetish", "Totem", "Effigy"] },
 }
 
 const ADJECTIVES := [
@@ -304,11 +309,21 @@ func force_modifier(item: Item, idx: int, id: StringName) -> void:
 
 ## Every type `hero_class` can wield, in ANY slot. Stays the "all types for a
 ## class" accessor the slot-aware helpers below are built on (spec 4.4).
+## [content phase 1] Reads GameState.get_class_def(hero_class).item_types now,
+## not an ITEM_TYPES[...]["classes"] entry (spec §3 Step 2b) - a class with no
+## ClassDef (should not happen for a real hero) simply cannot wield anything.
 func weapon_types_for(hero_class: StringName) -> Array[StringName]:
+	var cdef := GameState.get_class_def(hero_class)
+	return cdef.item_types.duplicate() if cdef != null else []
+
+## [content phase 1] Every class whose ClassDef.item_types lists `wtype` -
+## replaces the ITEM_TYPES[wtype]["classes"] lookup Item.usable_by() used to
+## read directly (spec §3 Step 2b: ITEM_TYPES carries no class arrays now).
+func classes_for_type(wtype: StringName) -> Array[StringName]:
 	var out: Array[StringName] = []
-	for wtype: StringName in ITEM_TYPES:
-		if (ITEM_TYPES[wtype]["classes"] as Array).has(hero_class):
-			out.append(wtype)
+	for cdef: ClassDef in GameState.all_class_defs():
+		if cdef.item_types.has(wtype):
+			out.append(cdef.id)
 	return out
 
 ## [town] The types in `slot` wieldable by some class in `classes`. Built on

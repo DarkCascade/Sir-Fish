@@ -150,17 +150,13 @@ func life_bonus_pct() -> int:
 ## kind with no weapon type, so potions and relics answer sensibly the day they
 ## exist.
 ##
-## Built by iteration rather than returned straight from the table because
-## ITEM_TYPES' inline arrays are untyped Array, which GDScript will not
-## assign to an Array[StringName] return.
+## [content phase 1] Reads Itemizer.classes_for_type() now, not an
+## ITEM_TYPES[...]["classes"] entry - the mapping moved onto each class's own
+## ClassDef.item_types (spec §3 Step 2b).
 func usable_by() -> Array[StringName]:
-	var out: Array[StringName] = []
 	if kind != Kind.WEAPON or weapon_type == &"":
-		return out
-	var entry: Dictionary = Itemizer.ITEM_TYPES.get(weapon_type, {})
-	for c: StringName in entry.get("classes", []):
-		out.append(c)
-	return out
+		return []
+	return Itemizer.classes_for_type(weapon_type)
 
 ## [town] Which equipment slot this item fills, from its type's ITEM_TYPES
 ## entry (spec 4.1). Defaults to WEAPON for an unknown / empty type so a

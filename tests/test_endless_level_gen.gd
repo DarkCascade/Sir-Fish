@@ -14,11 +14,11 @@ func _ready() -> void:
 
 	_check_level_shape(t, GameState.level, "depth 1")
 
-	# [content phase 0] The three pools are EnemyPool resources now, not const
-	# arrays (spec §3 Step 4) - resolve() is what game_state.gd itself calls.
-	var early_pool := GameState.ENDLESS_EARLY_POOL.resolve()
-	var mid_pool := GameState.ENDLESS_MID_POOL.resolve()
-	var boss_pool := GameState.BOSS_POOL.resolve()
+	# [content phase 1] The three pools live on the one AreaDef now (spec §3
+	# Step 3.3) - game_state.gd itself resolves them the same way.
+	var early_pool := GameState.ENDLESS_WOOD_AREA.pool.resolve()
+	var mid_pool := GameState.ENDLESS_WOOD_AREA.mid_pool.resolve()
+	var boss_pool := GameState.ENDLESS_WOOD_AREA.boss_pool.resolve()
 
 	# Every enemy id the generator can produce must resolve to real stats -
 	# this is the check that would have caught a typo in the enemy pools.

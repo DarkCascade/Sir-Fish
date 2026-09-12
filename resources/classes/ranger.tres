@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="ClassDef" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/class_def.gd" id="1_cdef"]
+[ext_resource type="Texture2D" path="res://assets/icons/glyph_bow.png" id="2_glyph"]
+
+[resource]
+script = ExtResource("1_cdef")
+id = &"ranger"
+roster_order = 1
+innate_icon = &"innate_dmg"
+executes = Array[int]([2])
+glyph = ExtResource("2_glyph")
+glyph_box_fraction = 0.78
+bar_color = Color(0.29803923, 0.5254902, 0.9411765, 1)
+item_types = Array[StringName]([&"bow", &"dagger", &"helm", &"ring"])

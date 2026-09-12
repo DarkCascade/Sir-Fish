@@ -16,13 +16,12 @@ enum AttackStyle { MELEE, RANGED, MAGIC }
 @export var display_name: String = ""
 @export var is_hero: bool = false
 
-## [content phase 0] Where this hero sits in the derived roster
-## (GameState.PARTY_ORDER), lowest first (spec §3 Step 5 / D3). Hero-only -
-## meaningless on an enemy. Authored so the derived roster reproduces today's
-## fixed mage/ranger/warrior order exactly; do not rely on alphabetical order
-## happening to match. Moves onto ClassDef with the rest of a class's
-## identity in Phase 1.
-@export var roster_order: int = 0
+## [content phase 1] A hero's class identity - roster_order, innate icon,
+## executor ownership, party-bar look and equippable item types (spec §3 Step
+## 2). Hero-only; null on an enemy. roster_order used to live directly on this
+## resource (content phase 0 spec §3 Step 5 / D3) and has moved onto
+## ClassDef.roster_order - see GameState._rebuild_party_order().
+@export var class_def: ClassDef
 
 ## [levels] Level-1 base stats. Growth per level above 1 lives in the matching
 ## `*_per_level` field below - see `at_level()` / `hp_at()` / `weapon_power_at()`

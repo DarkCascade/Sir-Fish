@@ -1,0 +1,11 @@
+[gd_resource type="Resource" script_class="QuestTemplate" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/quest_template.gd" id="1_tmpl"]
+
+[resource]
+script = ExtResource("1_tmpl")
+rhythm = Array[int]([0, 1, 0, 2, 0])
+length_range = Vector2i(6, 7)
+difficulty_mult = 1.1
+gold_formula_mult = 1.05
+blurb_templates = PackedStringArray("A wider loop than most are willing to walk.", "Clear the wood's middle stretch, mind the shop along the way.")

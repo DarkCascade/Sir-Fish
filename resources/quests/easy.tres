@@ -1,6 +1,7 @@
-[gd_resource type="Resource" script_class="QuestDef" format=3 uid="uid://dt6k0mjpi1f2x"]
+[gd_resource type="Resource" script_class="QuestDef" load_steps=2 format=3 uid="uid://dt6k0mjpi1f2x"]
 
 [ext_resource type="Script" uid="uid://d0nce1a0k1mdc" path="res://scripts/data/quest_def.gd" id="1_qd"]
+[ext_resource type="Resource" path="res://resources/objectives/clear_encounters.tres" id="2_ceo"]
 
 [resource]
 script = ExtResource("1_qd")
@@ -9,6 +10,7 @@ display_name = "The Shallow Wood"
 blurb = "A short loop through the near woods."
 encounter_types = Array[int]([0, 1, 0, 2, 0])
 gold_reward = 200
+objectives = Array[QuestObjective]([ExtResource("2_ceo")])
 enemy_pool = Array[StringName]([&"shadow_monster", &"skeleton_minion"])
 boss_pool = Array[StringName]([&"skeleton_warrior"])
 boss_drop_rarity_floor = 1

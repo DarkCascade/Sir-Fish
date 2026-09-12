@@ -37,28 +37,6 @@ const HERO_FILL_WIDTH := 352.0
 ## a round medallion instead of a rounded square.
 const CHIP_RADIUS := 26.0
 
-const KNOWN_ICON_CLASSES := [&"mage", &"ranger", &"warrior"]
-
-## [ui-project-longshot] The concept board's three stat bars run green, blue,
-## gold from top to bottom - and its numbers (102/120, 80/80, 70/70) are this
-## party's own max HP, so the board is showing exactly these three heroes.
-##
-## Its glyphs (heart / bolt / shield) do not map to any class, so those are
-## left as the existing class icons: the bolt in particular already means
-## "lightning payout" on the reels, and borrowing it for the ranger would have
-## the same glyph mean two things one panel apart. The colour rhythm is what
-## carries the board's look, and it happens to land on the semantically right
-## hero at every position anyway - the mage heals (green), the warrior
-## guards (gold).
-##
-## Falls back to the hero's own accent_color for any class not listed, so a
-## fourth hero is a resource edit and not a code change.
-const CLASS_BAR_COLORS := {
-	&"mage": Tuning.C_HEAL,
-	&"ranger": Tuning.C_LIGHTNING,
-	&"warrior": Tuning.C_DEFEND,
-}
-
 var _dead: bool = false
 
 ## [day-night] Detached rows live in the night modal's full-width VBox, not the
@@ -104,6 +82,25 @@ func _ready() -> void:
 	# or its square ends poke out through the fill's curved caps.
 	_round(gloss, PILL_RADIUS)
 
+## [content phase 1] The class glyph/box-fraction and bar colour now come from
+## ClassDef (spec §3 Step 2) rather than a class-id-keyed const table here -
+## see class_icon_glyph.gd's own header. Falls back to the hero's own
+## accent_color / initial letter for a hero with no class_def, so a fourth
+## hero always renders something sensible even before its ClassDef exists.
+static func _bar_color_for(stats: CombatantStats) -> Color:
+	return stats.class_def.bar_color if stats.class_def != null else stats.accent_color
+
+func _apply_class_glyph(chip_glyph_node: ClassIconGlyph, chip_label_node: Label,
+		stats: CombatantStats) -> void:
+	var cdef := stats.class_def
+	if cdef != null and cdef.glyph != null:
+		chip_glyph_node.set_texture_data(cdef.glyph, cdef.glyph_box_fraction)
+		chip_label_node.visible = false
+	else:
+		chip_glyph_node.set_texture_data(null)
+		chip_label_node.text = stats.display_name.substr(0, 1).to_upper()
+		chip_label_node.visible = true
+
 ## Called by party_bars.gd the moment a hero's bars are spawned.
 func setup(c: Combatant) -> void:
 	combatant = c
@@ -112,13 +109,10 @@ func setup(c: Combatant) -> void:
 		# The medallion and the bar carry the SAME colour, so the icon reads as
 		# the label for its own bar rather than as a second piece of colour
 		# information competing with it.
-		base_fill_color = CLASS_BAR_COLORS.get(stats.id, stats.accent_color)
+		base_fill_color = _bar_color_for(stats)
 		chip.color = base_fill_color
 		health_fill.color = base_fill_color
-		var has_glyph: bool = stats.id in KNOWN_ICON_CLASSES
-		chip_glyph.set_kind(stats.id if has_glyph else &"")
-		chip_label.text = stats.display_name.substr(0, 1).to_upper()
-		chip_label.visible = not has_glyph
+		_apply_class_glyph(chip_glyph, chip_label, stats)
 	refresh()
 
 func refresh() -> void:
@@ -167,13 +161,10 @@ func set_alive() -> void:
 ## reads it, and party_bars.gd never sees one of these.
 func setup_detached(stats: CombatantStats) -> void:
 	combatant = null
-	base_fill_color = CLASS_BAR_COLORS.get(stats.id, stats.accent_color)
+	base_fill_color = _bar_color_for(stats)
 	chip.color = base_fill_color
 	health_fill.color = base_fill_color
-	var has_glyph: bool = stats.id in KNOWN_ICON_CLASSES
-	chip_glyph.set_kind(stats.id if has_glyph else &"")
-	chip_label.text = stats.display_name.substr(0, 1).to_upper()
-	chip_label.visible = not has_glyph
+	_apply_class_glyph(chip_glyph, chip_label, stats)
 	buff_shield.visible = false
 	_stretch_to_row_width()
 
