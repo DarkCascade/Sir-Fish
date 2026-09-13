@@ -1,8 +1,9 @@
 extends Node
-## The spec 8.5 economy: what a lost quest keeps and drops, and the free
-## "sleep in the street" half-heal. These are the numbers that stop a failed
-## hard quest from being pure profit (spec 8.5 / 1.9), so they get a permanent
-## guard even though spec 13.1 only names test_quest_gen for step 8.
+## The spec 8.5 economy: what a lost quest keeps and drops. These are the
+## numbers that stop a failed hard quest from being pure profit (spec 8.5 /
+## 1.9), so they get a permanent guard even though spec 13.1 only names
+## test_quest_gen for step 8. What coming home does to the party's HP, and the
+## inn's bed and meal, are test_inn_recovery.gd.
 ##
 ##     godot --headless --path "C:/Projects/Godot/Sir Fish" res://tests/test_quest_flow.tscn
 
@@ -35,28 +36,6 @@ func _ready() -> void:
 	t.check(GameState.inventory.has(town_item), "town gear survives a failed quest")
 	t.check(GameState.inventory.has(found_equipped), "equipped loot survives a failed quest")
 	t.check(not GameState.inventory.has(found_loose), "loose expedition loot is discarded")
-
-	# --- street_sleep_recover: ceil(half missing), once per expedition ---------
-	GameState.new_profile()
-	GameState.start_expedition(q)
-	GameState.hero_runtime[0]["current_hp"] = 10
-	var maxhp: int = int(GameState.hero_runtime[0]["max_hp"])
-	GameState.street_sleep_recover()
-	var want: int = 10 + ceili(float(maxhp - 10) * Tuning.INN_STREET_HEAL_FRACTION)
-	t.check(int(GameState.hero_runtime[0]["current_hp"]) == want,
-		"street sleep heals ceil(half missing) (got %d, want %d)"
-			% [int(GameState.hero_runtime[0]["current_hp"]), want])
-	# [day-night] The once-per-night guarantee street_sleep_used used to hold is
-	# now asserted against the state machine in test_day_night.gd assertion 6
-	# (a second resolve_night() in the same phase returns [] and heals nothing).
-	GameState.start_expedition(q)
-
-	# --- a dead hero is revived by the free heal ------------------------------
-	GameState.hero_runtime[0]["current_hp"] = 0
-	GameState.hero_runtime[0]["alive"] = false
-	GameState.street_sleep_recover()
-	t.check(int(GameState.hero_runtime[0]["current_hp"]) > 0 and GameState.hero_runtime[0]["alive"],
-		"street sleep revives a downed hero")
 
 	GameState.quest = null
 	GameState.completed_quest = null

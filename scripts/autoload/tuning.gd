@@ -259,9 +259,8 @@ const FORGE_SHOP_SLOTS := 6
 
 ## [content phase 1] The mayor's generated board (spec §3 Step 3) - how many
 ## QuestGenerator rolls sit beside the three hand-authored quests. Generated
-## lazily and cached like the forge stock (spec §1.6), rerolled once per day
-## when resolve_night() starts a new one; see GameState.quest_board_offers()
-## and content-phase-1 questions doc Q7.
+## lazily and cached like the forge stock (spec §1.6), and refreshed after every
+## finished quest and every inn night (GameState.refresh_quest_board()).
 const QUEST_BOARD_SIZE := 3
 
 ## [content phase 1] How many levels a generated quest's level_range spans,
@@ -270,41 +269,24 @@ const QUEST_BOARD_SIZE := 3
 ## content-phase-1 questions doc Q10).
 const QUEST_LEVEL_SPAN := 3
 
-## [town] The inn's paid full heal (spec 7.2), multiplied by active_party.size()
-## - 50 with a solo warrior. Its caller moved to resolve_night() in the
-## day/night pass; the constant, its name and its value did not.
-const INN_REST_COST_PER_HERO := 50
+## [inn & recovery] The inn's bed: a flat price per night, whatever the party's
+## size, any time the party is in town. A full heal with the downed revived, and
+## the mayor's board refreshes (GameState.rest_at_inn()).
+const INN_NIGHT_COST := 50
 
-## [town] Fraction of a hero's MISSING hp restored by the free "Sleep in the
-## street" night option. Half - and once per night, which the day/night state
-## machine now enforces structurally (day/night spec §2.2: resolve_night() only
-## fires from NIGHT_PENDING, and there is no transition that reaches it twice
-## without a quest between). Repeated application converges on a full heal, which
-## is why a second sleep must be unreachable.
-const INN_STREET_HEAL_FRACTION := 0.5
+## [inn & recovery] The HP floor, as a fraction of max HP, that coming home from
+## a WIPE restores (GameState.recover_after_expedition()): every hero is brought
+## up to at least this. A win is a free night at the inn instead - a full heal.
+## Also what SaveGame's v4 -> v5 migration applies to a night-owed save.
+const RECOVERY_HP_FRACTION := 0.5
 
-# --- [day-night] The night (day/night spec §3, §6) -------------------------
-## The night's fade-to-black - the "time passed" beat, and the scene change
-## home (§4.2). Long on purpose: the only place in the game where the screen is
-## deliberately empty, and what stops the loop reading as "quest, quest, quest".
-const NIGHT_FADE_OUT := 1.5
-## Coming back is not the same beat as leaving, and 1.5 s of waiting to see a
-## town you have already seen is dead time. Half, and no more.
-const NIGHT_FADE_IN := 0.75
-
-## NightResult's bar choreography (§5.2). Hold, then fill, staggered per hero.
-const NIGHT_BAR_HOLD := 0.35
-const NIGHT_BAR_FILL := 0.9
-const NIGHT_BAR_STAGGER := 0.12
-
-# --- [day-night] The meal (day/night spec §9) ----------------------------------
+# --- [inn & recovery] The meal --------------------------------------------------
 ## Percent added to every hero's damage for one expedition. A round number on
 ## purpose: the player is told "+10% damage" and that is exactly what the
 ## multiplier does - no hidden diminishing curve, no per-class variation.
 const MEAL_DAMAGE_PCT := 10
-## Per hero, like the bed. 30 against the bed's 50: a night and a meal together
-## are 80 G of the easy quest's 200 G reward, so a fed, rested run of the
-## cheapest quest still profits - but not by much, and not on a loss (§9.2).
+## Per hero, against the bed's flat INN_NIGHT_COST. One meal per quest
+## (GameState.buy_meal()), spent when the quest ends, won or lost.
 const MEAL_COST_PER_HERO := 30
 
 # --- [town] The forge (spec 11) ----------------------------------------------
@@ -597,6 +579,11 @@ const C_GEM_BRIGHT := Color("9FB8FF")        # their lit facet
 const C_PARCHMENT := Color("C7C4B5")
 const C_PARCHMENT_SHADE := Color("A4A294")  # lower half of the card's gradient
 const C_TEXT_GOLD := Color("EFD694")        # headings and numerals on dark stone (AA-large on the lit panel)
+## [mayor notice board] Ink for type ON parchment (quest_notice.tscn, the
+## mayor's notice sheet), where C_TEXT_DIM and C_DANGER are both too light.
+## C_INK is the primary ink; these are its secondary and warning steps.
+const C_INK_DIM := Color("4A3D2A")          # blurbs, notes - ~5:1 on C_PARCHMENT
+const C_DANGER_INK := Color("A8262D")       # C_DANGER darkened: underlevelled - ~4:1 on C_PARCHMENT
 
 # --- 6.1e Reliquary (modal chrome) [scoped exception] -----------------------
 ## The modal layer ONLY. Opening a popup should feel like opening a warded

@@ -1,31 +1,45 @@
 extends Control
-## [town] The mayor's office (spec 7.5). One button per QuestDef - the three
-## hand-authored quests in res://resources/quests/, ordered by level_range.x
-## rather than a hardcoded id list, followed by the generated board
-## (GameState.quest_board_offers(), content phase 1 spec §3 Step 3) - each
-## showing name, blurb, encounter count and gold reward. Pressing one calls
-## GameState.start_expedition(quest), saves the profile (spec 2.4's "When to
-## save" names this caller), and routes to Place.QUEST.
+## [town] The mayor's office (spec 7.5), laid out as a notice board (mayor
+## notice board redesign). Two sections, both inside one ScrollContainer so a
+## bigger board scrolls instead of pushing the title under the HUD:
+##   - Today's Postings: GameState.quest_board_offers() (content phase 1 spec
+##     §3 Step 3) as parchment QuestNotices in a two-column grid. The DawnSlip
+##     fills the odd cell and says when the board turns over.
+##   - Standing Contracts: every QuestDef in res://resources/quests/, ordered by
+##     level_range.x rather than a hardcoded id list, as QuestPlaques.
+## Pressing either opens the NoticeSheet (quest_notice_sheet.gd). Its "Take the
+## notice" calls GameState.start_expedition(quest), saves the profile (spec
+## 2.4's "When to save" names this caller), and routes to Place.QUEST.
 ##
 ## A quest is always available - no cooldown, no lockout, no prerequisite.
 ## Difficulty is the gate (spec 7.5). A generated quest follows the same rule
 ## for as long as it is offered: taking or finishing it does not remove it.
-## The generated board as a whole rerolls each new day (GameState.resolve_night(),
-## content-phase-1 questions doc Q7); the three authored quests never change.
+## The generated board as a whole refreshes after every finished quest and every
+## inn night (GameState.refresh_quest_board()); the authored quests never change.
 ##
 ## The background (assets/mayor-bg.png) and its darkening Vignette scrim are
 ## authored in mayor_office.tscn - the Meshy art pass, spec 12.1 (step 11).
 
 const QUEST_DIR := "res://resources/quests/"
+const NOTICE_SCENE := preload("res://scenes/town/quest_notice.tscn")
+const PLAQUE_SCENE := preload("res://scenes/town/quest_plaque.tscn")
+## Hand-picked tilts, cycled by grid position. Fixed rather than rolled, so the
+## board does not rearrange itself on every visit.
+const NOTICE_TILTS: Array[float] = [-1.4, 1.1, 0.8, -0.9]
 
-@onready var _quest_list: VBoxContainer = $Layout/QuestList
+@onready var _today_grid: GridContainer = $Layout/Scroll/Body/Board/Inner/TodayGrid
+@onready var _dawn_slip: PanelContainer = $Layout/Scroll/Body/Board/Inner/TodayGrid/DawnSlip
+@onready var _dawn_label: Label = $Layout/Scroll/Body/Board/Inner/TodayGrid/DawnSlip/Label
+@onready var _standing_list: VBoxContainer = $Layout/Scroll/Body/StandingList
 @onready var _back_button: Button = $Layout/BackButton
 @onready var _fed_line: Label = $Layout/FedLine
+@onready var _sheet: QuestNoticeSheet = $NoticeSheet
 
 func _ready() -> void:
 	# spec 3.1: re-assert our own place for direct launches (F5, play_scene).
 	SceneRouter.place = SceneRouter.Place.MAYOR
 	_back_button.pressed.connect(SceneRouter.go.bind(SceneRouter.Place.TOWN))
+	_sheet.accepted.connect(_accept)
 	_populate()
 	# [day-night] §9.6.2: the meal is bought before the quest choice and spent
 	# after it - this line is the only thing joining those two moments, so it is
@@ -33,67 +47,49 @@ func _ready() -> void:
 	_fed_line.visible = GameState.meal_pct > 0
 	if _fed_line.visible:
 		_fed_line.text = "The party is well fed. +%d%% damage." % GameState.meal_pct
-	# [day-night] §2.3: grey the quest buttons while a night is owed, on the same
-	# affordability pattern inn.gd uses. _accept()'s guard is the real lock; this
-	# is so a locked button reads as locked rather than silently inert.
-	if GameState.day_phase != GameState.DayPhase.DAY:
-		for b: Button in _quest_list.get_children():
-			b.disabled = true
-			b.modulate = Color(0.68, 0.65, 0.6, 1.0)
 
-## ui_cancel (and therefore Android's back gesture) routes home (spec 7.1).
+## ui_cancel (and therefore Android's back gesture) closes an open notice
+## first, and otherwise routes home (spec 7.1).
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("ui_cancel"):
-		SceneRouter.go(SceneRouter.Place.TOWN)
+		if _sheet.visible:
+			_sheet.close()
+		else:
+			SceneRouter.go(SceneRouter.Place.TOWN)
 		get_viewport().set_input_as_handled()
 
 func _populate() -> void:
-	for q: QuestDef in _load_quests():
-		var button := Button.new()
-		button.custom_minimum_size = Vector2(0, 210)
-		button.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		# [phase 0] type ramp M step; the levels readout below adds a third and
-		# sometimes fourth line, so this button is the one most at risk of
-		# overflowing its 210px floor - see the Phase 0 verification handoff.
-		button.add_theme_font_size_override("font_size", 54)
-		# [levels] spec §2.6: name the band so a player can read difficulty off
-		# the number, not just the tier label. Underlevelled is a warning, never
-		# a lock - difficulty is the gate (this file's own header), so the
-		# button stays enabled and only tints.
-		var underlevelled: bool = GameState.hero_level() < q.level_range.x
-		# [content phase 1] Reward extras (D2 / spec §3 Step 1b) render as an
-		# extra "+ ..." clause after the gold figure. Empty on every quest this
-		# phase ships (QuestRewardExtra's header), so this is normally a no-op.
-		var extra_bits: PackedStringArray = []
-		for extra: QuestRewardExtra in q.reward_extras:
-			var text := extra.describe()
-			if not text.is_empty():
-				extra_bits.append(text)
-		var extras_suffix := ("  ·  +" + " +".join(extra_bits)) if not extra_bits.is_empty() else ""
-		button.text = "%s\n%s\nLv. %d–%d  ·  %d encounters  ·  %d gold%s%s" % [
-			q.display_name, q.blurb, q.level_range.x, q.level_range.y,
-			q.encounter_types.size(), q.gold_reward, extras_suffix,
-			"\n— you are underlevelled" if underlevelled else "",
-		]
-		if underlevelled:
-			button.add_theme_color_override("font_color", Tuning.C_DANGER)
-		button.pressed.connect(_accept.bind(q))
-		_quest_list.add_child(button)
+	# [levels] spec §2.6: underlevelled is read off the band here, once, and
+	# only ever tints - difficulty is the gate (this file's own header).
+	var hero := GameState.hero_level()
+	var offers := GameState.quest_board_offers()
+	for i: int in range(offers.size()):
+		var q: QuestDef = offers[i]
+		var notice: QuestNotice = NOTICE_SCENE.instantiate()
+		_today_grid.add_child(notice)
+		_today_grid.move_child(notice, _dawn_slip.get_index())
+		notice.tilt_degrees = NOTICE_TILTS[i % NOTICE_TILTS.size()]
+		notice.setup(q, hero < q.level_range.x)
+		notice.chosen.connect(_open_sheet.bind(false))
+	# The slip only ever fills a gap: the odd cell, or the whole board when
+	# QuestGenerator found no template (generate_board()'s empty return).
+	_dawn_slip.visible = offers.is_empty() or offers.size() % 2 == 1
+	if offers.is_empty():
+		_dawn_label.text = "No notices today. Fresh ones go up at dawn."
+
+	for q: QuestDef in _load_authored_quests():
+		var plaque: QuestPlaque = PLAQUE_SCENE.instantiate()
+		_standing_list.add_child(plaque)
+		plaque.setup(q, hero)
+		plaque.chosen.connect(_open_sheet.bind(true))
+
+func _open_sheet(q: QuestDef, standing: bool) -> void:
+	_sheet.open(q, standing, GameState.hero_level())
 
 func _accept(q: QuestDef) -> void:
-	# [day-night] §2.3: one quest per day. Unreachable through the UI (§9.6's
-	# disabled state covers that); this guards a corrupt save and a debug command
-	# that reach _accept() while a night is still owed.
-	if GameState.day_phase != GameState.DayPhase.DAY:
-		return
 	GameState.start_expedition(q)
 	SaveGame.save_profile()
 	SceneRouter.go(SceneRouter.Place.QUEST)
-
-func _load_quests() -> Array[QuestDef]:
-	var out: Array[QuestDef] = _load_authored_quests()
-	out.append_array(GameState.quest_board_offers())
-	return out
 
 ## Every QuestDef in res://resources/quests/, sorted by level_range.x - the
 ## data that already exists to express "easy comes before hard", rather than

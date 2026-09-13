@@ -1,0 +1,7 @@
+[gd_resource type="Resource" script_class="ClearEncountersObjective" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/objectives/clear_encounters_objective.gd" id="1_ceo"]
+
+[resource]
+script = ExtResource("1_ceo")
+description = "Fight through to the far end of the road."

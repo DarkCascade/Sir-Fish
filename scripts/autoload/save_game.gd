@@ -41,21 +41,28 @@ const PATH := "user://profile.save"
 ## ENHANCED - a found item silently becoming a rarity that can never be rolled.
 ## Same trigger again; the gate discards v3 saves and boot falls back to
 ## new_profile().
-const VERSION := 4
+##
+## [inn & recovery] Bumped 4 -> 5: the day/night cycle is gone. Its three keys
+## would merely be ignored, but a v4 save written with a night still owed
+## (day_phase NIGHT_PENDING) holds a party that never got its post-quest
+## recovery - downed heroes at 0 HP beside an old quest board - and nothing
+## would ever apply it now. _migrate_4_to_5() does, the first real migration.
+const VERSION := 5
 
 ## [content phase 0] Version -> the name of the function that migrates a
 ## payload FROM that version up to the next one, mutating and returning the
-## dict (spec §3 Step 5 / §2.8). Empty today - VERSION has not moved past 4
-## in this pass - but the chain is the deliverable: load_profile() walks it
-## below instead of discarding every save that isn't an exact match, so the
-## next bump needs one migration function and one entry here, not a rejected
-## player file. A version with no entry (and no exact match) still falls back
-## to new_profile(), same as before.
+## dict (spec §3 Step 5 / §2.8). load_profile() walks it below instead of
+## discarding every save that isn't an exact match, so a bump needs one
+## migration function and one entry here, not a rejected player file. A
+## version with no entry (and no exact match) still falls back to
+## new_profile(), same as before - which is what v1-v3 saves still do.
 ##
 ## A migration function does NOT set "version" - migrate() advances it after
 ## every step. test_profile_save.gd's S7 asserts every entry here names a real
 ## method, so a typo fails the suite rather than a player's first launch.
-const MIGRATIONS := {}
+const MIGRATIONS := {
+	4: "_migrate_4_to_5",
+}
 
 ## Walks payload `d` from its own "version" up to `target`, one step per
 ## version. `steps` maps a version to a Callable taking that version's payload
@@ -69,7 +76,7 @@ const MIGRATIONS := {}
 ## it re-ran the same step forever - a hang at boot, not a rejected save.
 ##
 ## Takes `steps` rather than reading MIGRATIONS so S7 can drive it with
-## stand-in steps while the real table is still empty.
+## stand-in steps as well as the real table.
 func migrate(d: Dictionary, target: int, steps: Dictionary) -> Variant:
 	var version: int = int(d.get("version", 0))
 	if version > target:
@@ -92,6 +99,29 @@ func _migration_steps() -> Dictionary:
 		steps[v] = Callable(self, StringName(MIGRATIONS[v]))
 	return steps
 
+## [inn & recovery] v4 -> v5 (see VERSION). Drops day_phase, day_number and
+## meal_eaten_today. A save written with a night still owed also gets the
+## recovery it never received: every hero up to at least RECOVERY_HP_FRACTION of
+## max HP, and a fresh board. That is the wipe rule, the less generous of the
+## two endings - the save does not record which ending it was, so it cannot
+## award a victory's free night.
+## A save written mid-quest (the old QUEST phase) needs nothing: the quest
+## itself was never saved, so it already loads as a party standing in town.
+func _migrate_4_to_5(d: Dictionary) -> Dictionary:
+	const NIGHT_PENDING := 2   # the retired GameState.DayPhase value
+	if int(d.get("day_phase", 0)) == NIGHT_PENDING:
+		for entry: Variant in d.get("heroes", []):
+			var e := entry as Dictionary
+			var floor_hp: int = ceili(float(int(e.get("max_hp", 0))) * Tuning.RECOVERY_HP_FRACTION)
+			e["current_hp"] = maxi(int(e.get("current_hp", 0)), floor_hp)
+			e["alive"] = int(e["current_hp"]) > 0
+		d["quest_board"] = []
+		d["quest_board_generated"] = false
+	d.erase("day_phase")
+	d.erase("day_number")
+	d.erase("meal_eaten_today")
+	return d
+
 ## Every profile mutation in town saves (spec 2.4's "When to save" list); this
 ## is also called from GameState.new_profile(), from start_expedition() and the
 ## result-banking flow (later steps), and from _notification() below.
@@ -105,14 +135,8 @@ func save_profile() -> void:
 		"gold": GameState.gold,
 		"scrap": GameState.scrap,
 		"active_party": GameState.active_party,
-		# [day-night] four additive keys, no VERSION bump (town spec §2.4:
-		# bump on a meaning change, never merely to add a key). A save written
-		# before this pass loads with all four at their defaults, which is right
-		# - it could only ever have been written in town, unfed, no night owed.
-		"day_phase": int(GameState.day_phase),
-		"day_number": GameState.day_number,
+		# [inn & recovery] An unspent meal survives a quit (GameState.meal_pct).
 		"meal_pct": GameState.meal_pct,
-		"meal_eaten_today": GameState.meal_eaten_today,
 		"heroes": GameState.hero_runtime,
 		"inventory": GameState.inventory.map(func(i: Item) -> Dictionary: return i.to_dict()),
 		# [town] spec 7.4: the blacksmith's cached stock. Joins the dict here, at
@@ -172,24 +196,7 @@ func load_profile() -> bool:
 	if not party.is_empty():
 		GameState.active_party = party
 
-	# [day-night] §8.1: all four default to a legacy save's only possible state.
-	GameState.day_phase = int(d.get("day_phase", GameState.DayPhase.DAY)) as GameState.DayPhase
-	# A QUEST-phase profile on disk is an interrupted expedition: mayor_office
-	# ._accept() persists DAY -> QUEST before main.tscn loads (town §2.4), and a
-	# quit or crash before RunController reaches T2 (QUEST -> NIGHT_PENDING)
-	# leaves that state saved with no run scene to resume into. §8.2's resume
-	# only re-presents NIGHT_PENDING, so a QUEST load would strand the player in
-	# town behind the mayor's §2.3 guard with every quest locked and no night to
-	# pass - the exact soft-lock §10.4 guards the endless path against, reached
-	# by a real quest instead. Normalise to DAY and drop the dangling quest: the
-	# interrupted day simply did not happen.
-	if GameState.day_phase == GameState.DayPhase.QUEST:
-		push_warning("load_profile(): QUEST-phase profile (interrupted expedition) - recovering to DAY")
-		GameState.day_phase = GameState.DayPhase.DAY
-		GameState.quest = null
-	GameState.day_number = int(d.get("day_number", 1))
 	GameState.meal_pct = int(d.get("meal_pct", 0))
-	GameState.meal_eaten_today = bool(d.get("meal_eaten_today", false))
 
 	var heroes: Array = []
 	for entry: Variant in d.get("heroes", []):

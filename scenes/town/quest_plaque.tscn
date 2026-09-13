@@ -1,0 +1,57 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/town/quest_plaque.gd" id="1_plaque"]
+[ext_resource type="Texture2D" path="res://assets/icons/slot_gold.png" id="2_coin"]
+
+; [mayor notice board] The theme's own Button look (teal fill, 8px gold edge) -
+; no style overrides. The Row is anchored rather than laid out because a Button
+; is not a Container: its left/right offsets are the 8px border plus 28px inset.
+[node name="QuestPlaque" type="Button"]
+custom_minimum_size = Vector2(0, 118)
+script = ExtResource("1_plaque")
+
+[node name="Row" type="HBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 36.0
+offset_right = -36.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/separation = 12
+
+[node name="Text" type="VBoxContainer" parent="Row"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+theme_override_constants/separation = 0
+alignment = 1
+
+[node name="Name" type="Label" parent="Row/Text"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 48
+text = "The Shallow Wood"
+text_overrun_behavior = 3
+
+[node name="Sub" type="Label" parent="Row/Text"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.709804, 0.823529, 0.784314, 1)
+theme_override_font_sizes/font_size = 34
+text = "Lv 1–5  ·  5 encounters"
+
+[node name="Coin" type="TextureRect" parent="Row"]
+custom_minimum_size = Vector2(40, 40)
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+texture = ExtResource("2_coin")
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Gold" type="Label" parent="Row"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.847059, 0.686275, 0.321569, 1)
+theme_override_font_sizes/font_size = 48
+text = "200"

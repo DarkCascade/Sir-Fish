@@ -348,10 +348,11 @@ func _run_complete() -> void:
 			extra.grant()
 		GameState.completed_quest = q
 		GameState.quest = null
-		# [day-night] T2: QUEST -> NIGHT_PENDING, win or loss (day/night spec
-		# §2.2). meal_pct is spent HERE - the expedition it paid for is over.
-		GameState.day_phase = GameState.DayPhase.NIGHT_PENDING
-		GameState.meal_pct = 0
+		# [inn & recovery] Coming home from a win: the town stands the party a
+		# free night at the inn (a full heal), the meal is spent and the mayor's
+		# board refreshes - all before the save, so a quit on the result screen
+		# keeps it.
+		GameState.recover_after_expedition(true)
 		SaveGame.save_profile()
 		EventBus.quest_finished.emit(true)
 		return
@@ -377,10 +378,9 @@ func _game_over() -> void:
 		GameState.discard_expedition_loot()
 		GameState.completed_quest = GameState.quest
 		GameState.quest = null
-		# [day-night] T2: QUEST -> NIGHT_PENDING on a loss too (day/night spec
-		# §2.2). A lost quest still eats the meal it was bought for.
-		GameState.day_phase = GameState.DayPhase.NIGHT_PENDING
-		GameState.meal_pct = 0
+		# [inn & recovery] A wipe still gets the party home: every hero up to at
+		# least half HP, the meal spent, the mayor's board refreshed.
+		GameState.recover_after_expedition(false)
 		SaveGame.save_profile()
 		EventBus.quest_finished.emit(false)
 		return
@@ -390,9 +390,9 @@ func _game_over() -> void:
 # --- retry (spec 18.3) ------------------------------------------------------
 
 func _on_retry() -> void:
-	# [day-night] The quest path's QuestResult dismissal is consumed by
-	# NightModal (day/night spec §4.2), not by a retry - completed_quest is
-	# non-null exactly then. Only the endless / fixed dev path retries here.
+	# The quest path's QuestResult dismissal routes home (quest_result.gd), not
+	# into a retry - completed_quest is non-null exactly then. Only the endless /
+	# fixed dev path retries here.
 	if GameState.completed_quest != null:
 		return
 	director.stop_combat()

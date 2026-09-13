@@ -130,29 +130,30 @@ func _check_board_caching(t: TestSupport) -> void:
 	var second := GameState.quest_board_offers()
 	t.check(second == first, "a second quest_board_offers() call returns the SAME cached array, not a reroll")
 
-	# [content phase 1] The board rerolls once per day (questions doc Q7):
-	# resolve_night() drops it and the next visit generates a fresh one. A night
-	# that does not resolve (an unaffordable inn) must leave it alone.
+	# [inn & recovery] The board refreshes after every inn night and every
+	# finished quest: refresh_quest_board() drops it and the next visit generates
+	# a fresh one. A night the party cannot pay for must leave it alone.
 	var first_ids: Array[StringName] = []
 	for q: QuestDef in first:
 		first_ids.append(q.id)
-	GameState.day_phase = GameState.DayPhase.NIGHT_PENDING
 	GameState.gold = 0
-	t.check(GameState.resolve_night(GameState.NightChoice.INN).is_empty(),
-		"an unaffordable inn night does not resolve")
+	t.check(not GameState.rest_at_inn(), "an unaffordable inn night does not happen")
 	t.check(GameState.quest_board_generated and GameState.quest_board_offers() == first,
-		"a night that does not resolve leaves the board alone")
-	t.check(not GameState.resolve_night(GameState.NightChoice.STREET).is_empty(),
-		"a street night resolves")
+		"a night that does not happen leaves the board alone")
+	GameState.gold = Tuning.INN_NIGHT_COST
+	t.check(GameState.rest_at_inn(), "a paid inn night happens")
 	t.check(not GameState.quest_board_generated and GameState.quest_board.is_empty(),
-		"resolve_night() drops the board so the new day regenerates it")
-	var next_day := GameState.quest_board_offers()
+		"an inn night drops the board so the next visit regenerates it")
+	var next_board := GameState.quest_board_offers()
 	var overlap := false
-	for q: QuestDef in next_day:
+	for q: QuestDef in next_board:
 		if q.id in first_ids:
 			overlap = true
-	t.check(next_day.size() == Tuning.QUEST_BOARD_SIZE and not overlap,
-		"the next day's board is a fresh roll, not yesterday's quests")
+	t.check(next_board.size() == Tuning.QUEST_BOARD_SIZE and not overlap,
+		"the refreshed board is a fresh roll, not the previous quests")
+	GameState.recover_after_expedition(true)
+	t.check(not GameState.quest_board_generated and GameState.quest_board.is_empty(),
+		"finishing a quest drops the board too")
 
 func _check_persistence(t: TestSupport) -> void:
 	GameState.new_profile()

@@ -3,19 +3,19 @@ extends Control
 ## at step 5 and reparented into Hud/ModalLayer so it can present over a town
 ## scene it was never a child of.
 ##
-## Step 8 wired the quest flow; the day/night pass (§4.2, §7.2) simplified it.
 ## Three modes:
 ##   - RETRY   - endless / fixed dev path. One "RETRY" button; `dismissed` is
 ##               what RunController._on_retry binds.
-##   - VICTORY / FAILURE - a quest ended, won or lost. They now differ ONLY in
-##               heading, subtitle and stat rows - both show one "Make camp"
-##               button and dismiss into NightModal, which owns the night
-##               choice (day/night spec §4). No routing from here any more: the
-##               stats screen shows over the battlefield tableau, and the
-##               night's 1.5 s fade is the route home.
+##   - VICTORY / FAILURE - a quest ended, won or lost. They differ only in
+##               heading, subtitle and stat rows - both show one "Return to
+##               Town" button that routes home. RunController has already
+##               applied the party's recovery (GameState.recover_after_expedition())
+##               and saved by the time this screen appears, so dismissing it
+##               only moves the player.
 ##
 ## present() is driven HERE, off EventBus.quest_finished, not from RunController,
-## because it must outlive main.tscn (spec 8.5) - but it no longer routes first.
+## because it must outlive main.tscn (spec 8.5): the stats show over the
+## battlefield tableau, and the route home happens on dismiss.
 ##
 ## [move-elements-to-editor] The whole screen is authored in quest_result.tscn -
 ## Sir Fish at the top and one named row per statistic, each carrying its caption
@@ -44,8 +44,7 @@ func _ready() -> void:
 	EventBus.quest_finished.connect(_on_quest_finished)
 	hide()
 
-## [day-night] §4.2: present over the battlefield tableau - NO route first.
-## NightModal takes over when this dismisses.
+## Present over the battlefield tableau - NO route first. _dismiss() routes home.
 func _on_quest_finished(victory: bool) -> void:
 	present(victory)
 
@@ -87,7 +86,10 @@ func _apply_heading(is_quest: bool) -> void:
 		# failure line takes the same "%s — ..." shape as the victory one rather
 		# than prefixing a second article.
 		var qname: String = GameState.completed_quest.display_name
-		subtitle.text = ("%s — the road home" % qname) if _victory \
+		# [inn & recovery] A win's free night at the inn (GameState.
+		# recover_after_expedition()) is named here, or the full heal on the
+		# way home reads as a bug.
+		subtitle.text = ("%s — the town stands you a night at the inn" % qname) if _victory \
 			else ("%s — the expedition is lost" % qname)
 		return
 
@@ -103,10 +105,7 @@ func _apply_heading(is_quest: bool) -> void:
 			subtitle.text = "Reached encounter %d of %d" % \
 				[shown_index, GameState.level.encounters.size()]
 
-## RETRY -> "RETRY". VICTORY -> "Make camp"; FAILURE -> "Return to Town" - same
-## wording difference the two modes already had everywhere else (heading,
-## subtitle), just not here. Both still dismiss into NightModal (day/night spec
-## §7.2) - only the label changes, not the destination. SecondaryButton is
+## RETRY -> "RETRY"; VICTORY and FAILURE -> "Return to Town". SecondaryButton is
 ## hidden in all three modes - it stays in the scene as authored chrome for the
 ## next two-button modal.
 func _configure_buttons() -> void:
@@ -117,20 +116,22 @@ func _configure_buttons() -> void:
 	match _mode:
 		Mode.RETRY:
 			primary_button.text = "RETRY"
-		Mode.VICTORY:
-			primary_button.text = "Make camp"
-		Mode.FAILURE:
+		Mode.VICTORY, Mode.FAILURE:
 			primary_button.text = "Return to Town"
 
 func _on_primary_pressed() -> void:
 	_dismiss()
 
 func _on_secondary_pressed() -> void:
-	pass   # SecondaryButton is hidden in every mode (§7.2); kept for the future.
+	pass   # SecondaryButton is hidden in every mode; kept for the future.
 
+## A quest ending routes home; RETRY stays on the battlefield for
+## RunController._on_retry, which listens to `dismissed`.
 func _dismiss() -> void:
 	hide()
 	dismissed.emit()
+	if _mode != Mode.RETRY:
+		SceneRouter.go(SceneRouter.Place.TOWN)
 
 ## Fills in the authored rows and plays them in one at a time. The three quest
 ## rows (QuestReward / ExpeditionGold / ExpeditionScrap) are shown only on a
