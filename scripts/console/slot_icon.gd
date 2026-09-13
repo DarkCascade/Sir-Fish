@@ -167,8 +167,9 @@ static func chip_texture(id: StringName) -> Texture2D:
 
 ## [slot ui phase 3] The board's own glyph art (assets/ui/slot/glyph_*.png):
 ## transparent gold emblems that SlotSymbol draws on a procedural tile. Kept
-## apart from chip_path() on purpose - the item cards, compare flyout, item rows
-## and party modal still draw the reliquary chips. An id with no glyph on disk
+## apart from chip_path() on purpose - the item cards, compare flyout and item
+## rows still draw the reliquary chips (the party modal and the board use these).
+## An id with no glyph on disk
 ## yet returns null, and SlotSymbol falls back to its chip, so the set can land
 ## one file at a time. Innate and base ids share their nearest glyph, as chips do;
 ## BASE_TRINKET gets its own key, since borrowing the lightning art made a

@@ -1,0 +1,21 @@
+[gd_resource type="StyleBoxFlat" format=3]
+
+; [slot ui phase 3] The plum, gold-rimmed tile every slot icon sits on. Shared by
+; the reel cell (scenes/console/slot_symbol.tscn's tile_style) and the party
+; modal's reel-icon chips (party_modal.gd), so an icon reads as the same object
+; in both places. Tune it here once.
+
+[resource]
+bg_color = Color(0.227451, 0.101961, 0.258824, 1)
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
+border_color = Color(0.847059, 0.686275, 0.321569, 1)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+shadow_color = Color(0, 0, 0, 0.45)
+shadow_size = 6
+shadow_offset = Vector2(0, 3)
