@@ -80,10 +80,15 @@ corner_radius_top_right = 16
 corner_radius_bottom_right = 16
 corner_radius_bottom_left = 16
 
+; size_flags_horizontal = 3 (expand) is what gives the board's two columns an
+; even split: GridContainer only divides spare width among expanding children,
+; and the DawnSlip expands - without this every notice in the other column
+; collapses to zero width.
 [node name="QuestNotice" type="Control"]
 custom_minimum_size = Vector2(0, 300)
 layout_mode = 3
 anchors_preset = 0
+size_flags_horizontal = 3
 mouse_filter = 2
 script = ExtResource("1_notice")
 
