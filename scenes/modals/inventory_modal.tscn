@@ -5,6 +5,7 @@
 [ext_resource type="FontFile" uid="uid://bv5mowftmyw06" path="res://assets/fonts/Crimson-Bold.ttf" id="3_jnyau"]
 [ext_resource type="Shader" uid="uid://bdysf21ort1yh" path="res://assets/shaders/reliquary_mist.gdshader" id="4_mist"]
 [ext_resource type="PackedScene" path="res://scenes/modals/reliquary_frame.tscn" id="5_frame"]
+[ext_resource type="Texture2D" uid="uid://c8m2rq5uawpsy" path="res://assets/Planks012_1K-JPG_Color.jpg" id="6_wood"]
 
 [sub_resource type="ShaderMaterial" id="mist_mat"]
 shader = ExtResource("4_mist")
@@ -78,6 +79,17 @@ offset_right = 1020.0
 offset_bottom = 1620.0
 pivot_offset = Vector2(480, 660)
 theme_override_styles/panel = SubResource("rel_panel")
+
+[node name="Grain" type="TextureRect" parent="Panel" unique_id=1052034881]
+visible = false
+self_modulate = Color(0.42, 0.38, 0.44, 1)
+show_behind_parent = true
+layout_mode = 2
+offset_transform_enabled = true
+offset_transform_scale = Vector2(1.17, 1.07)
+mouse_filter = 2
+texture = ExtResource("6_wood")
+expand_mode = 1
 
 [node name="Layout" type="VBoxContainer" parent="Panel" unique_id=504721368]
 layout_mode = 2

@@ -1,0 +1,96 @@
+extends RefCounted
+## [biome-frames] Which environment "skin" the reliquary chrome (the crystal
+## corner ornament and the item-card border) should wear right now. Static and
+## stateless, the same shape as item_card_style.gd and item_card_actions.gd
+## beside it.
+##
+## The crystal at each corner is the one constant across every skin - it is the
+## reliquary's own motif, not the environment's - and only what SURROUNDS it
+## (vine, plank-and-fieldstone, brass-and-velvet, black glass) changes. See
+## `design documents/reference/biome_frames/` for the mockups this was built
+## from.
+##
+## Town's Hearthwood art is the only skin drawn so far (2026-09-13); every
+## other biome() branch below falls through to &"expedition" - i.e. the
+## original gold vine - until Shop and Boss get their own art. There is no
+## Place.SHOP / Place.BOSS in SceneRouter: a shop is a modal opened from inside
+## a Place, not a Place of its own, and a boss fight is a QUEST whose encounter
+## happens to be a boss. Both need a caller-supplied override (see
+## `for_shop()` / `for_boss()`) rather than a SceneRouter reading, once their
+## art exists.
+
+## SceneRouter.Place -> biome id. Every indoor town scene reads as the same
+## warm hearthwood interior; only QUEST (the overworld path and its battles)
+## is the cooler outdoor default.
+const _PLACE_BIOME := {
+	SceneRouter.Place.TOWN:       &"town",
+	SceneRouter.Place.INN:        &"town",
+	SceneRouter.Place.BLACKSMITH: &"town",
+	SceneRouter.Place.MAYOR:      &"town",
+	SceneRouter.Place.QUEST:      &"expedition",
+}
+
+const _CARD_FRAME := {
+	&"town": "res://assets/ui/reliquary/card_frame_town.png",
+}
+const _CORNER := {
+	&"town": "res://assets/ui/reliquary/frame_corner_town.png",
+}
+const _DEFAULT_CARD_FRAME := "res://assets/ui/reliquary/card_frame.png"
+const _DEFAULT_CORNER := "res://assets/ui/reliquary/frame_corner.png"
+
+## Full-panel backdrops (inventory, party status). Unlike the card frame and
+## corner, which always have SOME art (the vine default), a biome with no entry
+## here just keeps its modal's plain flat fill - there is no default plank/
+## stone/brass/glass texture to fall back to. CC0 (ambientCG), same convention
+## as Wood060/Paper002 in mayor_office.tscn: the raw diffuse map, darkened by
+## self_modulate on the TextureRect rather than pre-processing the file.
+const _PANEL_BG := {
+	&"town": "res://assets/Planks012_1K-JPG_Color.jpg",
+}
+
+## SceneRouter.place, translated to a biome id. Reads live off the router
+## rather than being cached, so a caller's _ready() always sees the place it
+## routed INTO (spec 3.1's go() sets `place` before the fade-in finishes).
+static func biome() -> StringName:
+	return _PLACE_BIOME.get(SceneRouter.place, &"expedition")
+
+## The item-card nine-patch border (card_frame.png and its skins) for the
+## current biome, or an explicit `override` (for a shop modal or a boss
+## encounter, neither of which SceneRouter tracks as a Place - see header).
+static func card_frame(override: StringName = &"") -> Texture2D:
+	var id := override if override != &"" else biome()
+	return load(_CARD_FRAME.get(id, _DEFAULT_CARD_FRAME))
+
+## The crystal corner ornament (frame_corner.png and its skins) for the
+## current biome, or an explicit `override`.
+static func frame_corner(override: StringName = &"") -> Texture2D:
+	var id := override if override != &"" else biome()
+	return load(_CORNER.get(id, _DEFAULT_CORNER))
+
+## The full-panel backdrop texture for the current biome, or null if that
+## biome has no backdrop art (see _PANEL_BG).
+static func panel_background(override: StringName = &"") -> Texture2D:
+	var id := override if override != &"" else biome()
+	var path: String = _PANEL_BG.get(id, "")
+	return load(path) if not path.is_empty() else null
+
+## Wires a modal's Panel + its backing "Grain" TextureRect (show_behind_parent,
+## drawn under Panel's own border - see inventory_modal.tscn) to the current
+## biome's backdrop. A biome with no backdrop art leaves both untouched: Grain
+## stays hidden and Panel keeps whatever flat fill the scene already gives it.
+##
+## The border-only swap is done here, on the LIVE stylebox, rather than
+## authoring a second "town" copy of the panel's border/radius/margin numbers
+## in every .tscn that calls this - one of those going stale under the other's
+## edits is exactly the drift item_card_actions.gd's header warns about.
+static func apply_panel_backdrop(panel: PanelContainer, grain: TextureRect,
+		override: StringName = &"") -> void:
+	var tex := panel_background(override)
+	grain.visible = tex != null
+	if tex == null:
+		return
+	grain.texture = tex
+	var style: StyleBoxFlat = panel.get_theme_stylebox("panel").duplicate()
+	style.draw_center = false
+	panel.add_theme_stylebox_override("panel", style)

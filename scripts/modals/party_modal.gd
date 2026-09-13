@@ -19,12 +19,16 @@ const SLOT_TILE := preload("res://resources/ui/slot_tile.tres")
 ## the tile (SlotSymbol.glyph_fraction), and 9 px either side is the same.
 const GLYPH_INSET := 9.0
 
+const BiomeTheme := preload("res://scripts/ui/biome_theme.gd")
+
 @onready var scrim: ColorRect = $Scrim
 @onready var panel: PanelContainer = $Panel
+@onready var grain: TextureRect = $Panel/Grain
 @onready var close_button: Button = $Panel/Layout/Header/CloseButton
 @onready var members: VBoxContainer = $Panel/Layout/Members
 
 func _ready() -> void:
+	BiomeTheme.apply_panel_backdrop(panel, grain)
 	close_button.pressed.connect(close)
 	hide()
 
