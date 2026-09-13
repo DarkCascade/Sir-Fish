@@ -12,8 +12,6 @@ class_name ResultFrame
 ## Banner label in _celebrate() (spec 16.4).
 
 const LINE_WIDTH := 2.0
-## [slot ui phase 3] Plum, matching the reel windows, not the old teal well.
-const FILL := Color(Tuning.C_PLUM)
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -22,6 +20,10 @@ func _ready() -> void:
 func _draw() -> void:
 	if size.x <= 0.0 or size.y <= 0.0:
 		return
-	draw_rect(Rect2(Vector2.ZERO, size), FILL)
+	# [rootwood-canopy] Rootwood brown, matching the cabinet face - not the reel
+	# windows' canopy green, which would fight the win text sitting on top of it.
+	# Read directly (not a script-level const) - Tuning.C_ROOTWOOD is not a
+	# constant expression to the compiler, only reachable from a function body.
+	draw_rect(Rect2(Vector2.ZERO, size), Tuning.C_ROOTWOOD)
 	draw_line(Vector2(0.0, 0.0), Vector2(size.x, 0.0), Tuning.C_GOLD_DARK, LINE_WIDTH)
 	draw_line(Vector2(0.0, size.y), Vector2(size.x, size.y), Tuning.C_GOLD_DARK, LINE_WIDTH)

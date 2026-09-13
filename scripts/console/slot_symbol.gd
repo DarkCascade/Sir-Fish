@@ -5,7 +5,7 @@ extends Control
 ## this cell, centred in a square that is a fixed fraction of the cell's shorter
 ## side. A blank cell draws nothing - the recessed reel window shows through.
 ##
-## [slot ui phase 3] The icon sits on a plum, gold-rimmed tile (`tile_style`), and
+## [rootwood-canopy] The icon sits on a rootwood, gold-rimmed tile (`tile_style`), and
 ## draws its board glyph (assets/ui/slot/glyph_*.png, see SlotIcon.board_glyph_path)
 ## untinted. An id with no glyph yet falls back to its tinted reliquary chip. A
 ## forged (Enhanced) icon gets a glowing rim, an innate one an amethyst inlay.
@@ -152,7 +152,7 @@ func _draw() -> void:
 		var at := Vector2(c.x, rect.position.y)
 		var r := box * 0.09
 		draw_colored_polygon(_diamond(at, r + 3.0), Tuning.C_GOLD)
-		draw_colored_polygon(_diamond(at, r), Tuning.C_PLUM_GEM)
+		draw_colored_polygon(_diamond(at, r), Tuning.C_ROOTWOOD_GEM)
 
 ## No board glyph for this id yet: the reliquary chip, tinted per element as the
 ## reel drew it before phase 3. The chips are opaque squares, so they are inset

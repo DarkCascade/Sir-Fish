@@ -1,11 +1,13 @@
 [gd_scene format=3]
 
 [ext_resource type="Script" path="res://scripts/console/slot_symbol.gd" id="1_sym"]
-[ext_resource type="StyleBox" path="res://resources/ui/slot_tile.tres" id="2_tile"]
+[ext_resource type="StyleBox" path="res://resources/ui/slot_tile_rootwood.tres" id="2_tile"]
 
-; [slot ui phase 3] tile_style is the plum, gold-rimmed tile every dealt icon sits
-; on. It lives in resources/ui/slot_tile.tres rather than here because the party
-; modal draws its reel-icon chips on the same tile. Blank cells draw no tile.
+; [rootwood-canopy] tile_style is the rootwood, gold-rimmed tile every dealt icon
+; sits on - the board's own permanent look, since it never renders outside a
+; quest. resources/ui/slot_tile.tres (plum) is the SAME shape, used instead by
+; the party modal's reel-icon chips when that modal is opened in town - see
+; party_modal.gd's SLOT_TILE_ROOTWOOD. Blank cells draw no tile.
 
 [node name="SlotSymbol" type="Control"]
 custom_minimum_size = Vector2(40, 40)

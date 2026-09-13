@@ -7,17 +7,20 @@
 [ext_resource type="Texture2D" uid="uid://hs61djh243gv" path="res://assets/ui/reliquary/card_frame.png" id="6_vines"]
 [ext_resource type="Texture2D" path="res://assets/icons/scrap.png" id="7_scrap"]
 
+; [rootwood-canopy] Rootwood brown, replacing "slot ui phase 3"'s plum for this
+; strip and the gold plate below it (Tuning.C_ROOTWOOD_VOID / C_ROOTWOOD). Gold
+; trim (the top border here) is unchanged.
 [sub_resource type="StyleBoxFlat" id="strip"]
 content_margin_left = 8.0
 content_margin_top = 8.0
 content_margin_right = 8.0
 content_margin_bottom = 8.0
-bg_color = Color(0.070588, 0.039216, 0.090196, 1)
+bg_color = Color(0.078431, 0.050980, 0.031373, 1)
 border_width_top = 3
 border_color = Color(0.478431, 0.352941, 0.094118, 1)
 
 [sub_resource type="StyleBoxFlat" id="plate_face"]
-bg_color = Color(0.121569, 0.054902, 0.141176, 1)
+bg_color = Color(0.180392, 0.125490, 0.074510, 1)
 corner_radius_top_left = 18
 corner_radius_top_right = 18
 corner_radius_bottom_right = 18
