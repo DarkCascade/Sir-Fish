@@ -55,9 +55,15 @@ func _check_generator(t: TestSupport) -> void:
 	var ok_boss_last := true
 	var ok_ids_resolve := true
 	var ok_objectives := true
+	var ok_level_range := true
 	const N := 40
 	for i: int in range(N):
-		var q := QuestGenerator.generate_board(1, area)[0]
+		var anchor: int = 1 + i % area.level_band.y
+		var q := QuestGenerator.generate_board(1, area, anchor)[0]
+		var r := q.level_range
+		if r.y - r.x + 1 != Tuning.QUEST_LEVEL_SPAN or r.x < area.level_band.x \
+				or r.y > area.level_band.y or r != QuestGenerator.level_range_for(area, anchor):
+			ok_level_range = false
 		if q.gold_reward <= 0:
 			ok_gold = false
 		if q.encounter_types.is_empty() or q.encounter_types[-1] != EncounterDef.Type.COMBAT:
@@ -74,12 +80,39 @@ func _check_generator(t: TestSupport) -> void:
 	t.check(ok_boss_last, "every generated quest's last encounter type is COMBAT (the boss slot)")
 	t.check(ok_ids_resolve, "every generated quest's enemy_pool/boss_pool ids resolve to real stats")
 	t.check(ok_objectives, "every generated quest carries at least one objective")
+	t.check(ok_level_range,
+		"every generated quest's level_range is QUEST_LEVEL_SPAN wide and inside the area band")
+
+	# [content phase 1] Q10: the range starts at the anchor (the party's level)
+	# and slides, clamped so it never leaves the area's band.
+	var band := area.level_band
+	var span := Tuning.QUEST_LEVEL_SPAN
+	var cases := [
+		[band.x, Vector2i(band.x, band.x + span - 1)],
+		[band.x + 1, Vector2i(band.x + 1, band.x + span)],
+		[band.x - 5, Vector2i(band.x, band.x + span - 1)],
+		[band.y - span + 1, Vector2i(band.y - span + 1, band.y)],
+		[band.y, Vector2i(band.y - span + 1, band.y)],
+		[band.y + 20, Vector2i(band.y - span + 1, band.y)],
+	]
+	for c: Array in cases:
+		var got_range := QuestGenerator.level_range_for(area, int(c[0]))
+		t.check(got_range == c[1], "level_range_for(anchor %d) -> %s (got %s)" % [c[0], c[1], got_range])
+
+	# The live board anchors on GameState.hero_level().
+	GameState.new_profile()
+	GameState.hero_levels[&"warrior"] = 7
+	var anchored := true
+	for bq: QuestDef in GameState.quest_board_offers():
+		if bq.level_range != QuestGenerator.level_range_for(area, 7):
+			anchored = false
+	t.check(anchored, "a level-7 party's board offers level %s quests" % [QuestGenerator.level_range_for(area, 7)])
 
 	# The generated LevelDef actually builds and honours the objectives/gold -
 	# a generated QuestDef is a plain QuestDef, so GameState.build_level()
 	# needs no special case for one (spec §3.1).
 	GameState.new_profile()
-	var q := QuestGenerator.generate_board(1, area)[0]
+	var q := QuestGenerator.generate_board(1, area, GameState.hero_level())[0]
 	GameState.start_expedition(q)
 	t.check(GameState.level != null and GameState.level.encounters.size() == q.encounter_types.size(),
 		"a generated quest builds a LevelDef with the right encounter count")
@@ -96,6 +129,30 @@ func _check_board_caching(t: TestSupport) -> void:
 			% [first.size(), Tuning.QUEST_BOARD_SIZE])
 	var second := GameState.quest_board_offers()
 	t.check(second == first, "a second quest_board_offers() call returns the SAME cached array, not a reroll")
+
+	# [content phase 1] The board rerolls once per day (questions doc Q7):
+	# resolve_night() drops it and the next visit generates a fresh one. A night
+	# that does not resolve (an unaffordable inn) must leave it alone.
+	var first_ids: Array[StringName] = []
+	for q: QuestDef in first:
+		first_ids.append(q.id)
+	GameState.day_phase = GameState.DayPhase.NIGHT_PENDING
+	GameState.gold = 0
+	t.check(GameState.resolve_night(GameState.NightChoice.INN).is_empty(),
+		"an unaffordable inn night does not resolve")
+	t.check(GameState.quest_board_generated and GameState.quest_board_offers() == first,
+		"a night that does not resolve leaves the board alone")
+	t.check(not GameState.resolve_night(GameState.NightChoice.STREET).is_empty(),
+		"a street night resolves")
+	t.check(not GameState.quest_board_generated and GameState.quest_board.is_empty(),
+		"resolve_night() drops the board so the new day regenerates it")
+	var next_day := GameState.quest_board_offers()
+	var overlap := false
+	for q: QuestDef in next_day:
+		if q.id in first_ids:
+			overlap = true
+	t.check(next_day.size() == Tuning.QUEST_BOARD_SIZE and not overlap,
+		"the next day's board is a fresh roll, not yesterday's quests")
 
 func _check_persistence(t: TestSupport) -> void:
 	GameState.new_profile()

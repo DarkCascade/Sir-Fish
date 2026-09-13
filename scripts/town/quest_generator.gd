@@ -36,20 +36,34 @@ static func _all_templates() -> Array[QuestTemplate]:
 ## `n` quests, each a random template rolled against the endless area - the
 ## only area Phase 1 ships (spec §4). Returns fewer than `n` (possibly zero)
 ## if no QuestTemplate exists on disk, rather than crash the mayor's office.
-static func generate_board(n: int, area: AreaDef) -> Array[QuestDef]:
+## `anchor_level` is where each quest's level_range starts - the party's level
+## (content-phase-1 questions doc Q10); see level_range_for().
+static func generate_board(n: int, area: AreaDef, anchor_level: int) -> Array[QuestDef]:
 	var templates := _all_templates()
 	var out: Array[QuestDef] = []
 	if templates.is_empty() or area == null:
 		return out
 	for i: int in range(n):
 		var template: QuestTemplate = templates[RNG.randi_range(0, templates.size() - 1)]
-		out.append(generate(template, area, i))
+		out.append(generate(template, area, i, anchor_level))
 	return out
+
+## A Tuning.QUEST_LEVEL_SPAN-wide level_range starting at `anchor_level`,
+## clamped to sit wholly inside `area.level_band` (questions doc Q10): with a
+## span of 3 in a 1-30 band, anchor 1 -> 1-3, 2 -> 2-4, 30 -> 28-30. A band
+## narrower than the span collapses to the band itself.
+static func level_range_for(area: AreaDef, anchor_level: int) -> Vector2i:
+	var band := area.level_band
+	var span: int = maxi(Tuning.QUEST_LEVEL_SPAN, 1)
+	var last_start: int = maxi(band.y - span + 1, band.x)
+	var start: int = clampi(anchor_level, band.x, last_start)
+	return Vector2i(start, mini(start + span - 1, band.y))
 
 ## One QuestDef from `template` rolled against `area`. `slot_index` only
 ## disambiguates this roll's id from a sibling rolled in the same board -
 ## it carries no other meaning.
-static func generate(template: QuestTemplate, area: AreaDef, slot_index: int) -> QuestDef:
+static func generate(template: QuestTemplate, area: AreaDef, slot_index: int,
+		anchor_level: int) -> QuestDef:
 	var q := QuestDef.new()
 	q.id = StringName("generated_%d_%d" % [RNG.randi_range(0, 999999999), slot_index])
 	q.display_name = _roll_name(area)
@@ -61,7 +75,7 @@ static func generate(template: QuestTemplate, area: AreaDef, slot_index: int) ->
 	var enemy_ceiling: int = clampi(int(round(3.0 * template.difficulty_mult)), 2, Tuning.MAX_ENEMIES)
 	q.enemy_count = Vector2i(2, enemy_ceiling)
 	q.boss_drop_rarity_floor = 1
-	q.level_range = area.level_band
+	q.level_range = level_range_for(area, anchor_level)
 	# D2: gold is always computed, never optional - every generated quest pays,
 	# same as the content lint's gold_reward > 0 check enforces for authored ones.
 	q.gold_reward = maxi(1, int(round(float(q.encounter_types.size())

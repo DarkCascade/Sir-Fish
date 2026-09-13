@@ -67,12 +67,11 @@ func _ready() -> void:
 		"7: quest -> night resolves again")
 
 	# ================= the street formula (§3.3 table) ===================
-	# [content phase 1] hero_runtime[0] is the mage now (active_party defaults
-	# to the full roster - questions doc Q4), not the warrior, so these no
-	# longer hardcode the warrior's 120 max_hp: every expected value is
-	# re-derived from whichever hero is actually at index 0, the same
+	# [content phase 1] These do not hardcode the warrior's 120 max_hp: every
+	# expected value is re-derived from whichever hero is at hero_runtime[0]
+	# (the solo warrior on a new profile - questions doc Q4), the same
 	# ceil(half-missing) formula test_quest_flow.gd already computes
-	# dynamically rather than pinning to one class's numbers.
+	# dynamically, so they hold for any party.
 
 	# 8. before 10 -> after 10 + ceil(half of (max - 10)).
 	GameState.new_profile()
@@ -127,6 +126,33 @@ func _ready() -> void:
 	var want_cost: int = Tuning.INN_REST_COST_PER_HERO * GameState.active_party.size()
 	t.check(g0 - GameState.gold == want_cost,
 		"12: inn charges %d (got %d)" % [want_cost, g0 - GameState.gold])
+
+	# 12b. The nightly bill is pinned to the number of heroes in the party: one
+	#      INN_REST_COST_PER_HERO per hero, for every size from solo up to the
+	#      full roster. 12 only ever sees new_profile()'s solo warrior, so alone
+	#      it would pass just as happily against a flat per-party price.
+	t.check(Tuning.INN_REST_COST_PER_HERO > 0,
+		"12b: INN_REST_COST_PER_HERO is positive, so the scaling is observable")
+	for n: int in range(1, GameState.PARTY_ORDER.size() + 1):
+		GameState.new_profile()
+		var party: Array[StringName] = []
+		for i: int in range(n):
+			party.append(GameState.PARTY_ORDER[i])
+		GameState.active_party = party
+		GameState.start_expedition(q)
+		GameState.day_phase = DP.NIGHT_PENDING
+		GameState.gold = 10_000
+		t.check(GameState.hero_runtime.size() == n,
+			"12b: a %d-hero party fields %d heroes (got %d)" % [n, n, GameState.hero_runtime.size()])
+		var bill: int = Tuning.INN_REST_COST_PER_HERO * n
+		t.check(GameState.night_inn_cost() == bill,
+			"12b: %d heroes -> night_inn_cost() %d (got %d)" % [n, bill, GameState.night_inn_cost()])
+		var g_bill: int = GameState.gold
+		t.check(not GameState.resolve_night(NC.INN).is_empty(),
+			"12b: %d-hero inn night resolves" % n)
+		t.check(g_bill - GameState.gold == bill,
+			"12b: %d heroes -> the inn charges %d (got %d)" % [n, bill, g_bill - GameState.gold])
+	GameState.new_profile()   # back to the solo warrior for 13 onward
 
 	# 13. gold = cost - 1: returns [], gold + HP unchanged, still NIGHT_PENDING.
 	#    (Catches a heal that lands before the spend_gold() check.)
