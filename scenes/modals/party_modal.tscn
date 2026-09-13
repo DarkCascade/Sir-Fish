@@ -1,20 +1,18 @@
-[gd_scene load_steps=6 format=3]
+[gd_scene format=3 uid="uid://bpo0lpm0lour6"]
 
-[ext_resource type="Script" path="res://scripts/modals/party_modal.gd" id="1_modal"]
-[ext_resource type="Shader" path="res://assets/shaders/reliquary_mist.gdshader" id="2_mist"]
+[ext_resource type="Script" uid="uid://dvbrsl4u86iqb" path="res://scripts/modals/party_modal.gd" id="1_modal"]
+[ext_resource type="Shader" uid="uid://bdysf21ort1yh" path="res://assets/shaders/reliquary_mist.gdshader" id="2_mist"]
 [ext_resource type="PackedScene" path="res://scenes/modals/reliquary_frame.tscn" id="3_frame"]
-[ext_resource type="Texture2D" path="res://assets/Planks012_1K-JPG_Color.jpg" id="4_wood"]
+[ext_resource type="Texture2D" uid="uid://c8m2rq5uawpsy" path="res://assets/Planks012_1K-JPG_Color.jpg" id="4_wood"]
 
 [sub_resource type="ShaderMaterial" id="mist_mat"]
 shader = ExtResource("2_mist")
-shader_parameter/fog_color = Color(0.545, 0.361, 0.965, 1.0)
-shader_parameter/deep_color = Color(0.141, 0.082, 0.239, 1.0)
+shader_parameter/fog_color = Color(0.545, 0.361, 0.965, 1)
+shader_parameter/deep_color = Color(0.141, 0.082, 0.239, 1)
 shader_parameter/density = 0.34
 shader_parameter/drift_speed = 0.045
 shader_parameter/scale = 2.4
 
-; [reliquary] Plum-black panel + crystal-rimmed X, inlined per scene (the Godot
-; editor overwrites out-of-editor edits to a shared theme.tres).
 [sub_resource type="StyleBoxFlat" id="rel_panel"]
 content_margin_left = 72.0
 content_margin_top = 48.0
@@ -43,7 +41,7 @@ corner_radius_top_right = 36
 corner_radius_bottom_right = 36
 corner_radius_bottom_left = 36
 
-[node name="PartyModal" type="Control"]
+[node name="PartyModal" type="Control" unique_id=840710062]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -52,7 +50,7 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_modal")
 
-[node name="Scrim" type="ColorRect" parent="."]
+[node name="Scrim" type="ColorRect" parent="." unique_id=1216211544]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
@@ -61,7 +59,7 @@ grow_horizontal = 2
 grow_vertical = 2
 color = Color(0.141176, 0.094118, 0.196078, 0.76)
 
-[node name="Mist" type="ColorRect" parent="."]
+[node name="Mist" type="ColorRect" parent="." unique_id=179985138]
 material = SubResource("mist_mat")
 layout_mode = 1
 anchors_preset = 15
@@ -71,7 +69,7 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 
-[node name="Panel" type="PanelContainer" parent="."]
+[node name="Panel" type="PanelContainer" parent="." unique_id=1697647382]
 layout_mode = 0
 offset_left = 90.0
 offset_top = 560.0
@@ -80,34 +78,27 @@ offset_bottom = 1360.0
 pivot_offset = Vector2(450, 400)
 theme_override_styles/panel = SubResource("rel_panel")
 
-; [biome-frames] Town's plank backdrop - see inventory_modal.tscn's Grain for
-; the full explanation. Hidden by default; party_modal.gd's _ready() shows it
-; only when the biome has backdrop art.
-[node name="Grain" type="TextureRect" parent="Panel"]
-show_behind_parent = true
+[node name="Grain" type="TextureRect" parent="Panel" unique_id=1192720366]
+visible = false
 self_modulate = Color(0.42, 0.38, 0.44, 1)
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
+show_behind_parent = true
+layout_mode = 2
+offset_transform_enabled = true
+offset_transform_scale = Vector2(1.17, 1.07)
 mouse_filter = 2
 texture = ExtResource("4_wood")
 expand_mode = 1
-stretch_mode = 0
-visible = false
 
-[node name="Layout" type="VBoxContainer" parent="Panel"]
+[node name="Layout" type="VBoxContainer" parent="Panel" unique_id=925803530]
 layout_mode = 2
 theme_override_constants/separation = 28
 
-[node name="Header" type="HBoxContainer" parent="Panel/Layout"]
+[node name="Header" type="HBoxContainer" parent="Panel/Layout" unique_id=1985535182]
 custom_minimum_size = Vector2(0, 80)
 layout_mode = 2
 theme_override_constants/separation = 20
 
-[node name="Title" type="Label" parent="Panel/Layout/Header"]
+[node name="Title" type="Label" parent="Panel/Layout/Header" unique_id=1012124147]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"DisplayLabel"
@@ -116,26 +107,26 @@ theme_override_font_sizes/font_size = 78
 text = "PARTY"
 vertical_alignment = 1
 
-[node name="CloseButton" type="Button" parent="Panel/Layout/Header"]
+[node name="CloseButton" type="Button" parent="Panel/Layout/Header" unique_id=407292036]
 custom_minimum_size = Vector2(72, 72)
 layout_mode = 2
 size_flags_vertical = 4
 theme_override_colors/font_color = Color(0.94902, 0.913725, 0.815686, 1)
-theme_override_colors/font_hover_color = Color(0.847059, 0.705882, 0.996078, 1)
 theme_override_colors/font_pressed_color = Color(0.545098, 0.360784, 0.964706, 1)
+theme_override_colors/font_hover_color = Color(0.847059, 0.705882, 0.996078, 1)
 theme_override_font_sizes/font_size = 54
 theme_override_styles/normal = SubResource("rel_close")
-theme_override_styles/hover = SubResource("rel_close")
 theme_override_styles/pressed = SubResource("rel_close")
+theme_override_styles/hover = SubResource("rel_close")
 text = "X"
 
-[node name="Members" type="VBoxContainer" parent="Panel/Layout"]
+[node name="Members" type="VBoxContainer" parent="Panel/Layout" unique_id=786096244]
 layout_mode = 2
 size_flags_vertical = 3
 theme_override_constants/separation = 30
 
-; [reliquary] Corner ornaments, sibling overlaying the panel exactly.
-[node name="Frame" parent="." instance=ExtResource("3_frame")]
+[node name="Frame" parent="." unique_id=135152106 instance=ExtResource("3_frame")]
+layout_mode = 0
 anchors_preset = 0
 anchor_right = 0.0
 anchor_bottom = 0.0
@@ -143,3 +134,5 @@ offset_left = 90.0
 offset_top = 560.0
 offset_right = 990.0
 offset_bottom = 1360.0
+grow_horizontal = 1
+grow_vertical = 1

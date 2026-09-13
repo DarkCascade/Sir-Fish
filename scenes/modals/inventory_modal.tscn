@@ -80,21 +80,16 @@ offset_bottom = 1620.0
 pivot_offset = Vector2(480, 660)
 theme_override_styles/panel = SubResource("rel_panel")
 
-; [biome-frames] Town's plank backdrop. Hidden and untouched by default -
-; BiomeTheme.apply_panel_backdrop() (inventory_modal.gd _ready()) shows it and
-; strips rel_panel's own fill (draw_center) only when the biome has backdrop
-; art, so anywhere without one still gets the plain plum fill exactly as before.
-; show_behind_parent draws it under Panel's own border, same trick as
-; mayor_office.tscn's Board/Grain.
 [node name="Grain" type="TextureRect" parent="Panel" unique_id=1052034881]
+visible = false
 self_modulate = Color(0.42, 0.38, 0.44, 1)
 show_behind_parent = true
 layout_mode = 2
+offset_transform_enabled = true
+offset_transform_scale = Vector2(1.17, 1.07)
 mouse_filter = 2
 texture = ExtResource("6_wood")
 expand_mode = 1
-stretch_mode = 0
-visible = false
 
 [node name="Layout" type="VBoxContainer" parent="Panel" unique_id=504721368]
 layout_mode = 2
