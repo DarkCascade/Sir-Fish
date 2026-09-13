@@ -31,7 +31,7 @@ func _ready() -> void:
 	# moved to the mage in the Step 2b item-type split (questions doc Q3).
 	t.check(start_arm != null and start_arm.weapon_type == &"mail",
 		"the starting armor is mail equipped by the warrior")
-	t.check(GameState.day_phase == GameState.DayPhase.DAY, "new_profile() starts in DAY")
+	t.check(GameState.meal_pct == 0, "new_profile() starts unfed")
 	t.check(GameState.hero_runtime.size() == GameState.active_party.size(),
 		"new_profile() builds one hero_runtime entry per active_party member")
 	var all_full := true

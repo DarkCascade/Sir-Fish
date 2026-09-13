@@ -14,8 +14,8 @@ extends Control
 ## A quest is always available - no cooldown, no lockout, no prerequisite.
 ## Difficulty is the gate (spec 7.5). A generated quest follows the same rule
 ## for as long as it is offered: taking or finishing it does not remove it.
-## The generated board as a whole rerolls each new day (GameState.resolve_night(),
-## content-phase-1 questions doc Q7); the authored quests never change.
+## The generated board as a whole refreshes after every finished quest and every
+## inn night (GameState.refresh_quest_board()); the authored quests never change.
 ##
 ## The background (assets/mayor-bg.png) and its darkening Vignette scrim are
 ## authored in mayor_office.tscn - the Meshy art pass, spec 12.1 (step 11).
@@ -84,15 +84,9 @@ func _populate() -> void:
 		plaque.chosen.connect(_open_sheet.bind(true))
 
 func _open_sheet(q: QuestDef, standing: bool) -> void:
-	_sheet.open(q, standing, GameState.hero_level(),
-		GameState.day_phase == GameState.DayPhase.DAY)
+	_sheet.open(q, standing, GameState.hero_level())
 
 func _accept(q: QuestDef) -> void:
-	# [day-night] §2.3: one quest per day. The sheet's disabled take button
-	# covers the UI; this guards a corrupt save and a debug command that reach
-	# _accept() while a night is still owed.
-	if GameState.day_phase != GameState.DayPhase.DAY:
-		return
 	GameState.start_expedition(q)
 	SaveGame.save_profile()
 	SceneRouter.go(SceneRouter.Place.QUEST)

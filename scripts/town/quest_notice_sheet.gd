@@ -25,7 +25,6 @@ var _quest: QuestDef
 @onready var _gold: Label = $Paper/Frame/Margin/V/Facts/RewardCol/GoldRow/Gold
 @onready var _drop: Label = $Paper/Frame/Margin/V/Facts/RewardCol/Drop
 @onready var _extras: Label = $Paper/Frame/Margin/V/Facts/RewardCol/Extras
-@onready var _locked: Label = $Paper/Frame/Margin/V/Locked
 @onready var _put_back: Button = $Paper/Frame/Margin/V/Buttons/PutBack
 @onready var _take: Button = $Paper/Frame/Margin/V/Buttons/Take
 
@@ -35,10 +34,9 @@ func _ready() -> void:
 	_take.pressed.connect(_on_take)
 	_scrim.gui_input.connect(_on_scrim_input)
 
-## `can_take` is false while a night is owed ([day-night] §2.3): the sheet still
-## opens so the board stays readable, but the take button greys out and the
-## Locked line says why - inn.gd's "a grey button with no reason" rule.
-func open(q: QuestDef, standing: bool, hero_level: int, can_take: bool) -> void:
+## A quest is always available (mayor_office.gd's header), so the take button
+## is never locked - underlevelled only tints the level note.
+func open(q: QuestDef, standing: bool, hero_level: int) -> void:
 	_quest = q
 	_kicker.text = "Standing contract" if standing else "Today's posting"
 	_name.text = q.display_name
@@ -76,9 +74,6 @@ func open(q: QuestDef, standing: bool, hero_level: int, can_take: bool) -> void:
 			extra_bits.append("+ " + text)
 	_extras.text = "\n".join(extra_bits)
 	_extras.visible = not extra_bits.is_empty()
-
-	_locked.visible = not can_take
-	_take.disabled = not can_take
 	show()
 
 func close() -> void:

@@ -114,15 +114,13 @@ horizontal_alignment = 1
 vertical_alignment = 1
 autowrap_mode = 3
 
-[node name="PriceBoard" type="Label" parent="Layout" unique_id=145497403]
-custom_minimum_size = Vector2(0, 150)
+; [inn & recovery] The bed, open any time (GameState.rest_at_inn()). inn.gd sets
+; its label and disabled state from Tuning.INN_NIGHT_COST.
+[node name="RestButton" type="Button" parent="Layout"]
+custom_minimum_size = Vector2(0, 120)
 layout_mode = 2
-theme_override_colors/font_color = Color(0.611765, 0.686275, 0.643137, 1)
-theme_override_font_sizes/font_size = 46
-text = "A bed for the night — 50 G, payable at nightfall."
-horizontal_alignment = 1
-vertical_alignment = 1
-autowrap_mode = 3
+theme_override_font_sizes/font_size = 78
+text = "Rest — 50 G"
 
 [node name="MealButton" type="Button" parent="Layout" unique_id=145497406]
 custom_minimum_size = Vector2(0, 120)
