@@ -27,9 +27,9 @@ const PLAQUE_SCENE := preload("res://scenes/town/quest_plaque.tscn")
 ## board does not rearrange itself on every visit.
 const NOTICE_TILTS: Array[float] = [-1.4, 1.1, 0.8, -0.9]
 
-@onready var _today_grid: GridContainer = $Layout/Scroll/Body/Board/TodayGrid
-@onready var _dawn_slip: PanelContainer = $Layout/Scroll/Body/Board/TodayGrid/DawnSlip
-@onready var _dawn_label: Label = $Layout/Scroll/Body/Board/TodayGrid/DawnSlip/Label
+@onready var _today_grid: GridContainer = $Layout/Scroll/Body/Board/Inner/TodayGrid
+@onready var _dawn_slip: PanelContainer = $Layout/Scroll/Body/Board/Inner/TodayGrid/DawnSlip
+@onready var _dawn_label: Label = $Layout/Scroll/Body/Board/Inner/TodayGrid/DawnSlip/Label
 @onready var _standing_list: VBoxContainer = $Layout/Scroll/Body/StandingList
 @onready var _back_button: Button = $Layout/BackButton
 @onready var _fed_line: Label = $Layout/FedLine

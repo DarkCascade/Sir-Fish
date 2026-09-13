@@ -3,12 +3,15 @@
 [ext_resource type="Script" path="res://scripts/town/quest_notice.gd" id="1_notice"]
 [ext_resource type="Script" path="res://scripts/town/quest_route_strip.gd" id="2_route"]
 [ext_resource type="Texture2D" path="res://assets/icons/slot_gold.png" id="3_coin"]
+[ext_resource type="Texture2D" path="res://assets/Paper002_1K-JPG_Color.jpg" id="4_paper"]
 
-; [mayor notice board] Parchment card, C_PARCHMENT fill edged in C_INK - the
-; same ink PlateLabel sets its type in, so edge and text read as one ink. The
-; hard drop shadow is what lifts the card off the board.
+; [mayor notice board] The card's states draw only its C_INK edge - the same ink
+; PlateLabel sets its type in - plus a light (hover) or dark (pressed) wash. The
+; paper itself is Card/Paper (CC0 Paper002) and the drop shadow Card/Shadow,
+; both drawn BEHIND the card via show_behind_parent, so the wash tints the paper
+; and the edge sits on top of it.
 [sub_resource type="StyleBoxFlat" id="notice_normal"]
-bg_color = Color(0.780392, 0.768627, 0.709804, 1)
+draw_center = false
 border_width_left = 4
 border_width_top = 4
 border_width_right = 4
@@ -18,12 +21,9 @@ corner_radius_top_left = 6
 corner_radius_top_right = 6
 corner_radius_bottom_right = 6
 corner_radius_bottom_left = 6
-shadow_color = Color(0, 0, 0, 0.35)
-shadow_size = 1
-shadow_offset = Vector2(0, 10)
 
 [sub_resource type="StyleBoxFlat" id="notice_hover"]
-bg_color = Color(0.839216, 0.827451, 0.776471, 1)
+bg_color = Color(1, 1, 1, 0.12)
 border_width_left = 4
 border_width_top = 4
 border_width_right = 4
@@ -33,13 +33,9 @@ corner_radius_top_left = 6
 corner_radius_top_right = 6
 corner_radius_bottom_right = 6
 corner_radius_bottom_left = 6
-shadow_color = Color(0, 0, 0, 0.35)
-shadow_size = 1
-shadow_offset = Vector2(0, 10)
 
-; Pressed: C_PARCHMENT_SHADE, and the shadow shortens as the card is pushed in.
 [sub_resource type="StyleBoxFlat" id="notice_pressed"]
-bg_color = Color(0.643137, 0.635294, 0.580392, 1)
+bg_color = Color(0, 0, 0, 0.16)
 border_width_left = 4
 border_width_top = 4
 border_width_right = 4
@@ -49,9 +45,13 @@ corner_radius_top_left = 6
 corner_radius_top_right = 6
 corner_radius_bottom_right = 6
 corner_radius_bottom_left = 6
-shadow_color = Color(0, 0, 0, 0.35)
-shadow_size = 1
-shadow_offset = Vector2(0, 4)
+
+[sub_resource type="StyleBoxFlat" id="notice_shadow"]
+bg_color = Color(0, 0, 0, 0.35)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
 
 [sub_resource type="StyleBoxFlat" id="lv_chip"]
 content_margin_left = 16.0
@@ -104,6 +104,40 @@ theme_override_styles/hover = SubResource("notice_hover")
 theme_override_styles/pressed = SubResource("notice_pressed")
 theme_override_styles/hover_pressed = SubResource("notice_pressed")
 theme_override_styles/disabled = SubResource("notice_pressed")
+
+; Behind the card, drawn first: the hard drop shadow, 10px down.
+[node name="Shadow" type="Panel" parent="Card"]
+show_behind_parent = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = 10.0
+offset_bottom = 10.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("notice_shadow")
+
+; Behind the card, over the shadow: the paper, inset by the 4px ink edge so its
+; square corners tuck under the rounded band. Tiled at native size, so a card
+; shows a crop of the sheet rather than a squashed whole.
+[node name="Paper" type="TextureRect" parent="Card"]
+show_behind_parent = true
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 4.0
+offset_top = 4.0
+offset_right = -4.0
+offset_bottom = -4.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("4_paper")
+expand_mode = 1
+stretch_mode = 1
 
 [node name="Margin" type="MarginContainer" parent="Card"]
 layout_mode = 1

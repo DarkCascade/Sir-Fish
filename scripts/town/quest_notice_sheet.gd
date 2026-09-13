@@ -14,20 +14,20 @@ signal accepted(quest: QuestDef)
 var _quest: QuestDef
 
 @onready var _scrim: ColorRect = $Scrim
-@onready var _kicker: Label = $Paper/V/Kicker
-@onready var _name: Label = $Paper/V/Name
-@onready var _blurb: Label = $Paper/V/Blurb
-@onready var _objective_header: Label = $Paper/V/ObjectiveHeader
-@onready var _objective: Label = $Paper/V/Objective
-@onready var _route: QuestRouteStrip = $Paper/V/Route
-@onready var _level: Label = $Paper/V/Facts/LevelCol/Level
-@onready var _level_note: Label = $Paper/V/Facts/LevelCol/LevelNote
-@onready var _gold: Label = $Paper/V/Facts/RewardCol/GoldRow/Gold
-@onready var _drop: Label = $Paper/V/Facts/RewardCol/Drop
-@onready var _extras: Label = $Paper/V/Facts/RewardCol/Extras
-@onready var _locked: Label = $Paper/V/Locked
-@onready var _put_back: Button = $Paper/V/Buttons/PutBack
-@onready var _take: Button = $Paper/V/Buttons/Take
+@onready var _kicker: Label = $Paper/Frame/Margin/V/Kicker
+@onready var _name: Label = $Paper/Frame/Margin/V/Name
+@onready var _blurb: Label = $Paper/Frame/Margin/V/Blurb
+@onready var _objective_header: Label = $Paper/Frame/Margin/V/ObjectiveHeader
+@onready var _objective: Label = $Paper/Frame/Margin/V/Objective
+@onready var _route: QuestRouteStrip = $Paper/Frame/Margin/V/Route
+@onready var _level: Label = $Paper/Frame/Margin/V/Facts/LevelCol/Level
+@onready var _level_note: Label = $Paper/Frame/Margin/V/Facts/LevelCol/LevelNote
+@onready var _gold: Label = $Paper/Frame/Margin/V/Facts/RewardCol/GoldRow/Gold
+@onready var _drop: Label = $Paper/Frame/Margin/V/Facts/RewardCol/Drop
+@onready var _extras: Label = $Paper/Frame/Margin/V/Facts/RewardCol/Extras
+@onready var _locked: Label = $Paper/Frame/Margin/V/Locked
+@onready var _put_back: Button = $Paper/Frame/Margin/V/Buttons/PutBack
+@onready var _take: Button = $Paper/Frame/Margin/V/Buttons/Take
 
 func _ready() -> void:
 	hide()

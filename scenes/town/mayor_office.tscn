@@ -6,15 +6,19 @@
 [ext_resource type="Script" path="res://scripts/town/quest_route_strip.gd" id="4_route"]
 [ext_resource type="Texture2D" path="res://assets/icons/slot_gold.png" id="5_coin"]
 [ext_resource type="FontVariation" path="res://assets/display_font.tres" id="6_display"]
+[ext_resource type="Texture2D" path="res://assets/Wood060_1K-JPG_Color.jpg" id="7_wood"]
+[ext_resource type="Texture2D" path="res://assets/Paper002_1K-JPG_Color.jpg" id="8_paper"]
 
-; [mayor notice board] The board itself: dark wood inside the theme's 10px gold
-; panel edge. The parchment notices are the only light surface on the screen.
+; [mayor notice board] The board's frame: the theme's 10px gold panel edge and
+; no fill. The wood (Board/Grain, CC0 Wood060) draws BEHIND this edge via
+; show_behind_parent, inset by these content margins - exactly the border width,
+; so the grain's square corners tuck under the rounded gold band.
 [sub_resource type="StyleBoxFlat" id="board"]
-content_margin_left = 36.0
-content_margin_top = 36.0
-content_margin_right = 36.0
-content_margin_bottom = 36.0
-bg_color = Color(0.231373, 0.14902, 0.0862745, 1)
+content_margin_left = 10.0
+content_margin_top = 10.0
+content_margin_right = 10.0
+content_margin_bottom = 10.0
+draw_center = false
 border_width_left = 10
 border_width_top = 10
 border_width_right = 10
@@ -42,13 +46,27 @@ corner_radius_top_right = 6
 corner_radius_bottom_right = 6
 corner_radius_bottom_left = 6
 
-; The sheet's paper - quest_notice.tscn's card, scaled up.
-[sub_resource type="StyleBoxFlat" id="paper"]
-content_margin_left = 56.0
-content_margin_top = 64.0
-content_margin_right = 56.0
-content_margin_bottom = 56.0
-bg_color = Color(0.780392, 0.768627, 0.709804, 1)
+; The sheet's paper, in layers so the texture can sit inside an inked edge:
+; Paper draws only the drop shadow (a transparent box), Paper/Frame draws only
+; the 6px ink edge, and Paper/Frame/Texture (CC0 Paper002) draws behind that
+; edge, inset by its 6px content margin - corners tuck under the band as on
+; the board.
+[sub_resource type="StyleBoxFlat" id="paper_shadow"]
+bg_color = Color(0, 0, 0, 0)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+shadow_color = Color(0, 0, 0, 0.45)
+shadow_size = 1
+shadow_offset = Vector2(0, 16)
+
+[sub_resource type="StyleBoxFlat" id="paper_frame"]
+content_margin_left = 6.0
+content_margin_top = 6.0
+content_margin_right = 6.0
+content_margin_bottom = 6.0
+draw_center = false
 border_width_left = 6
 border_width_top = 6
 border_width_right = 6
@@ -58,9 +76,6 @@ corner_radius_top_left = 8
 corner_radius_top_right = 8
 corner_radius_bottom_right = 8
 corner_radius_bottom_left = 8
-shadow_color = Color(0, 0, 0, 0.45)
-shadow_size = 1
-shadow_offset = Vector2(0, 16)
 
 [sub_resource type="StyleBoxFlat" id="pin"]
 bg_color = Color(0.847059, 0.686275, 0.321569, 1)
@@ -180,20 +195,39 @@ text = "replaced at dawn"
 layout_mode = 2
 theme_override_styles/panel = SubResource("board")
 
-[node name="TodayGrid" type="GridContainer" parent="Layout/Scroll/Body/Board"]
+; Behind the gold edge (show_behind_parent). Tiled at native size - the board's
+; inside is smaller than one 1024px tile - and darkened by self_modulate so the
+; parchment notices stay the brightest surface on the screen.
+[node name="Grain" type="TextureRect" parent="Layout/Scroll/Body/Board"]
+show_behind_parent = true
+self_modulate = Color(0.62, 0.62, 0.62, 1)
+layout_mode = 2
+mouse_filter = 2
+texture = ExtResource("7_wood")
+expand_mode = 1
+stretch_mode = 1
+
+[node name="Inner" type="MarginContainer" parent="Layout/Scroll/Body/Board"]
+layout_mode = 2
+theme_override_constants/margin_left = 26
+theme_override_constants/margin_top = 26
+theme_override_constants/margin_right = 26
+theme_override_constants/margin_bottom = 26
+
+[node name="TodayGrid" type="GridContainer" parent="Layout/Scroll/Body/Board/Inner"]
 layout_mode = 2
 theme_override_constants/h_separation = 32
 theme_override_constants/v_separation = 32
 columns = 2
 
 ; QuestNotices are inserted ahead of this slip at runtime (mayor_office.gd).
-[node name="DawnSlip" type="PanelContainer" parent="Layout/Scroll/Body/Board/TodayGrid"]
+[node name="DawnSlip" type="PanelContainer" parent="Layout/Scroll/Body/Board/Inner/TodayGrid"]
 custom_minimum_size = Vector2(0, 300)
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_styles/panel = SubResource("dawn_slip")
 
-[node name="Label" type="Label" parent="Layout/Scroll/Body/Board/TodayGrid/DawnSlip"]
+[node name="Label" type="Label" parent="Layout/Scroll/Body/Board/Inner/TodayGrid/DawnSlip"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.709804, 0.823529, 0.784314, 1)
 theme_override_font_sizes/font_size = 40
@@ -267,20 +301,41 @@ offset_top = 210.0
 offset_right = 480.0
 offset_bottom = 210.0
 grow_horizontal = 2
-theme_override_styles/panel = SubResource("paper")
+theme_override_styles/panel = SubResource("paper_shadow")
 
-[node name="V" type="VBoxContainer" parent="NoticeSheet/Paper"]
+[node name="Frame" type="PanelContainer" parent="NoticeSheet/Paper"]
+layout_mode = 2
+theme_override_styles/panel = SubResource("paper_frame")
+
+; Behind the ink edge (show_behind_parent), tiled at native size - Paper002
+; tiles cleanly, and the sheet is wider than one 794px tile.
+[node name="Texture" type="TextureRect" parent="NoticeSheet/Paper/Frame"]
+show_behind_parent = true
+layout_mode = 2
+mouse_filter = 2
+texture = ExtResource("8_paper")
+expand_mode = 1
+stretch_mode = 1
+
+[node name="Margin" type="MarginContainer" parent="NoticeSheet/Paper/Frame"]
+layout_mode = 2
+theme_override_constants/margin_left = 50
+theme_override_constants/margin_top = 58
+theme_override_constants/margin_right = 50
+theme_override_constants/margin_bottom = 50
+
+[node name="V" type="VBoxContainer" parent="NoticeSheet/Paper/Frame/Margin"]
 layout_mode = 2
 theme_override_constants/separation = 12
 
-[node name="Kicker" type="Label" parent="NoticeSheet/Paper/V"]
+[node name="Kicker" type="Label" parent="NoticeSheet/Paper/Frame/Margin/V"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.478431, 0.352941, 0.0941176, 1)
 theme_override_fonts/font = ExtResource("6_display")
 theme_override_font_sizes/font_size = 34
 text = "Today's posting"
 
-[node name="Name" type="Label" parent="NoticeSheet/Paper/V"]
+[node name="Name" type="Label" parent="NoticeSheet/Paper/Frame/Margin/V"]
 layout_mode = 2
 theme_type_variation = &"PlateLabel"
 theme_override_fonts/font = ExtResource("6_display")
@@ -288,56 +343,56 @@ theme_override_font_sizes/font_size = 68
 text = "The Hidden Shallow Wood"
 autowrap_mode = 3
 
-[node name="Blurb" type="Label" parent="NoticeSheet/Paper/V"]
+[node name="Blurb" type="Label" parent="NoticeSheet/Paper/Frame/Margin/V"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.290196, 0.239216, 0.164706, 1)
 theme_override_font_sizes/font_size = 50
 text = "Something restless is loose in the wood - put it down."
 autowrap_mode = 3
 
-[node name="RuleGapTop" type="Control" parent="NoticeSheet/Paper/V"]
+[node name="RuleGapTop" type="Control" parent="NoticeSheet/Paper/Frame/Margin/V"]
 custom_minimum_size = Vector2(0, 12)
 layout_mode = 2
 mouse_filter = 2
 
-[node name="Rule" type="ColorRect" parent="NoticeSheet/Paper/V"]
+[node name="Rule" type="ColorRect" parent="NoticeSheet/Paper/Frame/Margin/V"]
 custom_minimum_size = Vector2(0, 3)
 layout_mode = 2
 mouse_filter = 2
 color = Color(0.141176, 0.117647, 0.0784314, 0.35)
 
-[node name="RuleGapBottom" type="Control" parent="NoticeSheet/Paper/V"]
+[node name="RuleGapBottom" type="Control" parent="NoticeSheet/Paper/Frame/Margin/V"]
 custom_minimum_size = Vector2(0, 12)
 layout_mode = 2
 mouse_filter = 2
 
-[node name="ObjectiveHeader" type="Label" parent="NoticeSheet/Paper/V"]
+[node name="ObjectiveHeader" type="Label" parent="NoticeSheet/Paper/Frame/Margin/V"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.478431, 0.352941, 0.0941176, 1)
 theme_override_fonts/font = ExtResource("6_display")
 theme_override_font_sizes/font_size = 34
 text = "Objective"
 
-[node name="Objective" type="Label" parent="NoticeSheet/Paper/V"]
+[node name="Objective" type="Label" parent="NoticeSheet/Paper/Frame/Margin/V"]
 layout_mode = 2
 theme_type_variation = &"PlateLabel"
 theme_override_font_sizes/font_size = 48
 text = "Put down two of the wood's restless dead."
 autowrap_mode = 3
 
-[node name="RoadGap" type="Control" parent="NoticeSheet/Paper/V"]
+[node name="RoadGap" type="Control" parent="NoticeSheet/Paper/Frame/Margin/V"]
 custom_minimum_size = Vector2(0, 20)
 layout_mode = 2
 mouse_filter = 2
 
-[node name="RoadHeader" type="Label" parent="NoticeSheet/Paper/V"]
+[node name="RoadHeader" type="Label" parent="NoticeSheet/Paper/Frame/Margin/V"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.478431, 0.352941, 0.0941176, 1)
 theme_override_fonts/font = ExtResource("6_display")
 theme_override_font_sizes/font_size = 34
 text = "The road"
 
-[node name="Route" type="Control" parent="NoticeSheet/Paper/V"]
+[node name="Route" type="Control" parent="NoticeSheet/Paper/Frame/Margin/V"]
 custom_minimum_size = Vector2(0, 138)
 layout_mode = 2
 mouse_filter = 2
@@ -345,58 +400,58 @@ script = ExtResource("4_route")
 labelled = true
 stop_size = 88.0
 
-[node name="FactsGap" type="Control" parent="NoticeSheet/Paper/V"]
+[node name="FactsGap" type="Control" parent="NoticeSheet/Paper/Frame/Margin/V"]
 custom_minimum_size = Vector2(0, 20)
 layout_mode = 2
 mouse_filter = 2
 
-[node name="Facts" type="GridContainer" parent="NoticeSheet/Paper/V"]
+[node name="Facts" type="GridContainer" parent="NoticeSheet/Paper/Frame/Margin/V"]
 layout_mode = 2
 theme_override_constants/h_separation = 24
 columns = 2
 
-[node name="LevelCol" type="VBoxContainer" parent="NoticeSheet/Paper/V/Facts"]
+[node name="LevelCol" type="VBoxContainer" parent="NoticeSheet/Paper/Frame/Margin/V/Facts"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 2
 
-[node name="LevelHeader" type="Label" parent="NoticeSheet/Paper/V/Facts/LevelCol"]
+[node name="LevelHeader" type="Label" parent="NoticeSheet/Paper/Frame/Margin/V/Facts/LevelCol"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.478431, 0.352941, 0.0941176, 1)
 theme_override_fonts/font = ExtResource("6_display")
 theme_override_font_sizes/font_size = 34
 text = "Level"
 
-[node name="Level" type="Label" parent="NoticeSheet/Paper/V/Facts/LevelCol"]
+[node name="Level" type="Label" parent="NoticeSheet/Paper/Frame/Margin/V/Facts/LevelCol"]
 layout_mode = 2
 theme_type_variation = &"PlateLabel"
 theme_override_font_sizes/font_size = 56
 text = "3 – 5"
 
-[node name="LevelNote" type="Label" parent="NoticeSheet/Paper/V/Facts/LevelCol"]
+[node name="LevelNote" type="Label" parent="NoticeSheet/Paper/Frame/Margin/V/Facts/LevelCol"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.290196, 0.239216, 0.164706, 1)
 theme_override_font_sizes/font_size = 36
 text = "you are Lv 3"
 autowrap_mode = 3
 
-[node name="RewardCol" type="VBoxContainer" parent="NoticeSheet/Paper/V/Facts"]
+[node name="RewardCol" type="VBoxContainer" parent="NoticeSheet/Paper/Frame/Margin/V/Facts"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 2
 
-[node name="RewardHeader" type="Label" parent="NoticeSheet/Paper/V/Facts/RewardCol"]
+[node name="RewardHeader" type="Label" parent="NoticeSheet/Paper/Frame/Margin/V/Facts/RewardCol"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.478431, 0.352941, 0.0941176, 1)
 theme_override_fonts/font = ExtResource("6_display")
 theme_override_font_sizes/font_size = 34
 text = "Reward"
 
-[node name="GoldRow" type="HBoxContainer" parent="NoticeSheet/Paper/V/Facts/RewardCol"]
+[node name="GoldRow" type="HBoxContainer" parent="NoticeSheet/Paper/Frame/Margin/V/Facts/RewardCol"]
 layout_mode = 2
 theme_override_constants/separation = 10
 
-[node name="Coin" type="TextureRect" parent="NoticeSheet/Paper/V/Facts/RewardCol/GoldRow"]
+[node name="Coin" type="TextureRect" parent="NoticeSheet/Paper/Frame/Margin/V/Facts/RewardCol/GoldRow"]
 custom_minimum_size = Vector2(48, 48)
 layout_mode = 2
 size_flags_vertical = 4
@@ -405,20 +460,20 @@ texture = ExtResource("5_coin")
 expand_mode = 1
 stretch_mode = 5
 
-[node name="Gold" type="Label" parent="NoticeSheet/Paper/V/Facts/RewardCol/GoldRow"]
+[node name="Gold" type="Label" parent="NoticeSheet/Paper/Frame/Margin/V/Facts/RewardCol/GoldRow"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.478431, 0.352941, 0.0941176, 1)
 theme_override_font_sizes/font_size = 56
 text = "250 gold"
 
-[node name="Drop" type="Label" parent="NoticeSheet/Paper/V/Facts/RewardCol"]
+[node name="Drop" type="Label" parent="NoticeSheet/Paper/Frame/Margin/V/Facts/RewardCol"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.290196, 0.239216, 0.164706, 1)
 theme_override_font_sizes/font_size = 36
 text = "boss drops Magic or better"
 autowrap_mode = 3
 
-[node name="Extras" type="Label" parent="NoticeSheet/Paper/V/Facts/RewardCol"]
+[node name="Extras" type="Label" parent="NoticeSheet/Paper/Frame/Margin/V/Facts/RewardCol"]
 visible = false
 layout_mode = 2
 theme_override_colors/font_color = Color(0.290196, 0.239216, 0.164706, 1)
@@ -426,7 +481,7 @@ theme_override_font_sizes/font_size = 36
 autowrap_mode = 3
 
 ; C_DANGER_INK. Shown only while a night is owed ([day-night] §2.3).
-[node name="Locked" type="Label" parent="NoticeSheet/Paper/V"]
+[node name="Locked" type="Label" parent="NoticeSheet/Paper/Frame/Margin/V"]
 visible = false
 layout_mode = 2
 theme_override_colors/font_color = Color(0.658824, 0.14902, 0.176471, 1)
@@ -435,16 +490,16 @@ text = "Make camp for the night before taking another notice."
 horizontal_alignment = 1
 autowrap_mode = 3
 
-[node name="ButtonsGap" type="Control" parent="NoticeSheet/Paper/V"]
+[node name="ButtonsGap" type="Control" parent="NoticeSheet/Paper/Frame/Margin/V"]
 custom_minimum_size = Vector2(0, 32)
 layout_mode = 2
 mouse_filter = 2
 
-[node name="Buttons" type="HBoxContainer" parent="NoticeSheet/Paper/V"]
+[node name="Buttons" type="HBoxContainer" parent="NoticeSheet/Paper/Frame/Margin/V"]
 layout_mode = 2
 theme_override_constants/separation = 24
 
-[node name="PutBack" type="Button" parent="NoticeSheet/Paper/V/Buttons"]
+[node name="PutBack" type="Button" parent="NoticeSheet/Paper/Frame/Margin/V/Buttons"]
 custom_minimum_size = Vector2(0, 112)
 layout_mode = 2
 size_flags_horizontal = 3
@@ -452,7 +507,7 @@ theme_type_variation = &"SecondaryButton"
 theme_override_font_sizes/font_size = 44
 text = "Put it back"
 
-[node name="Take" type="Button" parent="NoticeSheet/Paper/V/Buttons"]
+[node name="Take" type="Button" parent="NoticeSheet/Paper/Frame/Margin/V/Buttons"]
 custom_minimum_size = Vector2(0, 112)
 layout_mode = 2
 size_flags_horizontal = 3
