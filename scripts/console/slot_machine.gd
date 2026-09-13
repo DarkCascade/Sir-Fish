@@ -152,10 +152,15 @@ func reset_to_attract() -> void:
 
 func _rebuild_bag() -> void:
 	_bag.clear()
-	for hero_class: StringName in _living_hero_classes():
+	var living := _living_hero_classes()
+	for hero_class: StringName in living:
 		_bag.append(SlotIcon.innate(hero_class, GameState.hero_weapon_power(hero_class)))
 	for item: Item in GameState.inventory:
-		if item.equipped_by == &"":
+		# [content phase 1 §1.5] A dead hero's gear stops putting icons in the
+		# bag on the very next rebuild, same as its innate icon already does
+		# (_living_hero_classes() above) - harmless while only one class ever
+		# executed anything, a real gap now that Executor gives icons owners.
+		if item.equipped_by == &"" or item.equipped_by not in living:
 			continue
 		# [levels] Every equipped item contributes its slot's base icon
 		# regardless of rarity or modifier count (spec §4.3) - the fix for a
@@ -379,7 +384,7 @@ func _resolve_icon(ic: Dictionary, kind: int, mult: float) -> Vector2i:
 func _hero_swing(amount: int) -> int:
 	if director == null:
 		return 0
-	var hero: Combatant = _swinging_hero()
+	var hero: Combatant = _executor_for(SlotIcon.Kind.DAMAGE)
 	var enemy: Combatant = director.random_living_enemy()
 	if hero == null or enemy == null:
 		return 0
@@ -401,16 +406,30 @@ func _grant_block(amount: int) -> void:
 			h.add_temp_armor(amount)
 			BattleVfx.defend_icon(h, Tuning.BLOCK_DURATION)
 
-## The hero who makes the aggregated attack swing - the first living hero in
-## formation order (the solo warrior today). When the mage and ranger return,
-## per-hero icon ownership decides the swinger here instead.
-func _swinging_hero() -> Combatant:
+## [content phase 1] The executor rule (D1, spec §2.1/§3 Step 2a): the first
+## living party member, in roster order, whose class executes `kind`. Falls
+## back to the first living hero in roster order when no living class owns it
+## - a dead executor, or a party that rolled an icon kind nothing it owns can
+## execute (a solo warrior's `slot_mend`, per §2a) - so a class dying is never
+## a lost turn, matching the existing rule that the party's turn is never
+## simply lost (Combatant.slot_attack). Replaces _swinging_hero(); with a solo
+## warrior this resolves identically to the old "first living hero" rule,
+## since the warrior is both the only living hero AND DAMAGE's executor.
+##
+## director.living_heroes() is already roster order: it walks `heroes`, which
+## spawn_party() built from GameState.hero_runtime, itself built from
+## active_party in PARTY_ORDER's order (GameState._reset_hero_runtime()).
+func _executor_for(kind: SlotIcon.Kind) -> Combatant:
 	if director == null:
 		return null
-	for h: Combatant in director.living_heroes():
-		if is_instance_valid(h) and h.is_alive():
+	var living: Array[Combatant] = director.living_heroes()
+	if living.is_empty():
+		return null
+	for h: Combatant in living:
+		var cdef := GameState.get_class_def(h.stats.id)
+		if cdef != null and kind in cdef.executes:
 			return h
-	return null
+	return living[0]
 
 func _hit_all(id: StringName, roll: int, mult: float) -> int:
 	var targets: Array[Combatant] = director.living_enemies()

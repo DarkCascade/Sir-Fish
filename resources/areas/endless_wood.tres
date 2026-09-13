@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="AreaDef" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/area_def.gd" id="1_area"]
+[ext_resource type="Resource" path="res://resources/pools/endless_early.tres" id="2_early"]
+[ext_resource type="Resource" path="res://resources/pools/endless_mid.tres" id="3_mid"]
+[ext_resource type="Resource" path="res://resources/pools/boss_pool.tres" id="4_boss"]
+
+[resource]
+script = ExtResource("1_area")
+display_name = "The Endless Wood"
+pool = ExtResource("2_early")
+mid_pool = ExtResource("3_mid")
+boss_pool = ExtResource("4_boss")
+level_band = Vector2i(1, 30)
+field_profile = &"endless_wood"
+name_fragments = PackedStringArray("Shallow Wood", "Deep Wood", "Hollow", "Thicket", "Mire", "Barrow", "Wood")

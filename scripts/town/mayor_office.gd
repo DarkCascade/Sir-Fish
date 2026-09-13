@@ -1,19 +1,21 @@
 extends Control
-## [town] The mayor's office (spec 7.5). One button per QuestDef in
-## res://resources/quests/, in easy -> hard order, each showing name, blurb,
-## encounter count and gold reward. Pressing one calls
+## [town] The mayor's office (spec 7.5). One button per QuestDef - the three
+## hand-authored quests in res://resources/quests/, ordered by level_range.x
+## rather than a hardcoded id list, followed by the generated board
+## (GameState.quest_board_offers(), content phase 1 spec §3 Step 3) - each
+## showing name, blurb, encounter count and gold reward. Pressing one calls
 ## GameState.start_expedition(quest), saves the profile (spec 2.4's "When to
 ## save" names this caller), and routes to Place.QUEST.
 ##
 ## A quest is always available - no cooldown, no lockout, no prerequisite.
-## Difficulty is the gate (spec 7.5).
+## Difficulty is the gate (spec 7.5). A generated quest follows the exact same
+## rule once offered: nothing removes it from the board or forces a reroll on
+## completion, matching how the three authored quests have always behaved.
 ##
 ## The background (assets/mayor-bg.png) and its darkening Vignette scrim are
 ## authored in mayor_office.tscn - the Meshy art pass, spec 12.1 (step 11).
 
 const QUEST_DIR := "res://resources/quests/"
-## Authored order rather than DirAccess iteration order, so easy always sits top.
-const QUEST_ORDER: Array[StringName] = [&"easy", &"medium", &"hard"]
 
 @onready var _quest_list: VBoxContainer = $Layout/QuestList
 @onready var _back_button: Button = $Layout/BackButton
@@ -58,9 +60,18 @@ func _populate() -> void:
 		# a lock - difficulty is the gate (this file's own header), so the
 		# button stays enabled and only tints.
 		var underlevelled: bool = GameState.hero_level() < q.level_range.x
-		button.text = "%s\n%s\nLv. %d–%d  ·  %d encounters  ·  %d gold%s" % [
+		# [content phase 1] Reward extras (D2 / spec §3 Step 1b) render as an
+		# extra "+ ..." clause after the gold figure. Empty on every quest this
+		# phase ships (QuestRewardExtra's header), so this is normally a no-op.
+		var extra_bits: PackedStringArray = []
+		for extra: QuestRewardExtra in q.reward_extras:
+			var text := extra.describe()
+			if not text.is_empty():
+				extra_bits.append(text)
+		var extras_suffix := ("  ·  +" + " +".join(extra_bits)) if not extra_bits.is_empty() else ""
+		button.text = "%s\n%s\nLv. %d–%d  ·  %d encounters  ·  %d gold%s%s" % [
 			q.display_name, q.blurb, q.level_range.x, q.level_range.y,
-			q.encounter_types.size(), q.gold_reward,
+			q.encounter_types.size(), q.gold_reward, extras_suffix,
 			"\n— you are underlevelled" if underlevelled else "",
 		]
 		if underlevelled:
@@ -79,9 +90,24 @@ func _accept(q: QuestDef) -> void:
 	SceneRouter.go(SceneRouter.Place.QUEST)
 
 func _load_quests() -> Array[QuestDef]:
+	var out: Array[QuestDef] = _load_authored_quests()
+	out.append_array(GameState.quest_board_offers())
+	return out
+
+## Every QuestDef in res://resources/quests/, sorted by level_range.x - the
+## data that already exists to express "easy comes before hard", rather than
+## a second, hardcoded ordering (QUEST_ORDER is gone, spec §3 exit criteria).
+func _load_authored_quests() -> Array[QuestDef]:
 	var out: Array[QuestDef] = []
-	for id: StringName in QUEST_ORDER:
-		var res := load(QUEST_DIR + String(id) + ".tres")
+	var dir := DirAccess.open(QUEST_DIR)
+	if dir == null:
+		return out
+	for file_name: String in dir.get_files():
+		var clean := file_name.trim_suffix(".remap")
+		if not clean.ends_with(".tres"):
+			continue
+		var res := load(QUEST_DIR + clean)
 		if res is QuestDef:
 			out.append(res)
+	out.sort_custom(func(a: QuestDef, b: QuestDef) -> bool: return a.level_range.x < b.level_range.x)
 	return out

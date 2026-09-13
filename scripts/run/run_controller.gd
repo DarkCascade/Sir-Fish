@@ -55,6 +55,12 @@ func _ready() -> void:
 	director.world = world
 	add_child(director)
 
+	# [content phase 1] Fans quest events out to GameState.quest_objectives;
+	# a no-op child outside a real quest (spec §3 Step 1a).
+	var quest_runtime := QuestRuntime.new()
+	quest_runtime.name = "QuestRuntime"
+	add_child(quest_runtime)
+
 	EventBus.combat_ended.connect(_on_combat_ended)
 	run_summary.dismissed.connect(_on_retry)
 
@@ -86,11 +92,24 @@ func _start_run() -> void:
 
 func _next_encounter() -> void:
 	GameState.current_encounter_index += 1
+	# [content phase 1] Won now means "every objective reports complete," not
+	# "the encounter list ran out" (spec §3 Step 1a) - checked first so an
+	# objective that finishes before the last encounter (SlayObjective) ends
+	# the quest here instead of walking the remaining ones. See
+	# content-phase-1 questions doc Q1 for why this boundary, and why it can
+	# never leave a quest stuck un-completable.
+	if GameState.quest != null and GameState.quest_objectives_complete():
+		_run_complete()
+		return
 	if GameState.current_encounter_index >= GameState.level.encounters.size():
 		# [town] spec 8.3: a quest is a BOUNDED expedition - when its encounters
 		# run out the party has won, so _run_complete() (previously dead code,
 		# reachable only with endless_mode off) fires. Checked ahead of
-		# endless_mode, which stays default-true even during a quest.
+		# endless_mode, which stays default-true even during a quest. Kept as a
+		# safety net alongside the objectives check above - a quest whose only
+		# objective is ClearEncountersObjective completes at exactly this point
+		# anyway, so this branch should be unreachable for one, not a second
+		# route to victory.
 		if GameState.quest != null:
 			_run_complete()
 			return
@@ -323,6 +342,10 @@ func _run_complete() -> void:
 	if GameState.quest != null:
 		var q := GameState.quest
 		GameState.add_gold(q.gold_reward)
+		# [content phase 1] D2/spec §3 Step 1b: victory only, same point gold is
+		# paid. Empty on every quest Phase 1 ships (QuestRewardExtra's header).
+		for extra: QuestRewardExtra in q.reward_extras:
+			extra.grant()
 		GameState.completed_quest = q
 		GameState.quest = null
 		# [day-night] T2: QUEST -> NIGHT_PENDING, win or loss (day/night spec

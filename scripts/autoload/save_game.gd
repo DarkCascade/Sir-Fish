@@ -129,6 +129,12 @@ func save_profile() -> void:
 		# which is exactly what that save's heroes actually are.
 		"hero_levels": GameState.hero_levels,
 		"hero_xp": GameState.hero_xp,
+		# [content phase 1] The mayor's generated board (spec §3 Step 3.2).
+		# Additive, same as forge_stock above - no VERSION bump (content-phase-1
+		# questions doc Q8 explains the divergence from the spec's literal "bump
+		# it" instruction).
+		"quest_board": GameState.quest_board.map(func(q: QuestDef) -> Dictionary: return q.to_dict()),
+		"quest_board_generated": GameState.quest_board_generated,
 	}))
 
 ## Returns false when there is no save, or it is unreadable, or its version is
@@ -217,6 +223,15 @@ func load_profile() -> bool:
 	for k: Variant in raw_xp.keys():
 		xp[StringName(k)] = int(raw_xp[k])
 	GameState.hero_xp = xp
+
+	# [content phase 1] The mayor's generated board (spec §3 Step 3.2). Absent
+	# on a pre-existing save reads as "never generated" (both defaults below),
+	# which is exactly true of a save written before this key existed.
+	var board: Array[QuestDef] = []
+	for raw: Variant in d.get("quest_board", []):
+		board.append(QuestDef.from_dict(raw))
+	GameState.quest_board = board
+	GameState.quest_board_generated = bool(d.get("quest_board_generated", false))
 
 	return true
 

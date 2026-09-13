@@ -86,17 +86,26 @@ func _unhandled_input(event: InputEvent) -> void:
 
 # --- build ----------------------------------------------------------------
 
+## [content phase 1] One block per active_party member, not just
+## active_party[0] - the Equipped section used to show only the field
+## leader's three slots, which was invisible while the party was the solo
+## warrior (index 0 WAS the only hero) and became a real gap the moment the
+## ranger and mage returned: a player could equip either of them from the
+## Carried section below (_eligible_class() was already multi-class aware)
+## but could never SEE what they had on. Exactly the "index coupling
+## survived" risk Step 2c's own text calls out.
 func _rebuild() -> void:
-	var hero: StringName = GameState.active_party[0] if not GameState.active_party.is_empty() else &"warrior"
-
 	for child: Node in equipped_list.get_children():
 		child.queue_free()
-	for s: Item.Slot in [Item.Slot.WEAPON, Item.Slot.ARMOR, Item.Slot.TRINKET]:
-		var worn := GameState.equipped_item(hero, s)
-		if worn != null:
-			_add_row(equipped_list, worn)
-		else:
-			equipped_list.add_child(_empty_slot_row(s))
+	for hero: StringName in GameState.active_party:
+		if GameState.active_party.size() > 1:
+			equipped_list.add_child(_hero_header(hero))
+		for s: Item.Slot in [Item.Slot.WEAPON, Item.Slot.ARMOR, Item.Slot.TRINKET]:
+			var worn := GameState.equipped_item(hero, s)
+			if worn != null:
+				_add_row(equipped_list, worn)
+			else:
+				equipped_list.add_child(_empty_slot_row(s))
 
 	for child: Node in carried_list.get_children():
 		child.queue_free()
@@ -152,6 +161,17 @@ func _eligible_class(i: Item) -> StringName:
 		if c in GameState.active_party:
 			return c
 	return &""
+
+## [content phase 1] A named divider between one hero's equipped block and the
+## next - only shown once the party is more than one hero (a solo warrior's
+## screen is unchanged, no header needed for the only hero on it).
+func _hero_header(hero: StringName) -> Label:
+	var stats := GameState.get_stats(hero)
+	var l := Label.new()
+	l.text = stats.display_name if stats != null else String(hero).capitalize()
+	l.add_theme_font_size_override("font_size", 44)
+	l.add_theme_color_override("font_color", Tuning.C_GOLD)
+	return l
 
 func _empty_slot_row(s: Item.Slot) -> Label:
 	var l := Label.new()

@@ -2,10 +2,11 @@ extends Control
 ## [town] The blacksmith (spec 7.3, 7.4). A routed town scene like the inn and
 ## the mayor's office, with four tabs mirroring the shop's TabContainer:
 ##
-##   - Forge: GameState.equipped_set(&"warrior") - the warrior's three equipped
-##     items, one row each, an empty-slot placeholder where a slot is unfilled.
-##     Each row walks its item one rarity step up the ladder (Itemizer.forge());
-##     every forge saves the profile and flashes the new modifier line.
+##   - Forge: one block per active_party member (spec §3 Step 2c) - each
+##     hero's three equipped items, one row each, an empty-slot placeholder
+##     where a slot is unfilled. Each row walks its item one rarity step up
+##     the ladder (Itemizer.forge()); every forge saves the profile and
+##     flashes the new modifier line.
 ##   - Buy: FORGE_SHOP_SLOTS cards from Itemizer.generate_forge_stock(), cached on
 ##     GameState.forge_stock and rerolled ONLY by the refresh button, which costs
 ##     SHOP_REFRESH_COST gold (spec 7.4). Walking out and back in never rerolls.
@@ -47,7 +48,12 @@ const SLOT_NAMES := {
 @onready var _compare_flyout = $CompareFlyout   # CompareFlyout (untyped: custom API)
 
 var _cards: Array = []
-var _forge_rows: Dictionary = {}   # Item.Slot -> ItemCard (filled slots only)
+## [content phase 1] Keyed by "%s_%d" % [hero, slot] now, not by slot alone -
+## the Forge tab used to show only active_party[0]'s three slots, which was
+## invisible while the party was the solo warrior and became a real gap the
+## moment the ranger and mage returned (same "index coupling survived" risk
+## the inventory modal's Equipped section hit - see its own comment).
+var _forge_rows: Dictionary = {}   # "hero_slot" key -> ItemCard (filled slots only)
 
 func _ready() -> void:
 	# spec 3.1: re-assert our own place for direct launches (F5, play_scene).
@@ -87,20 +93,33 @@ func _build_forge() -> void:
 	for child: Node in _forge_list.get_children():
 		child.queue_free()
 	_forge_rows.clear()
-	var hero: StringName = GameState.active_party[0] if not GameState.active_party.is_empty() else &"warrior"
-	for s: Item.Slot in [Item.Slot.WEAPON, Item.Slot.ARMOR, Item.Slot.TRINKET]:
-		var worn := GameState.equipped_item(hero, s)
-		if worn == null:
-			_forge_list.add_child(_empty_slot_row(s))
-			continue
-		var card := ITEM_ROW.instantiate()
-		_forge_list.add_child(card)
-		card.setup(worn)
-		var acts: Array[StringName] = [&"forge"]
-		card.set_actions(acts)
-		card.action_pressed.connect(_on_forge_pressed.bind(worn))
-		_refresh_forge_card(card)
-		_forge_rows[s] = card
+	for hero: StringName in GameState.active_party:
+		if GameState.active_party.size() > 1:
+			_forge_list.add_child(_hero_header(hero))
+		for s: Item.Slot in [Item.Slot.WEAPON, Item.Slot.ARMOR, Item.Slot.TRINKET]:
+			var worn := GameState.equipped_item(hero, s)
+			if worn == null:
+				_forge_list.add_child(_empty_slot_row(s))
+				continue
+			var card := ITEM_ROW.instantiate()
+			_forge_list.add_child(card)
+			card.setup(worn)
+			var acts: Array[StringName] = [&"forge"]
+			card.set_actions(acts)
+			card.action_pressed.connect(_on_forge_pressed.bind(worn))
+			_refresh_forge_card(card)
+			_forge_rows["%s_%d" % [hero, s]] = card
+
+## [content phase 1] A named divider between one hero's forge block and the
+## next - only shown once the party is more than one hero, same rule the
+## inventory modal's own header follows.
+func _hero_header(hero: StringName) -> Control:
+	var stats := GameState.get_stats(hero)
+	var l := Label.new()
+	l.text = stats.display_name if stats != null else String(hero).capitalize()
+	l.add_theme_font_size_override("font_size", 48)
+	l.add_theme_color_override("font_color", Tuning.C_GOLD)
+	return l
 
 ## A named placeholder, not a missing row - "you have nothing in your trinket
 ## slot" is information the forge screen should volunteer (spec 7.3).
@@ -126,17 +145,17 @@ func _on_forge_pressed(id: StringName, item: Item) -> void:
 	if id == &"compare":
 		_on_compare_requested(item)
 		return
-	var slot := item.slot()
+	var key := "%s_%d" % [item.equipped_by, item.slot()]
 	if not Itemizer.forge(item):
 		return
 	SaveGame.save_profile()
 	_build_forge()
-	if _forge_rows.has(slot):
+	if _forge_rows.has(key):
 		# The whole card washes the new rarity colour now. forge_row.gd tinted
 		# just the appended modifier LINE, which the card does not have - it
 		# shows modifiers as icon chips, where a one-line colour fade would be
 		# invisible.
-		_forge_rows[slot].flash_rarity()
+		_forge_rows[key].flash_rarity()
 	_refresh_forge_affordability()
 	# The forged item is worth more now, so its Scrap/Sell rows (shown but
 	# locked while equipped) must reprice.

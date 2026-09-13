@@ -51,6 +51,11 @@ signal item_forged(item: Item, new_rarity: int)
 signal quest_started(quest: QuestDef)
 signal quest_finished(victory: bool)
 
+## [content phase 1] Emitted by QuestRuntime after every objective dispatch -
+## a hook for the HUD to read quest progress from. No consumer yet (spec §3
+## Step 1a; content-phase-1 questions doc Q6).
+signal quest_progress(objective: QuestObjective, current: int, target: int)
+
 ## [levels] Fired by GameState._apply_xp_to_hero() the moment `hero_class`'s
 ## level actually changes (spec §3.3) - never on an XP gain that doesn't cross
 ## a threshold. quest_result.gd reads it for a "Warrior reached level 6" stat

@@ -144,6 +144,7 @@ func _build_stats() -> void:
 	_row_visible(&"QuestReward", is_quest and _victory)
 	_row_visible(&"ExpeditionGold", is_quest)
 	_row_visible(&"ExpeditionScrap", is_quest)
+	_rebuild_reward_extra_rows(is_quest and _victory)
 
 	var stats: Dictionary = GameState.run_stats
 	var values := {
@@ -180,6 +181,39 @@ func _build_stats() -> void:
 		tw.tween_property(row, "position:x", 0.0, 0.25).set_delay(0.08 * float(i)) \
 			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 		i += 1
+
+## [content phase 1] One extra Caption/Value row per QuestRewardExtra with
+## non-empty describe(), inserted right after the authored QuestReward row -
+## same HBoxContainer/Caption/Value shape as every authored row, since there
+## is no scene node to fill in for these (the list is empty on every shipped
+## quest; see content-phase-1 questions doc Q6). Rebuilt from scratch each
+## present() so a re-presented modal never doubles the rows up.
+const _REWARD_EXTRA_GROUP := "quest_reward_extra_row"
+
+func _rebuild_reward_extra_rows(show_rows: bool) -> void:
+	for row: Node in get_tree().get_nodes_in_group(_REWARD_EXTRA_GROUP):
+		if row.get_parent() == stat_rows:
+			row.queue_free()
+	if not show_rows or GameState.completed_quest == null:
+		return
+	var quest_reward_row := stat_rows.get_node_or_null(NodePath(&"QuestReward"))
+	var insert_index: int = quest_reward_row.get_index() + 1 if quest_reward_row != null else 0
+	for extra: QuestRewardExtra in GameState.completed_quest.reward_extras:
+		var text := extra.describe()
+		if text.is_empty():
+			continue
+		var row := HBoxContainer.new()
+		row.custom_minimum_size = Vector2(0, 54)
+		row.add_to_group(_REWARD_EXTRA_GROUP)
+		var caption := Label.new()
+		caption.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		caption.add_theme_color_override("font_color", Tuning.C_GOLD)
+		caption.add_theme_font_size_override("font_size", 46)
+		caption.text = text
+		row.add_child(caption)
+		stat_rows.add_child(row)
+		stat_rows.move_child(row, insert_index)
+		insert_index += 1
 
 func _row_visible(row_name: StringName, visible_now: bool) -> void:
 	var row := stat_rows.get_node_or_null(NodePath(row_name)) as Control

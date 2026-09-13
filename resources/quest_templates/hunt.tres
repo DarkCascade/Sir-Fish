@@ -1,0 +1,13 @@
+[gd_resource type="Resource" script_class="QuestTemplate" load_steps=2 format=3]
+
+[ext_resource type="Resource" path="res://resources/objectives/slay_undead.tres" id="1_obj"]
+[ext_resource type="Script" path="res://scripts/data/quest_template.gd" id="2_tmpl"]
+
+[resource]
+script = ExtResource("2_tmpl")
+objective_proto = ExtResource("1_obj")
+rhythm = Array[int]([0, 1, 0])
+length_range = Vector2i(4, 5)
+difficulty_mult = 1.0
+gold_formula_mult = 1.0
+blurb_templates = PackedStringArray("Something restless is loose in the wood - put it down.", "The dead do not lie easy here. See that they do.")

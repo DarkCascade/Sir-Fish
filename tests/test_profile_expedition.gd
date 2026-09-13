@@ -27,8 +27,10 @@ func _ready() -> void:
 			and start_wpn.rarity == Item.Rarity.MAGIC,
 		"the starting weapon is a Magic sword equipped by the warrior")
 	var start_arm := GameState.equipped_item(&"warrior", Item.Slot.ARMOR)
-	t.check(start_arm != null and start_arm.weapon_type == &"shield",
-		"the starting armor is a shield equipped by the warrior")
+	# [content phase 1] &"mail" is the warrior's armor type now - &"shield"
+	# moved to the mage in the Step 2b item-type split (questions doc Q3).
+	t.check(start_arm != null and start_arm.weapon_type == &"mail",
+		"the starting armor is mail equipped by the warrior")
 	t.check(GameState.day_phase == GameState.DayPhase.DAY, "new_profile() starts in DAY")
 	t.check(GameState.hero_runtime.size() == GameState.active_party.size(),
 		"new_profile() builds one hero_runtime entry per active_party member")
@@ -129,15 +131,16 @@ func _ready() -> void:
 	t.check(GameState.current_encounter_index == -1,
 		"reset_run() still rewinds current_encounter_index")
 
-	# --- P6: active_party is the solo warrior; PARTY_ORDER is intact -------
-	# Spec 4.5 flips active_party's VALUE to [&"warrior"]; PARTY_ORDER stays the
-	# canonical 3-hero roster (spec 0.2 "PARTY_ORDER is not deleted"). P6 runs
-	# after reset_run() at P5, i.e. post-new_profile(), so [&"warrior"] is the
-	# expected value. The second check trips if a future tidy-up trims the
-	# roster to match. The `as Array[StringName]` cast is required: an untyped
-	# [&"x"] literal will not compare == to a typed Array[StringName] in GDScript.
-	t.check(GameState.active_party == ([&"warrior"] as Array[StringName]),
-		"active_party is the solo warrior (got %s)" % [GameState.active_party])
+	# --- P6: active_party is the full roster again; PARTY_ORDER is intact ---
+	# [content phase 1] Step 2c: the ranger and mage come back, so new_profile()
+	# now sets active_party = PARTY_ORDER.duplicate() (content-phase-1
+	# questions doc Q4) - Phase 0 spec 4.5's solo-warrior flip was that phase's
+	# own deliberate simplification, not a permanent design. P6 runs after
+	# reset_run() at P5, i.e. post-new_profile(), so the full roster is the
+	# expected value here.
+	t.check(GameState.active_party == GameState.PARTY_ORDER,
+		"active_party is the full roster again (got %s, want %s)"
+			% [GameState.active_party, GameState.PARTY_ORDER])
 	t.check(GameState.PARTY_ORDER.size() == 3,
 		"PARTY_ORDER is untouched - the 3-hero roster still exists (spec 4.5)")
 

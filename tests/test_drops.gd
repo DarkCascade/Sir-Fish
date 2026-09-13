@@ -136,7 +136,10 @@ func _ready() -> void:
 	for wtype: StringName in Itemizer.ITEM_TYPES.keys():
 		var wieldable := false
 		for c: StringName in GameState.active_party:
-			if (Itemizer.ITEM_TYPES[wtype]["classes"] as Array).has(c):
+			# [content phase 1] ITEM_TYPES carries no "classes" key any more -
+			# eligibility is read from ClassDef.item_types instead (spec §3
+			# Step 2b).
+			if Itemizer.classes_for_type(wtype).has(c):
 				wieldable = true
 		var pct := 100.0 * float(d7_by_type[wtype]) / float(D7_N)
 		if not wieldable:

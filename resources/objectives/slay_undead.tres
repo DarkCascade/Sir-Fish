@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="SlayObjective" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/objectives/slay_objective.gd" id="1_slay"]
+
+[resource]
+script = ExtResource("1_slay")
+description = "Put down two of the wood's restless dead."
+target_tag = &"undead"
+count = 2

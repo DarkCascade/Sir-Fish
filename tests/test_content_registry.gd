@@ -92,13 +92,14 @@ func _check_stats(stats: CombatantStats) -> void:
 		# receive drops.
 		_t.check(not Itemizer.weapon_types_for(stats.id).is_empty(),
 			"%s: Itemizer.weapon_types_for() is non-empty (class can receive drops)" % id)
-		# 7. SlotIcon.innate_for(id) was answered deliberately rather than by
-		# falling through the ternary. SlotIcon.innate_for() has no failure
-		# state observable from outside its own source (see the phase-0
-		# questions doc) - the closest external proxy is confirming the id it
-		# returns still resolves to a real board icon kind.
-		_t.check(SlotIcon.kind_of(SlotIcon.innate_for(stats.id)) != SlotIcon.Kind.BLANK,
-			"%s: SlotIcon.innate_for() resolves to a real icon kind" % id)
+		# 7. [content phase 1] class_def is set and its innate_icon resolves to
+		# a real board icon kind - replaces the old SlotIcon.innate_for() check
+		# now that the mage/damage ternary moved onto ClassDef (spec §3 Step 2).
+		if _t.check(stats.class_def != null, "%s: class_def is set" % id):
+			_t.check(SlotIcon.kind_of(stats.class_def.innate_icon) != SlotIcon.Kind.BLANK,
+				"%s: class_def.innate_icon resolves to a real icon kind" % id)
+			_t.check(not stats.class_def.executes.is_empty(),
+				"%s: class_def.executes owns at least one icon kind" % id)
 
 	c.queue_free()
 
@@ -138,4 +139,8 @@ func _check_quests() -> void:
 			continue
 		# 8. Every QuestDef on disk has gold_reward > 0 (decision D2).
 		_t.check(q.gold_reward > 0, "%s: gold_reward > 0 (decision D2)" % clean)
+		# 9. [content phase 1] Every QuestDef carries at least one objective -
+		# an empty list is never a win (GameState.quest_objectives_complete()).
+		_t.check(not q.objectives.is_empty(),
+			"%s: objectives is non-empty (spec §3 Step 1a)" % clean)
 	_t.check(any, "at least one QuestDef found in %s" % QUESTS_DIR)

@@ -1,0 +1,7 @@
+[gd_resource type="Resource" script_class="ClearEncountersObjective" format=3 uid="uid://c8oatn55x1r6h"]
+
+[ext_resource type="Script" path="res://scripts/data/objectives/clear_encounters_objective.gd" id="1_ceo"]
+
+[resource]
+script = ExtResource("1_ceo")
+description = "Clear every encounter along the way."
