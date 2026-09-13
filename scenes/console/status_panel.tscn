@@ -5,6 +5,7 @@
 [ext_resource type="PackedScene" uid="uid://46oh8n83yecw" path="res://scenes/console/sir_fish_tank.tscn" id="4_pxtvr"]
 [ext_resource type="PackedScene" path="res://scenes/console/party_bars.tscn" id="5_party"]
 [ext_resource type="Texture2D" uid="uid://hs61djh243gv" path="res://assets/ui/reliquary/card_frame.png" id="6_vines"]
+[ext_resource type="Texture2D" path="res://assets/icons/scrap.png" id="7_scrap"]
 
 [sub_resource type="StyleBoxFlat" id="strip"]
 content_margin_left = 8.0
@@ -127,29 +128,16 @@ size_flags_vertical = 3
 mouse_filter = 2
 theme_override_constants/separation = 14
 
-; Texture hook for the scrap icon. Until that art exists, Placeholder stands in:
-; set ScrapIcon's texture and delete Placeholder, nothing else changes.
+; The scrap icon (assets/icons/scrap.png, Meshy, keyed to alpha). The coin beside
+; it is coin_glyph.gd drawing slot_gold.png, so both currencies are baked art.
 [node name="ScrapIcon" type="TextureRect" parent="Layout/ResourceRow/GoldPlate/Rows/ScrapRow"]
 custom_minimum_size = Vector2(54, 54)
 layout_mode = 2
 size_flags_vertical = 4
 mouse_filter = 2
+texture = ExtResource("7_scrap")
 expand_mode = 1
 stretch_mode = 5
-
-[node name="Placeholder" type="Label" parent="Layout/ResourceRow/GoldPlate/Rows/ScrapRow/ScrapIcon"]
-layout_mode = 1
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-theme_type_variation = &"DisplayLabel"
-theme_override_colors/font_color = Color(0.623529, 0.698039, 0.745098, 1)
-theme_override_font_sizes/font_size = 44
-text = "S"
-horizontal_alignment = 1
-vertical_alignment = 1
 
 [node name="ScrapLabel" type="Label" parent="Layout/ResourceRow/GoldPlate/Rows/ScrapRow"]
 layout_mode = 2
