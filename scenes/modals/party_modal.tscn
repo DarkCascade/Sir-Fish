@@ -3,6 +3,7 @@
 [ext_resource type="Script" path="res://scripts/modals/party_modal.gd" id="1_modal"]
 [ext_resource type="Shader" path="res://assets/shaders/reliquary_mist.gdshader" id="2_mist"]
 [ext_resource type="PackedScene" path="res://scenes/modals/reliquary_frame.tscn" id="3_frame"]
+[ext_resource type="Texture2D" path="res://assets/Planks012_1K-JPG_Color.jpg" id="4_wood"]
 
 [sub_resource type="ShaderMaterial" id="mist_mat"]
 shader = ExtResource("2_mist")
@@ -78,6 +79,24 @@ offset_right = 990.0
 offset_bottom = 1360.0
 pivot_offset = Vector2(450, 400)
 theme_override_styles/panel = SubResource("rel_panel")
+
+; [biome-frames] Town's plank backdrop - see inventory_modal.tscn's Grain for
+; the full explanation. Hidden by default; party_modal.gd's _ready() shows it
+; only when the biome has backdrop art.
+[node name="Grain" type="TextureRect" parent="Panel"]
+show_behind_parent = true
+self_modulate = Color(0.42, 0.38, 0.44, 1)
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("4_wood")
+expand_mode = 1
+stretch_mode = 0
+visible = false
 
 [node name="Layout" type="VBoxContainer" parent="Panel"]
 layout_mode = 2

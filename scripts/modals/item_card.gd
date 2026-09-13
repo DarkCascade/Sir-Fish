@@ -11,6 +11,7 @@ extends VBoxContainer
 signal action_pressed(id: StringName)
 
 const ItemCardStyle := preload("res://scripts/ui/item_card_style.gd")
+const BiomeTheme := preload("res://scripts/ui/biome_theme.gd")
 
 ## The four headline tiles, in StatRow's child order (Attack, Magic, Health,
 ## Defense). Item carries no four-stat block - it carries `modifiers` - so each
@@ -56,8 +57,12 @@ var item: Item = null
 @onready var _info: VBoxContainer = $Card/Content/Layout/TopRow/Info
 @onready var _rarity_flash: ColorRect = $Card/RarityFlash
 @onready var _burst: GPUParticles2D = $Burst
+@onready var _frame: NinePatchRect = $Card/Frame
 
 func _ready() -> void:
+	# [biome-frames] The scene's own ExtResource is the expedition/unthemed
+	# fallback (gold vine); this only overrides it once a biome has its own art.
+	_frame.texture = BiomeTheme.card_frame()
 	for id: StringName in ACTION_IDS:
 		var b := _button(id)
 		b.visible = false

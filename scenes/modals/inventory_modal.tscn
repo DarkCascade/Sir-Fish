@@ -5,6 +5,7 @@
 [ext_resource type="FontFile" uid="uid://bv5mowftmyw06" path="res://assets/fonts/Crimson-Bold.ttf" id="3_jnyau"]
 [ext_resource type="Shader" uid="uid://bdysf21ort1yh" path="res://assets/shaders/reliquary_mist.gdshader" id="4_mist"]
 [ext_resource type="PackedScene" path="res://scenes/modals/reliquary_frame.tscn" id="5_frame"]
+[ext_resource type="Texture2D" uid="uid://c8m2rq5uawpsy" path="res://assets/Planks012_1K-JPG_Color.jpg" id="6_wood"]
 
 [sub_resource type="ShaderMaterial" id="mist_mat"]
 shader = ExtResource("4_mist")
@@ -78,6 +79,22 @@ offset_right = 1020.0
 offset_bottom = 1620.0
 pivot_offset = Vector2(480, 660)
 theme_override_styles/panel = SubResource("rel_panel")
+
+; [biome-frames] Town's plank backdrop. Hidden and untouched by default -
+; BiomeTheme.apply_panel_backdrop() (inventory_modal.gd _ready()) shows it and
+; strips rel_panel's own fill (draw_center) only when the biome has backdrop
+; art, so anywhere without one still gets the plain plum fill exactly as before.
+; show_behind_parent draws it under Panel's own border, same trick as
+; mayor_office.tscn's Board/Grain.
+[node name="Grain" type="TextureRect" parent="Panel" unique_id=1052034881]
+self_modulate = Color(0.42, 0.38, 0.44, 1)
+show_behind_parent = true
+layout_mode = 2
+mouse_filter = 2
+texture = ExtResource("6_wood")
+expand_mode = 1
+stretch_mode = 0
+visible = false
 
 [node name="Layout" type="VBoxContainer" parent="Panel" unique_id=504721368]
 layout_mode = 2
