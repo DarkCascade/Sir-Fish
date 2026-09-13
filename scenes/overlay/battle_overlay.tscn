@@ -1,6 +1,7 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://scripts/overlay/battle_overlay.gd" id="1_overlay"]
+[ext_resource type="Script" path="res://scripts/battle/boss_nameplate.gd" id="2_nameplate"]
 
 [node name="BattleOverlay" type="Control" groups=["battle_overlay"]]
 layout_mode = 3
@@ -30,3 +31,86 @@ anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 mouse_filter = 2
+
+; [black-glass] Above every other layer, so the letterbox and name sit over the
+; bars/numbers/vfx too. A persistent authored child, like its siblings above -
+; boss_nameplate.gd's own header explains why one instance is safe to replay.
+[node name="BossNameplate" type="Control" parent="."]
+visible = false
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+script = ExtResource("2_nameplate")
+
+[node name="Dim" type="ColorRect" parent="BossNameplate"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+color = Color(0.078431, 0.058824, 0.109804, 0.55)
+
+[node name="TopBar" type="ColorRect" parent="BossNameplate"]
+layout_mode = 1
+anchors_preset = -1
+anchor_right = 1.0
+anchor_bottom = 0.085
+mouse_filter = 2
+color = Color(0.078431, 0.058824, 0.109804, 1)
+
+[node name="BottomBar" type="ColorRect" parent="BossNameplate"]
+layout_mode = 1
+anchors_preset = -1
+anchor_top = 0.925
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+color = Color(0.078431, 0.058824, 0.109804, 1)
+
+[node name="Card" type="VBoxContainer" parent="BossNameplate"]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/separation = 14
+
+[node name="QuestLabel" type="Label" parent="BossNameplate/Card"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 32
+horizontal_alignment = 1
+text = "The Shallow Wood"
+
+[node name="Rule" type="ColorRect" parent="BossNameplate/Card"]
+custom_minimum_size = Vector2(220, 3)
+layout_mode = 2
+size_flags_horizontal = 4
+
+[node name="NameLabel" type="Label" parent="BossNameplate/Card"]
+layout_mode = 2
+theme_type_variation = &"DisplayLabel"
+theme_override_colors/font_color = Color(0.956863, 0.721569, 1, 1)
+theme_override_font_sizes/font_size = 88
+horizontal_alignment = 1
+text = "Skeleton Warrior"
+
+[node name="TagLabel" type="Label" parent="BossNameplate/Card"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.956863, 0.721569, 1, 1)
+theme_override_font_sizes/font_size = 30
+horizontal_alignment = 1
+text = "BOSS"
+
+[node name="Flash" type="ColorRect" parent="BossNameplate"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+color = Color(0.956863, 0.721569, 1, 1)

@@ -53,6 +53,13 @@ const PAYLINE_BAND := 60.0
 @onready var result_frame: ResultFrame = $ResultFrame
 @onready var banner: Label = $Banner
 @onready var confetti: GPUParticles2D = $Confetti
+## [black-glass] The three recessed reel windows, tweened by apply_boss_theme()/
+## clear_boss_theme() alongside the cabinet face they sit inside.
+@onready var _reel_windows: Array[ColorRect] = [$ReelWindow0, $ReelWindow1, $ReelWindow2]
+
+const ROOTWOOD_TILE := preload("res://resources/ui/slot_tile_rootwood.tres")
+const BOSS_TILE := preload("res://resources/ui/slot_tile_boss.tres")
+const BOSS_THEME_TIME := 0.3
 
 func _ready() -> void:
 	_home_position = position
@@ -102,6 +109,43 @@ func apply_height(h: float) -> void:
 	banner.size = Vector2(1080, h)
 	scale = Vector2.ONE * Tuning.SLOT_CABINET_SCALE
 	_home_position = position
+
+# --- black-glass boss theme --------------------------------------------------
+
+## Called by Console.apply_boss_theme(), itself called from boss_nameplate.gd's
+## `impact` signal the instant a boss encounter's name lands (RunController).
+func apply_boss_theme() -> void:
+	_tween_cabinet_colors(Tuning.C_OBSIDIAN, Tuning.C_OBSIDIAN_DEEP)
+	reel_grid.boss_active = true
+	result_frame.boss_active = true
+	for reel: Variant in _reels:
+		reel.set_boss_active(true)
+		reel.set_tile_style(BOSS_TILE)
+
+## Called by Console.clear_boss_theme() from RunController._on_combat_ended() -
+## "all enemies dead" (or a wipe), never later, so the console cannot get
+## stuck black-glass for the rest of the expedition.
+func clear_boss_theme() -> void:
+	_tween_cabinet_colors(Tuning.C_ROOTWOOD, Tuning.C_CANOPY_WELL)
+	reel_grid.boss_active = false
+	result_frame.boss_active = false
+	for reel: Variant in _reels:
+		reel.set_boss_active(false)
+		reel.set_tile_style(ROOTWOOD_TILE)
+
+## The cabinet's own StyleBoxFlat is duplicated once (if not already) so this
+## can mutate bg_color in place - the live-stylebox trick biome_theme.gd's
+## apply_panel_backdrop() already uses for the same reason.
+func _tween_cabinet_colors(face: Color, window: Color) -> void:
+	var panel := cabinet as Panel
+	var style: StyleBoxFlat = panel.get_theme_stylebox("panel").duplicate()
+	panel.add_theme_stylebox_override("panel", style)
+	var tw := create_tween().set_parallel(true)
+	tw.tween_method(func(c: Color) -> void:
+		style.bg_color = c
+		panel.queue_redraw(), style.bg_color, face, BOSS_THEME_TIME)
+	for rect: ColorRect in _reel_windows:
+		tw.tween_property(rect, "color", window, BOSS_THEME_TIME)
 
 # --- attract mode (spec 16.6 / Q17) -----------------------------------------
 

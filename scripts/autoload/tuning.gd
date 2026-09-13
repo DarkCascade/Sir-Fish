@@ -652,6 +652,22 @@ const C_ROOTWOOD_LIT := Color("4A3620")    # glyph tiles, raised off C_ROOTWOOD
 const C_CANOPY_WELL := Color("0F2420")     # recessed reel windows - green glass, darker than every face it sits under
 const C_ROOTWOOD_GEM := Color("6FCB52")    # innate-icon inlay, canopy leaf-green
 
+## [black-glass] The console's temporary boss-fight skin - same surfaces
+## rootwood-canopy owns above, swapped in by Console.apply_boss_theme() the
+## instant a boss encounter's nameplate lands (boss_nameplate.gd's `impact`
+## signal) and swapped back by Console.clear_boss_theme() the moment that
+## fight's combat ends, victory or not (RunController._on_combat_ended() -
+## "all enemies dead", per the user's own framing, since a wipe routes away
+## from the console anyway and must not leave it stuck black). Matches the
+## Biome Frames mockup's swatches (obsidian / glass facet / seam / gem core);
+## gold trim becomes the glowing seam instead, since a boss fight is the one
+## moment this console is allowed to stop reading as friendly UI chrome.
+const C_OBSIDIAN_DEEP := Color("140F1C")   # status strip / recessed reel windows - darkest glass
+const C_OBSIDIAN := Color("211A2E")        # panel faces: cabinet, gold plate
+const C_GLASS_FACET := Color("3B3152")     # glyph tiles, raised off C_OBSIDIAN
+const C_SEAM := Color("D9A6FF")            # glowing trim, replacing gold on borders and the reel lattice
+const C_SEAM_BRIGHT := Color("F4B8FF")     # innate-icon inlay / boss-name glow, brightest point in the console
+
 # --- storm mood (M9) ---------------------------------------------------------
 ## The palette above is the fair-weather art direction and stays as authored.
 ## The storm is a TRANSFORM of it, not a second copy: `storm_tint()` darkens

@@ -35,6 +35,14 @@ extends Control
 		tile_style = value
 		queue_redraw()
 
+## [black-glass] Set by SlotReel.set_boss_active(), forwarded from
+## SlotMachine.apply_boss_theme()/clear_boss_theme(). Recolours the innate-icon
+## inlay from canopy leaf-green to the boss chrome's glowing seam.
+@export var boss_active: bool = false:
+	set(v):
+		boss_active = v
+		queue_redraw()
+
 ## The board glyph's size as a fraction of its tile.
 @export_range(0.1, 1.0, 0.01) var glyph_fraction: float = 0.74:
 	set(value):
@@ -151,8 +159,8 @@ func _draw() -> void:
 	if bool(icon.get("innate", false)) or SlotIcon.is_innate(id):
 		var at := Vector2(c.x, rect.position.y)
 		var r := box * 0.09
-		draw_colored_polygon(_diamond(at, r + 3.0), Tuning.C_GOLD)
-		draw_colored_polygon(_diamond(at, r), Tuning.C_ROOTWOOD_GEM)
+		draw_colored_polygon(_diamond(at, r + 3.0), Tuning.C_SEAM if boss_active else Tuning.C_GOLD)
+		draw_colored_polygon(_diamond(at, r), Tuning.C_SEAM_BRIGHT if boss_active else Tuning.C_ROOTWOOD_GEM)
 
 ## No board glyph for this id yet: the reliquary chip, tinted per element as the
 ## reel drew it before phase 3. The chips are opaque squares, so they are inset

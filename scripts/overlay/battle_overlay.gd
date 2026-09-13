@@ -12,6 +12,9 @@ const ICON_SCENE := preload("res://scenes/overlay/status_icon.tscn")
 @onready var bars_layer: Control = $BarsLayer
 @onready var floating_layer: Control = $FloatingLayer
 @onready var vfx_layer: Control = $VfxLayer
+## [black-glass] Boss transition title card, above every other layer here -
+## see boss_nameplate.gd's own header for the full contract.
+@onready var boss_nameplate: BossNameplate = $BossNameplate
 
 var _bars: Dictionary = {}          # Combatant -> CombatantBars
 var _camera: Camera3D = null
