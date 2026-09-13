@@ -71,7 +71,17 @@ const _PANEL_BG := {
 static func _panel_color(id: StringName) -> Variant:
 	match id:
 		&"expedition": return Tuning.C_ROOTWOOD
+		&"shop": return Tuning.C_VELVET
 	return null
+
+## [brass-and-velvet] The shop's fixed identity, not a SceneRouter place - a
+## shop opened in town or mid-quest looks the same either way, so callers pass
+## this explicitly as the `override` on card_frame()/frame_corner()/
+## apply_panel_backdrop() rather than letting biome() read the live place (see
+## header). Mirrors the for_boss() this file's header already anticipates, once
+## boss encounters get their own black-glass skin.
+static func for_shop() -> StringName:
+	return &"shop"
 
 ## SceneRouter.place, translated to a biome id. Reads live off the router
 ## rather than being cached, so a caller's _ready() always sees the place it

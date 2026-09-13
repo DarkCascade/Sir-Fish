@@ -14,19 +14,25 @@ shader_parameter/density = 0.34
 shader_parameter/drift_speed = 0.045
 shader_parameter/scale = 2.4
 
-; [reliquary] Plum-black panel + crystal-rimmed X, inlined per scene (the Godot
-; editor overwrites out-of-editor edits to a shared theme.tres).
+; [brass-and-velvet] Burgundy velvet + brass border, inlined per scene (the
+; Godot editor overwrites out-of-editor edits to a shared theme.tres) - the
+; shop's own fixed identity (Tuning.C_VELVET / C_BRASS), not the reliquary's
+; default cold plum + pewter every other modal starts from. shop_modal.gd's
+; apply_panel_backdrop() call re-asserts bg_color at runtime regardless, so
+; this bg_color is really only what previewing the scene alone shows - kept in
+; sync anyway rather than left stale, same as border_color (which nothing
+; currently overrides at runtime).
 [sub_resource type="StyleBoxFlat" id="rel_panel"]
 content_margin_left = 72.0
 content_margin_top = 48.0
 content_margin_right = 72.0
 content_margin_bottom = 52.0
-bg_color = Color(0.101961, 0.082353, 0.14902, 1)
+bg_color = Color(0.227451, 0.070588, 0.125490, 1)
 border_width_left = 4
 border_width_top = 4
 border_width_right = 4
 border_width_bottom = 4
-border_color = Color(0.227451, 0.227451, 0.282353, 1)
+border_color = Color(0.721569, 0.525490, 0.231373, 1)
 corner_radius_top_left = 22
 corner_radius_top_right = 22
 corner_radius_bottom_right = 22
@@ -80,6 +86,20 @@ offset_right = 1020.0
 offset_bottom = 1560.0
 pivot_offset = Vector2(480, 600)
 theme_override_styles/panel = SubResource("rel_panel")
+
+; [brass-and-velvet] No texture yet (see biome_theme.gd's _PANEL_BG - "shop"
+; has no entry), so this stays hidden; shop_modal.gd's apply_panel_backdrop()
+; call is what would show it once one exists, same convention as Grain in
+; inventory_modal.tscn/party_modal.tscn.
+[node name="Grain" type="TextureRect" parent="Panel"]
+visible = false
+self_modulate = Color(0.42, 0.38, 0.44, 1)
+show_behind_parent = true
+layout_mode = 2
+offset_transform_enabled = true
+offset_transform_scale = Vector2(1.17, 1.07)
+mouse_filter = 2
+expand_mode = 1
 
 [node name="Layout" type="VBoxContainer" parent="Panel" unique_id=27946051]
 layout_mode = 2
@@ -185,6 +205,8 @@ vertical_alignment = 1
 
 ; [reliquary] Corner ornaments, as a sibling overlaying the panel exactly so
 ; the PanelContainer content margin does not inset them off the panel edge.
+; [brass-and-velvet] biome_override pins this to the shop's own fixed identity
+; rather than the live SceneRouter place - see reliquary_frame.gd.
 [node name="Frame" parent="." instance=ExtResource("6_frame")]
 anchors_preset = 0
 anchor_right = 0.0
@@ -193,6 +215,7 @@ offset_left = 60.0
 offset_top = 360.0
 offset_right = 1020.0
 offset_bottom = 1560.0
+biome_override = &"shop"
 
 [node name="CompareFlyout" parent="." unique_id=1902813850 instance=ExtResource("4_compare")]
 layout_mode = 1

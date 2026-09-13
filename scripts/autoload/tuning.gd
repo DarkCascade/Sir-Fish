@@ -611,6 +611,16 @@ const C_THORN := Color("1E1A2E")                 # thorn-vine art tint reference
 const C_THORN_DARK := Color("0F0D18")            # its shadowed side
 const C_RELIQUARY_TRIM := Color("3A3A48")        # pewter corner-bracket art tint reference
 
+## [brass-and-velvet] The shop's own skin (biome id &"shop" - see biome_theme.gd's
+## for_shop()). Unlike rootwood-canopy above, this does NOT follow
+## SceneRouter.place: a shop reads the same whether it is opened in town or mid-
+## quest, so the override is caller-supplied and constant, not read live off
+## biome(). Deep burgundy velvet in place of the reliquary's own cold plum for
+## this one modal identity - the crystal corner motif itself is unchanged (see
+## biome_theme.gd's header on what stays constant across every skin).
+const C_VELVET := Color("3A1220")      # shop panel face
+const C_BRASS := Color("B8863B")       # shop's own warm metal trim, replacing the reliquary's cool pewter border
+
 ## [slot ui phase 3] The expedition console's plum-and-gold reskin. Scenes carry
 ## these as colour literals (inspector work); scripts that draw read them here.
 ## [rootwood-canopy] Retired as the CONSOLE's own look (see below) but still the

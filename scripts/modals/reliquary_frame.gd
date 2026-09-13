@@ -10,7 +10,14 @@ extends Control
 ## (top-left) the way frame_corner.png always has.
 const BiomeTheme := preload("res://scripts/ui/biome_theme.gd")
 
+## [brass-and-velvet] Empty (the default) reads the live SceneRouter place, as
+## before - inventory/party status's own Frame instances leave this unset. A
+## modal with a FIXED identity instead of a place-following one - the shop, via
+## BiomeTheme.for_shop() - sets this in its own .tscn so this instance never
+## has to be told again on every open() the way apply_panel_backdrop() does.
+@export var biome_override: StringName = &""
+
 func _ready() -> void:
-	var tex := BiomeTheme.frame_corner()
+	var tex := BiomeTheme.frame_corner(biome_override)
 	for child: TextureRect in [$TL, $TR, $BL, $BR]:
 		child.texture = tex
