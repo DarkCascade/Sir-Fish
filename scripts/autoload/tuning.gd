@@ -611,6 +611,13 @@ const C_THORN := Color("1E1A2E")                 # thorn-vine art tint reference
 const C_THORN_DARK := Color("0F0D18")            # its shadowed side
 const C_RELIQUARY_TRIM := Color("3A3A48")        # pewter corner-bracket art tint reference
 
+## [slot ui phase 3] The expedition console's plum-and-gold reskin. Scenes carry
+## these as colour literals (inspector work); scripts that draw read them here.
+const C_PLUM_VOID := Color("120A17")   # console ground behind every panel
+const C_PLUM := Color("1F0E24")        # panel faces: plates, cabinet, reel windows, cards
+const C_PLUM_LIT := Color("3A1A42")    # glyph tiles and medallion fields, raised off C_PLUM
+const C_PLUM_GEM := Color("A55FE0")    # the vine frame's amethyst, echoed as the innate-icon inlay
+
 # --- storm mood (M9) ---------------------------------------------------------
 ## The palette above is the fair-weather art direction and stays as authored.
 ## The storm is a TRANSFORM of it, not a second copy: `storm_tint()` darkens

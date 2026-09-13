@@ -12,7 +12,8 @@ class_name ResultFrame
 ## Banner label in _celebrate() (spec 16.4).
 
 const LINE_WIDTH := 2.0
-const FILL := Color(Tuning.C_CONSOLE_INSET)
+## [slot ui phase 3] Plum, matching the reel windows, not the old teal well.
+const FILL := Color(Tuning.C_PLUM)
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE

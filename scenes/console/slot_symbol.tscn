@@ -1,6 +1,24 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene format=3]
 
 [ext_resource type="Script" path="res://scripts/console/slot_symbol.gd" id="1_sym"]
+
+; [slot ui phase 3] The tile every dealt icon sits on: a raised plum square with a
+; gold rim, after the concept board. Its colour, rim and corner radius are all
+; here. Blank cells draw no tile.
+[sub_resource type="StyleBoxFlat" id="tile"]
+bg_color = Color(0.227451, 0.101961, 0.258824, 1)
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
+border_color = Color(0.847059, 0.686275, 0.321569, 1)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+shadow_color = Color(0, 0, 0, 0.45)
+shadow_size = 6
+shadow_offset = Vector2(0, 3)
 
 [node name="SlotSymbol" type="Control"]
 custom_minimum_size = Vector2(40, 40)
@@ -9,3 +27,4 @@ offset_bottom = 240.0
 pivot_offset = Vector2(120, 120)
 mouse_filter = 2
 script = ExtResource("1_sym")
+tile_style = SubResource("tile")

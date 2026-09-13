@@ -2,10 +2,10 @@
 
 [ext_resource type="Script" uid="uid://yt0r63qht4yd" path="res://scripts/console/slot_machine.gd" id="1_slot"]
 [ext_resource type="PackedScene" path="res://scenes/console/slot_reel.tscn" id="2_reel"]
-[ext_resource type="Script" uid="uid://bwut72okvld1h" path="res://scripts/console/ornate_frame.gd" id="3_frame"]
 [ext_resource type="Script" uid="uid://uniyv7k1qggt" path="res://scripts/console/reel_grid.gd" id="4_grid"]
 [ext_resource type="Script" uid="uid://d24qset1vjr63" path="res://scripts/console/payline.gd" id="5_payline"]
 [ext_resource type="Script" uid="uid://ck1fxe3flnu8s" path="res://scripts/console/result_frame.gd" id="6_result"]
+[ext_resource type="Texture2D" uid="uid://hs61djh243gv" path="res://assets/ui/reliquary/card_frame.png" id="7_vines"]
 
 [sub_resource type="ParticleProcessMaterial" id="confetti_mat"]
 emission_shape = 3
@@ -19,6 +19,25 @@ scale_min = 0.6
 scale_max = 1.4
 color = Color(0.960784, 0.874509, 0.627451, 1)
 
+[sub_resource type="StyleBoxFlat" id="cabinet_face"]
+bg_color = Color(0.121569, 0.054902, 0.141176, 1)
+corner_radius_top_left = 26
+corner_radius_top_right = 26
+corner_radius_bottom_right = 26
+corner_radius_bottom_left = 26
+
+; [slot ui phase 3] Plum and gold vines, after the concept board. The cabinet used
+; to be an OrnateFrame (carved mossy stone); it is a plain plum Panel now, and the
+; vine border is the item card's own nine-patch (card_frame.png), not new art.
+;
+; The vines hang off ReelGrid rather than Cabinet so they draw OVER the reel
+; windows' edges, as the board's frame does. ReelGrid is sized to the reel window
+; by slot_machine.apply_height(), and the offsets below grow the frame outward by
+; the cabinet's own margin (34 across, 36 down) so its outer edge meets the
+; cabinet's. Same half-thickness trick as item_card.tscn, at 0.4 instead of 0.5:
+; anchors of 1/0.4 = 2.5 and offsets of 5x the margin, so the 75 px band draws
+; as 30 px with all of its art still in it.
+
 [node name="SlotMachine" type="Control" unique_id=806678853]
 custom_minimum_size = Vector2(1080, 460)
 layout_mode = 3
@@ -29,20 +48,14 @@ pivot_offset = Vector2(540, 230)
 mouse_filter = 2
 script = ExtResource("1_slot")
 
-[node name="Cabinet" type="Control" parent="." unique_id=637650508]
-anchors_preset = 0
+[node name="Cabinet" type="Panel" parent="." unique_id=637650508]
+layout_mode = 0
 offset_left = 24.0
 offset_top = 12.0
 offset_right = 1056.0
 offset_bottom = 448.0
 mouse_filter = 2
-script = ExtResource("3_frame")
-border = 34.0
-corner_radius = 30.0
-diamond_size = 26.0
-inset_well = true
-vines = true
-vine_seed = 23
+theme_override_styles/panel = SubResource("cabinet_face")
 
 [node name="ReelWindow0" type="ColorRect" parent="." unique_id=674027282]
 clip_contents = true
@@ -52,7 +65,7 @@ offset_top = 48.0
 offset_right = 379.0
 offset_bottom = 412.0
 mouse_filter = 2
-color = Color(0.043137, 0.117647, 0.109804, 1)
+color = Color(0.098039, 0.043137, 0.117647, 1)
 
 [node name="Reel" parent="ReelWindow0" unique_id=601092897 instance=ExtResource("2_reel")]
 anchors_preset = 0
@@ -65,7 +78,7 @@ offset_top = 48.0
 offset_right = 701.0
 offset_bottom = 412.0
 mouse_filter = 2
-color = Color(0.043137, 0.117647, 0.109804, 1)
+color = Color(0.098039, 0.043137, 0.117647, 1)
 
 [node name="Reel" parent="ReelWindow1" unique_id=1657117379 instance=ExtResource("2_reel")]
 anchors_preset = 0
@@ -78,7 +91,7 @@ offset_top = 48.0
 offset_right = 1022.0
 offset_bottom = 412.0
 mouse_filter = 2
-color = Color(0.043137, 0.117647, 0.109804, 1)
+color = Color(0.098039, 0.043137, 0.117647, 1)
 
 [node name="Reel" parent="ReelWindow2" unique_id=297440533 instance=ExtResource("2_reel")]
 anchors_preset = 0
@@ -91,8 +104,31 @@ offset_right = 1022.0
 offset_bottom = 412.0
 mouse_filter = 2
 script = ExtResource("4_grid")
+draw_rows = true
 
+[node name="Vines" type="NinePatchRect" parent="ReelGrid"]
+layout_mode = 1
+anchors_preset = -1
+anchor_right = 2.5
+anchor_bottom = 2.5
+offset_left = -34.0
+offset_top = -36.0
+offset_right = 136.0
+offset_bottom = 144.0
+scale = Vector2(0.4, 0.4)
+mouse_filter = 2
+texture = ExtResource("7_vines")
+patch_margin_left = 75
+patch_margin_top = 75
+patch_margin_right = 75
+patch_margin_bottom = 75
+axis_stretch_horizontal = 2
+axis_stretch_vertical = 2
+
+; [slot ui phase 3] Authored invisible: the payline only appears for a middle-row
+; jackpot, faded in and out by slot_machine.gd's _celebrate().
 [node name="Payline" type="Control" parent="." unique_id=1951106064]
+modulate = Color(1, 1, 1, 0)
 anchors_preset = 0
 offset_left = 58.0
 offset_top = 200.0

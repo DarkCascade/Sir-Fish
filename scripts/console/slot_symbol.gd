@@ -2,11 +2,13 @@
 class_name SlotSymbol
 extends Control
 ## One reel cell. [slot phase 2] Draws the icon for whatever the bag dealt onto
-## this cell: a reliquary chip texture (assets/ui/reliquary/chip_*.png) centred
-## in a square that is a fixed fraction of the cell's shorter side, tinted per
-## element, with an accent ring for a forged (Enhanced) icon and an inner ring
-## for an innate one. A blank cell draws nothing - the recessed reel window
-## shows through.
+## this cell, centred in a square that is a fixed fraction of the cell's shorter
+## side. A blank cell draws nothing - the recessed reel window shows through.
+##
+## [slot ui phase 3] The icon sits on a plum, gold-rimmed tile (`tile_style`), and
+## draws its board glyph (assets/ui/slot/glyph_*.png, see SlotIcon.board_glyph_path)
+## untinted. An id with no glyph yet falls back to its tinted reliquary chip. A
+## forged (Enhanced) icon gets a glowing rim, an innate one an amethyst inlay.
 ##
 ## @tool so this redraws live in the editor - see scenes/console/
 ## reel_layout_playground.tscn, a sandbox for eyeballing reel layout without
@@ -24,6 +26,19 @@ extends Control
 @export var preview_id: StringName = &"":
 	set(value):
 		preview_id = value
+		queue_redraw()
+
+## [slot ui phase 3] The tile a dealt icon sits on, authored in slot_symbol.tscn.
+## Null draws the icon straight onto the reel window, as before phase 3.
+@export var tile_style: StyleBox:
+	set(value):
+		tile_style = value
+		queue_redraw()
+
+## The board glyph's size as a fraction of its tile.
+@export_range(0.1, 1.0, 0.01) var glyph_fraction: float = 0.74:
+	set(value):
+		glyph_fraction = value
 		queue_redraw()
 
 ## The coin texture kept ONLY because coin_glyph.gd reuses it as the shared
@@ -59,8 +74,10 @@ static var STAR := PackedVector2Array([
 var icon: Dictionary = {}
 
 ## Chip textures are loaded once, keyed by id, so a spinning reel swapping icons
-## every stop is a dictionary hit rather than a disk load.
+## every stop is a dictionary hit rather than a disk load. Board glyphs likewise.
 static var _tex_cache: Dictionary = {}
+static var _glyph_cache: Dictionary = {}
+static var _enhanced_rim: StyleBoxFlat = null
 
 func set_icon(value: Dictionary) -> void:
 	# Cheap identity check: same id + roll + enhanced means nothing to redraw.
@@ -83,37 +100,79 @@ static func _chip(id: StringName) -> Texture2D:
 	_tex_cache[id] = tex
 	return tex
 
+static func _glyph(id: StringName) -> Texture2D:
+	if _glyph_cache.has(id):
+		return _glyph_cache[id]
+	var tex := SlotIcon.board_glyph_texture(id)
+	_glyph_cache[id] = tex
+	return tex
+
+## [slot ui phase 3] The forged (Enhanced) rim: a filled rounded box a few px
+## larger than the tile, in the Enhanced rarity colour with a soft glow. The tile
+## covers its middle, leaving a glowing edge. Built once in code because its
+## colour is Tuning's, not an inspector value.
+static func _enhanced_style() -> StyleBoxFlat:
+	if _enhanced_rim == null:
+		var hot: Color = Tuning.RARITY_COLORS[Item.Rarity.ENHANCED]
+		_enhanced_rim = StyleBoxFlat.new()
+		_enhanced_rim.bg_color = hot
+		_enhanced_rim.set_corner_radius_all(16)
+		_enhanced_rim.shadow_color = Color(hot, 0.5)
+		_enhanced_rim.shadow_size = 10
+	return _enhanced_rim
+
 func _draw() -> void:
 	var id := _effective_id()
 	if id == SlotIcon.BLANK or SlotIcon.kind_of(id) == SlotIcon.Kind.BLANK:
 		return
-	var tex := _chip(id)
 	var box := minf(size.x, size.y) * box_fraction
 	var c := size * 0.5
 	var rect := Rect2(c - Vector2.ONE * box * 0.5, Vector2.ONE * box)
 
+	# Enhanced (forged) icon: a forge-hot rim around the tile so it reads as its
+	# own thing on the board (§4).
+	if bool(icon.get("enhanced", false)):
+		draw_style_box(_enhanced_style(), rect.grow(5.0))
+
+	if tile_style != null:
+		draw_style_box(tile_style, rect)
+
+	var glyph := _glyph(id)
+	if glyph != null:
+		# Board glyphs carry their own colour, so they are never element-tinted.
+		var g := box * glyph_fraction
+		draw_texture_rect(glyph, Rect2(c - Vector2.ONE * g * 0.5, Vector2.ONE * g), false)
+	else:
+		_draw_chip_fallback(id, rect.grow(-box * 0.08), c, box)
+
+	# Innate icon: an amethyst inlay set into the tile's top rim, like the gems at
+	# the vine frame's corners, so the player can tell the one icon they cannot
+	# lose by unequipping from a geared one.
+	if bool(icon.get("innate", false)) or SlotIcon.is_innate(id):
+		var at := Vector2(c.x, rect.position.y)
+		var r := box * 0.09
+		draw_colored_polygon(_diamond(at, r + 3.0), Tuning.C_GOLD)
+		draw_colored_polygon(_diamond(at, r), Tuning.C_PLUM_GEM)
+
+## No board glyph for this id yet: the reliquary chip, tinted per element as the
+## reel drew it before phase 3. The chips are opaque squares, so they are inset
+## inside the tile's rim rather than drawn over it.
+func _draw_chip_fallback(id: StringName, rect: Rect2, c: Vector2, box: float) -> void:
 	var tint := Color.WHITE
 	match SlotIcon.element_of(id):
 		&"fire": tint = Tuning.C_FIRE
 		&"ice": tint = Tuning.C_ICE
 		&"light": tint = Tuning.C_LIGHTNING
-
-	# Innate icon: a soft inner ring in the party-gold, so the player can tell
-	# the one chip they cannot lose by unequipping from a geared one.
-	if bool(icon.get("innate", false)) or SlotIcon.is_innate(id):
-		draw_arc(c, box * 0.60, 0.0, TAU, 28, Color(Tuning.C_GOLD_BRIGHT, 0.5), 3.0)
-
+	var tex := _chip(id)
 	if tex != null:
 		draw_texture_rect(tex, rect, false, tint)
 	else:
 		# Art missing: a plain rounded token so the board still reads as "an icon
 		# is here" rather than a blank.
-		draw_circle(c, box * 0.42, Color(tint, 0.85))
-		draw_arc(c, box * 0.42, 0.0, TAU, 24, Tuning.C_INK, 2.0)
+		draw_circle(c, box * 0.36, Color(tint, 0.85))
+		draw_arc(c, box * 0.36, 0.0, TAU, 24, Tuning.C_INK, 2.0)
 
-	# Enhanced (forged) icon: a forge-hot ring around the chip so it reads as its
-	# own thing on the board (§4).
-	if bool(icon.get("enhanced", false)):
-		var hot := Tuning.RARITY_COLORS[Item.Rarity.ENHANCED]
-		draw_arc(c, box * 0.52, 0.0, TAU, 32, hot, 4.0)
-		draw_arc(c, box * 0.52, 0.0, TAU, 32, Color(hot, 0.35), 8.0)
+func _diamond(at: Vector2, r: float) -> PackedVector2Array:
+	return PackedVector2Array([
+		at + Vector2(0, -r), at + Vector2(r, 0), at + Vector2(0, r), at + Vector2(-r, 0),
+	])

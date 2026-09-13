@@ -2,8 +2,9 @@ extends PanelContainer
 ## [town] The HUD's shared gold + scrap readout (spec 3.3, 5.3). This is the
 ## PROFILE's currency plate; status_panel's GoldPlate is the EXPEDITION's, and
 ## during a quest they show the same number because banked gold lands straight
-## on the profile (spec 8.4). Do not add a second scrap label to status_panel -
-## this one is already on screen there.
+## on the profile (spec 8.4). [slot ui phase 3] status_panel now shows scrap too,
+## and this plate hides for the whole quest (hud.gd), so the two never share a
+## screen.
 ##
 ## Reads GameState directly for the first paint (autoloads _ready() before the
 ## first scene, so this runs before boot.gd's load_profile()), then trusts

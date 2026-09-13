@@ -26,6 +26,12 @@ class_name ReelGrid
 ## The lattice fades out toward the top and bottom edges of the window, so the
 ## verticals do not end in two hard stubs against the cabinet's inner bevel.
 @export var fade_edges: bool = true
+## [slot ui phase 3] Two faded horizontals as well, splitting the window into the
+## concept board's three rows. With the payline gone at rest, these are what
+## say "this is a 3x3 board". ResultFrame still draws its own rules over the
+## middle row for a jackpot. Off by default, so reel_layout_playground.tscn
+## keeps its columns-only look.
+@export var draw_rows: bool = false
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -40,6 +46,14 @@ func _draw() -> void:
 			_faded_line(Vector2(x, 0.0), Vector2(x, size.y))
 		else:
 			draw_line(Vector2(x, 0.0), Vector2(x, size.y), Tuning.C_GOLD_DARK, line_width)
+	if not draw_rows:
+		return
+	for i: int in range(1, 3):
+		var y := size.y * float(i) / 3.0
+		if fade_edges:
+			_faded_line(Vector2(0.0, y), Vector2(size.x, y))
+		else:
+			draw_line(Vector2(0.0, y), Vector2(size.x, y), Tuning.C_GOLD_DARK, line_width)
 
 ## One vertical came drawn as a short stack of segments whose alpha rises to
 ## the middle - draw_line takes a single colour, so a gradient along a line has

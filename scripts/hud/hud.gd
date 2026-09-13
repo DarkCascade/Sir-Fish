@@ -50,6 +50,10 @@ func _process(_delta: float) -> void:
 	# spec 3.2: the party panel pauses the tree exactly like the inventory modal,
 	# so it carries the same COMBAT lock - no peeking at HP to time a heal.
 	party_button.disabled = locked
+	# [slot ui phase 3] The expedition console carries its own gold + scrap plate
+	# now (status_panel.tscn), so this one steps aside for the whole quest. Town
+	# and the blacksmith have no other readout, so they keep it.
+	currency_plate.visible = SceneRouter.place != SceneRouter.Place.QUEST
 
 ## True during a quest's COMBAT state. Reads SceneRouter.place (set by go(), and
 ## re-asserted by every routed scene's _ready() for direct launches - Q8) and

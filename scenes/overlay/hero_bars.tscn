@@ -64,7 +64,7 @@ offset_top = 6.0
 offset_right = 375.0
 offset_bottom = 56.0
 mouse_filter = 2
-color = Color(0.027, 0.09, 0.106, 1)
+color = Color(0.690196, 0.541176, 0.227451, 1)
 
 [node name="HealthBg" type="ColorRect" parent="HealthBorder" unique_id=1381180916]
 layout_mode = 0
@@ -73,7 +73,7 @@ offset_top = 3.0
 offset_right = 299.0
 offset_bottom = 47.0
 mouse_filter = 2
-color = Color(0.023529, 0.062745, 0.078431, 1)
+color = Color(0.121569, 0.054902, 0.141176, 1)
 
 [node name="HealthFill" type="ColorRect" parent="HealthBorder/HealthBg" unique_id=1621600675]
 layout_mode = 0
