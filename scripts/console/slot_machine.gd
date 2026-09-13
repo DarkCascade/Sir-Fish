@@ -56,7 +56,9 @@ const PAYLINE_BAND := 60.0
 ## [black-glass] The three recessed reel windows, tweened by apply_boss_theme()/
 ## clear_boss_theme() alongside the cabinet face they sit inside.
 @onready var _reel_windows: Array[ColorRect] = [$ReelWindow0, $ReelWindow1, $ReelWindow2]
+@onready var _vines: NinePatchRect = $ReelGrid/Vines
 
+const BiomeTheme := preload("res://scripts/ui/biome_theme.gd")
 const ROOTWOOD_TILE := preload("res://resources/ui/slot_tile_rootwood.tres")
 const BOSS_TILE := preload("res://resources/ui/slot_tile_boss.tres")
 const BOSS_THEME_TIME := 0.3
@@ -116,6 +118,7 @@ func apply_height(h: float) -> void:
 ## `impact` signal the instant a boss encounter's name lands (RunController).
 func apply_boss_theme() -> void:
 	_tween_cabinet_colors(Tuning.C_OBSIDIAN, Tuning.C_OBSIDIAN_DEEP)
+	_vines.texture = BiomeTheme.card_frame(BiomeTheme.for_boss())
 	reel_grid.boss_active = true
 	result_frame.boss_active = true
 	for reel: Variant in _reels:
@@ -127,6 +130,7 @@ func apply_boss_theme() -> void:
 ## stuck black-glass for the rest of the expedition.
 func clear_boss_theme() -> void:
 	_tween_cabinet_colors(Tuning.C_ROOTWOOD, Tuning.C_CANOPY_WELL)
+	_vines.texture = BiomeTheme.card_frame()
 	reel_grid.boss_active = false
 	result_frame.boss_active = false
 	for reel: Variant in _reels:

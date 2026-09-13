@@ -12,12 +12,14 @@ extends RefCounted
 ##
 ## Town's Hearthwood art is the only CARD_FRAME/CORNER skin drawn so far
 ## (2026-09-13); every other biome() branch falls through to &"expedition" for
-## those two - i.e. the original gold vine - until Shop and Boss get their own
-## art. There is no Place.SHOP / Place.BOSS in SceneRouter: a shop is a modal
-## opened from inside a Place, not a Place of its own, and a boss fight is a
-## QUEST whose encounter happens to be a boss. Both need a caller-supplied
-## override (see `for_shop()` / `for_boss()`) rather than a SceneRouter
-## reading, once their art exists.
+## those two - i.e. the original gold vine - until Shop gets its own art (Boss
+## now has its own - card_frame_boss.png / frame_corner_boss.png, Meshy
+## nano-banana-pro image-to-image off the vine frame, same pipeline as
+## Hearthwood). There is no Place.SHOP / Place.BOSS in SceneRouter: a shop is
+## a modal opened from inside a Place, not a Place of its own, and a boss
+## fight is a QUEST whose encounter happens to be a boss. Both need a
+## caller-supplied override (see `for_shop()` / `for_boss()`) rather than a
+## SceneRouter reading.
 ##
 ## &"expedition" DOES have its own full-panel look already - rootwood-canopy,
 ## _PANEL_COLOR below - since that is the console's permanent reskin (slot
@@ -37,9 +39,11 @@ const _PLACE_BIOME := {
 
 const _CARD_FRAME := {
 	&"town": "res://assets/ui/reliquary/card_frame_town.png",
+	&"boss": "res://assets/ui/reliquary/card_frame_boss.png",
 }
 const _CORNER := {
 	&"town": "res://assets/ui/reliquary/frame_corner_town.png",
+	&"boss": "res://assets/ui/reliquary/frame_corner_boss.png",
 }
 const _DEFAULT_CARD_FRAME := "res://assets/ui/reliquary/card_frame.png"
 const _DEFAULT_CORNER := "res://assets/ui/reliquary/frame_corner.png"
@@ -82,6 +86,16 @@ static func _panel_color(id: StringName) -> Variant:
 ## boss encounters get their own black-glass skin.
 static func for_shop() -> StringName:
 	return &"shop"
+
+## [black-glass] The boss's own fixed identity, same reasoning as for_shop()
+## above - a boss fight looks the same regardless of which quest it's in.
+## console.gd's apply_boss_theme()/clear_boss_theme() pass this to
+## card_frame() for the console's own vine-border NinePatchRects; nothing
+## calls frame_corner(for_boss()) yet, since the reliquary modals are locked
+## out for the whole of a boss's combat (Hud._combat_locked()) - kept for the
+## same for_shop()/for_boss() symmetry the header above already commits to.
+static func for_boss() -> StringName:
+	return &"boss"
 
 ## SceneRouter.place, translated to a biome id. Reads live off the router
 ## rather than being cached, so a caller's _ready() always sees the place it

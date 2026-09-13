@@ -34,7 +34,9 @@ const CurrencyPlate := preload("res://scripts/hud/currency_plate.gd")
 ## [black-glass] The gold plate's own face, tweened alongside the strip's own
 ## "panel" stylebox by apply_boss_theme()/clear_boss_theme().
 @onready var _plate_face: Panel = $Layout/ResourceRow/GoldPlate/Face
+@onready var _plate_vines: NinePatchRect = $Layout/ResourceRow/GoldPlate/Vines
 
+const BiomeTheme := preload("res://scripts/ui/biome_theme.gd")
 const BOSS_THEME_TIME := 0.3
 
 ## Muted while the shop is open (EventBus.shop_visibility_changed): the panel
@@ -78,9 +80,11 @@ func _on_gold_changed(_new_total: int, delta: int) -> void:
 ## this pair for the full contract (when apply/clear fire).
 func apply_boss_theme() -> void:
 	_tween_theme(Tuning.C_OBSIDIAN_DEEP, Tuning.C_OBSIDIAN, Tuning.C_SEAM)
+	_plate_vines.texture = BiomeTheme.card_frame(BiomeTheme.for_boss())
 
 func clear_boss_theme() -> void:
 	_tween_theme(Tuning.C_ROOTWOOD_VOID, Tuning.C_ROOTWOOD, Tuning.C_GOLD_DARK)
+	_plate_vines.texture = BiomeTheme.card_frame()
 
 ## `self` is the StatusPanel PanelContainer, whose own "panel" stylebox is the
 ## strip background + top border; `_plate_face`'s is the gold plate's face.
