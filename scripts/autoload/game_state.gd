@@ -206,8 +206,10 @@ var forge_stock_generated: bool = false
 
 ## [content phase 1] The mayor's generated board (spec §3 Step 3) - the forge
 ## stock pattern (spec §1.6) pointed at quests: generate once, cache on the
-## profile, reroll only on new_profile() - never on merely viewing the mayor's
-## office. Sits beside the three hand-authored quests, which mayor_office.gd
+## profile, and reroll once per day - resolve_night() drops it when the new day
+## starts, as does new_profile() (content-phase-1 questions doc Q7). Never on
+## merely viewing the mayor's office, and never on taking a quest - the day
+## allows only one anyway. Sits beside the three hand-authored quests, which mayor_office.gd
 ## loads separately; QUEST_ORDER (a hardcoded easy/medium/hard array) is gone.
 ## Profile-scoped and saved.
 var quest_board: Array[QuestDef] = []
@@ -221,7 +223,10 @@ var quest_board_generated: bool = false
 ## never had one. Called by mayor_office.gd.
 func quest_board_offers() -> Array[QuestDef]:
 	if not quest_board_generated:
-		quest_board = QuestGenerator.generate_board(Tuning.QUEST_BOARD_SIZE, ENDLESS_WOOD_AREA)
+		# Anchored on the party's level at generation time; the daily reroll
+		# (resolve_night()) is what keeps the board tracking a levelling party.
+		quest_board = QuestGenerator.generate_board(Tuning.QUEST_BOARD_SIZE,
+			ENDLESS_WOOD_AREA, hero_level())
 		quest_board_generated = true
 	return quest_board
 
@@ -1023,15 +1028,12 @@ func needs_forge_restock() -> bool:
 ## crash costs nothing - there is no state here worth persisting eagerly.
 ## Spec 2.4's own "When to save" list never names this function.
 ##
-## [content phase 1] Step 2c: the ranger and mage come back, so a fresh
-## profile's active_party is the full roster again - Phase 0 spec 4.5's flip
-## to a solo warrior was that phase's deliberate simplification while the
-## content-authoring infrastructure got built, not a permanent design.
-## PARTY_ORDER stays the canonical roster (unchanged by this) and this
-## assignment reads it directly rather than re-listing the three ids, so the
-## day a fourth hero's .tres lands, this line needs no edit. See
-## content-phase-1 questions doc Q4 for why this is the mechanism by which
-## "active_party grows past one" without a recruit feature.
+## [content phase 1] A fresh profile's party is the warrior alone, by design
+## (content-phase-1 questions doc Q4). Phase 1 briefly defaulted this to the
+## full roster so the ranger and mage were reachable; that was reverted. The
+## ranger and mage stay fully data-driven and multi-hero-safe, and join only
+## through a future recruit mechanic (parked - see the Recruitment Quest
+## Acceptance Test Outline). PARTY_ORDER stays the canonical roster.
 func new_profile() -> void:
 	gold = Tuning.PROFILE_STARTING_GOLD
 	scrap = Tuning.PROFILE_STARTING_SCRAP
@@ -1042,7 +1044,7 @@ func new_profile() -> void:
 	# pattern (spec §3 Step 3 / §1.6).
 	quest_board.clear()
 	quest_board_generated = false
-	active_party = PARTY_ORDER.duplicate()
+	active_party = [&"warrior"]
 	# [item power model] A fresh profile ships one weapon, already equipped.
 	# Since the combat loop redesign a hero's entire offense is its equipped
 	# weapon's Power - an unarmed start plays as "the game is broken". A level-1
@@ -1241,6 +1243,12 @@ func resolve_night(choice: NightChoice) -> Array:
 	day_phase = DayPhase.DAY
 	day_number += 1
 	meal_eaten_today = false               # a new day, a new meal (§9.4)
+	# [content phase 1] A new day, a new quest board (questions doc Q7). Dropped
+	# rather than rerolled here, so the next mayor visit regenerates it through
+	# quest_board_offers() exactly as a fresh profile does. A fresh array rather
+	# than clear(), so a caller still holding yesterday's board is not emptied.
+	quest_board = []
+	quest_board_generated = false
 	last_night_report = report
 	return report
 

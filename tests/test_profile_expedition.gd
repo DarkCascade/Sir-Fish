@@ -131,16 +131,12 @@ func _ready() -> void:
 	t.check(GameState.current_encounter_index == -1,
 		"reset_run() still rewinds current_encounter_index")
 
-	# --- P6: active_party is the full roster again; PARTY_ORDER is intact ---
-	# [content phase 1] Step 2c: the ranger and mage come back, so new_profile()
-	# now sets active_party = PARTY_ORDER.duplicate() (content-phase-1
-	# questions doc Q4) - Phase 0 spec 4.5's solo-warrior flip was that phase's
-	# own deliberate simplification, not a permanent design. P6 runs after
-	# reset_run() at P5, i.e. post-new_profile(), so the full roster is the
-	# expected value here.
-	t.check(GameState.active_party == GameState.PARTY_ORDER,
-		"active_party is the full roster again (got %s, want %s)"
-			% [GameState.active_party, GameState.PARTY_ORDER])
+	# --- P6: a new profile fields the solo warrior; PARTY_ORDER is intact ---
+	# [content phase 1] A fresh party is the warrior alone, by design
+	# (content-phase-1 questions doc Q4 - a brief full-roster default was
+	# reverted). P6 runs after reset_run() at P5, i.e. post-new_profile().
+	t.check(GameState.active_party == ([&"warrior"] as Array[StringName]),
+		"active_party is the solo warrior (got %s)" % [GameState.active_party])
 	t.check(GameState.PARTY_ORDER.size() == 3,
 		"PARTY_ORDER is untouched - the 3-hero roster still exists (spec 4.5)")
 

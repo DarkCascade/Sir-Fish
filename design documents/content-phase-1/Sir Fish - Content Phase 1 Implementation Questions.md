@@ -25,9 +25,9 @@ Exit criteria (spec §5), one line each:
 4. ✅ `reward_extras` exists, renders in `quest_result.gd`/`mayor_office.gd`, serialises, ships empty everywhere (Q6).
 5. ✅ `SlotIcon.innate_for()` deleted; `ClassDef.innate_icon` is the only source.
 6. ✅ `SlotMachine._executor_for(kind)` replaces `_swinging_hero()`; orphan fallback and solo-warrior parity both pinned by `test_executor.gd`.
-7. ✅ Ranger and mage playable and mechanically distinct (executor ownership); verified live.
+7. ✅ Ranger and mage playable and mechanically distinct (executor ownership); verified live. Since Q4's revert a new profile fields the warrior alone, so they are exercised through tests and a hand-set `active_party`, not normal play.
 8. ✅ `ITEM_TYPES` carries no `classes` arrays; `roster_order` lives on `ClassDef`.
-9. ✅ Mayor's office offers a generated board (persisted) beside the three authored quests; `QUEST_ORDER` deleted.
+9. ✅ Mayor's office offers a generated board (persisted, rerolled each day - Q7) beside the three authored quests; `QUEST_ORDER` deleted.
 10. ✅ `_build_endless_level()` reads `AreaDef`; no enemy ids or area strings remain in `game_state.gd`.
 11. ✅ A fourth class needs one stats `.tres` + one class `.tres` + one rig profile + one scene, no code change (both registries are directory scans).
 
@@ -134,43 +134,38 @@ encouraging sign this is the obvious split rather than an arbitrary one.
 `&"shield"` - the intent ("give the fresh warrior a starter armor piece") is unchanged,
 only the concrete type name is, since `&"shield"` moved to the mage.
 
-## Q4 — `active_party` defaults to the full three-hero roster again
+## Q4 — A new profile's party is the warrior alone (full-roster default reverted)
 
 Step 2c says "`GameState.active_party` grows past one. This is the first real exercise of
 Phase 0 Step 5," but recruiting party members is explicitly out of scope for this phase
 (§4, and the parked Recruitment Quest Acceptance Test Outline). With no recruit mechanic,
 the only way `active_party` grows is if its *default* changes.
 
-**Decision:** `GameState.new_profile()` now sets `active_party = PARTY_ORDER.duplicate()`
-(mage, ranger, warrior) instead of `[&"warrior"]`. This is Phase 0's temporary "make it
-solo while content infra gets built" flip, undone now that the ranger and mage are
-mechanically real again — matches the phase's own framing ("where the ranger and mage
-come back").
+**First implementation (reverted 12 Sep 2026):** `new_profile()` set
+`active_party = PARTY_ORDER.duplicate()` (mage, ranger, warrior), reading Step 2c as a
+request to undo Phase 0's solo flip.
 
-**Why not flagged as blocking:** it only touches `new_profile()`'s default assignment (one
-line) and the tests that pinned the old default as an assertion, not as a live dependency
-of their own simulation (`test_level_curves.gd`'s solo-hero balance model is a documented
-assumption baked into its own synthetic math, not a read of `GameState.active_party` — see
-its own header comment). `test_profile_expedition.gd`'s P6 assertion, which *did* pin
-`active_party == [&"warrior"]` as the thing under test, is updated to assert the full
-roster instead, with the same "PARTY_ORDER is untouched" second half kept.
+**Decision (owner, 12 Sep 2026):** a new profile's party contains only the warrior. That is
+the intended design, not a Phase 0 stopgap. `new_profile()` sets `active_party =
+[&"warrior"]` again, and `test_profile_expedition.gd`'s P6 pins it. The ranger and mage stay
+fully built (ClassDef, executor, item types, multi-hero town screens) and join only through
+a future recruit mechanic.
 
-**Known consequence, left as-is:** the starting kit (`new_profile()`'s starter sword +
-mail) still equips only the warrior — a fresh 3-hero profile starts with the ranger and
-mage unarmed. `GameState.hero_weapon_power()`'s own comment already treats "an unarmed
-baseline" as an accepted, deferred gap, and the drop-coverage weighting
-(`next_drop_class()`) actively favors whichever hero has received fewest drops, so an
-unarmed ranger/mage catches up quickly from the first combat's loot. Widening the starting
-kit to outfit all three heroes is a content/balance decision Phase 1 did not ask for and
-is called out here rather than done unilaterally.
+**What the temporary full-roster default still bought:** it exercised every multi-hero path
+for real, and found the index-coupling bug in Q4b, which stays fixed. Step 2c's "grows past
+one" is now covered by tests that set `active_party` by hand (`test_executor.gd`,
+`test_drops.gd`, and `test_day_night.gd` 12b, which pins the inn bill at party sizes 1-3)
+rather than by the default.
 
-**Second consequence, fixed:** `test_day_night.gd`'s street-heal/inn assertions (8-11, 14)
-hardcoded the warrior's 120 max_hp and the exact healed totals that follow from it
-(`10 -> 65`, `0 -> 60`, `119 -> 120`). With the roster flip, `hero_runtime[0]` is the mage
-(70 max_hp), so those numbers no longer held. Re-derived each expected value from
-`hero_runtime[0]["max_hp"]` at test time instead of a literal, the same fix shape
-`test_economy.gd`'s own re-reasoning already used - this file just wasn't named in the
-spec's list of tests to check.
+**Consequences:**
+
+- The warrior-only starting kit (starter sword + mail) is correct as it stands; there is
+  no unarmed ranger or mage on a fresh profile.
+- There is no debug command to add a hero to `active_party`, so seeing the ranger or mage
+  in the running game means setting it by hand (e.g. `execute_game_script`).
+- `test_day_night.gd`'s street/inn assertions (8-11, 14) keep deriving their expected HP
+  from `hero_runtime[0]["max_hp"]` rather than the warrior's literal 120. That change was
+  made for the full-roster default and is harmless, arguably better, under a solo party.
 
 ## Q4b — the index coupling Step 2c predicted: found in two town screens
 
@@ -227,5 +222,109 @@ traps): confirm the generic row actually reads well next to the fixed `QuestRewa
 
 ---
 
-*Nothing above blocked implementation. This file will gain a "Step 3" section once the
-generator and `AreaDef`/`QuestTemplate` land.*
+## Step 3 — AreaDef, QuestTemplate, and the generated board
+
+Step 3 shipped in the same commit as Steps 1-2, but the entries above only cover those two.
+The code already cites a "Q8" that did not exist (`save_game.gd`). These entries record the
+Step 3 forks, and one open problem (Q10).
+
+## Q7 — The generated board rerolls once per day
+
+Spec §1.6 and §3 Step 3 point the board at the forge-stock pattern: generate once, cache,
+reroll "only on an explicit refresh". It names no refresh for quests. The first
+implementation rerolled only on `new_profile()`, so each profile saw the same three generated
+quests forever. That is the exact problem Phase 1 §0 set out to fix ("stops offering the same
+three quests forever").
+
+**Decision (owner, 12 Sep 2026):** `GameState.resolve_night()` drops the board
+(`quest_board = []`, `quest_board_generated = false`) when it starts a new day. The next
+mayor visit regenerates it lazily through `quest_board_offers()`. `night_modal.gd` saves
+straight after `resolve_night()`, so the new day's board survives a quit like any other.
+
+**Why the day boundary:** the day/night rhythm allows one quest per day, so a fresh board
+each morning means every chance to take a quest sees a fresh roll. For the same reason,
+taking or finishing a generated quest does not remove it: the player cannot take another
+that day anyway. A night that does not resolve (an unaffordable inn) leaves the board alone.
+Unlike the forge, there is no paid refresh button. The endless path never touches the board.
+
+Pinned in `test_quest_generator.gd`'s board-caching block.
+
+## Q8 — No `SaveGame.VERSION` bump for the board
+
+§3.2 says generated quests need `to_dict()`/`from_dict()` "along with a `SaveGame.VERSION`
+bump". The serialisation shipped (`QuestDef`, `QuestObjective`, `QuestRewardExtra`); the bump
+did not. `VERSION` stays 4.
+
+**Why:** the save file's own versioning policy, recorded on every earlier additive key
+(`forge_stock`, `hero_levels`), is to bump on a *meaning change*, never merely to add a key.
+`quest_board` and `quest_board_generated` are new keys read with `d.get(key, default)`, and
+a save without them loads as "never generated", which is literally true of it.
+`test_quest_generator.gd` pins that legacy load. The migration chain from Phase 0 Step 5 is
+still there for the first real meaning change, e.g. a change to `QuestDef.to_dict()`'s shape.
+
+## Q9 — AreaDef fields that differ from the spec's snippet
+
+- **`mid_pool` added.** `_build_endless_level()` added a second pool from depth 2. The
+  spec's single `pool` could not express that without changing endless difficulty.
+  Generated quests read `pool` only.
+- **`field_profile` authored, not consumed.** There is one `OverworldField` palette; wiring
+  it in is art-dependent (§4).
+- **`level_band` is read by the generator only.** Endless mode keeps scaling its band off
+  depth (`Tuning.ENDLESS_LEVELS_PER_DEPTH`), since a run with no depth limit cannot use a
+  fixed band.
+
+## Q10 — A generated quest spans three levels, starting at the party's level
+
+**The problem:** `QuestGenerator.generate()` originally set `q.level_range =
+area.level_band`, which is `(1, 30)` for The Endless Wood, so every generated quest copied
+the full band. `_build_quest_level()` interpolates across it, so a five-encounter hunt ran at
+levels 1, 8, 16, 23, 30, with the boss bonus on top. The mayor's office showed "Lv. 1–30",
+and the underlevelled warning never fired.
+
+**Decision (owner, 12 Sep 2026): the range is 3 levels wide** — 1-3, 2-4, and so on
+(`Tuning.QUEST_LEVEL_SPAN`).
+
+**Implementation choice for where the range starts:** at the party's level
+(`GameState.hero_level()`, the highest level in `active_party`), passed into
+`generate_board()` by `quest_board_offers()`. `QuestGenerator.level_range_for()` clamps it to
+sit wholly inside `AreaDef.level_band`, so a level-30 party gets 28-30. The board rerolls each
+morning (Q7), so it follows a levelling party without any extra rule. Every quest on one
+board shares the same range; the templates differ in length, difficulty and objective, not
+level.
+
+**Consequence:** the mayor's underlevelled warning cannot fire on a generated quest while the
+anchor is the party's own level. It still applies to the authored quests. If generated quests
+should sometimes sit above the party, or should spread across the board, change the start in
+`level_range_for()` / `generate_board()` (e.g. offset by slot or by the template's
+`difficulty_mult`). The width stays one Tuning constant.
+
+Pinned in `test_quest_generator.gd`: width and band containment for every roll, the sliding
+and clamping cases, and a level-7 party's board offering 7-9.
+
+## Q11 — Generator tuning that lives in code, not data
+
+Every item below is a starting value in `quest_generator.gd`, easy to move into
+`QuestTemplate`/`AreaDef` when a content pass wants it there:
+
+- `_NAME_ADJECTIVES` ("Deep", "Forgotten", ...). The name fragments are per-area data; the
+  adjectives are shared across areas in code.
+- Gold: `_GOLD_PER_ENCOUNTER` (50) × encounter count × `gold_formula_mult`, floored at 1
+  (D2). Generated quests never pay 0.
+- Enemy count: `Vector2i(2, clamp(round(3 × difficulty_mult), 2, MAX_ENEMIES))`.
+- `boss_drop_rarity_floor` fixed at 1.
+- Templates are picked uniformly *with* replacement, so one board can hold two hunts.
+
+## Q12 — Where the board lives
+
+The spec sketches a `QuestBoard` with an `offers()` method. It shipped as
+`GameState.quest_board_offers()` plus a stateless `QuestGenerator` (`RefCounted`, static
+functions, not an autoload). This is the same split `Itemizer` (generator) and `GameState`
+(persisted stock) already use for the blacksmith, so there is no new autoload and no second
+home for profile state.
+
+The hunt template's "can this actually end early" guarantee is covered by Q1.
+
+---
+
+*Nothing above blocked implementation. Q6 is still the thing to check when the first reward
+extra ships.*

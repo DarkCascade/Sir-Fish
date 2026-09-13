@@ -259,10 +259,16 @@ const FORGE_SHOP_SLOTS := 6
 
 ## [content phase 1] The mayor's generated board (spec §3 Step 3) - how many
 ## QuestGenerator rolls sit beside the three hand-authored quests. Generated
-## once per profile, same "generate once, cache, reroll only on an explicit
-## action" rule the forge stock follows (spec §1.6); see
-## GameState.quest_board_offers().
+## lazily and cached like the forge stock (spec §1.6), rerolled once per day
+## when resolve_night() starts a new one; see GameState.quest_board_offers()
+## and content-phase-1 questions doc Q7.
 const QUEST_BOARD_SIZE := 3
+
+## [content phase 1] How many levels a generated quest's level_range spans,
+## inclusive: 3 gives 1-3, 2-4, ... The range starts at the party's level and
+## is clamped inside its AreaDef.level_band (QuestGenerator.level_range_for(),
+## content-phase-1 questions doc Q10).
+const QUEST_LEVEL_SPAN := 3
 
 ## [town] The inn's paid full heal (spec 7.2), multiplied by active_party.size()
 ## - 50 with a solo warrior. Its caller moved to resolve_night() in the

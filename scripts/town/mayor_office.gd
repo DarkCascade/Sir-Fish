@@ -8,9 +8,10 @@ extends Control
 ## save" names this caller), and routes to Place.QUEST.
 ##
 ## A quest is always available - no cooldown, no lockout, no prerequisite.
-## Difficulty is the gate (spec 7.5). A generated quest follows the exact same
-## rule once offered: nothing removes it from the board or forces a reroll on
-## completion, matching how the three authored quests have always behaved.
+## Difficulty is the gate (spec 7.5). A generated quest follows the same rule
+## for as long as it is offered: taking or finishing it does not remove it.
+## The generated board as a whole rerolls each new day (GameState.resolve_night(),
+## content-phase-1 questions doc Q7); the three authored quests never change.
 ##
 ## The background (assets/mayor-bg.png) and its darkening Vignette scrim are
 ## authored in mayor_office.tscn - the Meshy art pass, spec 12.1 (step 11).
