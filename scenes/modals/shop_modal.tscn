@@ -217,5 +217,8 @@ offset_right = 1020.0
 offset_bottom = 1560.0
 biome_override = &"shop"
 
+; [brass-and-velvet] Pinned to the shop's own fixed identity, same reasoning
+; as Frame's own biome_override above - see compare_flyout.gd.
 [node name="CompareFlyout" parent="." unique_id=1902813850 instance=ExtResource("4_compare")]
 layout_mode = 1
+biome_override = &"shop"

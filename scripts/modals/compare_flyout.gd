@@ -27,6 +27,15 @@ extends Control
 
 const ItemCompare := preload("res://scripts/ui/item_compare.gd")
 const CardActions := preload("res://scripts/ui/item_card_actions.gd")
+const BiomeTheme := preload("res://scripts/ui/biome_theme.gd")
+
+## [brass-and-velvet] Empty (the default) reads the live SceneRouter place -
+## the inventory's own CompareFlyout instance leaves this unset, so it always
+## matches whatever inventory_modal.gd's own panel is showing (rootwood-canopy
+## mid-quest, Hearthwood in town). A host with a FIXED identity - the shop's
+## own instance, via BiomeTheme.for_shop() - sets this in its own .tscn, same
+## contract as reliquary_frame.gd's own biome_override.
+@export var biome_override: StringName = &""
 
 ## Named for the RivalLabel's "your weapon slot is empty" line. Lower case
 ## because it lands mid-sentence, unlike the inventory's own slot headings.
@@ -38,6 +47,7 @@ const SLOT_NAMES := {
 
 @onready var scrim: ColorRect = $Scrim
 @onready var panel: PanelContainer = $Panel
+@onready var grain: TextureRect = $Panel/Grain
 ## The crystal-corner overlay. A SIBLING of Panel, not a child: the panel's
 ## stylebox carries 72px content margins, so parenting the frame to it would
 ## inset every corner by that much instead of pinning it to the panel's edge.
@@ -68,7 +78,20 @@ func _ready() -> void:
 	# resized fires only for the size half of that, which left the corners
 	# correctly sized but parked at the old position.
 	panel.item_rect_changed.connect(_sync_frame)
+	_apply_theme()
 	hide()
+
+## [brass-and-velvet] Re-run on every show_for(), not just _ready() - this
+## flyout is a persistent child of a persistent modal (inventory_modal.gd /
+## shop_modal.gd), so its OWN _ready() only ever fires once, at boot, same
+## staleness problem apply_panel_backdrop()'s own header warns about.
+##
+## frame.call(...), not frame.apply(...): `frame` stays typed Control for its
+## layout properties below, and Control has no `apply()` of its own - call()
+## reaches ReliquaryFrame's method without a static type for it.
+func _apply_theme() -> void:
+	BiomeTheme.apply_panel_backdrop(panel, grain, biome_override)
+	frame.call("apply", biome_override)
 
 ## Pins the corner frame to the panel's ACTUAL rect. Both were authored at the
 ## same 940x900, but Panel is a PanelContainer and grows to whatever its content
@@ -93,6 +116,7 @@ func _sync_frame() -> void:
 ## Shows `item` against whatever its (single, in practice) usable_by() class
 ## currently has equipped in the same slot.
 func show_for(item: Item) -> void:
+	_apply_theme()
 	var hero := CardActions.equip_hero(item)
 	for_label.visible = hero != &""
 	for_label.text = "For %s" % String(hero).capitalize()

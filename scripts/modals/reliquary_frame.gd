@@ -18,6 +18,16 @@ const BiomeTheme := preload("res://scripts/ui/biome_theme.gd")
 @export var biome_override: StringName = &""
 
 func _ready() -> void:
+	apply(biome_override)
+
+## Re-applies the corner texture for `override` (biome_override by default).
+## Public and separate from _ready() so a host that sets biome_override
+## imperatively rather than declaratively - compare_flyout.gd, which forwards
+## its OWN export to this Frame's - can re-assert it: Godot readies children
+## before their parent, so the parent's _ready() would otherwise always be one
+## beat too late to catch this node's own default-empty _ready() pass.
+func apply(override: StringName = biome_override) -> void:
+	biome_override = override
 	var tex := BiomeTheme.frame_corner(biome_override)
 	for child: TextureRect in [$TL, $TR, $BL, $BR]:
 		child.texture = tex

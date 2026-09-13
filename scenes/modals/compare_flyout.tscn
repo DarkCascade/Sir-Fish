@@ -137,6 +137,20 @@ grow_vertical = 2
 pivot_offset = Vector2(470, 350)
 theme_override_styles/panel = SubResource("rel_panel")
 
+; [brass-and-velvet] No texture yet for any biome that reaches this dialog
+; (see biome_theme.gd's _PANEL_BG), so this stays hidden - compare_flyout.gd's
+; apply_panel_backdrop() call is what would show it once one exists, same
+; convention as Grain in inventory_modal.tscn/party_modal.tscn/shop_modal.tscn.
+[node name="Grain" type="TextureRect" parent="Panel"]
+visible = false
+self_modulate = Color(0.42, 0.38, 0.44, 1)
+show_behind_parent = true
+layout_mode = 2
+offset_transform_enabled = true
+offset_transform_scale = Vector2(1.17, 1.07)
+mouse_filter = 2
+expand_mode = 1
+
 [node name="Layout" type="VBoxContainer" parent="Panel"]
 layout_mode = 2
 theme_override_constants/separation = 16
