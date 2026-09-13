@@ -36,6 +36,9 @@ func progress() -> Vector2i:
 func is_complete() -> bool:
 	return _killed >= count
 
+func can_end_early() -> bool:
+	return true
+
 func kind() -> StringName:
 	return &"slay"
 

@@ -29,6 +29,16 @@ func progress() -> Vector2i:
 func is_complete() -> bool:
 	return false
 
+## Whether this objective can satisfy is_complete() before the encounter list
+## runs out - i.e. whether accepting a quest carrying this objective is NOT a
+## promise that every stop on QuestRouteStrip's route actually happens.
+## quest_notice_sheet.gd reads this to warn the player before they take the
+## quest, since the route strip alone reads as a guaranteed path (content-
+## phase-1 questions doc Q1 already establishes SlayObjective as the one kind
+## that behaves this way).
+func can_end_early() -> bool:
+	return false
+
 ## [content-phase-1 questions Q5] Called once by GameState.start_expedition(),
 ## right after this objective is duplicated onto a fresh run, so it can read
 ## whatever context it needs from the quest/level it is bound to (an encounter

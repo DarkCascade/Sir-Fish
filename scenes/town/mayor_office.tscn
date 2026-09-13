@@ -400,6 +400,16 @@ script = ExtResource("4_route")
 labelled = true
 stop_size = 88.0
 
+; [content phase 1] Only shown when the objective above can complete before
+; every stop on the road happens (QuestObjective.can_end_early()) - the road
+; alone reads as a guaranteed path otherwise. See quest_notice_sheet.gd.
+[node name="RoadNote" type="Label" parent="NoticeSheet/Paper/Frame/Margin/V"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.290196, 0.239216, 0.164706, 0.8)
+theme_override_font_sizes/font_size = 38
+text = "The expedition ends the moment the objective above is met - later stops on the road, including the boss, may never happen."
+autowrap_mode = 3
+
 [node name="FactsGap" type="Control" parent="NoticeSheet/Paper/Frame/Margin/V"]
 custom_minimum_size = Vector2(0, 20)
 layout_mode = 2
