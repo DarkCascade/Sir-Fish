@@ -348,9 +348,10 @@ func _run_complete() -> void:
 			extra.grant()
 		GameState.completed_quest = q
 		GameState.quest = null
-		# [inn & recovery] Coming home from a win: downed heroes revive at half,
-		# the living keep their HP, the meal is spent and the mayor's board
-		# refreshes - all before the save, so a quit on the result screen keeps it.
+		# [inn & recovery] Coming home from a win: the town stands the party a
+		# free night at the inn (a full heal), the meal is spent and the mayor's
+		# board refreshes - all before the save, so a quit on the result screen
+		# keeps it.
 		GameState.recover_after_expedition(true)
 		SaveGame.save_profile()
 		EventBus.quest_finished.emit(true)

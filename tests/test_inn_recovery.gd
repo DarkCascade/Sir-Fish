@@ -4,8 +4,8 @@ extends Node
 ##     heal, downed revived, mayor's board refreshed.
 ##   - GameState.buy_meal(): one per quest - refused while a meal is unspent.
 ##   - GameState.recover_after_expedition(): a wipe brings every hero up to at
-##     least RECOVERY_HP_FRACTION of max HP; a win revives only the downed, to
-##     that. Both spend the meal and refresh the board.
+##     least RECOVERY_HP_FRACTION of max HP; a win is a free night at the inn
+##     (full heal, no charge). Both spend the meal and refresh the board.
 ##   - SaveGame v4 -> v5: the day keys are dropped, a night-owed save recovered.
 ##
 ##     godot --headless --path "C:/Projects/Godot/Sir Fish" res://tests/test_inn_recovery.tscn
@@ -133,15 +133,17 @@ func _check_victory_recovery(t: TestSupport) -> void:
 	GameState.new_profile()
 	GameState.start_expedition(_q)
 	GameState.quest_board_offers()
+	var gold_before: int = GameState.gold
 	_set_hp(0)
 	GameState.recover_after_expedition(true)
-	t.check(_hp() == _half() and bool(GameState.hero_runtime[0]["alive"]),
-		"a win revives a downed hero at half HP (got %d, want %d)" % [_hp(), _half()])
+	t.check(_hp() == _max() and bool(GameState.hero_runtime[0]["alive"]),
+		"a win's free night revives a downed hero at full HP (got %d, want %d)" % [_hp(), _max()])
+	t.check(GameState.gold == gold_before, "a win's night at the inn costs nothing")
 	t.check(not GameState.quest_board_generated, "a win refreshes the mayor's board")
 
 	_set_hp(3)
 	GameState.recover_after_expedition(true)
-	t.check(_hp() == 3, "a win leaves a living hero's HP as it was (got %d)" % _hp())
+	t.check(_hp() == _max(), "a win's free night fully heals a wounded hero (got %d)" % _hp())
 
 # --- the save ---------------------------------------------------------------
 

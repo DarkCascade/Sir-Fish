@@ -1145,21 +1145,22 @@ func discard_expedition_loot() -> void:
 
 ## What coming home does to the party - called by RunController when a quest
 ## ends, before it saves:
-##   - a WIPE (victory false) brings every hero up to at least
-##     RECOVERY_HP_FRACTION of max HP: the downed revive there, anyone already
-##     above it keeps their HP.
-##   - a VICTORY leaves the living exactly as they are and revives only the
-##     downed, at RECOVERY_HP_FRACTION.
+##   - a VICTORY earns a free night at the inn, given by the town in
+##     appreciation of the party's effort: a full heal with the downed revived
+##     (heal_party()), exactly the bed rest_at_inn() sells, at no charge.
+##   - a WIPE brings every hero up to at least RECOVERY_HP_FRACTION of max HP:
+##     the downed revive there, anyone already above it keeps their HP.
 ## Either way the meal is spent (the expedition it paid for is over) and the
-## mayor's board refreshes. Everything beyond that is the inn's job.
+## mayor's board refreshes.
 func recover_after_expedition(victory: bool) -> void:
-	for entry: Dictionary in hero_runtime:
-		var floor_hp: int = ceili(float(int(entry["max_hp"])) * Tuning.RECOVERY_HP_FRACTION)
-		var hp: int = int(entry["current_hp"])
-		if not victory or hp <= 0:
-			hp = maxi(hp, floor_hp)
-		entry["current_hp"] = hp
-		entry["alive"] = hp > 0
+	if victory:
+		heal_party()
+	else:
+		for entry: Dictionary in hero_runtime:
+			var floor_hp: int = ceili(float(int(entry["max_hp"])) * Tuning.RECOVERY_HP_FRACTION)
+			var hp: int = maxi(int(entry["current_hp"]), floor_hp)
+			entry["current_hp"] = hp
+			entry["alive"] = hp > 0
 	meal_pct = 0
 	refresh_quest_board()
 

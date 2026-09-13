@@ -102,8 +102,9 @@ func _migration_steps() -> Dictionary:
 ## [inn & recovery] v4 -> v5 (see VERSION). Drops day_phase, day_number and
 ## meal_eaten_today. A save written with a night still owed also gets the
 ## recovery it never received: every hero up to at least RECOVERY_HP_FRACTION of
-## max HP - the wipe rule, which is never worse for the player than the victory
-## one, and the save does not record which ending it was - and a fresh board.
+## max HP, and a fresh board. That is the wipe rule, the less generous of the
+## two endings - the save does not record which ending it was, so it cannot
+## award a victory's free night.
 ## A save written mid-quest (the old QUEST phase) needs nothing: the quest
 ## itself was never saved, so it already loads as a party standing in town.
 func _migrate_4_to_5(d: Dictionary) -> Dictionary:

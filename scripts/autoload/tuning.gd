@@ -275,9 +275,9 @@ const QUEST_LEVEL_SPAN := 3
 const INN_NIGHT_COST := 50
 
 ## [inn & recovery] The HP floor, as a fraction of max HP, that coming home from
-## a quest restores (GameState.recover_after_expedition()): after a wipe every
-## hero is brought up to at least this; after a win only the downed are revived
-## to it. Also what SaveGame's v4 -> v5 migration applies to a night-owed save.
+## a WIPE restores (GameState.recover_after_expedition()): every hero is brought
+## up to at least this. A win is a free night at the inn instead - a full heal.
+## Also what SaveGame's v4 -> v5 migration applies to a night-owed save.
 const RECOVERY_HP_FRACTION := 0.5
 
 # --- [inn & recovery] The meal --------------------------------------------------

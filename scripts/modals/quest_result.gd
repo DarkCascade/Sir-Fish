@@ -86,7 +86,10 @@ func _apply_heading(is_quest: bool) -> void:
 		# failure line takes the same "%s — ..." shape as the victory one rather
 		# than prefixing a second article.
 		var qname: String = GameState.completed_quest.display_name
-		subtitle.text = ("%s — the road home" % qname) if _victory \
+		# [inn & recovery] A win's free night at the inn (GameState.
+		# recover_after_expedition()) is named here, or the full heal on the
+		# way home reads as a bug.
+		subtitle.text = ("%s — the town stands you a night at the inn" % qname) if _victory \
 			else ("%s — the expedition is lost" % qname)
 		return
 
