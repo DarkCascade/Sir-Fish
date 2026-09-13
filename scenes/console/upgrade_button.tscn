@@ -1,75 +1,87 @@
 [gd_scene format=3 uid="uid://dqhiuamjks4wi"]
 
 [ext_resource type="Script" uid="uid://b30ynhb180jue" path="res://scripts/console/upgrade_button.gd" id="1_upg"]
-[ext_resource type="Script" uid="uid://bwut72okvld1h" path="res://scripts/console/ornate_frame.gd" id="2_lbqxq"]
 [ext_resource type="FontVariation" path="res://assets/display_font.tres" id="3_wi4oe"]
 [ext_resource type="Texture2D" path="res://assets/icons/slot_gold.png" id="4_coin"]
+[ext_resource type="Texture2D" uid="uid://hs61djh243gv" path="res://assets/ui/reliquary/card_frame.png" id="5_vines"]
 
-; [move-elements-to-editor] The parchment button faces used to be four
-; StyleBoxFlats built in _apply_parchment_styles(). They are overrides on this
-; node now, so the card's paper colour, its gold rim and its corner radius are
-; all inspector work. Local overrides on purpose: ONLY these three cards go
-; parchment, every other Button in the game keeps the global blue theme.
+; [move-elements-to-editor] The button faces used to be four StyleBoxFlats built
+; in _apply_parchment_styles(). They are overrides on this node now, so the
+; card's face colour, its rim and its corner radius are all inspector work. Local
+; overrides on purpose: ONLY these three cards get this face, every other Button
+; in the game keeps the global theme.
+;
+; [slot ui phase 3] Parchment is gone: the faces are plum, and the gold-vine
+; nine-patch (Vines, the item card's own card_frame.png) is the rim. Every child
+; below sits inside the vines' 30 px band.
 
-[sub_resource type="StyleBoxFlat" id="parchment_normal"]
+[sub_resource type="StyleBoxFlat" id="face_normal"]
 content_margin_left = 16.0
 content_margin_top = 12.0
 content_margin_right = 16.0
 content_margin_bottom = 12.0
-bg_color = Color(0.780392, 0.768627, 0.709804, 1)
-border_width_left = 3
-border_width_top = 3
-border_width_right = 3
-border_width_bottom = 3
-border_color = Color(0.478431, 0.352941, 0.094118, 1)
-corner_radius_top_left = 10
-corner_radius_top_right = 10
-corner_radius_bottom_right = 10
-corner_radius_bottom_left = 10
+bg_color = Color(0.133333, 0.062745, 0.164706, 1)
+corner_radius_top_left = 22
+corner_radius_top_right = 22
+corner_radius_bottom_right = 22
+corner_radius_bottom_left = 22
+expand_margin_left = -8.0
+expand_margin_top = -8.0
+expand_margin_right = -8.0
+expand_margin_bottom = -8.0
 
-[sub_resource type="StyleBoxFlat" id="parchment_hover"]
+[sub_resource type="StyleBoxFlat" id="face_hover"]
 content_margin_left = 16.0
 content_margin_top = 12.0
 content_margin_right = 16.0
 content_margin_bottom = 12.0
-bg_color = Color(0.793569, 0.78251, 0.727216, 1)
-border_width_left = 3
-border_width_top = 3
-border_width_right = 3
-border_width_bottom = 3
-border_color = Color(0.831373, 0.658824, 0.262745, 1)
-corner_radius_top_left = 10
-corner_radius_top_right = 10
-corner_radius_bottom_right = 10
-corner_radius_bottom_left = 10
+bg_color = Color(0.176471, 0.086275, 0.215686, 1)
+corner_radius_top_left = 22
+corner_radius_top_right = 22
+corner_radius_bottom_right = 22
+corner_radius_bottom_left = 22
+expand_margin_left = -8.0
+expand_margin_top = -8.0
+expand_margin_right = -8.0
+expand_margin_bottom = -8.0
 
-[sub_resource type="StyleBoxFlat" id="parchment_pressed"]
+[sub_resource type="StyleBoxFlat" id="face_pressed"]
 content_margin_left = 16.0
 content_margin_top = 12.0
 content_margin_right = 16.0
 content_margin_bottom = 12.0
-bg_color = Color(0.643137, 0.635294, 0.580392, 1)
-border_width_left = 3
-border_width_top = 3
-border_width_right = 3
-border_width_bottom = 3
-border_color = Color(0.478431, 0.352941, 0.094118, 1)
-corner_radius_top_left = 10
-corner_radius_top_right = 10
-corner_radius_bottom_right = 10
-corner_radius_bottom_left = 10
+bg_color = Color(0.094118, 0.039216, 0.117647, 1)
+corner_radius_top_left = 22
+corner_radius_top_right = 22
+corner_radius_bottom_right = 22
+corner_radius_bottom_left = 22
+expand_margin_left = -8.0
+expand_margin_top = -8.0
+expand_margin_right = -8.0
+expand_margin_bottom = -8.0
 
-[sub_resource type="StyleBoxFlat" id="parchment_disabled"]
+[sub_resource type="StyleBoxFlat" id="face_disabled"]
 content_margin_left = 16.0
 content_margin_top = 12.0
 content_margin_right = 16.0
 content_margin_bottom = 12.0
-bg_color = Color(0.546667, 0.54, 0.493333, 1)
-border_width_left = 3
-border_width_top = 3
-border_width_right = 3
-border_width_bottom = 3
-border_color = Color(0.419608, 0.396078, 0.345098, 1)
+bg_color = Color(0.105882, 0.058824, 0.12549, 1)
+corner_radius_top_left = 22
+corner_radius_top_right = 22
+corner_radius_bottom_right = 22
+corner_radius_bottom_left = 22
+expand_margin_left = -8.0
+expand_margin_top = -8.0
+expand_margin_right = -8.0
+expand_margin_bottom = -8.0
+
+[sub_resource type="StyleBoxFlat" id="price_well"]
+bg_color = Color(0.070588, 0.039216, 0.090196, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.690196, 0.541176, 0.227451, 1)
 corner_radius_top_left = 10
 corner_radius_top_right = 10
 corner_radius_bottom_right = 10
@@ -79,64 +91,81 @@ corner_radius_bottom_left = 10
 custom_minimum_size = Vector2(340, 326)
 offset_right = 340.0
 offset_bottom = 326.0
-theme_override_styles/normal = SubResource("parchment_normal")
-theme_override_styles/hover = SubResource("parchment_hover")
-theme_override_styles/pressed = SubResource("parchment_pressed")
-theme_override_styles/disabled = SubResource("parchment_disabled")
+theme_override_styles/normal = SubResource("face_normal")
+theme_override_styles/hover = SubResource("face_hover")
+theme_override_styles/pressed = SubResource("face_pressed")
+theme_override_styles/disabled = SubResource("face_disabled")
 script = ExtResource("1_upg")
 
-[node name="Plate" type="Control" parent="." unique_id=460139962]
-anchors_preset = 0
+; Anchors of 1/0.4 = 2.5 at scale 0.4, so the 75 px vine band draws as 30 px -
+; see item_card.tscn's Frame for why the node is scaled rather than re-margined.
+[node name="Vines" type="NinePatchRect" parent="."]
+layout_mode = 1
+anchors_preset = -1
+anchor_right = 2.5
+anchor_bottom = 2.5
+scale = Vector2(0.4, 0.4)
+mouse_filter = 2
+texture = ExtResource("5_vines")
+patch_margin_left = 75
+patch_margin_top = 75
+patch_margin_right = 75
+patch_margin_bottom = 75
+axis_stretch_horizontal = 2
+axis_stretch_vertical = 2
+
+[node name="Plate" type="Panel" parent="." unique_id=460139962]
+layout_mode = 1
+anchors_preset = -1
 anchor_top = 1.0
 anchor_bottom = 1.0
-offset_left = 10.0
-offset_top = -64.0
-offset_right = 330.0
-offset_bottom = -12.0
+offset_left = 40.0
+offset_top = -90.0
+offset_right = 300.0
+offset_bottom = -40.0
 mouse_filter = 2
-script = ExtResource("2_lbqxq")
-border = 5.0
-corner_radius = 10.0
-edge_diamonds = false
-inset_well = true
+theme_override_styles/panel = SubResource("price_well")
 
 [node name="Title" type="Label" parent="." unique_id=2045995304]
 layout_mode = 0
-offset_left = 76.0
-offset_top = 12.0
-offset_right = 326.0
-offset_bottom = 74.0
+offset_left = 88.0
+offset_top = 32.0
+offset_right = 306.0
+offset_bottom = 88.0
 theme_type_variation = &"PlateLabel"
+theme_override_colors/font_color = Color(0.937255, 0.839216, 0.580392, 1)
 theme_override_fonts/font = ExtResource("3_wi4oe")
 theme_override_font_sizes/font_size = 54
 text = "Overcharge"
 vertical_alignment = 1
 
 [node name="Blurb" type="Label" parent="." unique_id=1948107817]
-custom_minimum_size = Vector2(308, 0)
+custom_minimum_size = Vector2(268, 0)
 layout_mode = 0
-offset_left = 16.0
-offset_top = 84.0
-offset_right = 324.0
-offset_bottom = 172.0
-theme_override_colors/font_color = Color(0.141176, 0.117647, 0.078431, 0.78)
-theme_override_font_sizes/font_size = 46
-text = "Lightning pays +25%."
+offset_left = 38.0
+offset_top = 92.0
+offset_right = 306.0
+offset_bottom = 190.0
+theme_override_colors/font_color = Color(0.960784, 0.945098, 0.894118, 0.92)
+theme_override_font_sizes/font_size = 33
+text = "Damage icons pay +25%."
 autowrap_mode = 2
 
 [node name="Cost" type="Label" parent="." unique_id=495026777]
-layout_mode = 0
+layout_mode = 1
+anchors_preset = -1
 anchor_top = 1.0
 anchor_bottom = 1.0
-offset_left = 130.0
-offset_top = -58.0
-offset_right = 250.0
-offset_bottom = -58.0
+offset_left = 120.0
+offset_top = -92.0
+offset_right = 280.0
+offset_bottom = -38.0
 theme_type_variation = &"DisplayLabel"
 theme_override_colors/font_color = Color(0.941176, 0.835294, 0.533333, 1)
-theme_override_font_sizes/font_size = 46
+theme_override_font_sizes/font_size = 44
 text = "50"
 horizontal_alignment = 1
+vertical_alignment = 1
 
 ; Icon and Pips keep a _draw() callback in upgrade_button.gd - the medallion is
 ; per-upgrade and the pip row is per-level, neither of which the inspector can
@@ -146,30 +175,32 @@ horizontal_alignment = 1
 
 [node name="Icon" type="Control" parent="."]
 layout_mode = 0
-offset_left = 18.0
-offset_top = 18.0
-offset_right = 68.0
-offset_bottom = 68.0
+offset_left = 36.0
+offset_top = 38.0
+offset_right = 82.0
+offset_bottom = 84.0
 mouse_filter = 2
 
 [node name="Pips" type="Control" parent="."]
-layout_mode = 0
+layout_mode = 1
+anchors_preset = -1
 anchor_top = 1.0
 anchor_bottom = 1.0
-offset_left = 105.0
-offset_top = -108.0
-offset_right = 235.0
-offset_bottom = -86.0
+offset_left = 100.0
+offset_top = -116.0
+offset_right = 240.0
+offset_bottom = -96.0
 mouse_filter = 2
 
 [node name="Coin" type="TextureRect" parent="."]
-layout_mode = 0
+layout_mode = 1
+anchors_preset = -1
 anchor_top = 1.0
 anchor_bottom = 1.0
-offset_left = 89.0
-offset_top = -53.0
-offset_right = 123.0
-offset_bottom = -19.0
+offset_left = 64.0
+offset_top = -83.0
+offset_right = 100.0
+offset_bottom = -47.0
 mouse_filter = 2
 texture = ExtResource("4_coin")
 expand_mode = 1

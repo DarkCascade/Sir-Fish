@@ -13,6 +13,12 @@ extends Control
 ## Rebuilt on every open() from GameState.party_status() - the town has no combat
 ## ticking HP down under it, so there is nothing to live-update against.
 
+## [slot ui phase 3] The board's icon tile, shared with slot_symbol.tscn.
+const SLOT_TILE := preload("res://resources/ui/slot_tile.tres")
+## The glyph's inset inside its 72 px tile - the board draws glyphs at 74% of
+## the tile (SlotSymbol.glyph_fraction), and 9 px either side is the same.
+const GLYPH_INSET := 9.0
+
 @onready var scrim: ColorRect = $Scrim
 @onready var panel: PanelContainer = $Panel
 @onready var close_button: Button = $Panel/Layout/Header/CloseButton
@@ -113,7 +119,8 @@ func _member_row(h: Dictionary) -> Control:
 
 ## The hero's reel icons as a headed, wrapping strip of chips, each labelled with
 ## its rolled magnitude. Duplicates show as separate chips; the innate icon is
-## marked. Drawn with the same assets/ui/reliquary/chip_*.png art the board uses.
+## marked. [slot ui phase 3] Drawn exactly as the board draws them: the board
+## glyph (SlotIcon.board_glyph_texture) on the shared plum tile.
 func _reel_strip(hero_class: StringName) -> Control:
 	var data: Dictionary = GameState.hero_reel_icons(hero_class)
 	var icons: Array = data["icons"]
@@ -139,24 +146,46 @@ func _reel_chip(ic: Dictionary) -> Control:
 	var id: StringName = StringName(ic.get("id", &""))
 	var cell := VBoxContainer.new()
 	cell.add_theme_constant_override("separation", 2)
-	cell.alignment = BoxContainer.ALIGNMENT_CENTER
+	# [slot ui phase 3] Top-aligned, not centred: the flow row is as tall as its
+	# tallest cell, and an innate/forged chip's extra tag line made a centred
+	# cell float its tile above the rest of the row.
+	cell.alignment = BoxContainer.ALIGNMENT_BEGIN
+
+	var tile := Panel.new()
+	tile.custom_minimum_size = Vector2(72, 72)
+	# Stay 72 wide even when the roll label under it is wider.
+	tile.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	tile.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tile.add_theme_stylebox_override("panel", SLOT_TILE)
+	cell.add_child(tile)
 
 	var icon := TextureRect.new()
-	icon.custom_minimum_size = Vector2(72, 72)
+	icon.set_anchors_preset(Control.PRESET_FULL_RECT)
+	icon.offset_left = GLYPH_INSET
+	icon.offset_top = GLYPH_INSET
+	icon.offset_right = -GLYPH_INSET
+	icon.offset_bottom = -GLYPH_INSET
 	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	# expand_mode defaults to EXPAND_KEEP_SIZE, which makes the control's
 	# MINIMUM size the texture's own native resolution (the reliquary chips
 	# are all 1024x1024) - Godot then takes the max of that and
 	# custom_minimum_size, so the 72x72 floor above is silently overridden and
 	# the chip renders at ~1024px instead. IGNORE_SIZE is what actually lets
-	# custom_minimum_size govern.
+	# the tile's size govern.
 	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	icon.texture = SlotIcon.chip_texture(id)
-	match SlotIcon.element_of(id):
-		&"fire": icon.modulate = Tuning.C_FIRE
-		&"ice": icon.modulate = Tuning.C_ICE
-		&"light": icon.modulate = Tuning.C_LIGHTNING
-	cell.add_child(icon)
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var glyph := SlotIcon.board_glyph_texture(id)
+	if glyph != null:
+		# Board glyphs carry their own colour - never element-tinted.
+		icon.texture = glyph
+	else:
+		# No board glyph for this id: its reliquary chip, tinted as before.
+		icon.texture = SlotIcon.chip_texture(id)
+		match SlotIcon.element_of(id):
+			&"fire": icon.modulate = Tuning.C_FIRE
+			&"ice": icon.modulate = Tuning.C_ICE
+			&"light": icon.modulate = Tuning.C_LIGHTNING
+	tile.add_child(icon)
 
 	var lbl := Label.new()
 	lbl.add_theme_font_size_override("font_size", 40)

@@ -165,6 +165,33 @@ static func chip_texture(id: StringName) -> Texture2D:
 		return null
 	return load(path) as Texture2D
 
+## [slot ui phase 3] The board's own glyph art (assets/ui/slot/glyph_*.png):
+## transparent gold emblems that SlotSymbol draws on a procedural tile. Kept
+## apart from chip_path() on purpose - the item cards, compare flyout and item
+## rows still draw the reliquary chips (the party modal and the board use these).
+## An id with no glyph on disk
+## yet returns null, and SlotSymbol falls back to its chip, so the set can land
+## one file at a time. Innate and base ids share their nearest glyph, as chips do;
+## BASE_TRINKET gets its own key, since borrowing the lightning art made a
+## trinket indistinguishable from elem_light on the board.
+const _GLYPH_DIR := "res://assets/ui/slot/"
+
+static func board_glyph_path(id: StringName) -> String:
+	var key := id
+	match id:
+		INNATE_DAMAGE, BASE_WEAPON: key = &"dmg_flat"
+		INNATE_HEAL: key = &"slot_mend"
+		BASE_ARMOR: key = &"armor_block"
+	if key == BLANK:
+		return ""
+	return "%sglyph_%s.png" % [_GLYPH_DIR, key]
+
+static func board_glyph_texture(id: StringName) -> Texture2D:
+	var path := board_glyph_path(id)
+	if path == "" or not ResourceLoader.exists(path):
+		return null
+	return load(path) as Texture2D
+
 ## Short label for the win banner / readouts. "Sword", "Fire", "Chain", "Mend",
 ## "Boost", "Heal".
 static func short_label(id: StringName) -> String:

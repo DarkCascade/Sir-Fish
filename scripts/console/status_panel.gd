@@ -24,8 +24,13 @@ extends PanelContainer
 ## lifted out of this file so CurrencyPlate (and step 9's forge) reuse it rather
 ## than carrying a second and third copy.
 const CurrencyFeedback := preload("res://scripts/ui/currency_feedback.gd")
+const CurrencyPlate := preload("res://scripts/hud/currency_plate.gd")
 
-@onready var gold_label: Label = $Layout/ResourceRow/GoldPlate/GoldLabel
+## [slot ui phase 3] The plate carries gold AND scrap now. The HUD's own
+## CurrencyPlate hides for the whole quest (hud.gd), so this is the expedition's
+## only readout of either.
+@onready var gold_label: Label = $Layout/ResourceRow/GoldPlate/Rows/GoldRow/GoldLabel
+@onready var scrap_label: Label = $Layout/ResourceRow/GoldPlate/Rows/ScrapRow/ScrapLabel
 
 ## Muted while the shop is open (EventBus.shop_visibility_changed): the panel
 ## sits behind the shop scrim, where a run of buy/sell deltas just stacks into
@@ -34,14 +39,23 @@ var _shop_open: bool = false
 
 func _ready() -> void:
 	EventBus.gold_changed.connect(_on_gold_changed)
+	EventBus.scrap_changed.connect(_on_scrap_changed)
 	EventBus.shop_visibility_changed.connect(func(is_open: bool) -> void: _shop_open = is_open)
 	#EventBus.run_started.connect(_update_depth)
 	#EventBus.encounter_started.connect(func(_index: int, _def: EncounterDef) -> void: _update_depth())
 	_update_gold()
+	scrap_label.text = str(GameState.scrap)
 	#_update_depth()
 
 func _update_gold() -> void:
 	gold_label.text = str(GameState.gold)
+
+func _on_scrap_changed(new_total: int, delta: int) -> void:
+	scrap_label.text = str(new_total)
+	if _shop_open:
+		return
+	CurrencyFeedback.pop(scrap_label)
+	CurrencyFeedback.float_delta(self, scrap_label, delta, CurrencyPlate.SCRAP_COLOR)
 
 func _on_gold_changed(_new_total: int, delta: int) -> void:
 	_update_gold()

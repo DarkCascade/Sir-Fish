@@ -26,7 +26,9 @@ extends Button
 ## blurb, at which point the card is wrong in some other way.
 const TITLE_FONT_MAX := 42
 const TITLE_FONT_MIN := 26
-const TITLE_RIGHT_MARGIN := 16.0
+## [slot ui phase 3] Was 16. The card's gold-vine rim is 30 px thick now, and a
+## title fitted to 16 ran its last letter into the vines.
+const TITLE_RIGHT_MARGIN := 36.0
 
 var id: StringName = &""
 
@@ -116,18 +118,19 @@ func _draw_pips() -> void:
 	for i: int in range(Tuning.UPGRADE_MAX_LEVEL):
 		var c := Vector2(float(i) * step + pip * 0.5, pip * 0.5)
 		if i < level:
+			# [slot ui phase 3] Gold gems on plum, not blue on parchment.
 			_pips.draw_colored_polygon(_diamond(c, pip * 0.5), Tuning.C_GOLD_DARK)
-			_pips.draw_colored_polygon(_diamond(c, pip * 0.38), Tuning.C_GEM)
+			_pips.draw_colored_polygon(_diamond(c, pip * 0.38), Tuning.C_GOLD)
 			# The lit upper facet, matching OrnateFrame's gems and its bevels -
 			# everything in this console is lit from above.
 			var r := pip * 0.38
 			_pips.draw_colored_polygon(PackedVector2Array([
 				c + Vector2(0, -r), c + Vector2(r * 0.55, -r * 0.42), c,
 				c + Vector2(-r * 0.55, -r * 0.42),
-			]), Tuning.C_GEM_BRIGHT)
+			]), Tuning.C_GOLD_BRIGHT)
 		else:
-			_pips.draw_colored_polygon(_diamond(c, pip * 0.5), Color(Tuning.C_INK, 0.22))
-			_pips.draw_colored_polygon(_diamond(c, pip * 0.36), Color(Tuning.C_INK, 0.13))
+			_pips.draw_colored_polygon(_diamond(c, pip * 0.5), Color(Tuning.C_GOLD_DARK, 0.9))
+			_pips.draw_colored_polygon(_diamond(c, pip * 0.36), Tuning.C_PLUM_VOID)
 
 func _diamond(c: Vector2, r: float) -> PackedVector2Array:
 	return PackedVector2Array([
@@ -145,7 +148,7 @@ func _draw_icon() -> void:
 	# A struck medallion, not a flat disc: gold rim, dark field, and a highlight
 	# arc across the top-left of the rim so it sits proud of the card face.
 	_icon.draw_circle(c, d * 0.5, Tuning.C_GOLD_DARK)
-	_icon.draw_circle(c, d * 0.42, Tuning.C_ARCANE_DEEP)
+	_icon.draw_circle(c, d * 0.42, Tuning.C_PLUM_LIT)
 	_icon.draw_arc(c, d * 0.46, 0.0, TAU, 28, Tuning.C_GOLD, 3.0)
 	_icon.draw_arc(c, d * 0.46, PI * 0.85, PI * 1.75, 16, Tuning.C_GOLD_BRIGHT, 3.0)
 	match id:
@@ -153,12 +156,12 @@ func _draw_icon() -> void:
 			var poly := PackedVector2Array()
 			for p: Vector2 in SlotSymbol.BOLT:
 				poly.append(c + (p - Vector2(0.5, 0.5)) * d * 0.62)
-			_icon.draw_colored_polygon(poly, Tuning.C_ARCANE_BRIGHT)
+			_icon.draw_colored_polygon(poly, Tuning.C_GOLD_BRIGHT)
 		&"polish":
 			# [slot phase 2] "Remove blanks from the reel": an empty reel cell
 			# being wiped clear - a dark rounded token with a bright sweep.
 			var s := d * 0.30
-			_icon.draw_rect(Rect2(c - Vector2.ONE * s, Vector2.ONE * s * 2.0), Tuning.C_ARCANE_DEEP)
+			_icon.draw_rect(Rect2(c - Vector2.ONE * s, Vector2.ONE * s * 2.0), Tuning.C_PLUM_VOID)
 			_icon.draw_rect(Rect2(c - Vector2.ONE * s, Vector2.ONE * s * 2.0), Tuning.C_GOLD, false, 3.0)
 			_icon.draw_line(c + Vector2(-s, s), c + Vector2(s, -s), Tuning.C_GOLD_BRIGHT, 4.0)
 		_:   # quick_reels
@@ -177,7 +180,8 @@ func refresh() -> void:
 	if Upgrades.is_maxed(id):
 		_blurb.text = "%s." % (String(def["blurb"]) % Upgrades.next_effect_percent(id))
 		_cost.text = "MAX"
-		_cost.add_theme_color_override("font_color", Color("2F6B3E"))
+		# [slot ui phase 3] Was a dark ink green, unreadable on the plum face.
+		_cost.add_theme_color_override("font_color", Tuning.C_HEAL)
 		_coin.visible = false
 		disabled = true
 		modulate = Color.WHITE

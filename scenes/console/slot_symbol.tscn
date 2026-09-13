@@ -1,6 +1,11 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene format=3]
 
 [ext_resource type="Script" path="res://scripts/console/slot_symbol.gd" id="1_sym"]
+[ext_resource type="StyleBox" path="res://resources/ui/slot_tile.tres" id="2_tile"]
+
+; [slot ui phase 3] tile_style is the plum, gold-rimmed tile every dealt icon sits
+; on. It lives in resources/ui/slot_tile.tres rather than here because the party
+; modal draws its reel-icon chips on the same tile. Blank cells draw no tile.
 
 [node name="SlotSymbol" type="Control"]
 custom_minimum_size = Vector2(40, 40)
@@ -9,3 +14,4 @@ offset_bottom = 240.0
 pivot_offset = Vector2(120, 120)
 mouse_filter = 2
 script = ExtResource("1_sym")
+tile_style = ExtResource("2_tile")

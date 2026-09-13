@@ -44,7 +44,10 @@ const WINDOW_INSET := 58.0
 const WINDOW_MARGIN := 48.0
 const PAYLINE_BAND := 60.0
 
-@onready var cabinet: OrnateFrame = $Cabinet
+## [slot ui phase 3] A plain Control now: its children (a plum backing and the
+## item card's gold-vine nine-patch) are anchored to it, so apply_height()
+## sizing the cabinet is all it takes to re-fit the frame.
+@onready var cabinet: Control = $Cabinet
 @onready var payline: Payline = $Payline
 @onready var reel_grid: ReelGrid = $ReelGrid
 @onready var result_frame: ResultFrame = $ResultFrame
@@ -121,7 +124,6 @@ func _on_party_bonuses_changed(_bonuses: Dictionary) -> void:
 func _enter_attract(instant: bool = false) -> void:
 	for reel: Variant in _reels:
 		reel.start_drift()
-	payline.glow_color = Tuning.C_GOLD_DARK   # unlit
 	if instant:
 		modulate = Tuning.SLOT_ATTRACT_DIM
 		return
@@ -131,7 +133,6 @@ func _enter_attract(instant: bool = false) -> void:
 func _leave_attract() -> void:
 	for reel: Variant in _reels:
 		reel.stop_drift()
-	payline.glow_color = Tuning.C_GOLD_BRIGHT  # lit
 	var tw := create_tween()
 	tw.tween_property(self, "modulate", Color.WHITE, 0.2)
 
@@ -513,6 +514,15 @@ func _celebrate(jackpot_id: StringName) -> void:
 		tw.tween_property(cell, "scale", rest * 1.30, 0.175) \
 			.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 		tw.tween_property(cell, "scale", rest, 0.175)
+
+	# [slot ui phase 3] The payline is not drawn at rest any more (slot_machine.tscn
+	# authors it at alpha 0). It appears only for the jackpot, fading in and out
+	# with the banner so the line reads as part of the win, not as furniture.
+	payline.modulate.a = 0.0
+	var ptw := create_tween()
+	ptw.tween_property(payline, "modulate:a", 1.0, 0.12)
+	ptw.tween_interval(1.0)
+	ptw.tween_property(payline, "modulate:a", 0.0, 0.25)
 
 	var flash := create_tween().set_loops(2)
 	flash.tween_property(payline, "glow_color", Color.WHITE, 0.09)
