@@ -1,0 +1,188 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/town/quest_notice.gd" id="1_notice"]
+[ext_resource type="Script" path="res://scripts/town/quest_route_strip.gd" id="2_route"]
+[ext_resource type="Texture2D" path="res://assets/icons/slot_gold.png" id="3_coin"]
+
+; [mayor notice board] Parchment card, C_PARCHMENT fill edged in C_INK - the
+; same ink PlateLabel sets its type in, so edge and text read as one ink. The
+; hard drop shadow is what lifts the card off the board.
+[sub_resource type="StyleBoxFlat" id="notice_normal"]
+bg_color = Color(0.780392, 0.768627, 0.709804, 1)
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
+border_color = Color(0.141176, 0.117647, 0.0784314, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+shadow_color = Color(0, 0, 0, 0.35)
+shadow_size = 1
+shadow_offset = Vector2(0, 10)
+
+[sub_resource type="StyleBoxFlat" id="notice_hover"]
+bg_color = Color(0.839216, 0.827451, 0.776471, 1)
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
+border_color = Color(0.141176, 0.117647, 0.0784314, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+shadow_color = Color(0, 0, 0, 0.35)
+shadow_size = 1
+shadow_offset = Vector2(0, 10)
+
+; Pressed: C_PARCHMENT_SHADE, and the shadow shortens as the card is pushed in.
+[sub_resource type="StyleBoxFlat" id="notice_pressed"]
+bg_color = Color(0.643137, 0.635294, 0.580392, 1)
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
+border_color = Color(0.141176, 0.117647, 0.0784314, 1)
+corner_radius_top_left = 6
+corner_radius_top_right = 6
+corner_radius_bottom_right = 6
+corner_radius_bottom_left = 6
+shadow_color = Color(0, 0, 0, 0.35)
+shadow_size = 1
+shadow_offset = Vector2(0, 4)
+
+[sub_resource type="StyleBoxFlat" id="lv_chip"]
+content_margin_left = 16.0
+content_margin_right = 16.0
+draw_center = false
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0.141176, 0.117647, 0.0784314, 1)
+corner_radius_top_left = 26
+corner_radius_top_right = 26
+corner_radius_bottom_right = 26
+corner_radius_bottom_left = 26
+
+; The brass pin: C_GOLD head, C_GOLD_DARK rim.
+[sub_resource type="StyleBoxFlat" id="pin"]
+bg_color = Color(0.847059, 0.686275, 0.321569, 1)
+border_width_left = 5
+border_width_top = 5
+border_width_right = 5
+border_width_bottom = 5
+border_color = Color(0.478431, 0.352941, 0.0941176, 1)
+corner_radius_top_left = 16
+corner_radius_top_right = 16
+corner_radius_bottom_right = 16
+corner_radius_bottom_left = 16
+
+[node name="QuestNotice" type="Control"]
+custom_minimum_size = Vector2(0, 300)
+layout_mode = 3
+anchors_preset = 0
+mouse_filter = 2
+script = ExtResource("1_notice")
+
+[node name="Card" type="Button" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/normal = SubResource("notice_normal")
+theme_override_styles/hover = SubResource("notice_hover")
+theme_override_styles/pressed = SubResource("notice_pressed")
+theme_override_styles/hover_pressed = SubResource("notice_pressed")
+theme_override_styles/disabled = SubResource("notice_pressed")
+
+[node name="Margin" type="MarginContainer" parent="Card"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/margin_left = 28
+theme_override_constants/margin_top = 34
+theme_override_constants/margin_right = 28
+theme_override_constants/margin_bottom = 26
+
+[node name="V" type="VBoxContainer" parent="Card/Margin"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 14
+
+; Two lines of 46px - "The Hidden Shallow Wood" wraps, "The Broken Wood"
+; does not, and the fixed height keeps every card's meta row on the same line.
+[node name="Name" type="Label" parent="Card/Margin/V"]
+custom_minimum_size = Vector2(0, 100)
+layout_mode = 2
+theme_type_variation = &"PlateLabel"
+theme_override_font_sizes/font_size = 46
+text = "The Hidden Shallow Wood"
+vertical_alignment = 1
+autowrap_mode = 3
+max_lines_visible = 2
+
+[node name="Meta" type="HBoxContainer" parent="Card/Margin/V"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_constants/separation = 8
+
+[node name="LvChip" type="PanelContainer" parent="Card/Margin/V/Meta"]
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+theme_override_styles/panel = SubResource("lv_chip")
+
+[node name="Lv" type="Label" parent="Card/Margin/V/Meta/LvChip"]
+layout_mode = 2
+theme_type_variation = &"PlateLabel"
+theme_override_font_sizes/font_size = 36
+text = "Lv 3–5"
+
+[node name="Spacer" type="Control" parent="Card/Margin/V/Meta"]
+layout_mode = 2
+size_flags_horizontal = 3
+mouse_filter = 2
+
+[node name="Coin" type="TextureRect" parent="Card/Margin/V/Meta"]
+custom_minimum_size = Vector2(40, 40)
+layout_mode = 2
+size_flags_vertical = 4
+mouse_filter = 2
+texture = ExtResource("3_coin")
+expand_mode = 1
+stretch_mode = 5
+
+; C_GOLD_DARK: C_GOLD itself is a fill colour and too pale to read on parchment.
+[node name="Gold" type="Label" parent="Card/Margin/V/Meta"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.478431, 0.352941, 0.0941176, 1)
+theme_override_font_sizes/font_size = 46
+text = "250"
+
+[node name="Route" type="Control" parent="Card/Margin/V"]
+custom_minimum_size = Vector2(0, 30)
+layout_mode = 2
+mouse_filter = 2
+script = ExtResource("2_route")
+
+[node name="Pin" type="Panel" parent="Card"]
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -16.0
+offset_top = -16.0
+offset_right = 16.0
+offset_bottom = 16.0
+grow_horizontal = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("pin")

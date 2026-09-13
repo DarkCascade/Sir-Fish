@@ -597,6 +597,11 @@ const C_GEM_BRIGHT := Color("9FB8FF")        # their lit facet
 const C_PARCHMENT := Color("C7C4B5")
 const C_PARCHMENT_SHADE := Color("A4A294")  # lower half of the card's gradient
 const C_TEXT_GOLD := Color("EFD694")        # headings and numerals on dark stone (AA-large on the lit panel)
+## [mayor notice board] Ink for type ON parchment (quest_notice.tscn, the
+## mayor's notice sheet), where C_TEXT_DIM and C_DANGER are both too light.
+## C_INK is the primary ink; these are its secondary and warning steps.
+const C_INK_DIM := Color("4A3D2A")          # blurbs, notes - ~5:1 on C_PARCHMENT
+const C_DANGER_INK := Color("A8262D")       # C_DANGER darkened: underlevelled, locked - ~4:1 on C_PARCHMENT
 
 # --- 6.1e Reliquary (modal chrome) [scoped exception] -----------------------
 ## The modal layer ONLY. Opening a popup should feel like opening a warded
