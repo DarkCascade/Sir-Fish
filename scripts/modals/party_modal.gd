@@ -146,7 +146,10 @@ func _reel_chip(ic: Dictionary) -> Control:
 	var id: StringName = StringName(ic.get("id", &""))
 	var cell := VBoxContainer.new()
 	cell.add_theme_constant_override("separation", 2)
-	cell.alignment = BoxContainer.ALIGNMENT_CENTER
+	# [slot ui phase 3] Top-aligned, not centred: the flow row is as tall as its
+	# tallest cell, and an innate/forged chip's extra tag line made a centred
+	# cell float its tile above the rest of the row.
+	cell.alignment = BoxContainer.ALIGNMENT_BEGIN
 
 	var tile := Panel.new()
 	tile.custom_minimum_size = Vector2(72, 72)
