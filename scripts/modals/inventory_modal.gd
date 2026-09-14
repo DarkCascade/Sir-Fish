@@ -50,6 +50,12 @@ func _ready() -> void:
 func open() -> void:
 	if visible:
 		return
+	# [rootwood-canopy] Re-read the live biome on every open, not just _ready() -
+	# this modal lives under the persistent Hud autoload (see hud.gd), whose
+	# children only ever _ready() once, at boot, while SceneRouter.place is
+	# still TOWN. Without this, the panel would keep whatever it was opened into
+	# on its FIRST open for the rest of the session.
+	BiomeTheme.apply_panel_backdrop(panel, grain)
 	_rebuild()
 	_update_currency()
 	show()

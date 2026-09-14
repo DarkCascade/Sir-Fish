@@ -611,12 +611,62 @@ const C_THORN := Color("1E1A2E")                 # thorn-vine art tint reference
 const C_THORN_DARK := Color("0F0D18")            # its shadowed side
 const C_RELIQUARY_TRIM := Color("3A3A48")        # pewter corner-bracket art tint reference
 
+## [brass-and-velvet] The shop's own skin (biome id &"shop" - see biome_theme.gd's
+## for_shop()). Unlike rootwood-canopy above, this does NOT follow
+## SceneRouter.place: a shop reads the same whether it is opened in town or mid-
+## quest, so the override is caller-supplied and constant, not read live off
+## biome(). Deep burgundy velvet in place of the reliquary's own cold plum for
+## this one modal identity - the crystal corner motif itself is unchanged (see
+## biome_theme.gd's header on what stays constant across every skin).
+const C_VELVET := Color("3A1220")      # shop panel face
+const C_BRASS := Color("B8863B")       # shop's own warm metal trim, replacing the reliquary's cool pewter border
+
 ## [slot ui phase 3] The expedition console's plum-and-gold reskin. Scenes carry
 ## these as colour literals (inspector work); scripts that draw read them here.
+## [rootwood-canopy] Retired as the CONSOLE's own look (see below) but still the
+## reliquary modals' default plum, unchanged - inventory/party status keep this
+## everywhere except while the player is actually questing.
 const C_PLUM_VOID := Color("120A17")   # console ground behind every panel
 const C_PLUM := Color("1F0E24")        # panel faces: plates, cabinet, reel windows, cards
 const C_PLUM_LIT := Color("3A1A42")    # glyph tiles and medallion fields, raised off C_PLUM
 const C_PLUM_GEM := Color("A55FE0")    # the vine frame's amethyst, echoed as the innate-icon inlay
+
+## [rootwood-canopy] The expedition console's warm reskin, replacing "slot ui
+## phase 3"'s plum for the same surfaces (cabinet, reel windows, gold plate,
+## glyph tiles) plus the innate-icon inlay. The console only ever renders during
+## a quest (SceneRouter.Place.QUEST), so it wears this unconditionally - no
+## biome branch needed there. The reliquary modals (inventory, party status)
+## stay C_PLUM_* by default, since those also render in town, and switch to
+## this set only while the player is questing - see biome_theme.gd's
+## _PANEL_COLOR and party_modal.gd's SLOT_TILE_ROOTWOOD.
+##
+## Root and canopy split the surfaces on purpose: the frame and ground are warm
+## bark brown (what you'd dig through), the recessed reel window is cool leaf
+## green (what you'd see looking up) - a neutral near-black well there would
+## just read as a hole, exactly the trap the retired OrnateFrame carving's own
+## header already called out for this same surface. Gold trim is unchanged
+## (C_GOLD / C_GOLD_BRIGHT / C_GOLD_DARK above), not duplicated here.
+const C_ROOTWOOD_VOID := Color("140D08")   # console ground / status strip - darkest bark
+const C_ROOTWOOD := Color("2E2013")        # panel faces: cabinet, gold plate, cards
+const C_ROOTWOOD_LIT := Color("4A3620")    # glyph tiles, raised off C_ROOTWOOD
+const C_CANOPY_WELL := Color("0F2420")     # recessed reel windows - green glass, darker than every face it sits under
+const C_ROOTWOOD_GEM := Color("6FCB52")    # innate-icon inlay, canopy leaf-green
+
+## [black-glass] The console's temporary boss-fight skin - same surfaces
+## rootwood-canopy owns above, swapped in by Console.apply_boss_theme() the
+## instant a boss encounter's nameplate lands (boss_nameplate.gd's `impact`
+## signal) and swapped back by Console.clear_boss_theme() the moment that
+## fight's combat ends, victory or not (RunController._on_combat_ended() -
+## "all enemies dead", per the user's own framing, since a wipe routes away
+## from the console anyway and must not leave it stuck black). Matches the
+## Biome Frames mockup's swatches (obsidian / glass facet / seam / gem core);
+## gold trim becomes the glowing seam instead, since a boss fight is the one
+## moment this console is allowed to stop reading as friendly UI chrome.
+const C_OBSIDIAN_DEEP := Color("140F1C")   # status strip / recessed reel windows - darkest glass
+const C_OBSIDIAN := Color("211A2E")        # panel faces: cabinet, gold plate
+const C_GLASS_FACET := Color("3B3152")     # glyph tiles, raised off C_OBSIDIAN
+const C_SEAM := Color("D9A6FF")            # glowing trim, replacing gold on borders and the reel lattice
+const C_SEAM_BRIGHT := Color("F4B8FF")     # innate-icon inlay / boss-name glow, brightest point in the console
 
 # --- storm mood (M9) ---------------------------------------------------------
 ## The palette above is the fair-weather art direction and stays as authored.

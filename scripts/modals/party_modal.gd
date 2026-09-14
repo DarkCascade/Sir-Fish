@@ -13,8 +13,15 @@ extends Control
 ## Rebuilt on every open() from GameState.party_status() - the town has no combat
 ## ticking HP down under it, so there is nothing to live-update against.
 
-## [slot ui phase 3] The board's icon tile, shared with slot_symbol.tscn.
+## [slot ui phase 3] The board's plum icon tile - town's default here, since
+## this modal also opens in town, where the board itself is never visible to
+## compare against.
 const SLOT_TILE := preload("res://resources/ui/slot_tile.tres")
+## [rootwood-canopy] The same tile, rootwood - what slot_symbol.tscn itself now
+## uses permanently (the board only ever renders while questing). Picked over
+## SLOT_TILE in _reel_chip() when this modal is opened mid-quest, so a reel icon
+## reads as the same object here as it does on the board it was pulled from.
+const SLOT_TILE_ROOTWOOD := preload("res://resources/ui/slot_tile_rootwood.tres")
 ## The glyph's inset inside its 72 px tile - the board draws glyphs at 74% of
 ## the tile (SlotSymbol.glyph_fraction), and 9 px either side is the same.
 const GLYPH_INSET := 9.0
@@ -35,6 +42,12 @@ func _ready() -> void:
 func open() -> void:
 	if visible:
 		return
+	# [rootwood-canopy] Re-read the live biome on every open, not just _ready() -
+	# this modal lives under the persistent Hud autoload (see hud.gd), whose
+	# children only ever _ready() once, at boot, while SceneRouter.place is
+	# still TOWN. Without this, the panel would keep whatever it was opened into
+	# on its FIRST open for the rest of the session.
+	BiomeTheme.apply_panel_backdrop(panel, grain)
 	_rebuild()
 	show()
 	get_tree().paused = true
@@ -124,7 +137,8 @@ func _member_row(h: Dictionary) -> Control:
 ## The hero's reel icons as a headed, wrapping strip of chips, each labelled with
 ## its rolled magnitude. Duplicates show as separate chips; the innate icon is
 ## marked. [slot ui phase 3] Drawn exactly as the board draws them: the board
-## glyph (SlotIcon.board_glyph_texture) on the shared plum tile.
+## glyph (SlotIcon.board_glyph_texture) on the shared tile - plum or rootwood,
+## matching whichever this modal was opened into (see SLOT_TILE_ROOTWOOD above).
 func _reel_strip(hero_class: StringName) -> Control:
 	var data: Dictionary = GameState.hero_reel_icons(hero_class)
 	var icons: Array = data["icons"]
@@ -160,7 +174,8 @@ func _reel_chip(ic: Dictionary) -> Control:
 	# Stay 72 wide even when the roll label under it is wider.
 	tile.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	tile.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	tile.add_theme_stylebox_override("panel", SLOT_TILE)
+	tile.add_theme_stylebox_override("panel",
+		SLOT_TILE_ROOTWOOD if BiomeTheme.biome() == &"expedition" else SLOT_TILE)
 	cell.add_child(tile)
 
 	var icon := TextureRect.new()

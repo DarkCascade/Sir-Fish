@@ -1,0 +1,24 @@
+[gd_resource type="StyleBoxFlat" format=3]
+
+; [rootwood-canopy] The rootwood, gold-rimmed tile every slot icon sits on
+; during a quest - the console's own permanent look (the board never renders
+; anywhere else). resources/ui/slot_tile.tres (plum) is unchanged and stays the
+; party modal's default when it is opened in town; party_modal.gd picks between
+; the two by SceneRouter's live place. Same shape as slot_tile.tres, only
+; bg_color moved from Tuning.C_PLUM_LIT to C_ROOTWOOD_LIT - border/shadow/corner
+; radius are unchanged so an icon reads as the same object either way.
+
+[resource]
+bg_color = Color(0.290196, 0.211765, 0.125490, 1)
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
+border_color = Color(0.847059, 0.686275, 0.321569, 1)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+shadow_color = Color(0, 0, 0, 0.45)
+shadow_size = 6
+shadow_offset = Vector2(0, 3)

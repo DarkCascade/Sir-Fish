@@ -1,0 +1,27 @@
+{
+  "_about": "Stat presets for pipeline.py register. Each copies a shipped enemy the level-curve tests already pass with, so a new enemy starts balanced. A spec's stats block overrides any field.",
+  "brute": {
+    "copied_from": "skeleton_warrior",
+    "max_hp": 90, "weapon_power": 16, "magic_power": 3,
+    "hp_per_level": 45, "weapon_power_per_level": 6, "magic_power_per_level": 1,
+    "attack_cooldown": 2.2, "model_scale": 1.1, "threat": 3, "drop_chance": 0.3
+  },
+  "skirmisher": {
+    "copied_from": "skeleton_rogue",
+    "max_hp": 50, "weapon_power": 12, "magic_power": 3,
+    "hp_per_level": 25, "weapon_power_per_level": 4, "magic_power_per_level": 1,
+    "attack_cooldown": 1.5, "model_scale": 0.95, "threat": 2, "drop_chance": 0.3
+  },
+  "caster": {
+    "copied_from": "skeleton_mage",
+    "max_hp": 55, "weapon_power": 18, "magic_power": 4,
+    "hp_per_level": 28, "weapon_power_per_level": 6, "magic_power_per_level": 2,
+    "attack_cooldown": 2.4, "model_scale": 1.0, "threat": 2, "drop_chance": 0.3
+  },
+  "swarm": {
+    "copied_from": "skeleton_minion",
+    "max_hp": 28, "weapon_power": 6, "magic_power": 2,
+    "hp_per_level": 14, "weapon_power_per_level": 2, "magic_power_per_level": 1,
+    "attack_cooldown": 1.6, "model_scale": 0.85, "threat": 1, "drop_chance": 0.2
+  }
+}

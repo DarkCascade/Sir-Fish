@@ -1,0 +1,22 @@
+[gd_resource type="StyleBoxFlat" format=3]
+
+; [black-glass] The boss chrome's icon tile: glass-facet fill, glowing seam
+; rim. Applied by SlotMachine.apply_boss_theme() to every reel cell for the
+; fight's duration and swapped back to slot_tile_rootwood.tres by
+; clear_boss_theme() - same shape as that file (border/shadow/corner radius
+; unchanged), only bg_color/border_color moved to the boss palette.
+
+[resource]
+bg_color = Color(0.231373, 0.192157, 0.321569, 1)
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
+border_color = Color(0.850980, 0.650980, 1, 1)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+shadow_color = Color(0, 0, 0, 0.45)
+shadow_size = 6
+shadow_offset = Vector2(0, 3)

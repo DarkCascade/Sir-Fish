@@ -1,0 +1,37 @@
+{
+  "id": "bandit_officer",
+  "display_name": "Bandit Officer",
+  "concept": {
+    "costume_prompt": "Full-body 3D game character concept, front view, T-pose, arms straight out level with shoulders, empty open hands. A disgraced army officer now leading bandits: short hip-length officer's tunic in faded oxblood #A8262D, torn sleeve, frayed hem, rank insignia ripped off, one tarnished gold #7A5A18 epaulette left, slate #496071 trousers, dark brown #5A3419 boots and belt, battered bicorne hat, stubble, eye scar. Chunky stylized low-poly, chibi proportions with big head and short stocky body, faceted, no bevels, flat solid colours, thick dark #241E14 outline, plain white background.",
+    "restyle_prompt": "Image 1 is the exact body template, image 2 is the costume. Redraw the man from image 2 (tricorn hat, scarred stubbled face, torn oxblood officer tunic, one gold epaulette, one ripped-off sleeve, brown belt, slate trousers, brown boots) on the proportions and pose of image 1: huge head plus hat filling the mannequin's head block, short stocky torso, stubby legs, arms straight out perfectly horizontal in a T-pose, empty fists. Same framing and scale as image 1, front view, full body. Flat solid colours, chunky faceted low-poly, thick dark outline, plain white background.",
+    "references": "design documents/reference/bandit_officer/",
+    "credits": 33
+  },
+  "raw_mesh": "design documents/reference/bandit_officer/meshy_raw.glb",
+  "raw_texture": "design documents/reference/bandit_officer/meshy_raw_base_color.png",
+  "texture_size": 1024,
+  "palette": [
+    ["tunic", "A8262D"], ["tunic_shadow", "761C28"], ["gold", "D8AF52"], ["gold_dark", "7A5A18"],
+    ["trousers", "496071"], ["trousers_shadow", "344552"], ["leather", "5A3419"], ["leather_light", "7A4E28"],
+    ["hat", "2F2C38"], ["hat_trim", "77766F"], ["beard", "A39E90"], ["beard_dark", "6F6B62"],
+    ["skin", "F0B28C"], ["skin_shadow", "C98A6B"], ["ink", "241E14"], ["steel", "8C94A3"]
+  ],
+  "props": [
+    {"source": "assets/meshes/knight.glb", "node": "1H_Sword", "bone": "handslot.r", "name": "Sabre"}
+  ],
+  "clips": {
+    "idle": {"clip": "Idle_A", "length": 1.6, "loop": true},
+    "run": {"clip": "Running_A", "length": 0.7, "loop": true},
+    "attack": {"clip": "Melee_1H_Attack_Chop", "length": 0.7, "loop": false, "impact": "auto"},
+    "hurt": {"clip": "Hit_A", "length": 0.3, "loop": false},
+    "die": {"clip": "Death_A", "length": 0.8, "loop": false}
+  },
+  "stats": {
+    "archetype": "brute",
+    "tags": ["bandit", "brute"],
+    "body_color": "A8262D",
+    "accent_color": "D8AF52",
+    "primary": "res://resources/abilities/melee_strike_generic.tres"
+  },
+  "pools": ["endless_mid", "boss_pool"]
+}

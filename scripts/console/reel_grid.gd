@@ -33,6 +33,14 @@ class_name ReelGrid
 ## keeps its columns-only look.
 @export var draw_rows: bool = false
 
+## [black-glass] Set by SlotMachine.apply_boss_theme()/clear_boss_theme() -
+## the lattice's gold cames turn to the boss chrome's glowing seam for the
+## fight, same swap the tile rims and innate-icon inlay make (slot_symbol.gd).
+@export var boss_active: bool = false:
+	set(v):
+		boss_active = v
+		queue_redraw()
+
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	resized.connect(queue_redraw)
@@ -40,30 +48,31 @@ func _ready() -> void:
 func _draw() -> void:
 	if size.x <= 0.0 or size.y <= 0.0:
 		return
+	var line_col: Color = Tuning.C_SEAM if boss_active else Tuning.C_GOLD_DARK
 	for i: int in range(1, 3):
 		var x := size.x * float(i) / 3.0
 		if fade_edges:
-			_faded_line(Vector2(x, 0.0), Vector2(x, size.y))
+			_faded_line(Vector2(x, 0.0), Vector2(x, size.y), line_col)
 		else:
-			draw_line(Vector2(x, 0.0), Vector2(x, size.y), Tuning.C_GOLD_DARK, line_width)
+			draw_line(Vector2(x, 0.0), Vector2(x, size.y), line_col, line_width)
 	if not draw_rows:
 		return
 	for i: int in range(1, 3):
 		var y := size.y * float(i) / 3.0
 		if fade_edges:
-			_faded_line(Vector2(0.0, y), Vector2(size.x, y))
+			_faded_line(Vector2(0.0, y), Vector2(size.x, y), line_col)
 		else:
-			draw_line(Vector2(0.0, y), Vector2(size.x, y), Tuning.C_GOLD_DARK, line_width)
+			draw_line(Vector2(0.0, y), Vector2(size.x, y), line_col, line_width)
 
 ## One vertical came drawn as a short stack of segments whose alpha rises to
 ## the middle - draw_line takes a single colour, so a gradient along a line has
 ## to be segmented. Six segments is enough that the steps are invisible at this
 ## width and cheap enough not to matter.
-func _faded_line(from: Vector2, to: Vector2) -> void:
+func _faded_line(from: Vector2, to: Vector2, col: Color) -> void:
 	var steps := 6
 	for i: int in range(steps):
 		var a := from.lerp(to, float(i) / float(steps))
 		var b := from.lerp(to, float(i + 1) / float(steps))
 		var mid := (float(i) + 0.5) / float(steps)
 		var alpha := sin(mid * PI)          # 0 at both ends, 1 in the middle
-		draw_line(a, b, Color(Tuning.C_GOLD_DARK, alpha), line_width)
+		draw_line(a, b, Color(col, alpha), line_width)

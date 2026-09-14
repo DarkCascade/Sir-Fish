@@ -17,6 +17,7 @@ signal closed()
 const ITEM_ROW := preload("res://scenes/modals/item_row.tscn")
 const CardActions := preload("res://scripts/ui/item_card_actions.gd")
 const NUMBER_SCENE := preload("res://scenes/overlay/damage_number.tscn")
+const BiomeTheme := preload("res://scripts/ui/biome_theme.gd")
 
 var _encounter: EncounterDef = null
 var _cards: Array = []
@@ -25,6 +26,7 @@ var _cards: Array = []
 
 @onready var scrim: ColorRect = $Scrim
 @onready var panel: PanelContainer = $Panel
+@onready var grain: TextureRect = $Panel/Grain
 @onready var gold_label: Label = $Panel/Layout/Header/GoldBox/GoldLabel
 @onready var close_button: Button = $Panel/Layout/Header/CloseButton
 @onready var buy_list: VBoxContainer = $Panel/Layout/Tabs/Buy/BuyList
@@ -33,6 +35,11 @@ var _cards: Array = []
 @onready var tabs: TabContainer = $Panel/Layout/Tabs
 
 func _ready() -> void:
+	# [brass-and-velvet] Unlike inventory/party status's live biome() read, the
+	# shop's skin is a fixed identity (BiomeTheme.for_shop()), never the place it
+	# happens to be opened from - so _ready() alone is enough, with no need to
+	# re-run this in open() the way those two modals must.
+	BiomeTheme.apply_panel_backdrop(panel, grain, BiomeTheme.for_shop())
 	close_button.pressed.connect(close)
 	EventBus.gold_changed.connect(_on_gold_changed)
 	hide()
