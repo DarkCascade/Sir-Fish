@@ -2,14 +2,14 @@ class_name QuestRewardExtra
 extends Resource
 ## A reward beyond the gold every quest already pays (decision D2, content
 ## phase 1 spec §3 Step 1b). QuestDef.gold_reward stays its own required field
-## - this array is for whatever joins it later (scrap, XP, and eventually the
-## recruitment outline's RecruitRewardExtra). Ships with zero concrete
-## subclasses and an empty array on every Phase 1 quest, authored or
-## generated; RunController._run_complete() walks it on victory only, calling
-## grant() once per entry, and quest_result.gd / mayor_office.gd render
-## describe() for display.
+## - this array is for whatever joins it later (scrap, XP, and - as of the
+## backlog P1 recruitment quest - RecruitRewardExtra). Empty on every quest
+## that doesn't need one; RunController._run_complete() walks it on victory
+## only, calling grant() once per entry, and quest_notice_sheet.gd /
+## mayor_office.gd render describe() for display.
 ##
-## Two traps recorded for whoever adds the first subclass (spec §3 Step 1b):
+## Two traps recorded for whoever adds an XP or scrap subclass (spec §3 Step
+## 1b; RecruitRewardExtra hits neither):
 ##   - Bank an XP extra into GameState.expedition_xp BEFORE _run_complete()
 ##     calls apply_expedition_xp(), or grant() it straight to the hero -
 ##     apply_expedition_xp() runs first and zeroes expedition_xp right after.
@@ -31,18 +31,34 @@ func describe() -> String:
 	return ""
 
 # --- persistence (spec §3 Step 3.2) -----------------------------------------
-## Same shape as QuestObjective's persistence pair - see its header. No
-## concrete subclass ships this phase (D2 / §4: every reward_extras array is
-## empty), so the registry below has nothing to hold yet; it exists so
-## QuestDef.to_dict()/from_dict() need no edit the day the first one lands.
+## Same shape as QuestObjective's persistence pair - see its header.
+## Concrete subclasses override _to_dict_extra()/_from_dict_extra() rather
+## than to_dict()/from_dict() themselves, so the kind/description plumbing
+## lives in exactly one place. [backlog P1] RecruitRewardExtra is the first
+## concrete subclass to actually use this shape.
 
 func kind() -> StringName:
 	return &""
 
 func to_dict() -> Dictionary:
-	return { "kind": kind(), "description": description }
+	var d := { "kind": kind(), "description": description }
+	for key: String in _to_dict_extra():
+		d[key] = _to_dict_extra()[key]
+	return d
+
+func _to_dict_extra() -> Dictionary:
+	return {}
+
+func _from_dict_extra(_data: Dictionary) -> void:
+	pass
 
 static func from_dict(data: Dictionary) -> QuestRewardExtra:
+	var extra: QuestRewardExtra
 	match StringName(data.get("kind", &"")):
+		&"recruit":
+			extra = RecruitRewardExtra.new()
 		_:
 			return null
+	extra.description = String(data.get("description", ""))
+	extra._from_dict_extra(data)
+	return extra

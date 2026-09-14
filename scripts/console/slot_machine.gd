@@ -421,8 +421,20 @@ func _resolve_icon(ic: Dictionary, kind: int, mult: float) -> Vector2i:
 	var roll := int(ic.get("roll", 0))
 	match kind:
 		SlotIcon.Kind.DAMAGE_ALL:
+			# [combat loop redesign] Only the class that actually owns DAMAGE_ALL
+			# gets the cosmetic swing (no fallback) - the fallback hero is
+			# whoever's left standing, which today is always the warrior, and she
+			# already animates for real via _hero_swing()/DAMAGE. Handing her this
+			# gesture too could eat her real swing (Combatant.slot_gesture()'s own
+			# ATTACKING guard), for a purely cosmetic payoff.
+			var executor := _executor_for(SlotIcon.Kind.DAMAGE_ALL, false)
+			if executor != null:
+				executor.slot_gesture()
 			return Vector2i(await _hit_all(id, roll, mult), 0)
 		SlotIcon.Kind.HEAL:
+			var executor := _executor_for(SlotIcon.Kind.HEAL, false)
+			if executor != null:
+				executor.slot_gesture()
 			return Vector2i(0, _heal_lowest(roll))
 	return Vector2i.ZERO
 
@@ -458,17 +470,24 @@ func _grant_block(amount: int) -> void:
 ## [content phase 1] The executor rule (D1, spec §2.1/§3 Step 2a): the first
 ## living party member, in roster order, whose class executes `kind`. Falls
 ## back to the first living hero in roster order when no living class owns it
-## - a dead executor, or a party that rolled an icon kind nothing it owns can
-## execute (a solo warrior's `slot_mend`, per §2a) - so a class dying is never
-## a lost turn, matching the existing rule that the party's turn is never
-## simply lost (Combatant.slot_attack). Replaces _swinging_hero(); with a solo
-## warrior this resolves identically to the old "first living hero" rule,
-## since the warrior is both the only living hero AND DAMAGE's executor.
+## and `fallback` is true (the default) - a dead executor, or a party that
+## rolled an icon kind nothing it owns can execute (a solo warrior's
+## `slot_mend`, per §2a) - so a class dying is never a lost turn, matching the
+## existing rule that the party's turn is never simply lost (Combatant.
+## slot_attack). Replaces _swinging_hero(); with a solo warrior this resolves
+## identically to the old "first living hero" rule, since the warrior is both
+## the only living hero AND DAMAGE's executor.
+##
+## `fallback: false` is for a purely cosmetic call (Combatant.slot_gesture(),
+## §5 the ranger/mage combat-visibility fix) that must never land on a hero
+## who did not actually earn it - the fallback hero already has a REAL action
+## this spin often enough (DAMAGE's _hero_swing()) that handing it a second,
+## fake one risks eating the real one via slot_gesture()'s own ATTACKING guard.
 ##
 ## director.living_heroes() is already roster order: it walks `heroes`, which
 ## spawn_party() built from GameState.hero_runtime, itself built from
 ## active_party in PARTY_ORDER's order (GameState._reset_hero_runtime()).
-func _executor_for(kind: SlotIcon.Kind) -> Combatant:
+func _executor_for(kind: SlotIcon.Kind, fallback: bool = true) -> Combatant:
 	if director == null:
 		return null
 	var living: Array[Combatant] = director.living_heroes()
@@ -478,7 +497,7 @@ func _executor_for(kind: SlotIcon.Kind) -> Combatant:
 		var cdef := GameState.get_class_def(h.stats.id)
 		if cdef != null and kind in cdef.executes:
 			return h
-	return living[0]
+	return living[0] if fallback else null
 
 func _hit_all(id: StringName, roll: int, mult: float) -> int:
 	var targets: Array[Combatant] = director.living_enemies()

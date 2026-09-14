@@ -94,17 +94,30 @@ func _accept(q: QuestDef) -> void:
 ## Every QuestDef in res://resources/quests/, sorted by level_range.x - the
 ## data that already exists to express "easy comes before hard", rather than
 ## a second, hardcoded ordering (QUEST_ORDER is gone, spec §3 exit criteria).
+##
+## [backlog P1] Two quests never make it into the standing list at all -
+## distinct from level_range's underlevelled TINT, which still lets a quest
+## through early: a quest below its unlock_level hasn't been introduced yet
+## (the ranger recruitment quest, offered from level 3), and a finished
+## one_shot quest is retired for good (QuestDef.one_shot / GameState.
+## completed_quest_ids).
 func _load_authored_quests() -> Array[QuestDef]:
 	var out: Array[QuestDef] = []
 	var dir := DirAccess.open(QUEST_DIR)
 	if dir == null:
 		return out
+	var hero := GameState.hero_level()
 	for file_name: String in dir.get_files():
 		var clean := file_name.trim_suffix(".remap")
 		if not clean.ends_with(".tres"):
 			continue
 		var res := load(QUEST_DIR + clean)
 		if res is QuestDef:
-			out.append(res)
+			var q := res as QuestDef
+			if hero < q.unlock_level:
+				continue
+			if q.one_shot and GameState.completed_quest_ids.has(q.id):
+				continue
+			out.append(q)
 	out.sort_custom(func(a: QuestDef, b: QuestDef) -> bool: return a.level_range.x < b.level_range.x)
 	return out

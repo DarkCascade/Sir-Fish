@@ -1,10 +1,15 @@
-# Sir Fish — Backlog: Recruits, Gear Types and the Character Pipeline
+# Sir Fish — Backlog
 
-> **Status: prioritised 2026-09-13, nothing scheduled.** Four ideas plus one spike,
-> ranked. Each section records what already exists (checked against the code on
-> `biome-frames-town`), what is missing, and what is decided or still open. The P3 and
-> P4 decisions were settled in review the same day, and spike S1 was run the same day
-> (§4). §5 collects every decision with its status.
+> **Status: prioritised 2026-09-13, nothing scheduled; P5 added 2026-09-14; P1 built
+> and live-playtested 2026-09-14.** Five ideas plus one spike, ranked. Each section
+> records what already exists (checked against the code on `biome-frames-town`), what
+> is missing, and what is decided or still open. The P3 and P4 decisions were settled
+> in review the same day, and spike S1 was run the same day (§4). P5 is an unscoped
+> list of small polish items queued during a later session. P1's machinery is built,
+> tested (headless and live), and its live playtest caught a real combat-loop bug
+> (heroes other than the DAMAGE executor never had a visible action) that's now fixed
+> - what's left is the balance re-tune §1 flags. §6 collects every decision with its
+> status.
 
 ---
 
@@ -12,11 +17,12 @@
 
 | # | Idea | Player value | Effort | Blocked by | Why this position |
 |---|---|---|---|---|---|
-| **P1** | Ranger recruitment quest, offered from level 3 | High | M | nothing | Content Phase 1 shipped most prerequisites. Builds the machinery P2 reuses |
-| **P2** | Mage recruitment quest, offered from level 5 | High | S | P1 | Should be resources only once P1 exists, which makes it the real acceptance test |
+| **P1** | ~~Ranger recruitment quest, offered from level 3~~ | High | M | nothing | **Built and live-playtested 2026-09-14** - unlock gate, one-shot tracking, `CollectObjective`, `RecruitRewardExtra`, the quest resource, headless- and live-tested. The playtest caught and fixed a real combat-loop bug (§1). The two-hero balance re-tune is still open |
+| **P2** | Mage recruitment quest, offered from level 5 | High | S | P1 (built) | Should be resources only now that P1's machinery exists, which makes it the real acceptance test |
 | **S1** | ~~Spike: does KayKit's `Rig_Medium` match the shipped rig?~~ | — | XS | — | **Done 2026-09-13: it matches** (§4) |
 | **P3** | Four-modifier sets per item type; item types for every shipped hand mesh | Medium | M data + M visible props | P1–P2 for tuning | Loot for three classes can only be tuned with three classes in the party |
 | **P4** | Prompt → Meshy → Blender → glb character skill | Medium | M | nothing: the trial character proved the route (§4) | What remains is packaging `rig_bandit_officer.py` as a skill and building 4.3's shared clip source |
+| **P5** | Small polish pass: post-expedition summary, chest presentation, slot upgrade UI, party modal info, shadow monster rework | Low–Medium | S (each item) | nothing | Queued during a later session; not yet scoped against P1–P4 |
 
 ```mermaid
 flowchart LR
@@ -24,6 +30,7 @@ flowchart LR
   P2 -. tune against a full party .-> P3a[P3a Modifier sets + type roster]
   P3a --> P3b[P3b Equipped item shows its mesh]
   P3b -. fixes the handslot contract .-> P4[P4 Character skill]
+  P5[P5 Small polish pass]
 ```
 
 Solid arrows are hard dependencies. Dashed arrows are "better after".
@@ -68,38 +75,107 @@ has changed since it was written and what the build needs.
   machinery below is code. It should hold for the *second* recruit, which is what
   makes P2 the real test.
 
-### What needs building
+### What was built (2026-09-14)
 
-1. **An unlock gate on authored quests.** `mayor_office.gd`'s
-   `_load_authored_quests()` lists every `QuestDef` in `res://resources/quests/`
-   unconditionally. Add a field such as `QuestDef.unlock_level`, and have the office
-   skip quests the party has not reached.
-2. **A record of completed quests.** Nothing in `GameState` remembers a finished quest,
-   so a one-off quest would be offered forever. This needs a saved, profile-scoped
-   `completed_quest_ids` (a `SaveGame.VERSION` bump from 5, with a migration) and a
-   `QuestDef.one_shot` flag the office reads.
-3. **`RecruitRewardExtra`, the first concrete reward extra.** It exports a `class_id`.
-   `grant()` appends to `active_party` only if the class is absent, so it is
-   idempotent. `describe()` reads "Joins the party: Ranger". It also needs an entry in
-   the `from_dict()` registry.
-4. **A starting kit for the recruit.** A hero's whole offence is its equipped weapon's
-   Power. `new_profile()`'s comment warns that an unarmed start "plays as the game is
-   broken", and a recruit who arrives with empty slots has the same problem. See
-   decision 1.2.
-5. **The retrieval objective.** See decision 1.1.
-6. **A balance check.** No enemy or level-building code reads party size, and the curve
-   was tuned against a solo warrior. A second hero is a straight power jump. Re-run the
-   level-curve and easy-quest sims with two heroes.
+All six items below landed in one pass, verified with the existing headless suites
+(`test_content_registry`, `test_quest_flow`, `test_quest_objectives`, `test_quest_gen`,
+`test_quest_generator`, `test_profile_save`, `test_economy`, `test_inn_recovery`,
+`test_autoload_safety`, `test_profile_expedition` - all green) plus a 28-check scratch
+smoke test exercising the whole flow end to end (gate closed at level 1, opens at level
+3, `CollectObjective` completes on the boss encounter, `RecruitRewardExtra.grant()`
+adds the ranger with an auto-equipped bow + helm at the party's level, a second
+`grant()` is a no-op, `completed_quest_ids` retires the quest, and both round-trip
+through a save).
 
-### Decisions (recommended, not yet confirmed)
+1. **The unlock gate.** `QuestDef.unlock_level` (default 1, so every existing quest is
+   unaffected) and `QuestDef.one_shot` (default false). `mayor_office.gd`'s
+   `_load_authored_quests()` now skips a quest below `GameState.hero_level()`, and
+   skips a `one_shot` quest whose id is already in `completed_quest_ids` - both filters
+   drop the quest from the list entirely, distinct from `level_range`'s underlevelled
+   *tint*, which still lets an available quest through early.
+2. **`GameState.completed_quest_ids`**, profile-scoped, cleared by `new_profile()`.
+   Persisted **additively** rather than with the `SaveGame.VERSION` bump this section
+   originally called for - it's a new key with a sensible empty-array default on an
+   old save, the same shape `hero_levels`/`quest_board`/`forge_stock` already use, so
+   `save_game.gd`'s own version policy ("bump on a meaning change, never merely to add
+   a key") says no bump is needed. `RunController._run_complete()` appends the quest's
+   id on victory, alongside gold and the reward extras, guarded idempotent.
+3. **`RecruitRewardExtra`** (`scripts/data/reward_extras/recruit_reward_extra.gd`), the
+   first concrete `QuestRewardExtra`. Exports `class_id`, `weapon_type`, `armor_type`.
+   `grant()` appends `class_id` to `active_party` only if absent (idempotent), then
+   generates the weapon (Magic rarity - a named prize, not a random find) and armor
+   (Common) at the party's level and adds them, which auto-equips into the recruit's
+   empty slots via the existing `_maybe_auto_equip()` path. `describe()` reads "Joins
+   the party: Ranger". Registered in `QuestRewardExtra.from_dict()`; the base class
+   also gained the `_to_dict_extra()`/`_from_dict_extra()` hook pattern its own header
+   already promised, mirroring `QuestObjective`'s.
+4. **The starting kit** rides inside `grant()` (point 3) rather than being a separate
+   step - see decision 1.2 below for why weapon + armor, not weapon alone.
+5. **`CollectObjective`** (`scripts/data/objectives/collect_objective.gd`), registered
+   in `QuestObjective.from_dict()`. See decision 1.1 for its exact trigger.
+6. **A balance check is still open.** No enemy or level-building code reads party size,
+   and `test_level_curves.gd` is explicit that its sim assumes "Party size is 1 (the
+   solo warrior, matching active_party's real starting value)". A second hero is a
+   straight power jump the sim harness doesn't model yet. This needs a design call
+   (how the harness should represent a two-hero bag, not just a re-run) rather than a
+   mechanical follow-up, so it's left for whoever tunes P1's actual numbers before
+   shipping it to players.
 
-**1.1 Is the retrieved item a real `Item` during the run?** *Recommend no.* Track it as
-objective progress: a new `CollectObjective` that completes when the quest's boss
-falls, with its own pickup beat and a line on the result screen. Then
-`RecruitRewardExtra.grant()` creates the real item at the end. This avoids two hazards
-the outline found:
+The ranger recruitment quest itself is authored at
+`resources/quests/ranger_recruit.tres` ("The Ranger's Bow", `unlock_level = 3`,
+`one_shot = true`, boss `bandit_officer`, reward `recruit_ranger.tres`).
+
+**Live-played, and it surfaced a real bug - not in P1's own code, but in the combat
+loop P1 was the first thing to ever actually exercise with two heroes.** Reported as
+"the ranger joins but the slot has no icons for her, so she never does anything in
+combat." Traced to `slot_machine.gd`/`battle_director.gd`: heroes have never acted on
+their own cooldown (`request_turn()` flatly returns for a hero) - the *only* hero who
+ever gets a personal attack animation is whoever `_executor_for(Kind.DAMAGE)` picks
+for the pooled `_hero_swing()`, which today is always the warrior. `DAMAGE_ALL`
+(Chain) icons resolved as an impersonal lightning bolt ("source is null on purpose")
+and `HEAL` icons healed the lowest-HP hero with no caster animation - so no class
+other than the DAMAGE executor has ever had a visible action in combat. Invisible with
+a solo warrior; guaranteed to surface the moment a second hero exists, exactly as the
+recruitment outline's own §2 predicted ("grows `active_party` from one to two, the
+single event most of the current code was never exercised against").
+
+**Fixed 2026-09-14.** `Combatant.slot_gesture()` is a new, purely cosmetic swing
+(bypasses `begin_action()`/`Ability` entirely, so it can never double-deal damage) that
+plays the hero's own `attack` clip without resolving anything itself.
+`SlotMachine._resolve_icon()` now calls it on `_executor_for(kind, false)` - a new
+`fallback` param so this NEVER lands on the generic first-living-hero fallback, only a
+class that actually owns the kind, which keeps it from ever colliding with a real
+`_hero_swing()` on the same hero. Verified live: forced the board to a `slot_bolt`
+(Chain) icon mid-combat with the real ranger recruit in the party and confirmed she
+plays her real `attack` animation instead of standing idle. All of `test_executor`,
+`test_slot_odds`, `test_ability_resolve` and `test_animation_clips` still pass.
+
+**Still open, deliberately out of scope for this fix:** if the party ever has zero
+`DAMAGE_ALL`/`HEAL` icons anywhere in its combined gear (plausible - it's 1 of 7
+weapon/trinket modifiers), the owning class's gesture simply never fires this spin,
+same as before - this fix makes her animate *when the icon kind she owns lands*, it
+does not guarantee that kind lands. A future pass could force one such modifier onto
+a fresh recruit's starting gear (`RecruitRewardExtra`, mirroring `new_profile()`'s
+forced `dmg_flat` on the warrior's starter weapon) if recruits going quiet for a
+while turns out to still read badly in practice.
+
+### Decisions (built 2026-09-14)
+
+**1.1 Is the retrieved item a real `Item` during the run?** *Decided: no.* Tracked as
+objective progress: `CollectObjective` completes when the quest's boss encounter
+resolves (the same `encounter_resolved` event `ClearEncountersObjective` reads,
+filtered to `def.is_boss`) - functionally identical timing to `ClearEncountersObjective`
+since the boss is always the last encounter, but the description reads as "retrieve the
+item" rather than "clear the road", and `can_end_early()` is `false` for the same
+reason. `RecruitRewardExtra.grant()` creates the real item at victory. This avoids two
+hazards the outline found:
 - `Item.slot()` puts any unknown type in the weapon slot (§5.1).
 - `discard_expedition_loot()` deletes unequipped inventory on a wipe (§5.2).
+
+**Not built**: a distinct "pickup beat" VFX at the moment of retrieval, or a dedicated
+line on the result screen calling the item out by name - `RecruitRewardExtra.describe()`
+covers the reward row generically ("Joins the party: Ranger"). Worth a P5-style polish
+pass, not a blocker.
 
 Failing the quest just loses the progress, because objectives are duplicated fresh for
 every run.
@@ -635,14 +711,65 @@ CLAUDE.md's KayKit section is now a pointer to it.
 
 ---
 
-## 5. Open decisions, collected
+## 5. P5 — Small polish pass
+
+A list of small, unscoped polish items queued on 2026-09-14, not yet broken into tasks
+or sequenced against P1–P4.
+
+**UI & visuals**
+
+- **Post-expedition stats summary view** needs another design pass; priorities not yet
+  defined.
+- **Expedition chest redo:**
+  - move the chest above the party on screen, so it's actually visible;
+  - replace the text loot list with glyph-pop animations — item-type and rarity glyphs
+    spawning visibly out of the chest instead of text.
+- **Apply the same popped-glyph pattern to battle loot**, for consistency with the
+  chest.
+- **Slot upgrade boxes**: transition their styling to the boss frame along with the
+  rest of the UI during boss encounters (coordinate with the boss console theme work).
+- **Slot upgrades, another pass**: revisit the interaction/display now that the current
+  slot mechanics are settled.
+
+**Character & animation**
+
+- **Shadow monster re-work with Meshy** — regenerate/redesign once Meshy spend is
+  unblocked (currently on hold pending design lock; see [`sir-fish-meshy-on-hold`
+  memory]).
+
+**Party modal**
+
+- Add **party levels and experience** information to the display.
+- Move glyph labels from **below** each glyph to **above** it, reading "innate" and
+  "forged".
+
+**Town / blacksmith**
+
+- **Closing the Hud-level inventory modal over the blacksmith screen should refresh
+  the Forge tab.** `blacksmith.gd` already has `_on_equip_changed()` (rebuilds Forge/
+  Scrap/Sell and saves), but it's only ever called from the blacksmith's own Scrap/Sell
+  item rows (`_on_item_action()`'s `equip`/`unequip` branch) - not from an equip made
+  through the Hud's inventory modal (`scripts/modals/inventory_modal.gd`, which has no
+  `closed` signal today and nothing in `blacksmith.gd` listens for it). So equipping a
+  different item there while standing in the blacksmith, then closing the modal, leaves
+  the Forge tab showing the stale equipped set until the player leaves and re-enters.
+  Likely fix: either give `inventory_modal.gd` a `closed` signal `blacksmith.gd`
+  connects to `_on_equip_changed()`, or have `blacksmith.gd` connect straight to
+  `EventBus.item_equipped` (what `GameState.equip_item()` already emits) the way
+  `_on_currency_changed()` listens to `EventBus.gold_changed`/`scrap_changed` - the
+  latter is more robust since it covers equip changes from anywhere, not just this one
+  modal.
+
+---
+
+## 6. Open decisions, collected
 
 | # | Decision | Status | Answer or recommendation |
 |---|---|---|---|
-| 1.1 | Is the retrieved item a real `Item` mid-run? | Recommended | No: track it as objective progress, and create the item in `grant()` |
-| 1.2 | Recruit's starting kit | Recommended | The retrieved item is their weapon, plus a Common armor piece |
-| 1.3 | Recruit's starting level | Recommended | The party's best level (`hero_level()`) |
-| 1.4 | When the recruit joins | Recommended | On victory; in the party from the next expedition (outline §5.3) |
+| 1.1 | Is the retrieved item a real `Item` mid-run? | **Decided, built** | No: tracked as objective progress (`CollectObjective`), item created in `grant()` |
+| 1.2 | Recruit's starting kit | **Decided, built** | The retrieved item is their weapon (Magic), plus a Common armor piece |
+| 1.3 | Recruit's starting level | **Decided, built** | The party's best level (`hero_level()`) |
+| 1.4 | When the recruit joins | **Decided, built** | On victory; in the party from the next expedition (outline §5.3) |
 | 3.1 | Modifier rule | **Decided** | Four per type, dealt in random order (Magic 1 / Rare 2 / Enhanced 3); Enhanced then boosts one of its three by 1.5× |
 | 3.2 | Does equipping change the model? | **Decided** | Hand items first; head and chest props stay cosmetic |
 | 3.3 | Tower shield mesh | **Decided** | `Rectangle_Shield` |

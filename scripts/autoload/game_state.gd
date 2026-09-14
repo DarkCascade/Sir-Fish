@@ -101,6 +101,14 @@ var quest: QuestDef = null
 ## quest_objectives_complete() and fanned events by QuestRuntime.
 var quest_objectives: Array[QuestObjective] = []
 
+## [backlog P1] Ids of every one_shot QuestDef this profile has finished -
+## mayor_office.gd's _load_authored_quests() reads it to stop offering a
+## quest like the ranger recruitment forever (QuestDef.one_shot). Appended by
+## RunController._run_complete() on victory only, alongside gold and the
+## reward extras; a wipe never marks a quest complete. Profile-scoped, saved,
+## cleared by new_profile().
+var completed_quest_ids: Array[StringName] = []
+
 ## [town] The quest that just ENDED, kept for QuestResult to read (spec 8.5).
 ## spec 8.5 nulls `quest` before routing home and presenting the modal, so the
 ## reward row and the "this was a quest" branch need a value that outlives that
@@ -1009,6 +1017,8 @@ func new_profile() -> void:
 	# pattern (spec §3 Step 3 / §1.6).
 	quest_board.clear()
 	quest_board_generated = false
+	# [backlog P1] A fresh profile has finished no one_shot quests.
+	completed_quest_ids.clear()
 	active_party = [&"warrior"]
 	# [item power model] A fresh profile ships one weapon, already equipped.
 	# Since the combat loop redesign a hero's entire offense is its equipped
