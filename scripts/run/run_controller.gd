@@ -377,6 +377,9 @@ func _run_complete() -> void:
 		# paid. Empty on every quest Phase 1 ships (QuestRewardExtra's header).
 		for extra: QuestRewardExtra in q.reward_extras:
 			extra.grant()
+		# [backlog P1] one_shot quests never come back once won (QuestDef.one_shot).
+		if q.one_shot and not GameState.completed_quest_ids.has(q.id):
+			GameState.completed_quest_ids.append(q.id)
 		GameState.completed_quest = q
 		GameState.quest = null
 		# [inn & recovery] Coming home from a win: the town stands the party a
