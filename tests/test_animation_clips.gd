@@ -39,6 +39,9 @@ const MODELS := {
 	&"skeleton_mage": "res://assets/meshes/skeleton_mage.glb",
 	&"skeleton_rogue": "res://assets/meshes/skeleton_rogue.glb",
 	&"skeleton_minion": "res://assets/meshes/skeleton_minion.glb",
+	# Meshy mesh on the KayKit Rig_Medium rig. Its .glb is exported with only the
+	# clips its RigProfile names, so it needs no strip script to stay under the ceiling.
+	&"bandit_officer": "res://assets/meshes/bandit_officer.glb",
 }
 
 ## The strip is only worth having if it actually removes the bulk. KayKit ships

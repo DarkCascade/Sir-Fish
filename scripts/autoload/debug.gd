@@ -384,6 +384,7 @@ func _cmd_route(args: Array) -> void:
 		"blacksmith": SceneRouter.Place.BLACKSMITH,
 		"mayor": SceneRouter.Place.MAYOR,
 		"quest": SceneRouter.Place.QUEST,
+		"item-forge": SceneRouter.Place.ITEM_FORGE,
 	}
 	var key := String(args[0]).to_lower()
 	if not places.has(key):
