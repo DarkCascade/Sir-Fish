@@ -404,7 +404,9 @@ func equip_item(item: Item, hero_class: StringName) -> void:
 func unequip_item(item: Item) -> void:
 	if item == null or item.equipped_by == &"":
 		return
+	var hero_class := item.equipped_by
 	item.equipped_by = &""
+	EventBus.item_unequipped.emit(item, hero_class, int(item.slot()))
 	EventBus.party_bonuses_changed.emit(party_bonuses())
 
 ## Fills an EMPTY slot only - never swaps out an existing equip (§ equip
