@@ -13,24 +13,30 @@ extends CombatantBarsBase
 ## the enemy overlay pair (combatant_bars.gd) which still shows one.
 
 ## Must track HealthFill's own authored width in hero_bars.tscn, or the bar
-## visually stops short of (or overflows) its track.
+## visually stops short of (or overflows) its track - it did the second one:
+## a 2026-08-24 "just some fiddlin" editor pass narrowed the track in
+## status_panel.tscn without touching this constant, so every hero's fill
+## rendered ~56 px wider than its own background the moment their hp_fraction
+## got close to 1.0 (a full bar, or a slot mend icon healing one there) -
+## invisible at partial health, where the absolute pixel overshoot is small
+## enough to still land inside the track.
 ##
 ## [ui-project-longshot] The row is measured off the concept board rather than
-## eyeballed: a 60 px medallion, an 8 px gap and a 362 px track, in a 62-tall
+## eyeballed: a 60 px medallion, an 8 px gap and a 307 px track, in a 62-tall
 ## row with 8 between rows - which is what makes three of them fill the
 ## strip's right-hand third exactly. Inside the track each layer insets the one
 ## above it by a few px, so the bar reads as a WELL with a fill sitting in it:
 ##
-##     HealthBorder  362 x 50   ink outline
-##       HealthBg    356 x 44   the empty track
-##         HealthFill 352 x 40  the coloured fill   <- this constant
+##     HealthBorder  307 x 50   ink outline
+##       HealthBg    296 x 44   the empty track
+##         HealthFill 296 x 40  the coloured fill   <- this constant
 ##           Gloss             top strip, white at low alpha
 ##
 ## HpText is a child of HealthBg, NOT of HealthFill, and that is the one thing
 ## here that is easy to get wrong: parented to the fill it slides left with the
 ## damage and eventually clips off the bar entirely - exactly when the player
 ## most wants to read it.
-const HERO_FILL_WIDTH := 352.0
+const HERO_FILL_WIDTH := 296.0
 
 ## [presentation redesign S6.3] Past half the chip's own shorter side, same
 ## convention as CombatantBarsBase.PILL_RADIUS, so the class-icon tile reads as
