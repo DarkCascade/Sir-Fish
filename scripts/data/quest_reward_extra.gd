@@ -16,6 +16,10 @@ extends Resource
 ##   - A ScrapRewardExtra amends "scrap comes only from combat pickups"
 ##     (quest_def.gd / the town spec's own comment) - update both comments in
 ##     the same commit that ships one.
+##
+## [recruitment] RecruitRewardExtra is the first concrete subclass - see its
+## own header. Neither trap above applies to it: it touches active_party, not
+## expedition_xp or scrap.
 
 @export var description: String = ""
 

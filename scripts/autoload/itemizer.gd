@@ -37,6 +37,12 @@ const ITEM_TYPES := {
 	&"ring":   { "slot": Item.Slot.TRINKET, "base_value": 19, "power": 4, "nouns": ["Ring", "Band", "Signet", "Loop"] },
 	&"amulet": { "slot": Item.Slot.TRINKET, "base_value": 21, "power": 4, "nouns": ["Amulet", "Pendant", "Charm", "Talisman"] },
 	&"idol":   { "slot": Item.Slot.TRINKET, "base_value": 23, "power": 5, "nouns": ["Idol", "Fetish", "Totem", "Effigy"] },
+	# --- authored relics [recruitment] - never rolled by any generator below:
+	# no ClassDef lists these in item_types, so _roll_typed()/generate_drop()
+	# can never reach them. Exists only so a hand-authored RELIC Item (see
+	# resources/items/) has a slot()/power() to resolve against - see
+	# RecruitRewardExtra's header for why relics are never generated. ---
+	&"heartstone": { "slot": Item.Slot.TRINKET, "base_value": 0, "power": 5 },
 }
 
 const ADJECTIVES := [

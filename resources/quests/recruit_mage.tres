@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="QuestDef" load_steps=5 format=3]
+
+[ext_resource type="Script" uid="uid://d0nce1a0k1mdc" path="res://scripts/data/quest_def.gd" id="1_qd"]
+[ext_resource type="Resource" path="res://resources/objectives/collect_mage_heartstone.tres" id="2_obj"]
+[ext_resource type="Resource" path="res://resources/reward_extras/recruit_mage.tres" id="3_extra"]
+[ext_resource type="Resource" path="res://resources/items/mage_heartstone.tres" id="4_relic"]
+
+[resource]
+script = ExtResource("1_qd")
+id = &"recruit_mage"
+display_name = "A Mage's Plea"
+blurb = "A wandering mage begs for her stolen heartstone back - the skeletal sorcerer who took it makes its den nearby."
+encounter_types = Array[int]([0, 1, 0, 2, 0])
+gold_reward = 200
+objectives = Array[QuestObjective]([ExtResource("2_obj")])
+reward_extras = Array[QuestRewardExtra]([ExtResource("3_extra")])
+enemy_pool = Array[StringName]([&"shadow_monster", &"skeleton_minion"])
+boss_pool = Array[StringName]([&"skeleton_mage"])
+boss_drop_rarity_floor = 1
+guaranteed_boss_drop = ExtResource("4_relic")
+travel_durations = Array[float]([2.0, 3.0, 3.0, 3.0, 4.0])
+level_range = Vector2i(1, 5)

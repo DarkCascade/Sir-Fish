@@ -1,36 +1,41 @@
 class_name CollectObjective
 extends QuestObjective
-## "Retrieve a specific item" (recruitment outline §1, backlog P1 decision
-## 1.1) - the token is never a real Item mid-run (that would hit Item.slot()'s
-## unknown-type fallback and discard_expedition_loot()'s wipe sweep, the two
-## hazards §5.1/§5.2 flag). Instead this completes when the quest's boss
-## falls, exactly like ClearEncountersObjective already does since the boss
-## is always the last encounter (quest_def.gd's own comment) - and
-## RecruitRewardExtra.grant() creates the real item, and the recruit, at
-## victory. Reads the same encounter_resolved event ClearEncountersObjective
-## does, filtered to the boss encounter, so it still resolves correctly even
-## if a future quest ever puts the boss somewhere other than last.
+## "Bring back a specific item" (content phase 1 spec §3 Step 1a's
+## CollectObjective) - narrowed from the spec's (slot, rarity, count) to an
+## exact weapon_type match. The Recruitment Quest Acceptance Test Outline
+## (§5.1) flags why: a loose slot/rarity match would let ANY trinket of that
+## rarity satisfy a quest that is really asking for one specific, hand-
+## authored relic (a chest or an unrelated boss drop landing on the same slot/
+## rarity would falsely complete it). weapon_type is unique per authored relic
+## (see Itemizer.ITEM_TYPES' "authored relics" rows), so this cannot happen.
+##
+## Reads EventBus's existing item_added, no new signal needed.
 
-var _complete: bool = false
+@export var target_weapon_type: StringName = &""
+@export var count: int = 1
+
+var _collected: int = 0
 
 func on_event(evt: StringName, payload: Dictionary) -> void:
-	if evt != &"encounter_resolved" or _complete:
+	if evt != &"item_added":
 		return
-	var def: EncounterDef = payload.get("def")
-	if def != null and def.is_boss:
-		_complete = true
+	var item: Item = payload.get("item")
+	if item == null or item.weapon_type != target_weapon_type:
+		return
+	_collected += 1
 
 func progress() -> Vector2i:
-	return Vector2i(1 if _complete else 0, 1)
+	return Vector2i(mini(_collected, count), count)
 
 func is_complete() -> bool:
-	return _complete
-
-## The boss is always the last encounter (quest_def.gd), so this never
-## resolves before ClearEncountersObjective would anyway - no early-end
-## warning on the notice sheet (quest_notice_sheet.gd's _road_note).
-func can_end_early() -> bool:
-	return false
+	return _collected >= count
 
 func kind() -> StringName:
 	return &"collect"
+
+func _to_dict_extra() -> Dictionary:
+	return { "target_weapon_type": target_weapon_type, "count": count }
+
+func _from_dict_extra(data: Dictionary) -> void:
+	target_weapon_type = StringName(data.get("target_weapon_type", &""))
+	count = int(data.get("count", 1))
