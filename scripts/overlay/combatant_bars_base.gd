@@ -18,12 +18,18 @@ const PILL_RADIUS := 999.0
 
 var combatant: Combatant = null
 
-## [ui-project-longshot] What colour this bar's fill returns to. Was implicit
-## (every bar was C_DANGER red, so the heal flash could hardcode its way back),
-## and that stopped being true the moment the party bars took a colour per
-## hero: a healed mage flashed green and then settled to red. Subclasses that
-## want a coloured bar set this in setup() alongside health_fill.color; the
-## default keeps every existing red bar exactly as it was.
+## [ui-project-longshot] What colour this bar's fill returns to after a heal
+## flash. Was implicit (every bar was C_DANGER red, so the heal flash could
+## hardcode its way back) until the hero party bars briefly took a colour per
+## hero instead - the mage's own class colour is coincidentally almost
+## identical to Tuning.C_HEAL, so her bar read as permanently, confusingly
+## healed, and any future status effect (poison, say) would have had no red
+## left to distinguish itself from. hero_bars.gd reverted to this default and
+## moved the per-class colour to the medallion instead, which never competes
+## with the bar for meaning. No subclass overrides this any more - every
+## health bar on every combatant is this same red - but the var stays
+## overridable rather than a hardcoded literal in tween_health_fraction, since
+## "no subclass needs this yet" is not "no subclass ever will".
 var base_fill_color: Color = Tuning.C_DANGER
 
 ## Set by each subclass's setup() to its own fixed layout width - there is no

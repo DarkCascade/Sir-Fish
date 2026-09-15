@@ -37,8 +37,11 @@ extends Resource
 @export var glyph: Texture2D
 @export_range(0.0, 1.0, 0.01) var glyph_box_fraction: float = 0.7
 
-## The party-bar fill/medallion colour (was HeroBars.CLASS_BAR_COLORS).
-@export var bar_color: Color = Color.WHITE
+## The party-bar medallion colour (was HeroBars.CLASS_BAR_COLORS). The health
+## fill itself is a fixed Tuning.C_DANGER red across every hero, not this -
+## status effects (e.g. poison) get first claim on the rest of the palette,
+## traditionally green, so no class's own colour can be mistaken for one.
+@export var chip_color: Color = Color.WHITE
 
 ## Every Itemizer.ITEM_TYPES key this class may wield/wear, across all three
 ## slots (was ITEM_TYPES[type]["classes"] listing &"warrior" on every row).

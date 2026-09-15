@@ -64,6 +64,12 @@ func _ready() -> void:
 	_sell_all_button.pressed.connect(_on_sell_all_common)
 	EventBus.gold_changed.connect(_on_currency_changed)
 	EventBus.scrap_changed.connect(_on_currency_changed)
+	# [P5] Catches an equip made through the Hud's inventory modal too, not just
+	# this scene's own Scrap/Sell rows - GameState.equip_item()/unequip_item()
+	# emit these regardless of caller, so the Forge tab no longer needs its own
+	# actions to be the only thing that calls _on_equip_changed() (below).
+	EventBus.item_equipped.connect(_on_item_equip_event)
+	EventBus.item_unequipped.connect(_on_item_equip_event)
 
 	# spec 7.4: first visit generates the stock and persists it; every visit after
 	# reads the cached copy. new_profile() clears the flag, so a fresh profile
@@ -311,8 +317,10 @@ func _on_item_action(id: StringName, card: Control, item: Item, mode: int,
 		&"compare":
 			_on_compare_requested(item)
 		&"equip", &"unequip":
+			# GameState.equip_item()/unequip_item() emit item_equipped/
+			# item_unequipped, which _on_item_equip_event() below routes to
+			# _on_equip_changed() - no need to call it again here.
 			CardActions.do_equip(item, id == &"equip")
-			_on_equip_changed()
 		&"sell":
 			if CardActions.do_sell(card, item, mode):
 				on_done.call()
@@ -374,6 +382,9 @@ func _on_equip_changed() -> void:
 	_build_forge()
 	_build_scrap()
 	_build_sell()
+
+func _on_item_equip_event(_item: Item, _hero_class: StringName, _slot: int) -> void:
+	_on_equip_changed()
 
 # --- currency --------------------------------------------------------------
 

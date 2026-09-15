@@ -76,7 +76,9 @@ func bind_director(director) -> void:
 func apply_boss_theme() -> void:
 	status_panel.apply_boss_theme()
 	slot_machine.apply_boss_theme()
+	upgrade_tray.apply_boss_theme()
 
 func clear_boss_theme() -> void:
 	status_panel.clear_boss_theme()
 	slot_machine.clear_boss_theme()
+	upgrade_tray.clear_boss_theme()

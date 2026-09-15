@@ -47,6 +47,7 @@ signal shop_visibility_changed(is_open: bool)
 # present (spec 8.5). quest_started tightened to QuestDef at step 8.
 signal scrap_changed(new_total: int, delta: int)
 signal item_equipped(item: Item, hero_class: StringName, slot: int)
+signal item_unequipped(item: Item, hero_class: StringName, slot: int)
 signal item_forged(item: Item, new_rarity: int)
 signal quest_started(quest: QuestDef)
 signal quest_finished(victory: bool)

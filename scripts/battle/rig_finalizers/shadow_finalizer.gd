@@ -1,18 +1,18 @@
 extends RefCounted
-## RigProfile.finalizer for shadow_monster (content-phase-0 spec §3 Step 3) -
-## the genuinely procedural half of the old CombatantRig._finalize_shadow():
-## a translucent smoke material the .glb does not carry, plus the eyes and
-## smoke-wisp particles, which have no Blender equivalent and are added here
-## as plain child nodes rather than baked into the imported mesh.
+## RigProfile.finalizer for shadow_monster - a translucent smoke material the
+## .glb does not carry, plus the eyes and smoke-wisp particles, which have no
+## Blender equivalent and are added here as plain child nodes rather than
+## baked into the imported mesh.
 ##
-## [overworld prototype] shadow_monster.tscn also gives Model a +0.9075 Z
-## offset. The .glb's body mesh is authored 0.9 units off its own origin
-## (Blender Y = +0.907 on ShadowBody), which a side-on orthographic camera
-## could not show - the offset ran straight into the screen. Under the
-## overhead camera it puts the blob a metre to one side of its own health bar,
-## its hit anchor, and the point melee attackers blink to. The offset is
-## corrected on the node rather than in the .glb so the imported asset stays
-## byte-identical to what Blender exports.
+## [KayKit Rig_Medium rework] shadow_monster moved from a shape-key blob with
+## no armature onto the same character_pipeline route as the other humanoid
+## enemies (bandit_officer etc.) - a real bipedal Skeleton3D, BAKED clips off
+## Rig_Medium, standard DEFAULT_SCENE_TRANSFORM (no more per-scene position
+## hack). The smoke-material loop below is unchanged by that move - it was
+## already generic over every MeshInstance3D under "Model" - but the eye and
+## wisp positions were tuned for the old blob's proportions and are retuned
+## here for the humanoid's actual head height (measured off the built glb's
+## head-weighted vertices: Blender z 1.22-2.20, scaled by the scene's 0.85).
 ##
 ## Idempotency guards mirror the generic loop's (spec 8.2b.2): setup() calls
 ## this on every encounter. The smoke-material loop is scoped to the imported
@@ -47,16 +47,16 @@ func _shadow_eye(side: int) -> MeshInstance3D:
 	e.name = "Eye%s" % ("L" if side < 0 else "R")
 	e.mesh = eye
 	# Forward is +X (see Tuning.yaw_along), so the eyes sit forward on X and
-	# separate across Z. They were authored on the old side-on convention,
-	# where an enemy only ever turned 180 degrees and a 90-degree error never
-	# showed; under the overhead camera a combatant faces any direction, so a
-	# blob whose eyes point off its own shoulder is immediately visible.
+	# separate across Z.
 	#
-	# y is 0.30, not the authored 1.18: the .glb body only reaches y = 0.58, so
-	# the old height left the eyes hovering in clear air above the blob. This
-	# puts them on its front surface (the body's radius is about 0.58, and
-	# (0.42, 0.30, 0.17) has length 0.55).
-	e.position = Vector3(0.42, 0.30, 0.17 * float(side))
+	# y is head height on the humanoid rig: the built glb's head-weighted
+	# vertices span Blender z 1.22-2.20 (bone rest data, scratch/character_
+	# pipeline/shadow_monster/shadow_monster_built.blend), and Model's own
+	# scene transform scales that by 0.85 - an eye-band roughly 45% up the
+	# head puts y around 1.4. x/z are a modest fraction of the head's own
+	# half-width/half-depth (~0.44/0.43 in that same raw frame) so the eyes
+	# sit on the face rather than at its rim.
+	e.position = Vector3(0.16, 1.40, 0.09 * float(side))
 	e.material_override = CelMaterials.cel(
 		Tuning.C_SHADOW_EYES, Tuning.C_SHADOW_EYES, 3.0, 0.0)
 	e.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
@@ -67,12 +67,15 @@ func _smoke_wisps() -> GPUParticles3D:
 	p.name = "SmokeWisps"
 	p.amount = 24
 	p.lifetime = 1.4
-	p.position = Vector3(0, 1.0, 0)
+	# Torso height on the humanoid rig, not the old blob's centre - the
+	# emission sphere below still reaches from about the waist up past the
+	# head, same as it did on the blob.
+	p.position = Vector3(0, 0.95, 0)
 	p.local_coords = true
 
 	var pm := ParticleProcessMaterial.new()
 	pm.emission_shape = ParticleProcessMaterial.EMISSION_SHAPE_SPHERE
-	pm.emission_sphere_radius = 0.5
+	pm.emission_sphere_radius = 0.45
 	pm.direction = Vector3(0, 1, 0)
 	pm.spread = 35.0
 	pm.initial_velocity_min = 0.3

@@ -13,24 +13,30 @@ extends CombatantBarsBase
 ## the enemy overlay pair (combatant_bars.gd) which still shows one.
 
 ## Must track HealthFill's own authored width in hero_bars.tscn, or the bar
-## visually stops short of (or overflows) its track.
+## visually stops short of (or overflows) its track - it did the second one:
+## a 2026-08-24 "just some fiddlin" editor pass narrowed the track in
+## status_panel.tscn without touching this constant, so every hero's fill
+## rendered ~56 px wider than its own background the moment their hp_fraction
+## got close to 1.0 (a full bar, or a slot mend icon healing one there) -
+## invisible at partial health, where the absolute pixel overshoot is small
+## enough to still land inside the track.
 ##
 ## [ui-project-longshot] The row is measured off the concept board rather than
-## eyeballed: a 60 px medallion, an 8 px gap and a 362 px track, in a 62-tall
+## eyeballed: a 60 px medallion, an 8 px gap and a 307 px track, in a 62-tall
 ## row with 8 between rows - which is what makes three of them fill the
 ## strip's right-hand third exactly. Inside the track each layer insets the one
 ## above it by a few px, so the bar reads as a WELL with a fill sitting in it:
 ##
-##     HealthBorder  362 x 50   ink outline
-##       HealthBg    356 x 44   the empty track
-##         HealthFill 352 x 40  the coloured fill   <- this constant
+##     HealthBorder  307 x 50   ink outline
+##       HealthBg    296 x 44   the empty track
+##         HealthFill 296 x 40  the coloured fill   <- this constant
 ##           Gloss             top strip, white at low alpha
 ##
 ## HpText is a child of HealthBg, NOT of HealthFill, and that is the one thing
 ## here that is easy to get wrong: parented to the fill it slides left with the
 ## damage and eventually clips off the bar entirely - exactly when the player
 ## most wants to read it.
-const HERO_FILL_WIDTH := 352.0
+const HERO_FILL_WIDTH := 296.0
 
 ## [presentation redesign S6.3] Past half the chip's own shorter side, same
 ## convention as CombatantBarsBase.PILL_RADIUS, so the class-icon tile reads as
@@ -82,13 +88,16 @@ func _ready() -> void:
 	# or its square ends poke out through the fill's curved caps.
 	_round(gloss, PILL_RADIUS)
 
-## [content phase 1] The class glyph/box-fraction and bar colour now come from
+## [content phase 1] The class glyph/box-fraction and chip colour now come from
 ## ClassDef (spec §3 Step 2) rather than a class-id-keyed const table here -
 ## see class_icon_glyph.gd's own header. Falls back to the hero's own
 ## accent_color / initial letter for a hero with no class_def, so a fourth
 ## hero always renders something sensible even before its ClassDef exists.
-static func _bar_color_for(stats: CombatantStats) -> Color:
-	return stats.class_def.bar_color if stats.class_def != null else stats.accent_color
+##
+## Medallion only, never the health fill - see health_fill's own colour note
+## in setup() below for why the two stopped sharing a colour.
+static func _chip_color_for(stats: CombatantStats) -> Color:
+	return stats.class_def.chip_color if stats.class_def != null else stats.accent_color
 
 func _apply_class_glyph(chip_glyph_node: ClassIconGlyph, chip_label_node: Label,
 		stats: CombatantStats) -> void:
@@ -104,14 +113,16 @@ func _apply_class_glyph(chip_glyph_node: ClassIconGlyph, chip_label_node: Label,
 ## Called by party_bars.gd the moment a hero's bars are spawned.
 func setup(c: Combatant) -> void:
 	combatant = c
+	# The health fill stays Tuning.C_DANGER red for every hero (base_fill_color's
+	# own class default, never overridden here) - it used to carry the hero's
+	# own class/accent colour instead, which put the mage's bar on the exact
+	# green a status effect like poison would traditionally want for itself.
+	# The medallion is still per-class: it identifies the row without
+	# competing with whatever the health fill needs to communicate.
+	health_fill.color = base_fill_color
 	var stats := c.stats if c != null else null
 	if stats != null:
-		# The medallion and the bar carry the SAME colour, so the icon reads as
-		# the label for its own bar rather than as a second piece of colour
-		# information competing with it.
-		base_fill_color = _bar_color_for(stats)
-		chip.color = base_fill_color
-		health_fill.color = base_fill_color
+		chip.color = _chip_color_for(stats)
 		_apply_class_glyph(chip_glyph, chip_label, stats)
 	refresh()
 
@@ -161,9 +172,8 @@ func set_alive() -> void:
 ## reads it, and party_bars.gd never sees one of these.
 func setup_detached(stats: CombatantStats) -> void:
 	combatant = null
-	base_fill_color = _bar_color_for(stats)
-	chip.color = base_fill_color
 	health_fill.color = base_fill_color
+	chip.color = _chip_color_for(stats)
 	_apply_class_glyph(chip_glyph, chip_label, stats)
 	buff_shield.visible = false
 	_stretch_to_row_width()

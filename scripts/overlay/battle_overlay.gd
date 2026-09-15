@@ -8,6 +8,7 @@ const BARS_SCENE := preload("res://scenes/overlay/combatant_bars.tscn")
 const CHUNK_SCENE := preload("res://scenes/overlay/floating_health_chunk.tscn")
 const NUMBER_SCENE := preload("res://scenes/overlay/damage_number.tscn")
 const ICON_SCENE := preload("res://scenes/overlay/status_icon.tscn")
+const LOOT_GLYPH_SCENE := preload("res://scenes/overlay/loot_glyph.tscn")
 
 @onready var bars_layer: Control = $BarsLayer
 @onready var floating_layer: Control = $FloatingLayer
@@ -169,6 +170,16 @@ func spawn_world_label(world_pos: Vector3, text: String, color: Color,
 	floating_layer.add_child(label)
 	label.position = screen_position(world_pos)
 	label.show_number(text, color, font_size, rise, duration)
+
+## [P5] The chest's and a corpse drop's loot notification: the item's type
+## glyph in its rarity ring only, no name and no class target - the rising
+## popup itself carries no label to read.
+func spawn_world_glyph(world_pos: Vector3, item: Item,
+		rise: float = 120.0, duration: float = 1.2) -> void:
+	var glyph = LOOT_GLYPH_SCENE.instantiate()
+	floating_layer.add_child(glyph)
+	glyph.position = screen_position(world_pos) - glyph.size * 0.5
+	glyph.show_glyph(item, rise, duration)
 
 func spawn_status_icon(c: Combatant, kind: String, duration: float) -> void:
 	var icon = ICON_SCENE.instantiate()

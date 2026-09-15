@@ -12,3 +12,7 @@
 __pycache__/
 *.pyc
 
+# Third-party redistributable the character_pipeline extracts locally -
+# not our source, too large to keep in history.
+/third_party/kaykit/
+

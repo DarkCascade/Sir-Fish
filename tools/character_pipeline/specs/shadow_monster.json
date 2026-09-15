@@ -1,0 +1,43 @@
+{
+  "id": "shadow_monster",
+  "display_name": "Shadow Monster",
+  "concept": {
+    "costume_prompt": "Full-body 3D game character concept, front view, T-pose, arms level with shoulders, empty open hands. Humanoid wraith of living shadow: matte roiling black smoke skin #14121A, charcoal #241E2E undertone at edges, gaunt lean build, smooth featureless void face - no eyes, no mouth, bald head. Tattered ragged hip-length shroud, near-black #1B1720, jagged torn hem, bare shadowy forearms and shins, bare clawed hands and feet. Chunky stylized low-poly, chibi proportions, big head, short stocky body, faceted, no bevels, flat solid colours, thick dark outline, plain white background.",
+    "restyle_prompt": "Image 1 is the exact body template, image 2 is the costume. Redraw the wraith from image 2 (smooth featureless void head, no eyes, no mouth, tattered near-black shroud, bare clawed hands and feet, matte shadow-black smoke skin) on the proportions and pose of image 1: huge head filling the mannequin's head block, short stocky torso, stubby legs, arms straight out perfectly horizontal in a T-pose, empty fists. Same framing and scale as image 1, front view, full body. Flat solid colours, chunky faceted low-poly, thick dark outline, plain white background.",
+    "references": "design documents/reference/shadow_monster/",
+    "credits": 33
+  },
+  "raw_mesh": "design documents/reference/shadow_monster/meshy_raw.glb",
+  "raw_texture": "design documents/reference/shadow_monster/meshy_raw_base_color.png",
+  "texture_size": 1024,
+  "palette": [
+    ["body", "14121A"], ["body_light", "241E2E"],
+    ["shroud", "1B1720"], ["shroud_dark", "0D0B10"],
+    ["ink", "000000"]
+  ],
+  "clips": {
+    "idle": {"clip": "Melee_Unarmed_Idle", "length": 1.6, "loop": true},
+    "run": {"clip": "Running_A", "length": 0.7, "loop": true},
+    "attack": {"clip": "Melee_Unarmed_Attack_Punch_A", "length": 0.6, "loop": false, "impact": "auto"},
+    "hurt": {"clip": "Hit_A", "length": 0.3, "loop": false},
+    "die": {"clip": "Death_A", "length": 0.8, "loop": false}
+  },
+  "stats": {
+    "archetype": "swarm",
+    "tags": ["shade", "swarm"],
+    "body_color": "14121A",
+    "accent_color": "FF2D2D",
+    "primary": "res://resources/abilities/shadow_primary.tres",
+    "max_hp": 40,
+    "weapon_power": 8,
+    "magic_power": 2,
+    "hp_per_level": 20,
+    "weapon_power_per_level": 3,
+    "magic_power_per_level": 1,
+    "attack_cooldown": 1.8,
+    "model_scale": 0.9,
+    "threat": 1,
+    "drop_chance": 0.2
+  },
+  "pools": ["endless_early"]
+}
