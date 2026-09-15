@@ -22,12 +22,18 @@ const ENCOUNTER_RESOLVE_PAUSE := 0.8      # beat between "cleared" and travel st
 ## [overworld prototype] How long a shop encounter holds on the building when
 ## the UI is hidden and there is no modal to open (RunController._run_shop).
 const SHOP_SKIP_HOLD := 1.8
-## [refinement-pass-3] Where the expedition shop building stands. Further up-run
-## than a chest (prop_position(3.2)) and lifted clear of the ground, so the
-## redesigned hut reads as centred in the empty band above the party rather
-## than crowding the front rank. RunController._run_shop().
+## [refinement-pass-3] Where the expedition shop building stands, lifted clear
+## of the ground so the redesigned hut reads as centred in the empty band
+## above the party rather than crowding the front rank. RunController._run_shop().
 const SHOP_PROP_DISTANCE := 7.4
 const SHOP_PROP_LIFT := 0.15
+## [P5] Where the loot chest stands. Used to sit at prop_position(3.2), close
+## enough to the party's own front rank that the chest read as occluded by the
+## heroes standing in front of it instead of the reveal it's meant to be.
+## Moved out to the same up-run band the shop building and enemy rank already
+## use, with the same small lift, for the same reason: RunController._run_loot().
+const CHEST_PROP_DISTANCE := 7.0
+const CHEST_PROP_LIFT := 0.15
 const AOE_STAGGER := 0.06                 # [v2] gap between per-target resolutions of any AoE
 const DAMAGE_NUMBER_SPREAD := 46.0        # [v2] px offset per concurrent number (spec 11.4)
 
@@ -343,14 +349,11 @@ const DROP_CATCHUP := 2.5
 ## always". Set false to make bosses roll like anything else.
 const DROP_BOSS_TARGETS_HUNGRIEST := true
 
-## Seconds between drop labels when several land at once. Matches the chest
+## Seconds between drop glyphs when several land at once. Matches the chest
 ## cadence in _run_loot() so a drop reads as the same event as chest loot.
 const DROP_LABEL_STAGGER := 0.25
-## Height above the recorded corpse position that a drop label pops at.
+## Height above the recorded corpse position that a drop glyph pops at.
 const DROP_LABEL_LIFT := 1.2
-## Smaller than spawn_world_label()'s 54 default: a drop label carries the item
-## name AND the class, so it is roughly twice as wide as a chest label.
-const DROP_LABEL_FONT_SIZE := 46
 
 # --- 5.5 Slot machine — the icon bag [slot phase 2] -----------------------
 ## The reel is a BAG rebuilt from the party, not a fixed 27-stop strip: one

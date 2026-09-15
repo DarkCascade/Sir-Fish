@@ -221,7 +221,8 @@ func _on_combat_ended(victory: bool) -> void:
 func _run_loot(def: EncounterDef) -> void:
 	var chest = CHEST_SCENE.instantiate()
 	world.prop_root.add_child(chest)
-	chest.position = world.prop_position(3.2)
+	chest.position = world.prop_position(Tuning.CHEST_PROP_DISTANCE) \
+		+ Vector3.UP * Tuning.CHEST_PROP_LIFT
 	_prop = chest
 	chest.pop_in()
 
@@ -232,8 +233,7 @@ func _run_loot(def: EncounterDef) -> void:
 	for item: Item in Itemizer.generate_items(def.loot_item_count, def.level):
 		GameState.add_item(item)
 		GameState.run_stats["items_found"] = int(GameState.run_stats["items_found"]) + 1
-		overlay.spawn_world_label(chest.global_position + Vector3(0, 1.2, 0),
-			item.display_name, item.rarity_color())
+		overlay.spawn_world_glyph(chest.global_position + Vector3(0, 1.2, 0), item)
 		await get_tree().create_timer(0.25).timeout
 
 	_encounter_resolved()
@@ -242,12 +242,12 @@ func _run_loot(def: EncounterDef) -> void:
 
 ## Mirrors _run_loot()'s presentation deliberately: a drop and a chest item are
 ## the same item from the same generator, so they should read as the same
-## event. Labels pop at the recorded corpse positions rather than at a prop -
+## event. Glyphs pop at the recorded corpse positions rather than at a prop -
 ## the field is not scrolling yet (travel only restarts in _encounter_exit()),
 ## so those positions are still where the bodies fell.
 ##
 ## No _ui_hidden() branch, unlike _run_shop(): nothing here blocks on a button,
-## so with the overlay hidden the items are still added and only the labels go
+## so with the overlay hidden the items are still added and only the glyphs go
 ## unseen, which is the correct degradation.
 func _award_drops() -> void:
 	for entry: Dictionary in director.pending_drops:
@@ -255,10 +255,8 @@ func _award_drops() -> void:
 		GameState.add_item(item)
 		GameState.run_stats["items_found"] = int(GameState.run_stats["items_found"]) + 1
 		GameState.run_stats["items_dropped"] = int(GameState.run_stats["items_dropped"]) + 1
-		overlay.spawn_world_label(
-			(entry["position"] as Vector3) + Vector3(0, Tuning.DROP_LABEL_LIFT, 0),
-			"%s (%s)" % [item.display_name, item.class_label()],
-			item.rarity_color(), Tuning.DROP_LABEL_FONT_SIZE)
+		overlay.spawn_world_glyph(
+			(entry["position"] as Vector3) + Vector3(0, Tuning.DROP_LABEL_LIFT, 0), item)
 		await get_tree().create_timer(Tuning.DROP_LABEL_STAGGER).timeout
 	director.pending_drops.clear()
 
