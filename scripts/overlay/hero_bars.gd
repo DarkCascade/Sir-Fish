@@ -88,13 +88,16 @@ func _ready() -> void:
 	# or its square ends poke out through the fill's curved caps.
 	_round(gloss, PILL_RADIUS)
 
-## [content phase 1] The class glyph/box-fraction and bar colour now come from
+## [content phase 1] The class glyph/box-fraction and chip colour now come from
 ## ClassDef (spec §3 Step 2) rather than a class-id-keyed const table here -
 ## see class_icon_glyph.gd's own header. Falls back to the hero's own
 ## accent_color / initial letter for a hero with no class_def, so a fourth
 ## hero always renders something sensible even before its ClassDef exists.
-static func _bar_color_for(stats: CombatantStats) -> Color:
-	return stats.class_def.bar_color if stats.class_def != null else stats.accent_color
+##
+## Medallion only, never the health fill - see health_fill's own colour note
+## in setup() below for why the two stopped sharing a colour.
+static func _chip_color_for(stats: CombatantStats) -> Color:
+	return stats.class_def.chip_color if stats.class_def != null else stats.accent_color
 
 func _apply_class_glyph(chip_glyph_node: ClassIconGlyph, chip_label_node: Label,
 		stats: CombatantStats) -> void:
@@ -110,14 +113,16 @@ func _apply_class_glyph(chip_glyph_node: ClassIconGlyph, chip_label_node: Label,
 ## Called by party_bars.gd the moment a hero's bars are spawned.
 func setup(c: Combatant) -> void:
 	combatant = c
+	# The health fill stays Tuning.C_DANGER red for every hero (base_fill_color's
+	# own class default, never overridden here) - it used to carry the hero's
+	# own class/accent colour instead, which put the mage's bar on the exact
+	# green a status effect like poison would traditionally want for itself.
+	# The medallion is still per-class: it identifies the row without
+	# competing with whatever the health fill needs to communicate.
+	health_fill.color = base_fill_color
 	var stats := c.stats if c != null else null
 	if stats != null:
-		# The medallion and the bar carry the SAME colour, so the icon reads as
-		# the label for its own bar rather than as a second piece of colour
-		# information competing with it.
-		base_fill_color = _bar_color_for(stats)
-		chip.color = base_fill_color
-		health_fill.color = base_fill_color
+		chip.color = _chip_color_for(stats)
 		_apply_class_glyph(chip_glyph, chip_label, stats)
 	refresh()
 
@@ -167,9 +172,8 @@ func set_alive() -> void:
 ## reads it, and party_bars.gd never sees one of these.
 func setup_detached(stats: CombatantStats) -> void:
 	combatant = null
-	base_fill_color = _bar_color_for(stats)
-	chip.color = base_fill_color
 	health_fill.color = base_fill_color
+	chip.color = _chip_color_for(stats)
 	_apply_class_glyph(chip_glyph, chip_label, stats)
 	buff_shield.visible = false
 	_stretch_to_row_width()

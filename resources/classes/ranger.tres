@@ -11,5 +11,5 @@ innate_icon = &"innate_dmg"
 executes = Array[int]([2])
 glyph = ExtResource("2_glyph")
 glyph_box_fraction = 0.78
-bar_color = Color(0.29803923, 0.5254902, 0.9411765, 1)
+chip_color = Color(0.29803923, 0.5254902, 0.9411765, 1)
 item_types = Array[StringName]([&"bow", &"dagger", &"helm", &"ring"])
