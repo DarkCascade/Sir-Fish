@@ -60,6 +60,14 @@ extends Resource
 ## its bigger gold reward (spec 8.2).
 @export_range(0, 3, 1) var boss_drop_rarity_floor: int = 0
 
+## [recruitment] An authored, one-of-a-kind Item the boss unconditionally
+## drops in place of its normal random roll (BattleDirector._roll_drop()) -
+## null on every quest that has no unique token to hand out. Never generated
+## by Itemizer: see ITEM_TYPES' "authored relics" rows for why no random path
+## can ever reach one of these. Duplicated on drop, so the same authored
+## resource can be reused safely across repeated attempts at the same quest.
+@export var guaranteed_boss_drop: Item = null
+
 ## Seconds of scrolling before each encounter, one per entry in encounter_types.
 ## Falls back to a 2 / 3 / ... / 4 ramp when short or empty (_build_quest_level).
 @export var travel_durations: Array[float] = []
@@ -81,6 +89,10 @@ extends Resource
 ## the three hand-authored quests are loaded by id from disk - but every field
 ## round-trips regardless, so nothing here is a special case for one or the
 ## other.
+##
+## [recruitment] guaranteed_boss_drop is the one deliberate exception -
+## QuestGenerator never authors one (a generated quest has no unique token to
+## hand out), so it never needs a slot in the saved board's dictionary shape.
 func to_dict() -> Dictionary:
 	return {
 		"id": id,

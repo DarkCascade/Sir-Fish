@@ -80,6 +80,8 @@ static func from_dict(data: Dictionary) -> QuestObjective:
 			obj = ClearEncountersObjective.new()
 		&"slay":
 			obj = SlayObjective.new()
+		&"collect":
+			obj = CollectObjective.new()
 		_:
 			return null
 	obj.description = String(data.get("description", ""))

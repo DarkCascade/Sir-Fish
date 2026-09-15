@@ -1,0 +1,9 @@
+[gd_resource type="Resource" script_class="RecruitRewardExtra" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/reward_extras/recruit_reward_extra.gd" id="1_recruit"]
+
+[resource]
+script = ExtResource("1_recruit")
+description = "The mage joins the party, heartstone in hand."
+hero_class = &"mage"
+token_weapon_type = &"heartstone"

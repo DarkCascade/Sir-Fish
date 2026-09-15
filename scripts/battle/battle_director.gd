@@ -89,7 +89,19 @@ func _on_party_bonuses_changed(_bonuses: Dictionary) -> void:
 
 func _roll_drop(c: Combatant) -> void:
 	var stats := c.stats
-	if stats == null or stats.is_hero or stats.drop_chance <= 0.0:
+	if stats == null or stats.is_hero:
+		return
+	# [recruitment] A quest's guaranteed_boss_drop bypasses drop_chance/RNG
+	# entirely - it is a one-of-a-kind authored token, not a random roll, and
+	# the quest's own CollectObjective can only ever complete if this fires.
+	# Only the boss unit (enemies[0] in a boss fight) can trigger it, same
+	# restriction _on_combatant_died() already applies to the loot multiplier.
+	var is_boss_unit: bool = _boss_fight and not enemies.is_empty() and c == enemies[0]
+	if is_boss_unit and GameState.quest != null and GameState.quest.guaranteed_boss_drop != null:
+		var relic: Item = GameState.quest.guaranteed_boss_drop.duplicate(true)
+		pending_drops.append({ "item": relic, "position": c.hit_world_position() })
+		return
+	if stats.drop_chance <= 0.0:
 		return
 	if RNG.randf() > stats.drop_chance:
 		return

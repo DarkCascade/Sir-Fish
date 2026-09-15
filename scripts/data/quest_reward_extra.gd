@@ -16,6 +16,10 @@ extends Resource
 ##   - A ScrapRewardExtra amends "scrap comes only from combat pickups"
 ##     (quest_def.gd / the town spec's own comment) - update both comments in
 ##     the same commit that ships one.
+##
+## [recruitment] RecruitRewardExtra is the first concrete subclass - see its
+## own header. Neither trap above applies to it: it touches active_party, not
+## expedition_xp or scrap.
 
 @export var description: String = ""
 
@@ -31,18 +35,34 @@ func describe() -> String:
 	return ""
 
 # --- persistence (spec §3 Step 3.2) -----------------------------------------
-## Same shape as QuestObjective's persistence pair - see its header. No
-## concrete subclass ships this phase (D2 / §4: every reward_extras array is
-## empty), so the registry below has nothing to hold yet; it exists so
-## QuestDef.to_dict()/from_dict() need no edit the day the first one lands.
+## Mirrors QuestObjective's persistence pair exactly - concrete subclasses
+## override _to_dict_extra()/_from_dict_extra() rather than to_dict()/
+## from_dict() themselves, so the kind/description plumbing lives in exactly
+## one place and every subclass this phase ships must be registered in the
+## match below for saves to round-trip it.
 
 func kind() -> StringName:
 	return &""
 
 func to_dict() -> Dictionary:
-	return { "kind": kind(), "description": description }
+	var d := { "kind": kind(), "description": description }
+	for key: String in _to_dict_extra():
+		d[key] = _to_dict_extra()[key]
+	return d
+
+func _to_dict_extra() -> Dictionary:
+	return {}
+
+func _from_dict_extra(_data: Dictionary) -> void:
+	pass
 
 static func from_dict(data: Dictionary) -> QuestRewardExtra:
+	var extra: QuestRewardExtra
 	match StringName(data.get("kind", &"")):
+		&"recruit":
+			extra = RecruitRewardExtra.new()
 		_:
 			return null
+	extra.description = String(data.get("description", ""))
+	extra._from_dict_extra(data)
+	return extra

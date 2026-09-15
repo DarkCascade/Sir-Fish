@@ -1135,9 +1135,15 @@ func heal_party() -> void:
 ## took). Gear worn into or found on the trip survives; items bought at the
 ## quest's shop are discarded too, which is correct - expedition gold bought them
 ## and they never made it home. Iterates backwards so remove_at() is index-safe.
+##
+## [recruitment] A RELIC also survives loose and unequipped (Recruitment Quest
+## Acceptance Test Outline §5.2) - it is narrative, never sellable/discardable
+## loot, and recruitment hasn't happened yet at the point a wipe calls this
+## (RecruitRewardExtra.grant() runs only on victory), so it cannot be equipped
+## to claim the equipped-item exemption on its own.
 func discard_expedition_loot() -> void:
 	for i: int in range(inventory.size() - 1, _expedition_inventory_mark - 1, -1):
-		if inventory[i].equipped_by == &"":
+		if inventory[i].equipped_by == &"" and inventory[i].kind != Item.Kind.RELIC:
 			inventory.remove_at(i)
 	EventBus.party_bonuses_changed.emit(party_bonuses())
 

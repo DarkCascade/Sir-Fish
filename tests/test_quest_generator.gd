@@ -192,15 +192,27 @@ func _check_persistence(t: TestSupport) -> void:
 		"a legacy save with no quest_board key loads as never-generated")
 
 func _check_authored_quest_order(t: TestSupport) -> void:
+	# [recruitment] 4, not 3, since recruit_mage.tres joined the standing
+	# contracts - a fresh profile (active_party still just the warrior at this
+	# point in the suite) has not recruited the mage yet, so
+	# _load_authored_quests()'s _already_recruited() filter lets it through.
 	var m := MayorOfficeScript.new()
 	var authored: Array[QuestDef] = m._load_authored_quests()
-	t.check(authored.size() == 3, "3 hand-authored quests load from disk (got %d)" % authored.size())
+	t.check(authored.size() == 4, "4 hand-authored quests load from disk (got %d)" % authored.size())
 	var ids: Array[StringName] = []
 	for q: QuestDef in authored:
 		ids.append(q.id)
-	t.check(ids == ([&"easy", &"medium", &"hard"] as Array[StringName]),
-		"authored quests sort easy -> medium -> hard by level_range.x, not a hardcoded QUEST_ORDER (got %s)"
+	t.check(ids == ([&"easy", &"recruit_mage", &"medium", &"hard"] as Array[StringName]),
+		"authored quests sort by level_range.x, not a hardcoded QUEST_ORDER (got %s)"
 			% [ids])
+
+	# [recruitment] Once the mage is recruited, the board must stop offering
+	# the quest that recruits her (mayor_office.gd's own header).
+	GameState.active_party.append(&"mage")
+	var after_recruit: Array[QuestDef] = m._load_authored_quests()
+	t.check(after_recruit.size() == 3 and not after_recruit.any(func(q: QuestDef) -> bool: return q.id == &"recruit_mage"),
+		"a completed recruitment quest stops being offered once its class has joined")
+	GameState.active_party.erase(&"mage")
 	m.free()
 
 func _check_endless_uses_area(t: TestSupport) -> void:

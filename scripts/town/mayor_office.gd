@@ -94,6 +94,14 @@ func _accept(q: QuestDef) -> void:
 ## Every QuestDef in res://resources/quests/, sorted by level_range.x - the
 ## data that already exists to express "easy comes before hard", rather than
 ## a second, hardcoded ordering (QUEST_ORDER is gone, spec §3 exit criteria).
+##
+## [recruitment] A recruitment quest is the one standing contract that DOES
+## stop being offered once done - it has already been won in the way this
+## header describes ("taking or finishing it does not remove it") for every
+## other quest, but re-offering "recruit the mage" after she has already
+## joined would be a lie the board tells. Filtered by outcome (the class is
+## already in active_party), not by quest id, so a future second recruitment
+## quest needs no edit here.
 func _load_authored_quests() -> Array[QuestDef]:
 	var out: Array[QuestDef] = []
 	var dir := DirAccess.open(QUEST_DIR)
@@ -104,7 +112,13 @@ func _load_authored_quests() -> Array[QuestDef]:
 		if not clean.ends_with(".tres"):
 			continue
 		var res := load(QUEST_DIR + clean)
-		if res is QuestDef:
+		if res is QuestDef and not _already_recruited(res):
 			out.append(res)
 	out.sort_custom(func(a: QuestDef, b: QuestDef) -> bool: return a.level_range.x < b.level_range.x)
 	return out
+
+func _already_recruited(q: QuestDef) -> bool:
+	for extra: QuestRewardExtra in q.reward_extras:
+		if extra is RecruitRewardExtra and GameState.active_party.has((extra as RecruitRewardExtra).hero_class):
+			return true
+	return false
