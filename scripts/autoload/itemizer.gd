@@ -13,7 +13,7 @@ extends Node
 ## [armor items] ARMOR rows carry `armor` instead - a flat damage reduction
 ## that item.armor_value() scales by level, shown as "Armor". Armor's base slot
 ## icon is a BLOCK (a temporary flat-armor buff), never a strike, and armor
-## only rolls block / life modifiers - see Itemizer.MODIFIERS' `slots` field.
+## only rolls block / mend modifiers - see Itemizer.MODIFIERS' `slots` field.
 ## [content phase 1] No `classes` key on any row any more (spec §3 Step 2b) -
 ## class eligibility is read from ClassDef.item_types instead
 ## (weapon_types_for() / Itemizer.classes_for_type()). Weapons stay one class
@@ -55,28 +55,33 @@ const ADJECTIVES := [
 # the chip's corner badge is "+%d" or "+%d%%" of the roll, and `caption` is the
 # short label under it. `label` stays the source of truth for every text
 # renderer (inventory row count, the change list); the two new keys are additive.
-## [armor items] Each def carries `slots` - the Item.Slot values that may roll
-## it. WEAPON and TRINKET share the damage / slot pool; ARMOR rolls only its
-## own two (block / life) and never an attack or magic modifier. _generate_typed
-## and forge() filter on this before picking.
+## [icons phase 2] Each def carries `slots` (the Item.Slot values that may roll
+## it) and an optional `types` (the specific Itemizer.ITEM_TYPES keys that may
+## roll it, within those slots). No `types` key means every type in `slots` is
+## eligible - that's how armor_block/slot_mend stay shared across all three
+## armor types regardless of who wears them, and `crit` stays shared across all
+## three trinket types. A def WITH `types` is how warrior weapons, ranger
+## weapons, mage weapons and each class's trinket ultimate stay exclusive to
+## their own item types. _modifiers_for_type() filters on both before
+## _generate_typed()/forge() pick from the result.
 const MODIFIERS := [
-	# Weapon / trinket - hero-damage + slot modifiers
-	{ "id": &"dmg_flat",   "label": "+%d Damage",        "caption": "Damage",        "pct": false, "roll": [2, 9],   "value_mult": [0.28, 0.55], "slots": [Item.Slot.WEAPON, Item.Slot.TRINKET] },
-	{ "id": &"dmg_pct",    "label": "+%d%% Damage",      "caption": "Damage",        "pct": true,  "roll": [5, 18],  "value_mult": [0.30, 0.60], "slots": [Item.Slot.WEAPON, Item.Slot.TRINKET] },
-	{ "id": &"elem_fire",  "label": "+%d Fire Damage",   "caption": "Fire Damage",   "pct": false, "roll": [3, 11],  "value_mult": [0.35, 0.70], "slots": [Item.Slot.WEAPON, Item.Slot.TRINKET] },
-	{ "id": &"elem_ice",   "label": "+%d Ice Damage",    "caption": "Ice Damage",    "pct": false, "roll": [3, 11],  "value_mult": [0.35, 0.70], "slots": [Item.Slot.WEAPON, Item.Slot.TRINKET] },
-	{ "id": &"elem_light", "label": "+%d Lightning Dmg", "caption": "Lightning Dmg", "pct": false, "roll": [3, 11],  "value_mult": [0.35, 0.70], "slots": [Item.Slot.WEAPON, Item.Slot.TRINKET] },
-	# [slot phase 2] `slot_purse` ("+%d Coin Yield") was removed here - the slot
-	# no longer produces gold (§3/§5). Items on disk still carrying it load
-	# verbatim (Item.from_dict) and resolve to NO icon - see SlotIcon.
-	{ "id": &"slot_bolt",  "label": "+%d Bolt Power",    "caption": "Bolt Power",    "pct": false, "roll": [2, 8],   "value_mult": [0.40, 0.75], "slots": [Item.Slot.WEAPON, Item.Slot.TRINKET] },
-	{ "id": &"slot_mend",  "label": "+%d%% Mend Power",  "caption": "Mend Power",    "pct": true,  "roll": [3, 9],   "value_mult": [0.40, 0.75], "slots": [Item.Slot.WEAPON, Item.Slot.TRINKET] },
-	# [armor items] Armor only. `armor_block` is a BLOCK slot icon (temporary
-	# flat armor, scales off the item's armor_value like a damage icon scales
-	# off Power). `armor_life` is NOT a slot icon - it is a passive percent
-	# boost to the wearer's max hp, read straight off item.modifiers.
-	{ "id": &"armor_block", "label": "+%d Block",        "caption": "Block",         "pct": false, "roll": [3, 9],   "value_mult": [0.35, 0.70], "slots": [Item.Slot.ARMOR] },
-	{ "id": &"armor_life",  "label": "+%d%% Life",       "caption": "Life",          "pct": true,  "roll": [3, 8],   "value_mult": [0.35, 0.70], "slots": [Item.Slot.ARMOR] },
+	# --- warrior weapons (axe, sword): elements + the physical bleed DoT ---
+	{ "id": &"elem_fire",  "label": "+%d Fire Damage",   "caption": "Fire Damage",   "pct": false, "roll": [3, 11], "value_mult": [0.35, 0.70], "slots": [Item.Slot.WEAPON], "types": [&"axe", &"sword"] },
+	{ "id": &"elem_ice",   "label": "+%d Ice Damage",    "caption": "Ice Damage",    "pct": false, "roll": [3, 11], "value_mult": [0.35, 0.70], "slots": [Item.Slot.WEAPON], "types": [&"axe", &"sword"] },
+	{ "id": &"elem_light", "label": "+%d Lightning Dmg", "caption": "Lightning Dmg", "pct": false, "roll": [3, 11], "value_mult": [0.35, 0.70], "slots": [Item.Slot.WEAPON], "types": [&"axe", &"sword"] },
+	{ "id": &"bleed",      "label": "+%d Bleed",         "caption": "Bleed",         "pct": false, "roll": [3, 11], "value_mult": [0.35, 0.70], "slots": [Item.Slot.WEAPON], "types": [&"axe", &"sword"] },
+	# --- ranger weapons (bow, dagger): the AoE special ---
+	{ "id": &"bomb_arrow", "label": "+%d Bomb Arrow",    "caption": "Bomb Arrow",    "pct": false, "roll": [2, 8],  "value_mult": [0.40, 0.75], "slots": [Item.Slot.WEAPON], "types": [&"bow", &"dagger"] },
+	# --- mage weapons (staff): the stronger single-target bolt ---
+	{ "id": &"lightning_blast", "label": "+%d Lightning Blast", "caption": "Lightning Blast", "pct": false, "roll": [4, 14], "value_mult": [0.55, 0.90], "slots": [Item.Slot.WEAPON], "types": [&"staff"] },
+	# --- armor (helm, mail, shield): shared pool, any class ---
+	{ "id": &"armor_block", "label": "+%d Block",        "caption": "Block",         "pct": false, "roll": [3, 9],  "value_mult": [0.35, 0.70], "slots": [Item.Slot.ARMOR] },
+	{ "id": &"slot_mend",   "label": "+%d%% Mend Power", "caption": "Mend Power",    "pct": true,  "roll": [3, 9],  "value_mult": [0.40, 0.75], "slots": [Item.Slot.ARMOR] },
+	# --- trinkets (ring, amulet, idol): crit is universal, the rest exclusive ---
+	{ "id": &"crit",         "label": "+%d Crit Damage",  "caption": "Crit Damage",  "pct": false, "roll": [3, 11], "value_mult": [0.35, 0.70], "slots": [Item.Slot.TRINKET] },
+	{ "id": &"cleave",       "label": "+%d Cleave",       "caption": "Cleave",       "pct": false, "roll": [3, 11], "value_mult": [0.40, 0.75], "slots": [Item.Slot.TRINKET], "types": [&"idol"] },
+	{ "id": &"rain",         "label": "+%d Rain of Arrows", "caption": "Rain of Arrows", "pct": false, "roll": [2, 8], "value_mult": [0.40, 0.75], "slots": [Item.Slot.TRINKET], "types": [&"ring"] },
+	{ "id": &"thunderburst", "label": "+%d Thunderburst", "caption": "Thunderburst", "pct": false, "roll": [2, 8],  "value_mult": [0.40, 0.75], "slots": [Item.Slot.TRINKET], "types": [&"amulet"] },
 ]
 
 # 13.2 Rarity: weight, modifier count, value multiplier range.
@@ -155,7 +160,7 @@ func _generate_typed(wtype: StringName, rarity_index: int, level: int = -1) -> I
 
 	var mods: Array[Dictionary] = []
 	var mod_sum: float = 0.0
-	var pool: Array = _modifiers_for_slot(int(ITEM_TYPES[wtype]["slot"]))
+	var pool: Array = _modifiers_for_type(wtype)
 	for i: int in range(RARITY_MOD_COUNT[rarity_index]):
 		if pool.is_empty():
 			break
@@ -235,7 +240,7 @@ func forge(item: Item) -> bool:
 
 ## The MODIFIERS entries whose id `item` does not already carry.
 func _modifier_pool_excluding(item: Item) -> Array:
-	var slot_pool: Array = _modifiers_for_slot(int(item.slot()))
+	var slot_pool: Array = _modifiers_for_type(item.weapon_type)
 	var have: Dictionary = {}
 	for m: Dictionary in item.modifiers:
 		have[m["id"]] = true
@@ -243,32 +248,45 @@ func _modifier_pool_excluding(item: Item) -> Array:
 	for def: Dictionary in slot_pool:
 		if not have.has(def["id"]):
 			pool.append(def)
-	# [armor items] Armor's slot pool is only {block, life}; once both are
-	# carried, the last forge rung (Rare -> Enhanced) has to repeat a roll
-	# rather than stall the ladder short of Enhanced. Weapons never hit this -
-	# their pool of 7 always outlasts the 3 distinct picks a full ladder needs.
+	# [icons phase 2] Every pool here is small (armor: {block, mend}; ranger/mage
+	# weapons: one id apiece; a trinket type: {crit, its own ultimate}) - once
+	# all of it is carried, the last forge rung has to repeat a roll rather than
+	# stall the ladder short of Enhanced. Only the warrior weapon pool of 4
+	# outlasts the 3 distinct picks a full ladder needs.
 	return pool if not pool.is_empty() else slot_pool
 
-## [armor items] The MODIFIERS entries an item in `slot` may roll - armor never
-## sees the damage / magic pool, and weapons / trinkets never see block / life.
-func _modifiers_for_slot(slot: int) -> Array:
+## [icons phase 2] The MODIFIERS entries `wtype` may roll: every def whose
+## `slots` includes wtype's slot AND (no `types` key, or `types` includes
+## wtype). This is what keeps warrior weapons off the ranger/mage pools, each
+## class's trinket off the others' ultimates, and armor/`crit` shared across
+## every type in their slot.
+func _modifiers_for_type(wtype: StringName) -> Array:
+	var slot: int = int(ITEM_TYPES.get(wtype, {}).get("slot", Item.Slot.WEAPON))
 	var out: Array = []
 	for def: Dictionary in MODIFIERS:
-		if (def["slots"] as Array).has(slot):
-			out.append(def)
+		if not (def["slots"] as Array).has(slot):
+			continue
+		if def.has("types") and not (def["types"] as Array).has(wtype):
+			continue
+		out.append(def)
 	return out
 
 ## [item power model] One rarity icon's magnitude, shared by generation and
 ## forge() so a found item and a forged item of the same rarity roll their
-## icons identically. DAMAGE / DAMAGE_ALL icons scale off the item's Power
-## (125-175%, locked to 175% for the enhanced icon); HEAL (mend) and MULT
-## (boost) icons keep their own percent roll from the modifier's range
-## (enhanced -> the top of that range).
+## icons identically. DAMAGE-flavoured icons (DAMAGE, BLEED, BOMB_ARROW,
+## THUNDERBURST) scale off the item's Power (125-175%, locked to 175% for the
+## enhanced icon); CLEAVE/RAIN scale the same way too, as a value/pricing
+## figure - the resolution itself (SlotMachine) doesn't currently read it, only
+## whether the icon rolled at all, so it's a balance knob reserved for later.
+## HEAL (mend) keeps its own percent roll from the modifier's range (enhanced
+## -> the top of that range).
 func _roll_icon_magnitude(def: Dictionary, item: Item, enhanced: bool) -> int:
 	var kind: int = SlotIcon.kind_of(StringName(def["id"]))
 	# [armor items] BLOCK scales off armor_value the way DAMAGE scales off Power.
 	var basis: int = 0
-	if kind == SlotIcon.Kind.DAMAGE or kind == SlotIcon.Kind.DAMAGE_ALL:
+	if kind == SlotIcon.Kind.DAMAGE or kind == SlotIcon.Kind.BLEED \
+			or kind == SlotIcon.Kind.BOMB_ARROW or kind == SlotIcon.Kind.THUNDERBURST \
+			or kind == SlotIcon.Kind.CLEAVE or kind == SlotIcon.Kind.RAIN:
 		basis = item.power()
 	elif kind == SlotIcon.Kind.BLOCK:
 		basis = item.armor_value()
@@ -276,7 +294,7 @@ func _roll_icon_magnitude(def: Dictionary, item: Item, enhanced: bool) -> int:
 		var frac: float = Tuning.FORGE_ICON_POWER_MAX if enhanced \
 			else RNG.randf_range(Tuning.FORGE_ICON_POWER_MIN, Tuning.FORGE_ICON_POWER_MAX)
 		return maxi(1, int(round(float(basis) * frac)))
-	# HEAL / MULT / armor_life keep their own percent roll.
+	# HEAL (mend) keeps its own percent roll.
 	return int(def["roll"][1]) if enhanced \
 		else RNG.randi_range(int(def["roll"][0]), int(def["roll"][1]))
 

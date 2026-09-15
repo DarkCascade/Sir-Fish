@@ -37,7 +37,7 @@ enum Slot { WEAPON, ARMOR, TRINKET }
 ## keys is what decides which slot the item fills (slot()). Empty if not a
 ## generated item.
 @export var weapon_type: StringName = &""
-@export var modifiers: Array[Dictionary] = [] # [{ "id": &"dmg_flat", "label": "+4 Damage", "value_mult": 0.42 }, ...]
+@export var modifiers: Array[Dictionary] = [] # [{ "id": &"elem_fire", "label": "+4 Fire Damage", "value_mult": 0.42 }, ...]
 @export var value: int = 0                    # computed intrinsic gold value
 ## Which hero currently has this equipped, or &"" if none. A StringName rather
 ## than a bool because equipping is per-hero - a shared-usable_by() type still
@@ -134,15 +134,6 @@ func power() -> int:
 func armor_value() -> int:
 	var entry: Dictionary = Itemizer.ITEM_TYPES.get(weapon_type, {})
 	return int(entry.get("armor", 0)) * maxi(level, 1)
-
-## [armor items] Percent added to the wearer's max hp by this item's `armor_life`
-## modifiers (never a board icon - read straight off the modifier list).
-func life_bonus_pct() -> int:
-	var total := 0
-	for m: Dictionary in modifiers:
-		if StringName(m.get("id", &"")) == &"armor_life":
-			total += int(m.get("roll", 0))
-	return total
 
 ## Which hero classes can wield this item. DERIVED from the weapon type rather
 ## than stored on the resource, for the reason CombatantStats.required_anims()

@@ -22,7 +22,7 @@ extends Control
 		queue_redraw()
 
 ## Editor-only stand-in for a dealt icon (the reel overwrites `icon` every frame
-## in Play mode). One of SlotIcon's ids, e.g. &"dmg_flat", &"slot_bolt".
+## in Play mode). One of SlotIcon's ids, e.g. &"elem_fire", &"bomb_arrow".
 @export var preview_id: StringName = &"":
 	set(value):
 		preview_id = value

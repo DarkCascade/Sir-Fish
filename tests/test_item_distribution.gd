@@ -64,9 +64,10 @@ func _ready() -> void:
 	t.check(dupes == 0, "no item carries a duplicate modifier id (%d found)" % dupes)
 	t.check(missing_roll == 0, "every modifier stores its raw roll (%d missing)" % missing_roll)
 
-	# [armor items] 9 entries now: the 7 weapon / trinket mods plus armor's
-	# block and life. Each has a `slots` field; _modifiers_for_slot filters it.
-	t.check(Itemizer.MODIFIERS.size() == 9, "the modifier pool has 9 entries")
+	# [icons phase 2] 12 entries: 4 warrior weapon + 1 ranger weapon + 1 mage
+	# weapon + 2 armor + 4 trinket. Each has a `slots` field;
+	# _modifiers_for_type filters on it (and `types`, where present).
+	t.check(Itemizer.MODIFIERS.size() == 12, "the modifier pool has 12 entries")
 	for def: Dictionary in Itemizer.MODIFIERS:
 		t.check(def.has("slots") and not (def["slots"] as Array).is_empty(),
 			"modifier '%s' declares which slots may roll it" % def["id"])

@@ -17,19 +17,18 @@ const BiomeTheme := preload("res://scripts/ui/biome_theme.gd")
 ## Defense). Item carries no four-stat block - it carries `modifiers` - so each
 ## tile sums the rolls of the modifier ids named here.
 ##
-## `dmg_pct` is deliberately in NO tile: it is a percentage and cannot be summed
-## into the flat damage adds without lying about the unit. The chip row above
-## the tiles lists it anyway.
-##
-## [armor items] Health also carries `armor_life` (a % of max hp), and Defense
-## carries `armor_block` PLUS the item's passive armor_value() - added in
-## _fill_stats since it is not a modifier roll. A weapon reads 0 on both armor
-## tiles, an armor piece reads 0 on Attack / Magic.
+## [icons phase 2] Attack carries every warrior/ranger-flavoured damage id plus
+## the universal crit; Magic carries the mage's two lightning ultimates. Health
+## is the flat armor pool's heal; Defense carries `armor_block` PLUS the item's
+## passive armor_value() - added in _fill_stats since it is not a modifier
+## roll. A weapon reads 0 on both armor tiles, an armor piece reads 0 on
+## Attack / Magic, and a trinket reads on whichever tile its rolled ultimate
+## belongs to.
 const DEFENSE_TILE := 3
 const STAT_TILES: Array[Dictionary] = [
-	{ "ids": [&"dmg_flat", &"elem_fire", &"elem_ice", &"elem_light"], "pct": false },
-	{ "ids": [&"slot_bolt"], "pct": false },
-	{ "ids": [&"slot_mend", &"armor_life"], "pct": true },
+	{ "ids": [&"elem_fire", &"elem_ice", &"elem_light", &"bleed", &"bomb_arrow", &"crit", &"cleave", &"rain"], "pct": false },
+	{ "ids": [&"lightning_blast", &"thunderburst"], "pct": false },
+	{ "ids": [&"slot_mend"], "pct": true },
 	{ "ids": [&"armor_block"], "pct": false },
 ]
 

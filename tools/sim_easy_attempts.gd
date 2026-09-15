@@ -100,9 +100,9 @@ func _run_expedition() -> bool:
 	var stats := GameState.get_stats(&"warrior")
 	var level := GameState.hero_level(&"warrior")
 	var entry := GameState.hero_entry(&"warrior")
-	# [armor items] max hp folds in armor_life; every enemy hit is flat-reduced
-	# by the passive armor. BLOCK icons (temporary armor) are left unmodelled -
-	# conservative for "how many attempts".
+	# [armor items] Every enemy hit is flat-reduced by the passive armor. BLOCK
+	# icons (temporary armor) are left unmodelled - conservative for "how many
+	# attempts".
 	var hero := {
 		"max_hp": GameState.hero_max_hp(&"warrior"),
 		"hp": int(entry.get("current_hp", GameState.hero_max_hp(&"warrior"))),
@@ -267,28 +267,28 @@ func _on_enemy_died(e: Dictionary, hero: Dictionary) -> void:
 		GameState.expedition_xp += xp
 
 ## One slot spin's worth of resolution: rebuild the bag from currently
-## equipped gear, draw 9, resolve mult icons first, then every DAMAGE /
-## DAMAGE_ALL / HEAL icon - the same shape as slot_machine._resolve_board(),
-## minus the payline-triple double-resolve (a conservative, few-percent
-## underestimate of party output).
+## equipped gear, draw 9, resolve every DAMAGE / BOMB_ARROW / THUNDERBURST /
+## HEAL icon - the same shape as slot_machine._resolve_board(), minus the
+## payline-triple double-resolve. [icons phase 2] BLEED (a DoT that ticks off
+## an enemy's own action, which this coarse per-spin simulator does not model)
+## and CLEAVE / RAIN (a cross-spin buff) are left unmodeled too - both are
+## conservative, few-percent underestimates of party output, same spirit as
+## the payline omission.
 func _resolve_spin(hero: Dictionary, enemies: Array, now: float) -> void:
 	var bag := _build_bag(hero["level"])
 	var board: Array = SlotMachineScript.draw_nine(bag)
-	var pct := 0
-	for ic: Dictionary in board:
-		if SlotIcon.kind_of(StringName(ic.get("id", &""))) == SlotIcon.Kind.MULT:
-			pct += int(ic.get("roll", 0))
-	var mult := (1.0 + float(pct) / 100.0) * Upgrades.overcharge_mult()
+	var mult := Upgrades.overcharge_mult()
 	var block := 0
 	for ic: Dictionary in board:
-		var kind: int = SlotIcon.kind_of(StringName(ic.get("id", &"")))
+		var id := StringName(ic.get("id", &""))
+		var kind: int = SlotIcon.kind_of(id)
 		var roll := int(ic.get("roll", 0))
 		match kind:
 			SlotIcon.Kind.DAMAGE:
 				var target = _random_living(enemies)
 				if target != null:
 					target["hp"] -= _rolled(roll, mult)
-			SlotIcon.Kind.DAMAGE_ALL:
+			SlotIcon.Kind.BOMB_ARROW, SlotIcon.Kind.THUNDERBURST:
 				for e: Dictionary in enemies:
 					if e["hp"] > 0:
 						e["hp"] -= _rolled(roll, mult)

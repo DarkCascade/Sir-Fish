@@ -16,6 +16,7 @@ func _ready() -> void:
 
 	_check_executor_ownership(t)
 	_check_dead_hero_item_filter(t)
+	_check_bleed_tick(t)
 
 	t.finish(get_tree(), "test_executor")
 
@@ -55,8 +56,19 @@ func _check_executor_ownership(t: TestSupport) -> void:
 		"full party: DAMAGE resolves to warrior (the class that owns it), not the roster-first mage")
 	t.check(machine._executor_for(SlotIcon.Kind.HEAL) == mage,
 		"full party: HEAL resolves to mage")
-	t.check(machine._executor_for(SlotIcon.Kind.DAMAGE_ALL) == ranger,
-		"full party: DAMAGE_ALL resolves to ranger")
+	# [icons phase 2] BOMB_ARROW / RAIN (ranger), BLOCK / BLEED / CLEAVE
+	# (warrior) and THUNDERBURST (mage) each own exactly one class, same
+	# ownership rule as DAMAGE / HEAL above.
+	t.check(machine._executor_for(SlotIcon.Kind.BOMB_ARROW) == ranger,
+		"full party: BOMB_ARROW resolves to ranger")
+	t.check(machine._executor_for(SlotIcon.Kind.RAIN) == ranger,
+		"full party: RAIN resolves to ranger")
+	t.check(machine._executor_for(SlotIcon.Kind.BLEED) == warrior,
+		"full party: BLEED resolves to warrior")
+	t.check(machine._executor_for(SlotIcon.Kind.CLEAVE) == warrior,
+		"full party: CLEAVE resolves to warrior")
+	t.check(machine._executor_for(SlotIcon.Kind.THUNDERBURST) == mage,
+		"full party: THUNDERBURST resolves to mage")
 
 	# --- orphaned icons: with the DAMAGE owner dead, the icon falls back to
 	# the first living hero in roster order rather than fizzling (§2a). ---
@@ -116,3 +128,32 @@ func _check_dead_hero_item_filter(t: TestSupport) -> void:
 	ranger.free()
 	director.free()
 	machine.free()
+
+## [icons phase 2] The BLEED debuff (warrior weapon icon): takes the larger of
+## old/new dps and refreshes the window rather than stacking (same shape as
+## add_temp_armor's BLOCK), and only actually deals damage on tick_bleed() -
+## the "every time they take an action" hook (BattleDirector._take_action).
+## Needs a REAL spawned Combatant (not test_executor's bare fixtures above)
+## because apply_bleed()/tick_bleed() go through get_tree().create_timer().
+func _check_bleed_tick(t: TestSupport) -> void:
+	var stats := GameState.get_stats(&"shadow_monster")
+	var packed: PackedScene = load(stats.scene_path)
+	var enemy := packed.instantiate() as Combatant
+	add_child(enemy)
+	enemy.setup(stats, -1)
+
+	var before := enemy.current_hp
+	t.check(not enemy.is_bleeding(), "a fresh combatant is not bleeding")
+	enemy.apply_bleed(10)
+	t.check(enemy.is_bleeding(), "apply_bleed() starts the bleed")
+	t.check(enemy.current_hp == before, "apply_bleed() itself deals no immediate damage")
+	enemy.tick_bleed()
+	t.check(enemy.current_hp < before, "tick_bleed() deals damage once called")
+
+	var after_first_tick := enemy.current_hp
+	enemy.apply_bleed(3)   # a weaker re-application must not lower the dps
+	enemy.tick_bleed()
+	t.check(before - after_first_tick == after_first_tick - enemy.current_hp,
+		"a weaker re-application keeps the larger dps rather than replacing it")
+
+	enemy.free()

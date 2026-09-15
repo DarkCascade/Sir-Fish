@@ -109,13 +109,13 @@ func _make_geared_item(slot: Item.Slot, rarity: int, level: int) -> Item:
 	item.level = level
 	item.equipped_by = &"warrior"
 	var mods: Array[Dictionary] = []
-	# [armor items] Roll from the slot's real sub-pool - armor never sees the
-	# damage / magic mods.
-	var pool: Array = Itemizer._modifiers_for_slot(int(slot)).duplicate()
+	# [icons phase 2] Roll from this exact type's real sub-pool (class-
+	# restricted for weapons/trinkets now, not just slot-restricted).
+	var pool: Array = Itemizer._modifiers_for_type(_TYPE_FOR_SLOT[slot]).duplicate()
 	var count: int = Itemizer.RARITY_MOD_COUNT[rarity]
 	for i: int in range(count):
 		if pool.is_empty():
-			pool = Itemizer._modifiers_for_slot(int(slot)).duplicate()   # armor repeats to reach Enhanced
+			pool = Itemizer._modifiers_for_type(_TYPE_FOR_SLOT[slot]).duplicate()   # small pools repeat to reach Enhanced
 		var pick_index: int = RNG.randi_range(0, pool.size() - 1)
 		var def: Dictionary = pool[pick_index]
 		pool.remove_at(pick_index)
@@ -145,11 +145,11 @@ func _typical_bag(level: int) -> Array:
 		else [Item.Slot.WEAPON, Item.Slot.ARMOR, Item.Slot.TRINKET]
 	for slot: Item.Slot in slots:
 		geared[slot] = _make_geared_item(slot, rarity, level)
-	# [balance pass] The real starting weapon's one modifier is forced to
-	# dmg_flat (GameState.new_profile()); mirror that so the L1 band measures
+	# [icons phase 2] The real starting weapon's one modifier is forced to
+	# elem_fire (GameState.new_profile()); mirror that so the L1 band measures
 	# the loadout a fresh player actually has, not a random Magic roll.
 	if level <= 1 and not (geared[Item.Slot.WEAPON] as Item).modifiers.is_empty():
-		Itemizer.force_modifier(geared[Item.Slot.WEAPON], 0, &"dmg_flat")
+		Itemizer.force_modifier(geared[Item.Slot.WEAPON], 0, &"elem_fire")
 	# [item power model] The innate damage icon is 100% of the EQUIPPED weapon's
 	# Power now, not a fraction of a hero stat.
 	bag.append(SlotIcon.innate(&"warrior", (geared[Item.Slot.WEAPON] as Item).power()))
@@ -166,24 +166,21 @@ func _typical_bag(level: int) -> Array:
 
 # --- output model ------------------------------------------------------------
 
-## Mean single-target damage per spin over `samples` draws: multiplier icons
-## first (as the real resolve does), then every DAMAGE/DAMAGE_ALL icon against
-## one target. Ignores the payline-triple double-resolve (§ file header) and
-## HEAL icons (irrelevant to enemy TTK).
+## Mean single-target damage per spin over `samples` draws: every DAMAGE icon
+## against one target ([icons phase 2] dmg_pct/MULT is gone, so there is no
+## per-spin multiplier to fold in any more - a solo warrior's bag never
+## contains BOMB_ARROW/THUNDERBURST either, both ranger/mage exclusive).
+## Ignores the payline-triple double-resolve (§ file header), crit's x2 chance,
+## and HEAL icons (irrelevant to enemy TTK) - all conservative underestimates.
 func _mean_spin_damage(bag: Array, samples: int = 12000) -> float:
 	var total := 0.0
 	for _i: int in range(samples):
 		var board: Array = SlotMachineScript.draw_nine(bag)
-		var pct := 0
-		for ic: Dictionary in board:
-			if SlotIcon.kind_of(StringName(ic.get("id", &""))) == SlotIcon.Kind.MULT:
-				pct += int(ic.get("roll", 0))
-		var mult := 1.0 + float(pct) / 100.0
 		for ic: Dictionary in board:
 			var kind: int = SlotIcon.kind_of(StringName(ic.get("id", &"")))
-			if kind == SlotIcon.Kind.DAMAGE or kind == SlotIcon.Kind.DAMAGE_ALL:
+			if kind == SlotIcon.Kind.DAMAGE:
 				# [balance pass] mirror slot_machine's per-icon flat floor.
-				total += float(ic.get("roll", 0)) * mult + float(Tuning.SLOT_ATTACK_ICON_FLOOR)
+				total += float(ic.get("roll", 0)) + float(Tuning.SLOT_ATTACK_ICON_FLOOR)
 	return total / float(samples)
 
 const _SPIN_CYCLE := Tuning.SLOT_SPIN_DURATION + Tuning.SLOT_REEL_STAGGER * 2.0 + Tuning.SLOT_RESULT_HOLD
@@ -238,12 +235,10 @@ func _case_band(level: int) -> void:
 	var ttk_regular: float = float(regular_hp) / dps
 	var boss_hp := _boss_hp(level)
 	var ttk_boss: float = float(boss_hp) / dps
-	# [armor items] The plausible armor piece flat-reduces every enemy hit and
-	# adds a life percent to the party's effective hp.
+	# [armor items] The plausible armor piece flat-reduces every enemy hit.
 	var armor_item := _plausible_armor(level)
 	var hero_armor: int = armor_item.armor_value()
-	var hero_hp: int = int(round(float(warrior.hp_at(level))
-			* (1.0 + float(armor_item.life_bonus_pct()) / 100.0)))
+	var hero_hp: int = warrior.hp_at(level)
 	var enemy_group_dps: float = _enemy_dps_single(level, hero_armor) * ENEMY_GROUP_SIZE
 	var ttd_party: float = float(hero_hp) / enemy_group_dps
 
@@ -280,26 +275,25 @@ func _case_underlevelled_party_loses() -> void:
 		var ttk_regular: float = float(e.hp_at(band)) / dps
 		var armor_item := _plausible_armor(party_level)
 		var enemy_group_dps: float = _enemy_dps_single(band, armor_item.armor_value()) * ENEMY_GROUP_SIZE
-		var ttd_party: float = float(warrior.hp_at(party_level)) \
-			* (1.0 + float(armor_item.life_bonus_pct()) / 100.0) / enemy_group_dps
+		var ttd_party: float = float(warrior.hp_at(party_level)) / enemy_group_dps
 		print("  band %d, party L%d: ttd_party %.1fs vs ttk_regular %.1fs" % [band, party_level, ttd_party, ttk_regular])
 		_t.check(ttd_party < ttk_regular * 1.8,
 			"a level-%d party cannot clear band-%d enemies (dies at %.1fs, needs ~%.1fs for the pair)"
 				% [party_level, band, ttd_party, ttk_regular * 1.8])
 
-## Damage-comparable modifier ids only - dmg_pct (a percent BOOST applied to
-## every OTHER icon, not summable into a magnitude total) and slot_mend (a
-## percent HEAL, a different unit entirely) are excluded so this table's
-## "total magnitude" means one thing. [item power model] These are the ids that
-## roll 125-175% of the item's Power; the other two keep their own percents.
+## [icons phase 2] Exactly the sword's (a warrior weapon's) real modifier pool
+## - _make_damage_item() below always builds a `sword`, so this is also
+## implicitly the type filter, not just an id filter. slot_mend/armor_block
+## are excluded so this table's "total magnitude" means one thing (a percent
+## HEAL is a different unit; BLOCK isn't rollable on a weapon anyway).
 const _DAMAGE_MOD_IDS: Array[StringName] = [
-	&"dmg_flat", &"elem_fire", &"elem_ice", &"elem_light", &"slot_bolt",
+	&"elem_fire", &"elem_ice", &"elem_light", &"bleed",
 ]
 
 ## An item rolling only from _DAMAGE_MOD_IDS, so its board contribution is a
 ## well-defined single number - the crossover claim is about damage output,
-## and a random slot_mend/dmg_pct roll would make this table non-reproducible
-## across runs for no reason connected to what it is testing.
+## and a random slot_mend roll would make this table non-reproducible across
+## runs for no reason connected to what it is testing.
 func _make_damage_item(slot: Item.Slot, rarity: int, level: int) -> Item:
 	var item := Item.new()
 	item.kind = Item.Kind.WEAPON

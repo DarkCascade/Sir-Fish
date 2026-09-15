@@ -105,8 +105,8 @@ const ITEM_VALUE_PER_LEVEL := 0.35
 ## already present on a found item of that rarity) rolls this fraction of the
 ## item's Power - stronger than the base icon. The Enhanced step's own added
 ## icon is locked at the max; the others on an Enhanced item keep their rolled
-## fraction. DAMAGE / DAMAGE_ALL icons only - HEAL (mend) and MULT (boost)
-## modifiers keep their own percent rolls from Itemizer.MODIFIERS.
+## fraction. Damage-flavoured icons only (see Itemizer._roll_icon_magnitude) -
+## HEAL (mend) keeps its own percent roll from Itemizer.MODIFIERS.
 const FORGE_ICON_POWER_MIN := 1.25
 const FORGE_ICON_POWER_MAX := 1.75
 
@@ -114,6 +114,24 @@ const FORGE_ICON_POWER_MAX := 1.75
 ## hero (Combatant.add_temp_armor). Blocks within the window add together;
 ## each one refreshes this single expiry rather than stacking a second timer.
 const BLOCK_DURATION := 5.0
+
+# --- icons phase 2 -----------------------------------------------------------
+## The crit trinket icon's chance to double its own contribution to the swing
+## (SlotMachine._resolve_board). Flat and global for now - kept as its own
+## constant, not baked into the modifier roll, so a future balance pass can
+## tune it without touching every existing item.
+const CRIT_CHANCE := 0.10
+## How long a bleed DoT lasts on an enemy (Combatant.apply_bleed) - refreshed,
+## not stacked, exactly like BLOCK_DURATION above. Ticks off the enemy's own
+## actions (BattleDirector._take_action), not a per-frame timer.
+const BLEED_DURATION := 8.0
+## Flat per-tick floor on a bleed hit, mirroring SLOT_ATTACK_ICON_FLOOR's floor
+## on a swing icon.
+const BLEED_TICK_FLOOR := 2
+## Trinket ultimate icons (crit, cleave, rain, thunderburst) are rolled into
+## the bag with only this chance each spin - their extra power is offset by
+## showing up less often (SlotMachine._rebuild_bag).
+const TRINKET_ICON_INCLUDE_CHANCE := 0.75
 
 # --- 5.3c Overworld field [overworld prototype] -----------------------------
 ## The battle is laid out on the XZ ground plane under an overhead camera, not

@@ -12,7 +12,9 @@ extends Control
 ## Single-target attack icons are summed across the board and delivered as one
 ## swing by the front-line hero (Combatant.slot_attack), who plays the real
 ## attack animation - so three attack icons is one swing for ~3x one icon's
-## roll. Chain (DAMAGE_ALL) and mend (HEAL) still resolve per-cell in place.
+## roll. [icons phase 2] Bomb arrow / thunderburst (both hit-all-enemies) and
+## mend still resolve per-cell in place; cleave / rain arm a buff the next
+## swing consumes instead of resolving anything themselves.
 ##
 ## The payline survives only as a BONUS: three of the same icon on the centre
 ## row (the old jackpot) makes those three resolve twice, and keeps the banner,
@@ -35,6 +37,16 @@ var _home_position: Vector2
 var _bag: Array = []
 ## The nine icons dealt this spin, row-major: [r0c0, r0c1, r0c2, r1c0, ...].
 var _board: Array = []
+
+## [icons phase 2] CLEAVE / RAIN set these when their icon resolves and
+## _hero_swing() consumes them on the next combined swing - which may be a
+## later spin, if no DAMAGE icon also rolled this one ("the warrior's/ranger's
+## next attack", not necessarily this spin's). Party-wide rather than per-hero,
+## matching how BLOCK is already granted to the whole party rather than one
+## wearer. If both are pending on the same swing, rain wins (hits everyone) -
+## an unspec'd edge case, fine for a first draft.
+var _pending_cleave: bool = false
+var _pending_rain: bool = false
 
 ## [ui-project-longshot] Cabinet layout constants - unchanged by slot phase 2,
 ## which does no cabinet, layout or texture work.
@@ -155,6 +167,8 @@ func _tween_cabinet_colors(face: Color, window: Color) -> void:
 
 func _on_combat_started(_heroes: Array, _enemies: Array) -> void:
 	_should_spin = true
+	_pending_cleave = false
+	_pending_rain = false
 	_leave_attract()
 	if not _running:
 		_spin_loop()
@@ -219,8 +233,16 @@ func _rebuild_bag() -> void:
 		_bag.append(SlotIcon.from_item_base(item))
 		for mod: Dictionary in item.modifiers:
 			var icon := SlotIcon.from_modifier(mod, item)
-			if not icon.is_empty():
-				_bag.append(icon)
+			if icon.is_empty():
+				continue
+			# [icons phase 2] Trinket ultimates (crit/cleave/rain/thunderburst)
+			# show up 25% less often than every other icon - their extra power
+			# is offset by rarity of appearance, rolled fresh each spin rather
+			# than baked into the bag once.
+			if _is_trinket_ultimate(StringName(icon.get("id", &""))) \
+					and RNG.randf() >= Tuning.TRINKET_ICON_INCLUDE_CHANCE:
+				continue
+			_bag.append(icon)
 	# Never empty of icons (§2): if a wiped party somehow leaves nothing, drop in
 	# a single damage icon so the board can still do something.
 	if _icon_count() == 0:
@@ -242,6 +264,12 @@ func _living_hero_classes() -> Array[StringName]:
 			if bool(e.get("alive", false)):
 				out.append(e["stats_id"])
 	return out
+
+## [icons phase 2] The trinket-only ability ids the frequency damper applies
+## to. `crit` is universal, the rest are one per class - all four share the
+## same "powerful but rarer" treatment.
+static func _is_trinket_ultimate(id: StringName) -> bool:
+	return id == &"crit" or id == &"cleave" or id == &"rain" or id == &"thunderburst"
 
 func _icon_count() -> int:
 	var n := 0
@@ -350,15 +378,11 @@ static func evaluate(center_row: Array) -> Dictionary:
 # --- resolution (§3) -----------------------------------------------------------
 
 ## Resolves every non-blank cell, independently, left-to-right and top-to-bottom,
-## staggered by Tuning.AOE_STAGGER so the board reads as a sequence. Multiplier
-## icons (dmg_pct) are summed first and lift every damage icon THIS spin only.
+## staggered by Tuning.AOE_STAGGER so the board reads as a sequence.
 func _resolve_board(jackpot_id: StringName) -> void:
-	var pct := 0
-	for ic: Dictionary in _board:
-		if SlotIcon.kind_of(StringName(ic.get("id", &""))) == SlotIcon.Kind.MULT:
-			pct += int(ic.get("roll", 0))
-	# dmg_pct stacks additively with Overcharge, which now lifts ALL damage icons.
-	var mult := (1.0 + float(pct) / 100.0) * Upgrades.overcharge_mult()
+	# [icons phase 2] dmg_pct is gone - Overcharge is the only remaining lift on
+	# damage icons.
+	var mult := Upgrades.overcharge_mult()
 
 	var total_damage := 0
 	var total_heal := 0
@@ -366,15 +390,16 @@ func _resolve_board(jackpot_id: StringName) -> void:
 	# their own lightning. Their rolled magnitudes are summed here and dealt as
 	# ONE swing by the party's front-line hero after the rest of the board
 	# resolves ("one swing, 3x damage"). [armor items] BLOCK icons aggregate the
-	# same way into one temp-armor grant. Chain (DAMAGE_ALL) and mend (HEAL)
-	# still resolve per-cell, in place, staggered. Neither dmg_pct nor Overcharge
-	# touches BLOCK - those lift damage output only.
+	# same way into one temp-armor grant. Bomb arrow / thunderburst / mend still
+	# resolve per-cell, in place, staggered. Overcharge touches damage output
+	# only, never BLOCK.
 	var swing := 0
 	var block := 0
 	for idx: int in range(_board.size()):
 		var ic: Dictionary = _board[idx]
-		var kind: int = SlotIcon.kind_of(StringName(ic.get("id", &"")))
-		if kind == SlotIcon.Kind.BLANK or kind == SlotIcon.Kind.MULT:
+		var id := StringName(ic.get("id", &""))
+		var kind: int = SlotIcon.kind_of(id)
+		if kind == SlotIcon.Kind.BLANK:
 			continue
 		# Centre row (indices 3-5) resolves twice on a payline triple (§3).
 		var repeats := 2 if (jackpot_id != &"" and idx >= 3 and idx <= 5) else 1
@@ -382,10 +407,29 @@ func _resolve_board(jackpot_id: StringName) -> void:
 			_pulse_cell(idx)
 			if kind == SlotIcon.Kind.DAMAGE:
 				# [balance pass] Flat per-icon floor on top of the rolled value.
-				swing += maxi(1, int(round(float(int(ic.get("roll", 0))) * mult))) \
+				var contribution := maxi(1, int(round(float(int(ic.get("roll", 0))) * mult))) \
 					+ Tuning.SLOT_ATTACK_ICON_FLOOR
+				# [icons phase 2] Crit: "the character performs a regular attack
+				# with only the resultant damage amount possibly changing" - a
+				# flat per-icon chance to double just THIS icon's own share of
+				# the swing, rolled independently of every other icon here.
+				if id == &"crit" and RNG.randf() < Tuning.CRIT_CHANCE:
+					contribution *= 2
+				swing += contribution
 			elif kind == SlotIcon.Kind.BLOCK:
 				block += maxi(1, int(ic.get("roll", 0)))
+			elif kind == SlotIcon.Kind.CLEAVE:
+				# [icons phase 2] No immediate effect - just arms the buff the
+				# next combined swing consumes (SlotMachine._hero_swing).
+				var executor := _executor_for(SlotIcon.Kind.CLEAVE, false)
+				if executor != null:
+					executor.slot_gesture()
+					_pending_cleave = true
+			elif kind == SlotIcon.Kind.RAIN:
+				var executor := _executor_for(SlotIcon.Kind.RAIN, false)
+				if executor != null:
+					executor.slot_gesture()
+					_pending_rain = true
 			else:
 				var out := await _resolve_icon(ic, kind, mult)
 				total_damage += out.x
@@ -411,26 +455,35 @@ func _resolve_board(jackpot_id: StringName) -> void:
 	elif block > 0:
 		EventBus.slot_payout.emit("block", block)
 
-## Resolves one board icon that is NOT a single-target attack (those are summed
-## into the hero swing - see _resolve_board / _hero_swing). Returns
-## Vector2i(damage_dealt, heal_done).
+## Resolves one board icon that is neither a single-target attack, a block
+## grant, nor a pending-buff icon (those are all handled inline in
+## _resolve_board - see above). Returns Vector2i(damage_dealt, heal_done).
 func _resolve_icon(ic: Dictionary, kind: int, mult: float) -> Vector2i:
 	if director == null:
 		return Vector2i.ZERO
 	var id := StringName(ic.get("id", &""))
 	var roll := int(ic.get("roll", 0))
 	match kind:
-		SlotIcon.Kind.DAMAGE_ALL:
-			# [combat loop redesign] Only the class that actually owns DAMAGE_ALL
-			# gets the cosmetic swing (no fallback) - the fallback hero is
-			# whoever's left standing, which today is always the warrior, and she
-			# already animates for real via _hero_swing()/DAMAGE. Handing her this
-			# gesture too could eat her real swing (Combatant.slot_gesture()'s own
-			# ATTACKING guard), for a purely cosmetic payoff.
-			var executor := _executor_for(SlotIcon.Kind.DAMAGE_ALL, false)
+		SlotIcon.Kind.BOMB_ARROW, SlotIcon.Kind.THUNDERBURST:
+			# [icons phase 2] Two distinct Kinds sharing one AoE resolution
+			# path (the ranger's bomb arrow, the mage's thunderburst) - only
+			# the class that actually owns this Kind gets the cosmetic swing
+			# (no fallback), same reasoning the old DAMAGE_ALL comment gave:
+			# the fallback hero already has a real swing via _hero_swing().
+			var executor := _executor_for(kind, false)
 			if executor != null:
 				executor.slot_gesture()
 			return Vector2i(await _hit_all(id, roll, mult), 0)
+		SlotIcon.Kind.BLEED:
+			# No immediate damage - applies/refreshes the DoT, which ticks off
+			# the target's own actions (BattleDirector._take_action).
+			var executor := _executor_for(SlotIcon.Kind.BLEED, false)
+			if executor != null:
+				executor.slot_gesture()
+			var target: Combatant = director.random_living_enemy()
+			if target != null:
+				target.apply_bleed(maxi(1, roll))
+			return Vector2i.ZERO
 		SlotIcon.Kind.HEAL:
 			var executor := _executor_for(SlotIcon.Kind.HEAL, false)
 			if executor != null:
@@ -442,20 +495,56 @@ func _resolve_icon(ic: Dictionary, kind: int, mult: float) -> Vector2i:
 ## single swing by a living front-line hero. Returns the damage dealt (0 if no
 ## hero can swing or no enemy is alive). One variance roll on the whole total,
 ## so a board of three attack icons lands as ~3x one icon.
+##
+## [icons phase 2] A pending cleave/rain buff (set by CLEAVE/RAIN resolving on
+## an earlier or this same spin - see _resolve_board) is consumed here, on the
+## next real swing: rain hits every living enemy, cleave hits the swing's
+## target plus its neighbours by board x-position. The extra targets land via
+## _strike() (the same flat, no-per-target-animation hit AoE icons already
+## use) rather than a second hero animation - only the primary target gets the
+## real swing anim.
 func _hero_swing(amount: int) -> int:
 	if director == null:
 		return 0
 	var hero: Combatant = _executor_for(SlotIcon.Kind.DAMAGE)
-	var enemy: Combatant = director.random_living_enemy()
-	if hero == null or enemy == null:
+	var primary: Combatant = director.random_living_enemy()
+	if hero == null or primary == null:
 		return 0
 	var dealt := maxi(1, int(round(float(amount) * RNG.randf_range(
 		1.0 - Tuning.DAMAGE_VARIANCE, 1.0 + Tuning.DAMAGE_VARIANCE))))
-	hero.slot_attack(enemy, dealt)
+	hero.slot_attack(primary, dealt)
+	var total := dealt
+	if _pending_rain:
+		_pending_rain = false
+		for enemy: Combatant in director.living_enemies():
+			if enemy == primary or not is_instance_valid(enemy) or not enemy.is_alive():
+				continue
+			total += _strike(enemy, SlotIcon.BASE_WEAPON, amount, 1.0)
+	elif _pending_cleave:
+		_pending_cleave = false
+		for enemy: Combatant in _adjacent_enemies(primary):
+			total += _strike(enemy, SlotIcon.BASE_WEAPON, amount, 1.0)
 	# slot_attack lands on the animation's impact beat - hold here so the hit
 	# and its number resolve inside SLOT_RESULT_HOLD, not over the next spin.
 	await get_tree().create_timer(Tuning.SLOT_SWING_SETTLE).timeout
-	return dealt
+	return total
+
+## The living enemies immediately left/right of `primary` by board x-position -
+## cleave's "surrounding targets". Excludes `primary` itself, which the caller
+## already hits via the real swing.
+func _adjacent_enemies(primary: Combatant) -> Array[Combatant]:
+	var living: Array[Combatant] = director.living_enemies()
+	living.sort_custom(func(a: Combatant, b: Combatant) -> bool:
+		return a.global_position.x < b.global_position.x)
+	var idx: int = living.find(primary)
+	var out: Array[Combatant] = []
+	if idx < 0:
+		return out
+	if idx > 0:
+		out.append(living[idx - 1])
+	if idx < living.size() - 1:
+		out.append(living[idx + 1])
+	return out
 
 ## [armor items] The board's summed BLOCK value, granted as temporary flat
 ## armor to every living hero for Tuning.BLOCK_DURATION (Combatant.add_temp_armor).

@@ -5,7 +5,7 @@ extends Node
 ## set_game_node_property can set a property but cannot call a function. So the
 ## harness exposes ONE string property whose setter parses and executes:
 ##
-##   set_game_node_property("/root/Debug", "command", "slot dmg_flat slot_bolt slot_mend")
+##   set_game_node_property("/root/Debug", "command", "slot elem_fire bomb_arrow slot_mend")
 ##
 ## Every command writes exactly one "[DEBUG] ..." line to the output log, which
 ## get_output_log reads back. Inert in exported release builds.
@@ -173,7 +173,8 @@ func _cmd_kill(args: Array) -> void:
 
 ## Forces the next spin's 3x3 board. Each arg is an icon id, filled row-major:
 ##   slot <id0> [id1] ... [id8]
-## Ids: dmg_flat dmg_pct elem_fire elem_ice elem_light slot_bolt slot_mend
+## Ids: elem_fire elem_ice elem_light bleed bomb_arrow lightning_blast
+##      armor_block slot_mend crit cleave rain thunderburst
 ##      innate_dmg innate_heal   (blank / - / _ for an empty cell)
 ## Missing cells are blanks. `slot clear` drops the override.
 func _cmd_slot(args: Array) -> void:

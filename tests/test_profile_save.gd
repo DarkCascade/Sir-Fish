@@ -158,10 +158,11 @@ func _ready() -> void:
 	_write_raw(path, var_to_str({"version": 1, "gold": 5}).substr(0, 12))   # truncated
 	t.check(not SaveGame.load_profile(), "load_profile() rejects a truncated payload")
 
-	# --- S6: [slot phase 2] a save carrying a retired `slot_purse` modifier ---
-	# `slot_purse` left Itemizer.MODIFIERS with slot gold (§5). Items on disk
-	# still hold it; from_dict reads it verbatim and it must resolve to NO icon
-	# and never crash, warn in a loop, or fail the load. No VERSION bump.
+	# --- S6: [icons phase 2] a save carrying retired modifiers (`slot_purse`
+	# from slot phase 2, `dmg_flat` retired by this rework) ---------------------
+	# Items on disk still hold them; from_dict reads them verbatim and they must
+	# resolve to NO icon and never crash, warn in a loop, or fail the load. No
+	# VERSION bump - this project carries no save-compatibility guarantee.
 	var legacy := {
 		"version": SaveGame.VERSION, "gold": 42, "scrap": 3,
 		"active_party": [&"warrior"], "heroes": [],
@@ -174,28 +175,34 @@ func _ready() -> void:
 					"pct": false, "roll": 7, "value_mult": 0.5 },
 				{ "id": &"dmg_flat", "label": "+5 Damage", "caption": "Damage",
 					"pct": false, "roll": 5, "value_mult": 0.4 },
+				{ "id": &"elem_fire", "label": "+5 Fire Damage", "caption": "Fire Damage",
+					"pct": false, "roll": 5, "value_mult": 0.4 },
 			],
 		}],
 	}
 	_write_raw(path, var_to_str(legacy))
-	t.check(SaveGame.load_profile(), "S6: a save with a legacy slot_purse modifier still loads")
+	t.check(SaveGame.load_profile(), "S6: a save with retired modifiers still loads")
 	var legacy_item: Item = GameState.inventory[0] if not GameState.inventory.is_empty() else null
-	t.check(legacy_item != null and legacy_item.modifiers.size() == 2,
-		"S6: the legacy item keeps both modifiers verbatim")
-	# party_bonuses() must not choke on the unknown id, and must not count it.
+	t.check(legacy_item != null and legacy_item.modifiers.size() == 3,
+		"S6: the legacy item keeps all three modifiers verbatim")
+	# party_bonuses() must not choke on either unknown id, and must not count them.
 	var lb := GameState.party_bonuses()
-	t.check(not lb.has("slot_purse"), "S6: party_bonuses() no longer has a slot_purse key")
-	t.check(int(lb["dmg_flat"]) == 5, "S6: the legit dmg_flat still aggregates (got %d)" % int(lb["dmg_flat"]))
+	t.check(not lb.has("slot_purse"), "S6: party_bonuses() has no slot_purse key")
+	t.check(not lb.has("dmg_flat"), "S6: party_bonuses() has no dmg_flat key")
+	t.check(int(lb["elem_fire"]) == 5, "S6: the legit elem_fire still aggregates (got %d)" % int(lb["elem_fire"]))
 	t.check(SlotIcon.from_modifier(legacy_item.modifiers[0], legacy_item).is_empty(),
 		"S6: slot_purse maps to no board icon")
-	t.check(not SlotIcon.from_modifier(legacy_item.modifiers[1], legacy_item).is_empty(),
-		"S6: dmg_flat still maps to a board icon")
+	t.check(SlotIcon.from_modifier(legacy_item.modifiers[1], legacy_item).is_empty(),
+		"S6: dmg_flat maps to no board icon")
+	t.check(not SlotIcon.from_modifier(legacy_item.modifiers[2], legacy_item).is_empty(),
+		"S6: elem_fire still maps to a board icon")
 	var reel := GameState.hero_reel_icons(&"warrior")
-	var purse_in_reel := false
+	var retired_in_reel := false
 	for ic: Dictionary in reel["icons"]:
-		if StringName(ic.get("id", &"")) == &"slot_purse":
-			purse_in_reel = true
-	t.check(not purse_in_reel, "S6: the party modal's reel readout skips slot_purse")
+		var id := StringName(ic.get("id", &""))
+		if id == &"slot_purse" or id == &"dmg_flat":
+			retired_in_reel = true
+	t.check(not retired_in_reel, "S6: the party modal's reel readout skips retired ids")
 
 	# --- S7: [content phase 0] the migration chain ----------------------------
 	# MIGRATIONS stays empty until the first VERSION bump, so the chain is driven
