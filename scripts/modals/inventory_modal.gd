@@ -21,6 +21,7 @@ extends Control
 ## compare_flyout.gd itself, so both instances get it for free.
 
 const ITEM_ROW := preload("res://scenes/modals/item_row.tscn")
+const BiomeTheme := preload("res://scripts/ui/biome_theme.gd")
 
 const SLOT_NAMES := {
 	Item.Slot.WEAPON: "Weapon",
@@ -30,6 +31,7 @@ const SLOT_NAMES := {
 
 @onready var scrim: ColorRect = $Scrim
 @onready var panel: PanelContainer = $Panel
+@onready var grain: TextureRect = $Panel/Grain
 @onready var gold_label: Label = $Panel/Layout/Header/Currency/GoldLabel
 @onready var scrap_label: Label = $Panel/Layout/Header/Currency/ScrapLabel
 @onready var close_button: Button = $Panel/Layout/Header/CloseButton
@@ -39,6 +41,7 @@ const SLOT_NAMES := {
 @onready var compare_flyout = $CompareFlyout   # CompareFlyout (untyped: custom API)
 
 func _ready() -> void:
+	BiomeTheme.apply_panel_backdrop(panel, grain)
 	close_button.pressed.connect(close)
 	EventBus.gold_changed.connect(_on_currency_changed)
 	EventBus.scrap_changed.connect(_on_currency_changed)
@@ -47,6 +50,12 @@ func _ready() -> void:
 func open() -> void:
 	if visible:
 		return
+	# [rootwood-canopy] Re-read the live biome on every open, not just _ready() -
+	# this modal lives under the persistent Hud autoload (see hud.gd), whose
+	# children only ever _ready() once, at boot, while SceneRouter.place is
+	# still TOWN. Without this, the panel would keep whatever it was opened into
+	# on its FIRST open for the rest of the session.
+	BiomeTheme.apply_panel_backdrop(panel, grain)
 	_rebuild()
 	_update_currency()
 	show()

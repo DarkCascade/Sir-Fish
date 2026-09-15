@@ -187,10 +187,13 @@ mesh; **the rig is hand-built in Blender**, not by Meshy.
    `meshy_image_to_3d`. The mesh follows the concept image closely, so the image is
    where silhouette problems get fixed cheaply. Prompt the palette hexes and
    "chunky faceted, no bevels, flat solid colours, thick dark outline" explicitly.
-2. **Generate in A-pose, never T-pose.** `pose_mode: "a-pose"`. A T-pose model has to be
-   re-posed to get its arms down, which skins the mesh twice and flattens the arms into
-   fins — this happened on the first sporecap attempt and was only fixed by regenerating.
-   An A-pose model is rigged in its modelled pose, so the rest pose needs no baking at all.
+2. **Generate in A-pose, never T-pose — on this in-house rig.** `pose_mode: "a-pose"`. A
+   T-pose model has to be re-posed to get its arms down, which skins the mesh twice and
+   flattens the arms into fins — this happened on the first sporecap attempt and was only
+   fixed by regenerating. An A-pose model is rigged in its modelled pose, so the rest pose
+   needs no baking at all. **The rule flips for KayKit `Rig_Medium`**, whose rest pose is a
+   true T-pose: there, generate in T-pose (see "Adding a humanoid character on KayKit
+   `Rig_Medium`" below).
 3. **Do not bother with `meshy_rig`.** It returns HTTP 422 "Pose estimation failed" for any
    non-humanoid silhouette (the sporecap's wide cap and absent neck defeat it). Only worth
    attempting for roughly human proportions.
@@ -239,15 +242,52 @@ directly in the running game.
 
 The throwaway-scene route is still the fallback when the editor is not connected,
 or when a check needs a real scene tree rather than a one-off script: make
-`res://scratch_<name>.tscn`, `play_scene` it, read `get_output_log`, then
-`capture_frames` to confirm the mesh actually deforms, and delete the scratch files
-afterwards. Run headless suites through `run_headless_scene`, which needs no editor
+`res://scratch/<name>.tscn` (the `scratch/` folder is gitignored), `play_scene` it, read
+`get_output_log`, then `capture_frames` to confirm the mesh actually deforms. The
+permission rules deny `rm -rf`, so leave scratch files where they are instead of trying
+to delete them. Run headless suites through `run_headless_scene`, which needs no editor
 connection at all.
 
 One caveat on `execute_editor_script`: its file-write guard is a substring match
 over five write APIs, and its own error text says it is an accident guard, not a
 security boundary. Edits made through it also bypass the editor's undo stack, so
 commit before leaning on it.
+
+### Adding a humanoid character on KayKit `Rig_Medium`
+
+**This is the main route for new characters. Use the `new-character` skill.**
+- **Tooling:** `tools/character_pipeline/`, driven by one JSON spec per character:
+  `pipeline.py doctor | template | build | verify | register`. Its README covers the
+  spec fields and how to read the report.
+- **Worked example:** the bandit officer, `specs/bandit_officer.json`.
+- **Findings and costs:** backlog doc §4.
+- **Non-humanoids** stay on the in-house route above.
+
+Facts the tooling depends on, worth knowing before changing it:
+- **The shipped KayKit characters already use this rig.** `knight`, `rogue`, `mage` and
+  `skeleton_*`.glb (armature `Rig`) are the 1.x export of `Rig_Medium`: the same 21
+  deform bones and rest pose, plus handslots and 18 IK bones. Pack clips play on them,
+  but `Idle` → `Idle_A` and `Running_A` are revised motions, not renames.
+- **The rest pose is a true T-pose**, so Meshy generates in T-pose here. The A-pose
+  rule above does not apply.
+- **Restyling the concept onto `templates/mannequin_tpose_front.png`** is what makes a
+  Meshy mesh land on the bones.
+- **A clothed humanoid gets a palette-snapped texture**, not per-part flat materials.
+  Skin, clothes and boots weld into one part, and the eyes exist only in the texture.
+- **Clips are baked into each glb,** because `CombatantBakedAnimations.build()` reads
+  clips only from the character's own glb. A shared library is backlog decision 4.3.
+- **Blender 5.2 runs headless** through `BLENDER_PATH`.
+  - Assigning an action also needs `action_slot` set.
+  - Clearing an armature's animation data orphans its clips, and Blender drops orphans
+    on save.
+- **Locations.**
+  - The zip is at `third_party/kaykit/`.
+  - The extracted packs, including the Adventurers 2.0 weapon props, are in
+    `C:\Projects\Third Party Assets\KayKit\`.
+- **In-game checks autosave the dev profile.** Back up
+  `%APPDATA%/Godot/app_userdata/Sir Fish/profile.save` before a debug fight
+  (`Debug.command = "quest easy"`, then `"spawn <id>"`). Guard `director.enemies`
+  entries with `is_instance_valid()`.
 
 ### Watch item: `godot-editor-mcp` as a possible replacement for Godot MCP Pro
 

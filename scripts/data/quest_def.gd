@@ -80,6 +80,20 @@ extends Resource
 ## that gap, not on how steep any one curve is.
 @export var level_range: Vector2i = Vector2i(1, 1)
 
+## [backlog P1] The party's best level (GameState.hero_level()) required
+## before mayor_office.gd's _load_authored_quests() offers this quest at all -
+## distinct from level_range's underlevelled TINT (spec §2.6), which still
+## lets the player take a quest early. 1 (the default) gates nothing, so every
+## quest Phase 1 shipped keeps its exact prior behaviour.
+@export var unlock_level: int = 1
+
+## [backlog P1] Once completed, this quest is never offered again -
+## mayor_office.gd skips any one_shot quest whose id is in
+## GameState.completed_quest_ids. False (the default) is every standing quest
+## Phase 1 shipped: always available, no cooldown, no lockout (this file's own
+## mayor_office.gd header).
+@export var one_shot: bool = false
+
 # --- persistence (spec §3 Step 3.2) -----------------------------------------
 
 ## A flat dictionary of primitives for the profile save - same reasoning as
@@ -108,6 +122,8 @@ func to_dict() -> Dictionary:
 		"boss_drop_rarity_floor": boss_drop_rarity_floor,
 		"travel_durations": travel_durations.duplicate(),
 		"level_range": level_range,
+		"unlock_level": unlock_level,
+		"one_shot": one_shot,
 	}
 
 ## Rebuilds a QuestDef from to_dict()'s output. Unknown / missing keys fall
@@ -151,4 +167,6 @@ static func from_dict(data: Dictionary) -> QuestDef:
 		durs.append(float(d))
 	q.travel_durations = durs
 	q.level_range = data.get("level_range", Vector2i(1, 1))
+	q.unlock_level = int(data.get("unlock_level", 1))
+	q.one_shot = bool(data.get("one_shot", false))
 	return q

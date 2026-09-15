@@ -20,15 +20,16 @@ scale_max = 1.4
 color = Color(0.960784, 0.874509, 0.627451, 1)
 
 [sub_resource type="StyleBoxFlat" id="cabinet_face"]
-bg_color = Color(0.121569, 0.054902, 0.141176, 1)
+bg_color = Color(0.180392, 0.125490, 0.074510, 1)
 corner_radius_top_left = 26
 corner_radius_top_right = 26
 corner_radius_bottom_right = 26
 corner_radius_bottom_left = 26
 
-; [slot ui phase 3] Plum and gold vines, after the concept board. The cabinet used
-; to be an OrnateFrame (carved mossy stone); it is a plain plum Panel now, and the
-; vine border is the item card's own nine-patch (card_frame.png), not new art.
+; [rootwood-canopy] Rootwood brown and gold vines. The cabinet used to be an
+; OrnateFrame (carved mossy stone), then a plain plum Panel (slot ui phase 3);
+; it is a plain rootwood-brown Panel now (Tuning.C_ROOTWOOD), and the vine
+; border is still the item card's own nine-patch (card_frame.png), not new art.
 ;
 ; The vines hang off ReelGrid rather than Cabinet so they draw OVER the reel
 ; windows' edges, as the board's frame does. ReelGrid is sized to the reel window
@@ -65,7 +66,7 @@ offset_top = 48.0
 offset_right = 379.0
 offset_bottom = 412.0
 mouse_filter = 2
-color = Color(0.098039, 0.043137, 0.117647, 1)
+color = Color(0.058824, 0.141176, 0.125490, 1)
 
 [node name="Reel" parent="ReelWindow0" unique_id=601092897 instance=ExtResource("2_reel")]
 anchors_preset = 0
@@ -78,7 +79,7 @@ offset_top = 48.0
 offset_right = 701.0
 offset_bottom = 412.0
 mouse_filter = 2
-color = Color(0.098039, 0.043137, 0.117647, 1)
+color = Color(0.058824, 0.141176, 0.125490, 1)
 
 [node name="Reel" parent="ReelWindow1" unique_id=1657117379 instance=ExtResource("2_reel")]
 anchors_preset = 0
@@ -91,7 +92,7 @@ offset_top = 48.0
 offset_right = 1022.0
 offset_bottom = 412.0
 mouse_filter = 2
-color = Color(0.098039, 0.043137, 0.117647, 1)
+color = Color(0.058824, 0.141176, 0.125490, 1)
 
 [node name="Reel" parent="ReelWindow2" unique_id=297440533 instance=ExtResource("2_reel")]
 anchors_preset = 0

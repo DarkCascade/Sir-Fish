@@ -4,6 +4,6 @@
 
 [resource]
 script = ExtResource("1_slay")
-description = "Put down two of the wood's restless dead."
+description = "Put down four of the wood's restless dead."
 target_tag = &"undead"
-count = 2
+count = 4

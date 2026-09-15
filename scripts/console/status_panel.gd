@@ -31,6 +31,13 @@ const CurrencyPlate := preload("res://scripts/hud/currency_plate.gd")
 ## only readout of either.
 @onready var gold_label: Label = $Layout/ResourceRow/GoldPlate/Rows/GoldRow/GoldLabel
 @onready var scrap_label: Label = $Layout/ResourceRow/GoldPlate/Rows/ScrapRow/ScrapLabel
+## [black-glass] The gold plate's own face, tweened alongside the strip's own
+## "panel" stylebox by apply_boss_theme()/clear_boss_theme().
+@onready var _plate_face: Panel = $Layout/ResourceRow/GoldPlate/Face
+@onready var _plate_vines: NinePatchRect = $Layout/ResourceRow/GoldPlate/Vines
+
+const BiomeTheme := preload("res://scripts/ui/biome_theme.gd")
+const BOSS_THEME_TIME := 0.3
 
 ## Muted while the shop is open (EventBus.shop_visibility_changed): the panel
 ## sits behind the shop scrim, where a run of buy/sell deltas just stacks into
@@ -66,3 +73,37 @@ func _on_gold_changed(_new_total: int, delta: int) -> void:
 	# helper converts through global_position (S6's GoldPlate nesting moved
 	# GoldLabel a level deeper than when this read gold_label.position directly).
 	CurrencyFeedback.float_delta(self, gold_label, delta, Tuning.C_GOLD)
+
+# --- black-glass boss theme --------------------------------------------------
+
+## Called by Console.apply_boss_theme() - see slot_machine.gd's own copy of
+## this pair for the full contract (when apply/clear fire).
+func apply_boss_theme() -> void:
+	_tween_theme(Tuning.C_OBSIDIAN_DEEP, Tuning.C_OBSIDIAN, Tuning.C_SEAM)
+	_plate_vines.texture = BiomeTheme.card_frame(BiomeTheme.for_boss())
+
+func clear_boss_theme() -> void:
+	_tween_theme(Tuning.C_ROOTWOOD_VOID, Tuning.C_ROOTWOOD, Tuning.C_GOLD_DARK)
+	_plate_vines.texture = BiomeTheme.card_frame()
+
+## `self` is the StatusPanel PanelContainer, whose own "panel" stylebox is the
+## strip background + top border; `_plate_face`'s is the gold plate's face.
+## Both StyleBoxFlats are duplicated once (if not already) so this can mutate
+## bg_color/border_color in place - the live-stylebox trick biome_theme.gd's
+## apply_panel_backdrop() already uses for the same reason.
+func _tween_theme(strip_bg: Color, plate_bg: Color, strip_border: Color) -> void:
+	var strip_style: StyleBoxFlat = get_theme_stylebox("panel").duplicate()
+	add_theme_stylebox_override("panel", strip_style)
+	var plate_style: StyleBoxFlat = _plate_face.get_theme_stylebox("panel").duplicate()
+	_plate_face.add_theme_stylebox_override("panel", plate_style)
+
+	var tw := create_tween().set_parallel(true)
+	tw.tween_method(func(c: Color) -> void:
+		strip_style.bg_color = c
+		queue_redraw(), strip_style.bg_color, strip_bg, BOSS_THEME_TIME)
+	tw.tween_method(func(c: Color) -> void:
+		strip_style.border_color = c
+		queue_redraw(), strip_style.border_color, strip_border, BOSS_THEME_TIME)
+	tw.tween_method(func(c: Color) -> void:
+		plate_style.bg_color = c
+		_plate_face.queue_redraw(), plate_style.bg_color, plate_bg, BOSS_THEME_TIME)

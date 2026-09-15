@@ -7,6 +7,11 @@
 >
 > Filed under `content-phase-1/` because it can only be *run* after Phase 1, but it
 > exercises both phases. Move it up a level if it grows into its own initiative.
+>
+> **Update 2026-09-13:** prioritised as P1 (ranger, offered from level 3) and P2 (mage,
+> offered from level 5) in `../Sir Fish - Backlog - Recruits, Gear Types and Character
+> Pipeline.md`. That doc also records what has gone stale here (§5.7, §5.8) and two
+> new questions this outline does not cover: the recruit's starting level and kit.
 
 ---
 

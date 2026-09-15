@@ -1,4 +1,4 @@
-[gd_scene load_steps=2 format=3]
+[gd_scene load_steps=3 format=3]
 
 ; [reliquary] The crystal-cluster + thorn corner ornament (Meshy,
 ; assets/ui/reliquary/frame_corner.png) placed at all four corners of a modal
@@ -6,8 +6,13 @@
 ; it draws on top of the fill; every TextureRect ignores the mouse. The art's
 ; plum-black ground matches Tuning.C_RELIQUARY_STONE, so it blends into the
 ; panel with no visible seam.
+;
+; [biome-frames] reliquary_frame.gd swaps all four textures to the current
+; biome's skin in _ready() - the ExtResource below is only the expedition/
+; unthemed-biome fallback baked into the scene.
 
 [ext_resource type="Texture2D" path="res://assets/ui/reliquary/frame_corner.png" id="1_corner"]
+[ext_resource type="Script" path="res://scripts/modals/reliquary_frame.gd" id="2_biome"]
 
 [node name="ReliquaryFrame" type="Control"]
 layout_mode = 3
@@ -17,6 +22,7 @@ anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
+script = ExtResource("2_biome")
 
 [node name="TL" type="TextureRect" parent="."]
 custom_minimum_size = Vector2(76, 76)

@@ -140,6 +140,12 @@ func _travel(def: EncounterDef) -> void:
 	if def.type == EncounterDef.Type.COMBAT:
 		director.preload_encounter(def.enemy_stat_ids)
 
+	# [black-glass] Fire-and-forget, like preload_encounter() above - the
+	# nameplate is tuned to finish inside travel_duration on its own (see its
+	# own header), so nothing here needs to await it.
+	if def.is_boss:
+		_play_boss_nameplate(def)
+
 	var accel := create_tween()
 	accel.tween_method(Callable(world, "set_scroll_speed"),
 		world.get_scroll_speed(), Tuning.TRAVEL_SPEED, Tuning.TRAVEL_ACCEL_TIME) \
@@ -147,6 +153,26 @@ func _travel(def: EncounterDef) -> void:
 
 	await get_tree().create_timer(def.travel_duration).timeout
 	_arrive(def)
+
+## [black-glass] Resolves the two display strings the nameplate needs (neither
+## is stored on EncounterDef itself) and connects its `impact` signal - fired
+## the instant the boss's name lands - to swap the console's chrome at exactly
+## that beat. CONNECT_ONE_SHOT because `overlay.boss_nameplate` is one
+## persistent node reused by every boss encounter in the run; without it,
+## a second boss fight would stack a second connection onto the first.
+func _play_boss_nameplate(def: EncounterDef) -> void:
+	var quest_name := GameState.quest.display_name if GameState.quest != null \
+		else GameState.level.display_name
+	var boss_name := "???"
+	if not def.enemy_stat_ids.is_empty():
+		# Slot 0 is the boss by convention - see battle_director.gd's own
+		# comment on start_combat() for why that's safe to rely on here too.
+		var stats := GameState.get_stats(def.enemy_stat_ids[0])
+		if stats != null:
+			boss_name = stats.display_name
+	overlay.boss_nameplate.impact.connect(
+		func() -> void: console.apply_boss_theme(), CONNECT_ONE_SHOT)
+	overlay.boss_nameplate.play(quest_name, boss_name)
 
 func _arrive(def: EncounterDef) -> void:
 	state = RunState.ARRIVE
@@ -177,6 +203,11 @@ func _arrive(def: EncounterDef) -> void:
 func _on_combat_ended(victory: bool) -> void:
 	if state != RunState.COMBAT:
 		return
+	# [black-glass] "All enemies dead" (or a wipe) is the revert trigger, not
+	# the expedition ending - a harmless no-op re-assertion of the rootwood
+	# console when this wasn't a boss fight to begin with, since apply/clear
+	# just set explicit colours rather than toggle a delta.
+	console.clear_boss_theme()
 	if not victory:
 		director.pending_drops.clear()      # a wipe carries nothing home (§5)
 		_game_over()
@@ -346,6 +377,9 @@ func _run_complete() -> void:
 		# paid. Empty on every quest Phase 1 ships (QuestRewardExtra's header).
 		for extra: QuestRewardExtra in q.reward_extras:
 			extra.grant()
+		# [backlog P1] one_shot quests never come back once won (QuestDef.one_shot).
+		if q.one_shot and not GameState.completed_quest_ids.has(q.id):
+			GameState.completed_quest_ids.append(q.id)
 		GameState.completed_quest = q
 		GameState.quest = null
 		# [inn & recovery] Coming home from a win: the town stands the party a

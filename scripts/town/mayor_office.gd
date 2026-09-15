@@ -107,6 +107,7 @@ func _load_authored_quests() -> Array[QuestDef]:
 	var dir := DirAccess.open(QUEST_DIR)
 	if dir == null:
 		return out
+	var hero := GameState.hero_level()
 	for file_name: String in dir.get_files():
 		var clean := file_name.trim_suffix(".remap")
 		if not clean.ends_with(".tres"):

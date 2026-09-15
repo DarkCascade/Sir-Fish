@@ -53,6 +53,15 @@ const PAYLINE_BAND := 60.0
 @onready var result_frame: ResultFrame = $ResultFrame
 @onready var banner: Label = $Banner
 @onready var confetti: GPUParticles2D = $Confetti
+## [black-glass] The three recessed reel windows, tweened by apply_boss_theme()/
+## clear_boss_theme() alongside the cabinet face they sit inside.
+@onready var _reel_windows: Array[ColorRect] = [$ReelWindow0, $ReelWindow1, $ReelWindow2]
+@onready var _vines: NinePatchRect = $ReelGrid/Vines
+
+const BiomeTheme := preload("res://scripts/ui/biome_theme.gd")
+const ROOTWOOD_TILE := preload("res://resources/ui/slot_tile_rootwood.tres")
+const BOSS_TILE := preload("res://resources/ui/slot_tile_boss.tres")
+const BOSS_THEME_TIME := 0.3
 
 func _ready() -> void:
 	_home_position = position
@@ -102,6 +111,45 @@ func apply_height(h: float) -> void:
 	banner.size = Vector2(1080, h)
 	scale = Vector2.ONE * Tuning.SLOT_CABINET_SCALE
 	_home_position = position
+
+# --- black-glass boss theme --------------------------------------------------
+
+## Called by Console.apply_boss_theme(), itself called from boss_nameplate.gd's
+## `impact` signal the instant a boss encounter's name lands (RunController).
+func apply_boss_theme() -> void:
+	_tween_cabinet_colors(Tuning.C_OBSIDIAN, Tuning.C_OBSIDIAN_DEEP)
+	_vines.texture = BiomeTheme.card_frame(BiomeTheme.for_boss())
+	reel_grid.boss_active = true
+	result_frame.boss_active = true
+	for reel: Variant in _reels:
+		reel.set_boss_active(true)
+		reel.set_tile_style(BOSS_TILE)
+
+## Called by Console.clear_boss_theme() from RunController._on_combat_ended() -
+## "all enemies dead" (or a wipe), never later, so the console cannot get
+## stuck black-glass for the rest of the expedition.
+func clear_boss_theme() -> void:
+	_tween_cabinet_colors(Tuning.C_ROOTWOOD, Tuning.C_CANOPY_WELL)
+	_vines.texture = BiomeTheme.card_frame()
+	reel_grid.boss_active = false
+	result_frame.boss_active = false
+	for reel: Variant in _reels:
+		reel.set_boss_active(false)
+		reel.set_tile_style(ROOTWOOD_TILE)
+
+## The cabinet's own StyleBoxFlat is duplicated once (if not already) so this
+## can mutate bg_color in place - the live-stylebox trick biome_theme.gd's
+## apply_panel_backdrop() already uses for the same reason.
+func _tween_cabinet_colors(face: Color, window: Color) -> void:
+	var panel := cabinet as Panel
+	var style: StyleBoxFlat = panel.get_theme_stylebox("panel").duplicate()
+	panel.add_theme_stylebox_override("panel", style)
+	var tw := create_tween().set_parallel(true)
+	tw.tween_method(func(c: Color) -> void:
+		style.bg_color = c
+		panel.queue_redraw(), style.bg_color, face, BOSS_THEME_TIME)
+	for rect: ColorRect in _reel_windows:
+		tw.tween_property(rect, "color", window, BOSS_THEME_TIME)
 
 # --- attract mode (spec 16.6 / Q17) -----------------------------------------
 
@@ -373,8 +421,20 @@ func _resolve_icon(ic: Dictionary, kind: int, mult: float) -> Vector2i:
 	var roll := int(ic.get("roll", 0))
 	match kind:
 		SlotIcon.Kind.DAMAGE_ALL:
+			# [combat loop redesign] Only the class that actually owns DAMAGE_ALL
+			# gets the cosmetic swing (no fallback) - the fallback hero is
+			# whoever's left standing, which today is always the warrior, and she
+			# already animates for real via _hero_swing()/DAMAGE. Handing her this
+			# gesture too could eat her real swing (Combatant.slot_gesture()'s own
+			# ATTACKING guard), for a purely cosmetic payoff.
+			var executor := _executor_for(SlotIcon.Kind.DAMAGE_ALL, false)
+			if executor != null:
+				executor.slot_gesture()
 			return Vector2i(await _hit_all(id, roll, mult), 0)
 		SlotIcon.Kind.HEAL:
+			var executor := _executor_for(SlotIcon.Kind.HEAL, false)
+			if executor != null:
+				executor.slot_gesture()
 			return Vector2i(0, _heal_lowest(roll))
 	return Vector2i.ZERO
 
@@ -410,17 +470,24 @@ func _grant_block(amount: int) -> void:
 ## [content phase 1] The executor rule (D1, spec §2.1/§3 Step 2a): the first
 ## living party member, in roster order, whose class executes `kind`. Falls
 ## back to the first living hero in roster order when no living class owns it
-## - a dead executor, or a party that rolled an icon kind nothing it owns can
-## execute (a solo warrior's `slot_mend`, per §2a) - so a class dying is never
-## a lost turn, matching the existing rule that the party's turn is never
-## simply lost (Combatant.slot_attack). Replaces _swinging_hero(); with a solo
-## warrior this resolves identically to the old "first living hero" rule,
-## since the warrior is both the only living hero AND DAMAGE's executor.
+## and `fallback` is true (the default) - a dead executor, or a party that
+## rolled an icon kind nothing it owns can execute (a solo warrior's
+## `slot_mend`, per §2a) - so a class dying is never a lost turn, matching the
+## existing rule that the party's turn is never simply lost (Combatant.
+## slot_attack). Replaces _swinging_hero(); with a solo warrior this resolves
+## identically to the old "first living hero" rule, since the warrior is both
+## the only living hero AND DAMAGE's executor.
+##
+## `fallback: false` is for a purely cosmetic call (Combatant.slot_gesture(),
+## §5 the ranger/mage combat-visibility fix) that must never land on a hero
+## who did not actually earn it - the fallback hero already has a REAL action
+## this spin often enough (DAMAGE's _hero_swing()) that handing it a second,
+## fake one risks eating the real one via slot_gesture()'s own ATTACKING guard.
 ##
 ## director.living_heroes() is already roster order: it walks `heroes`, which
 ## spawn_party() built from GameState.hero_runtime, itself built from
 ## active_party in PARTY_ORDER's order (GameState._reset_hero_runtime()).
-func _executor_for(kind: SlotIcon.Kind) -> Combatant:
+func _executor_for(kind: SlotIcon.Kind, fallback: bool = true) -> Combatant:
 	if director == null:
 		return null
 	var living: Array[Combatant] = director.living_heroes()
@@ -430,7 +497,7 @@ func _executor_for(kind: SlotIcon.Kind) -> Combatant:
 		var cdef := GameState.get_class_def(h.stats.id)
 		if cdef != null and kind in cdef.executes:
 			return h
-	return living[0]
+	return living[0] if fallback else null
 
 func _hit_all(id: StringName, roll: int, mult: float) -> int:
 	var targets: Array[Combatant] = director.living_enemies()

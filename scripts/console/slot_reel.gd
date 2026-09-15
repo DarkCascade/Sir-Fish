@@ -204,6 +204,17 @@ func scoring_cell(row: int) -> SlotSymbol:
 		return null
 	return _cells[index]
 
+## [black-glass] Forwarded from SlotMachine.apply_boss_theme()/clear_boss_theme()
+## to every authored cell, visible or not - a cell scrolled off-strip right now
+## is still the one a spin brings into view next.
+func set_tile_style(style: StyleBox) -> void:
+	for cell: SlotSymbol in _cells:
+		cell.tile_style = style
+
+func set_boss_active(value: bool) -> void:
+	for cell: SlotSymbol in _cells:
+		cell.boss_active = value
+
 func _layout() -> void:
 	if _strip.is_empty():
 		return

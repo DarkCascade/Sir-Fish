@@ -69,3 +69,14 @@ func apply_height(h: float) -> void:
 func bind_director(director) -> void:
 	slot_machine.director = director
 	party_bars.director = director
+
+## [black-glass] Facade over both bands' own apply/clear pair - see
+## slot_machine.gd's copy of the pair for the full contract. RunController
+## never reaches into StatusPanel/SlotMachine directly for this.
+func apply_boss_theme() -> void:
+	status_panel.apply_boss_theme()
+	slot_machine.apply_boss_theme()
+
+func clear_boss_theme() -> void:
+	status_panel.clear_boss_theme()
+	slot_machine.clear_boss_theme()

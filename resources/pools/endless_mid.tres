@@ -4,4 +4,4 @@
 
 [resource]
 script = ExtResource("1_pool")
-explicit_ids = Array[StringName]([&"skeleton_warrior", &"skeleton_mage", &"skeleton_rogue", &"sporecap"])
+explicit_ids = Array[StringName]([&"skeleton_warrior", &"skeleton_mage", &"skeleton_rogue", &"sporecap", &"bandit_officer"])

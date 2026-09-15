@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="CombatantStats" load_steps=4 format=3]
+
+[ext_resource type="Script" uid="uid://j4id3pdqg34k" path="res://scripts/data/combatant_stats.gd" id="1_stats"]
+[ext_resource type="Resource" path="res://resources/abilities/melee_strike_generic.tres" id="2_primary"]
+[ext_resource type="Resource" path="res://resources/rig_profiles/bandit_officer_rig.tres" id="3_rig"]
+
+[resource]
+script = ExtResource("1_stats")
+id = &"bandit_officer"
+primary = ExtResource("2_primary")
+display_name = "Bandit Officer"
+max_hp = 90
+weapon_power = 16
+magic_power = 3
+hp_per_level = 45
+weapon_power_per_level = 6
+magic_power_per_level = 1
+attack_cooldown = 2.2
+model_scale = 1.1
+body_color = Color(0.658824, 0.14902, 0.176471, 1)
+accent_color = Color(0.847059, 0.686275, 0.321569, 1)
+scene_path = "res://scenes/battle/enemies/bandit_officer.tscn"
+rig_profile = ExtResource("3_rig")
+tags = Array[StringName]([&"bandit", &"brute"])
+threat = 3
+drop_chance = 0.3

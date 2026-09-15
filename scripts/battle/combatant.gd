@@ -299,6 +299,33 @@ func slot_attack(enemy: Combatant, amount: int) -> void:
 		return
 	begin_action(Ability.make_slot_strike(enemy, amount, director))
 
+## [combat loop redesign] A purely cosmetic swing for a hero whose OWN icon
+## kind resolved (DAMAGE_ALL's chain bolt, HEAL's recipient-picked heal) but
+## whose damage/heal is already applied elsewhere (SlotMachine._hit_all() /
+## _heal_lowest()) - without this, only whichever class executes DAMAGE ever
+## animates at all (SlotMachine._hero_swing()), which reads as "the ranger/
+## mage never do anything in combat" the moment a second hero exists (only
+## visible once the party is no longer a solo warrior).
+##
+## Deliberately bypasses begin_action()/Ability: `pending` is left untouched,
+## so the clip's own _anim_impact() call track finds nothing to resolve and
+## no-ops - this never deals damage or healing of its own. A no-op if the
+## hero cannot swing this instant (dead, or still mid-swing), same guard
+## slot_attack() uses, so this can never eat a real swing from a hero who
+## also executes DAMAGE (SlotMachine._executor_for() only ever hands out this
+## gesture to a class that actually owns the kind, never the DAMAGE fallback,
+## precisely to keep the two from colliding on the same hero).
+func slot_gesture() -> void:
+	if not is_alive() or state == State.ATTACKING:
+		return
+	# [combat loop redesign] ATTACKING before play_anim(), same order
+	# begin_action() uses - a mid-gesture hit reads as "flash", not "hurt
+	# interrupt" (take_damage()'s state == ATTACKING branch), and re-entry is
+	# blocked by the same guard above rather than never engaging at all.
+	state = State.ATTACKING
+	face_home_dir()
+	play_anim(&"attack")
+
 # --- damage / healing -------------------------------------------------------
 
 ## [levels] Which school this character's ordinary attack draws from, derived

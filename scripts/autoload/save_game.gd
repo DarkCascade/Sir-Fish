@@ -159,6 +159,11 @@ func save_profile() -> void:
 		# it" instruction).
 		"quest_board": GameState.quest_board.map(func(q: QuestDef) -> Dictionary: return q.to_dict()),
 		"quest_board_generated": GameState.quest_board_generated,
+		# [backlog P1] Additive - no VERSION bump (same rule as forge_stock
+		# above). Absent on a pre-existing save means no one_shot quest has
+		# been finished, which is exactly true of a save written before this
+		# key existed.
+		"completed_quest_ids": GameState.completed_quest_ids,
 	}))
 
 ## Returns false when there is no save, or it is unreadable, or its version is
@@ -239,6 +244,13 @@ func load_profile() -> bool:
 		board.append(QuestDef.from_dict(raw))
 	GameState.quest_board = board
 	GameState.quest_board_generated = bool(d.get("quest_board_generated", false))
+
+	# [backlog P1] Absent on a pre-existing save reads as "nothing finished
+	# yet" - exactly true of a save written before this key existed.
+	var completed: Array[StringName] = []
+	for raw: Variant in d.get("completed_quest_ids", []):
+		completed.append(StringName(raw))
+	GameState.completed_quest_ids = completed
 
 	return true
 
