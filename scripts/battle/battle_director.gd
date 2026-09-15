@@ -426,6 +426,14 @@ func _all() -> Array[Combatant]:
 	return out
 
 func _take_action(c: Combatant) -> void:
+	# [icons phase 2] "Enemies afflicted with damage over time take damage every
+	# time they take an action" - this is that hook, firing once per action
+	# regardless of turn-based vs real-time mode. Before the special/target
+	# logic below so a bleed tick that kills c bails out immediately rather
+	# than rolling a target/ability for a combatant that is already dead.
+	c.tick_bleed()
+	if not c.is_alive():
+		return
 	c.action_count += 1
 	var due: bool = c.stats.special_every_n_actions > 0 \
 		and c.action_count % c.stats.special_every_n_actions == 0

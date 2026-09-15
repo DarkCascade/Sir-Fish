@@ -211,7 +211,7 @@ func _ready() -> void:
 	GameState.endless_level_number = saved_level_number
 	GameState.active_party = d9_saved_party
 
-	# --- informational: party_bonuses()["dmg_flat"] after a 3-level run -----
+	# --- informational: party_bonuses() damage total after a 3-level run ----
 	_report_party_bonuses()
 
 	t.finish(get_tree(), "test_drops")
@@ -247,8 +247,8 @@ func _effective_drop_rarity_floor(enc: EncounterDef, index: int) -> int:
 
 ## Simulates three levels' worth of real drops (Bernoulli per enemy, same
 ## §4/§5 mechanism D9 exercises) into a scratch inventory, so
-## party_bonuses()["dmg_flat"] can be read and reported - not gated, per §10's
-## "a human needs to read it" note on §11's first open question.
+## party_bonuses()'s damage total can be read and reported - not gated, per
+## §10's "a human needs to read it" note on §11's first open question.
 func _report_party_bonuses() -> void:
 	var saved_inventory := GameState.inventory
 	var saved_drops := GameState.drops_by_class.duplicate()
@@ -280,8 +280,12 @@ func _report_party_bonuses() -> void:
 					Itemizer.generate_drop(hero_class, _effective_drop_rarity_floor(enc, i)))
 
 	var bonuses := GameState.party_bonuses()
-	print("party_bonuses()[\"dmg_flat\"] after a simulated 3-level run's drops (%d items, equipped-only): %d"
-		% [GameState.inventory.size(), int(bonuses["dmg_flat"])])
+	# [icons phase 2] dmg_flat is gone - sum the warrior weapon pool's damage
+	# ids for a comparable "how much flat damage dropped" figure.
+	var damage_total := int(bonuses.get("elem_fire", 0)) + int(bonuses.get("elem_ice", 0)) \
+		+ int(bonuses.get("elem_light", 0)) + int(bonuses.get("bleed", 0))
+	print("party_bonuses() elemental+bleed total after a simulated 3-level run's drops (%d items, equipped-only): %d"
+		% [GameState.inventory.size(), damage_total])
 
 	GameState.inventory = saved_inventory
 	GameState.drops_by_class = saved_drops

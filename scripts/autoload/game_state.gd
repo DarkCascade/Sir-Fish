@@ -439,19 +439,19 @@ func _maybe_auto_equip(item: Item) -> void:
 ## Recomputed on demand and re-emitted on every inventory/equip change.
 func party_bonuses() -> Dictionary:
 	var out := {
-		"dmg_flat": 0,
-		"dmg_pct": 0,
-		# [day-night] §9.5 - NOT from an item, and NOT summed into dmg_pct: it is
-		# a separate multiplier (combatant.gd) and a separate strip glyph (§9.6).
+		# [day-night] §9.5 - NOT from an item, and NOT summed into any modifier
+		# total: it is a separate multiplier (combatant.gd) and a separate
+		# strip glyph (§9.6).
 		"meal_pct": meal_pct,
 		"element": &"",
-		# [slot phase 2] slot_bolt / slot_mend are still aggregated here for the
-		# party modal's reel-icon readout and for display, NOT for a slot payout -
-		# every icon now resolves its own rolled value on the board. `slot_purse`
-		# is gone with slot gold; an item still carrying it just hits no branch
-		# below and contributes nothing.
-		"slot_bolt": 0,
-		"slot_mend": 0,
+		# [icons phase 2] Every rollable id gets a bucket here for display /
+		# reporting, NOT for a slot payout - every icon still resolves its own
+		# rolled value on the board. A retired id (e.g. a pre-rework save's
+		# dmg_flat) hits no branch below and contributes nothing.
+		"elem_fire": 0, "elem_ice": 0, "elem_light": 0, "bleed": 0,
+		"bomb_arrow": 0, "lightning_blast": 0,
+		"armor_block": 0, "slot_mend": 0,
+		"crit": 0, "cleave": 0, "rain": 0, "thunderburst": 0,
 	}
 	# Elemental totals are kept apart rather than summed into one number, because
 	# resistances are the obvious next step (spec 22).
@@ -462,24 +462,12 @@ func party_bonuses() -> Dictionary:
 		for mod: Dictionary in item.modifiers:
 			var id: StringName = mod["id"]
 			var roll: int = int(mod.get("roll", 0))
-			match id:
-				&"dmg_flat":
-					out["dmg_flat"] = int(out["dmg_flat"]) + roll
-				&"dmg_pct":
-					out["dmg_pct"] = int(out["dmg_pct"]) + roll
-				&"elem_fire":
-					out["dmg_flat"] = int(out["dmg_flat"]) + roll
-					elements[&"fire"] = int(elements[&"fire"]) + roll
-				&"elem_ice":
-					out["dmg_flat"] = int(out["dmg_flat"]) + roll
-					elements[&"ice"] = int(elements[&"ice"]) + roll
-				&"elem_light":
-					out["dmg_flat"] = int(out["dmg_flat"]) + roll
-					elements[&"light"] = int(elements[&"light"]) + roll
-				&"slot_bolt":
-					out["slot_bolt"] = int(out["slot_bolt"]) + roll
-				&"slot_mend":
-					out["slot_mend"] = int(out["slot_mend"]) + roll
+			if not out.has(id):
+				continue
+			out[id] = int(out[id]) + roll
+			var element := SlotIcon.element_of(id)
+			if element != &"":
+				elements[element] = int(elements[element]) + roll
 	var best: StringName = &""
 	var best_total: int = 0
 	for key: StringName in elements.keys():
@@ -599,16 +587,11 @@ func hero_armor(id: StringName) -> int:
 	var a := equipped_item(id, Item.Slot.ARMOR)
 	return 0 if a == null else a.armor_value()
 
-## [armor items] Percent added to `id`'s max hp by equipped armor_life modifiers.
-func hero_life_pct(id: StringName) -> int:
-	var a := equipped_item(id, Item.Slot.ARMOR)
-	return 0 if a == null else a.life_bonus_pct()
-
-## [armor items] `id`'s full max hp: the level-resolved stat base times the
-## armor_life percent boost. The single answer for hero_runtime
-## (_reset_hero_runtime / _apply_xp_to_hero / party_status) AND for
-## Combatant.apply_party_bonuses - which also lets combat finally honour hero
-## level, a pre-existing gap spawn_party() left (it spawns at level 1).
+## [armor items] `id`'s full max hp: the level-resolved stat base. The single
+## answer for hero_runtime (_reset_hero_runtime / _apply_xp_to_hero /
+## party_status) AND for Combatant.apply_party_bonuses - which also lets combat
+## finally honour hero level, a pre-existing gap spawn_party() left (it spawns
+## at level 1).
 func hero_max_hp(id: StringName) -> int:
 	return _leveled_max_hp(id, hero_level(id))
 
@@ -618,7 +601,7 @@ func _leveled_max_hp(id: StringName, lvl: int) -> int:
 	var s := get_stats(id)
 	if s == null:
 		return 1
-	return int(round(float(s.hp_at(lvl)) * (1.0 + float(hero_life_pct(id)) / 100.0)))
+	return s.hp_at(lvl)
 
 ## XP needed to advance FROM `lvl` TO `lvl + 1` (spec §3.2). Parameter named
 ## `lvl`, not `level` - this class already has a `level: LevelDef` field and
@@ -663,7 +646,6 @@ func _apply_xp_to_hero(id: StringName, amount: int) -> void:
 	var entry := hero_entry(id)
 	if entry.is_empty():
 		return
-	# [armor items] via hero_max_hp so the armor_life boost rides along - but
 	# hero_levels[id] was already set above, so pass the level explicitly.
 	var old_max: int = int(entry.get("max_hp", _leveled_max_hp(id, old_level)))
 	var new_max: int = _leveled_max_hp(id, new_level)
@@ -1024,12 +1006,13 @@ func new_profile() -> void:
 	# [item power model] A fresh profile ships one weapon, already equipped.
 	# Since the combat loop redesign a hero's entire offense is its equipped
 	# weapon's Power - an unarmed start plays as "the game is broken". A level-1
-	# Magic sword: the base strike icon plus one modifier forced to a plain
-	# damage add ([balance pass]) so a fresh run is never a dead roll. Level is
-	# pinned to 1 so a retry off a leveled profile still starts fresh;
-	# add_item() auto-equips it into the warrior's empty slot.
+	# Magic sword: the base strike icon plus one modifier forced to elem_fire
+	# ([icons phase 2] the warrior pool's plainest damage add - never a dead
+	# roll like bleed's DoT would be on turn one) so a fresh run is never a dead
+	# roll. Level is pinned to 1 so a retry off a leveled profile still starts
+	# fresh; add_item() auto-equips it into the warrior's empty slot.
 	var starter_weapon := Itemizer.generate_typed_item(&"sword", Item.Rarity.MAGIC, 1)
-	Itemizer.force_modifier(starter_weapon, 0, &"dmg_flat")
+	Itemizer.force_modifier(starter_weapon, 0, &"elem_fire")
 	add_item(starter_weapon)
 	# [balance pass] ...and a plain armor piece. Its base armor icon is a heal
 	# (percent of max hp), the ONLY sustain a fresh solo warrior has - without
@@ -1118,7 +1101,7 @@ func _reset_hero_runtime(full_heal: bool) -> void:
 			continue
 		# [levels] hp_at(hero_level(id)), not the level-1 s.max_hp - a leveled
 		# hero's max HP must survive both a full heal and a carried-over
-		# current_hp (spec §3.3). [armor items] hero_max_hp folds in armor_life.
+		# current_hp (spec §3.3).
 		var top: int = hero_max_hp(id)
 		var hp: int = top
 		if not full_heal:

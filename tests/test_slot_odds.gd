@@ -67,7 +67,7 @@ func _test_density(t: RefCounted) -> void:
 func _test_unbiased(t: RefCounted) -> void:
 	print("--- unbiased draw ---")
 	# A bag of one MARKED single-copy icon, eight other icons, and blanks.
-	var marked := { "id": &"dmg_flat", "roll": 99, "enhanced": true }
+	var marked := { "id": &"elem_ice", "roll": 99, "enhanced": true }
 	var bag: Array = [marked]
 	for i: int in range(8):
 		bag.append({ "id": _rotating_id(i), "roll": 5, "enhanced": false })
@@ -143,5 +143,5 @@ func _bag(n_icons: int, bag_size: int) -> Array:
 	return bag
 
 func _rotating_id(i: int) -> StringName:
-	var ids: Array[StringName] = [&"dmg_flat", &"slot_bolt", &"slot_mend", &"elem_fire"]
+	var ids: Array[StringName] = [&"elem_fire", &"bomb_arrow", &"slot_mend", &"crit"]
 	return ids[i % ids.size()]

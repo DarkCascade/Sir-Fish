@@ -41,6 +41,13 @@ var bonus_flat_damage: int = 0            # [v2] item dmg_flat + elemental (spec
 var armor: int = 0
 var _temp_armor: int = 0
 var _temp_armor_timer: SceneTreeTimer = null
+## [icons phase 2] The warrior weapon BLEED icon's damage-over-time debuff -
+## `_bleed_dps` is dealt each time this combatant takes its OWN action
+## (BattleDirector._take_action's tick_bleed() call), not per-frame. A fresh
+## application takes the larger of old/new and refreshes the timer, the same
+## take-max-and-refresh shape as `add_temp_armor()`.
+var _bleed_dps: int = 0
+var _bleed_timer: SceneTreeTimer = null
 var is_hero: bool = false
 
 ## Set by BattleDirector when it spawns us.
@@ -98,6 +105,8 @@ func setup(s: CombatantStats, starting_hp: int = -1, a_level: int = 1) -> void:
 	armor = 0
 	_temp_armor = 0
 	_temp_armor_timer = null
+	_bleed_dps = 0
+	_bleed_timer = null
 	apply_party_bonuses()
 	_home_position = global_position
 	visual.visible = true
@@ -414,11 +423,13 @@ func cancel_all_effects() -> void:
 		anim.stop()
 	if visual != null:
 		visual.visible = true
-	# 2. Drop the defence, the block buff, and orphan their timers.
+	# 2. Drop the defence, the block buff, the bleed, and orphan their timers.
 	damage_reduction = 0.0
 	_defend_timer = null
 	_temp_armor = 0
 	_temp_armor_timer = null
+	_bleed_dps = 0
+	_bleed_timer = null
 	# 3. Free every status icon this combatant owns, immediately.
 	for icon: Variant in _status_icons:
 		if is_instance_valid(icon):
@@ -472,6 +483,34 @@ func temp_armor() -> int:
 
 func is_defending() -> bool:
 	return damage_reduction > 0.0
+
+# --- icons phase 2: bleed ----------------------------------------------------
+
+## [icons phase 2] Grant/refresh a bleed DoT from a warrior weapon's BLEED
+## icon. Takes the larger of the old and new dps and refreshes the window,
+## exactly like add_temp_armor() above - a second bleed application does not
+## stack, it re-times the same debuff.
+func apply_bleed(dps: int, duration: float = Tuning.BLEED_DURATION) -> void:
+	if dps <= 0 or not is_alive():
+		return
+	_bleed_dps = maxi(_bleed_dps, dps)
+	var timer := get_tree().create_timer(duration)
+	_bleed_timer = timer
+	await timer.timeout
+	if _bleed_timer == timer:
+		_bleed_dps = 0
+		_bleed_timer = null
+
+func is_bleeding() -> bool:
+	return _bleed_dps > 0
+
+## Called once per own action (BattleDirector._take_action) rather than
+## per-frame - "enemies afflicted with damage over time take damage every time
+## they take an action."
+func tick_bleed() -> void:
+	if _bleed_dps <= 0 or not is_alive():
+		return
+	take_damage(_bleed_dps + Tuning.BLEED_TICK_FLOOR, null)
 
 # --- world helpers ----------------------------------------------------------
 

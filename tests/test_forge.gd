@@ -77,6 +77,12 @@ func _test_no_duplicate_ids() -> void:
 	var wrong := 0
 	for i: int in range(1000):
 		var item := _fresh_common()
+		# [icons phase 2] Each type's own pool size caps how many DISTINCT
+		# modifiers 3 forge steps can add before the ladder has to repeat one -
+		# a warrior weapon (pool of 4) never repeats, armor/a trinket (pool of
+		# 2) repeats once, a ranger/mage weapon (pool of 1) repeats twice.
+		var pool_size: int = Itemizer._modifiers_for_type(item.weapon_type).size()
+		var max_repeats: int = maxi(0, 3 - pool_size)
 		for _s: int in range(3):
 			Itemizer.forge(item)
 		var seen := {}
@@ -85,16 +91,10 @@ func _test_no_duplicate_ids() -> void:
 			if seen.has(m["id"]):
 				dups += 1
 			seen[m["id"]] = true
-		# [armor items] Armor's pool is only {block, life}, so the last rung of a
-		# full forge HAS to repeat one - at most once. Weapons / trinkets (a
-		# 7-mod pool) must never repeat.
-		if item.slot() == Item.Slot.ARMOR:
-			if dups > 1:
-				wrong += 1
-		elif dups > 0:
+		if dups > max_repeats:
 			wrong += 1
 	_t.check(wrong == 0,
-		"weapons never repeat a modifier; armor repeats at most once to reach ENHANCED (%d/1000)" % wrong)
+		"every item's forge repeats stay within its own pool's size (%d/1000 exceeded)" % wrong)
 
 # --- rejection paths -------------------------------------------------------
 
@@ -168,13 +168,15 @@ func _test_enhanced_marker_and_rolls() -> void:
 				final_plain += 1
 			if is_final:
 				# [item power model] The enhanced icon is locked to the max
-				# bonus: FORGE_ICON_POWER_MAX of the item's Power for a DAMAGE /
-				# DAMAGE_ALL icon, or the top of the modifier's roll range for a
-				# HEAL / MULT icon.
+				# bonus: FORGE_ICON_POWER_MAX of the item's Power for a
+				# damage-flavoured icon, or the top of the modifier's roll
+				# range for a HEAL icon.
 				var def: Dictionary = mods_by_id[last["id"]]
 				var kind: int = SlotIcon.kind_of(StringName(last["id"]))
 				var want: int
-				if kind == SlotIcon.Kind.DAMAGE or kind == SlotIcon.Kind.DAMAGE_ALL:
+				if kind == SlotIcon.Kind.DAMAGE or kind == SlotIcon.Kind.BLEED \
+						or kind == SlotIcon.Kind.BOMB_ARROW or kind == SlotIcon.Kind.THUNDERBURST \
+						or kind == SlotIcon.Kind.CLEAVE or kind == SlotIcon.Kind.RAIN:
 					want = maxi(1, int(round(float(item.power()) * Tuning.FORGE_ICON_POWER_MAX)))
 				elif kind == SlotIcon.Kind.BLOCK:
 					# [armor items] block scales off armor_value, like damage off Power.
@@ -223,14 +225,23 @@ func _test_emits_party_bonuses_changed() -> void:
 	var fired := [0]
 	var counter := func(_b: Dictionary) -> void: fired[0] += 1
 	EventBus.party_bonuses_changed.connect(counter)
-	var before: int = int(GameState.party_bonuses()["dmg_flat"]) \
-		+ int(GameState.party_bonuses()["dmg_pct"])
+	# [icons phase 2] An axe rolls from the warrior weapon pool: elem_fire/ice/
+	# light + bleed.
+	var axe_ids: Array[StringName] = [&"elem_fire", &"elem_ice", &"elem_light", &"bleed"]
+	var before := _sum_bonuses(axe_ids)
 	var ok := Itemizer.forge(item)
 	EventBus.party_bonuses_changed.disconnect(counter)
 
 	_t.check(ok, "the forge under test succeeds")
 	_t.check(fired[0] == 1, "forge() emits party_bonuses_changed exactly once (fired %d)" % fired[0])
-	_t.check(int(GameState.party_bonuses()["dmg_flat"]) + int(GameState.party_bonuses()["dmg_pct"]) >= before,
+	_t.check(_sum_bonuses(axe_ids) >= before,
 		"the forged modifier is now in party_bonuses()")
 
 	GameState.inventory.erase(item)
+
+func _sum_bonuses(ids: Array[StringName]) -> int:
+	var bonuses := GameState.party_bonuses()
+	var total := 0
+	for id: StringName in ids:
+		total += int(bonuses.get(id, 0))
+	return total

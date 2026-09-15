@@ -1,6 +1,6 @@
 class_name SlotIcon
 extends RefCounted
-## [slot phase 2] The slot's icon vocabulary, in one place.
+## [icons phase 2] The slot's icon vocabulary, in one place.
 ##
 ## An "icon" is a plain Dictionary — { "id": StringName, "roll": int,
 ## "enhanced": bool } — so it round-trips through arrays, the reel strip and the
@@ -8,9 +8,10 @@ extends RefCounted
 ## element tint, its chip art) is DERIVED from `id` here, never stored twice.
 ##
 ## The id vocabulary IS Itemizer.MODIFIERS (one equipped modifier = one icon),
-## plus two innate ids with no item behind them (§2) and a blank. `slot_purse`
-## and any other unrecognised id resolve to NO icon and must not crash — callers
-## filter on KNOWN_MODIFIER_IDS before building an icon (§5 migration rule).
+## plus two innate ids with no item behind them (§2) and a blank. Any
+## unrecognised id (a retired one from a pre-rework save) resolves to NO icon
+## and must not crash — callers filter on KNOWN_MODIFIER_IDS before building an
+## icon.
 
 ## Innate icons: one per living hero, magnitude fixed in Tuning (§2).
 const INNATE_DAMAGE := &"innate_dmg"
@@ -27,18 +28,29 @@ const BASE_WEAPON := &"base_weapon"
 const BASE_ARMOR := &"base_armor"
 const BASE_TRINKET := &"base_trinket"
 
-## The equipped-modifier ids that map to a board icon. `dmg_pct` is here — it is
-## the multiplier icon. `slot_purse` is deliberately absent (§5). [armor items]
-## `armor_block` is here (a BLOCK icon); `armor_life` is NOT - it is a passive
-## max-hp boost read straight off item.modifiers, never a board icon.
+## [icons phase 2] The full rollable-modifier vocabulary. Warrior weapons roll
+## the three elements plus bleed; ranger weapons roll bomb_arrow; mage weapons
+## roll lightning_blast; armor rolls block/mend; trinkets roll crit plus one
+## class-exclusive ultimate. See Itemizer.MODIFIERS for the pool/class filter.
 const KNOWN_MODIFIER_IDS: Array[StringName] = [
-	&"dmg_flat", &"dmg_pct", &"elem_fire", &"elem_ice", &"elem_light",
-	&"slot_bolt", &"slot_mend", &"armor_block",
+	&"elem_fire", &"elem_ice", &"elem_light", &"bleed",
+	&"bomb_arrow", &"lightning_blast",
+	&"armor_block", &"slot_mend",
+	&"crit", &"cleave", &"rain", &"thunderburst",
 ]
 
-## [armor items] BLOCK: an armor icon that grants the party a temporary flat
-## damage reduction when it resolves (SlotMachine._grant_block).
-enum Kind { BLANK, DAMAGE, DAMAGE_ALL, HEAL, MULT, BLOCK }
+## [icons phase 2] BLOCK: an armor icon that grants the party a temporary flat
+## damage reduction when it resolves (SlotMachine._grant_block). BLEED applies
+## a damage-over-time debuff to one enemy rather than dealing damage itself.
+## CLEAVE / RAIN set a pending "next attack" buff rather than resolving
+## anything immediately (SlotMachine._pending_cleave / _pending_rain).
+## BOMB_ARROW / THUNDERBURST are both hit-all-enemies AoEs, kept as separate
+## Kinds (rather than one shared DAMAGE_ALL, which no icon uses any more) purely
+## so each has its own single-class executor - see class_def.gd's `executes`.
+## These are raw ints in every ClassDef.tres's `executes` array (Godot can't
+## serialise a typed array of a nested enum) - re-point every .tres if this
+## ordering ever changes.
+enum Kind { BLANK, DAMAGE, HEAL, BLOCK, BLEED, CLEAVE, RAIN, BOMB_ARROW, THUNDERBURST }
 
 ## The reliquary chip art, one PNG per modifier id (already on disk, drawn by the
 ## compare flyout's stat chips). The two innate ids borrow the closest chip.
@@ -46,27 +58,35 @@ const _CHIP_DIR := "res://assets/ui/reliquary/"
 
 static func kind_of(id: StringName) -> Kind:
 	match id:
-		&"dmg_flat", &"elem_fire", &"elem_ice", &"elem_light", INNATE_DAMAGE, \
-		BASE_WEAPON, BASE_TRINKET:
+		&"elem_fire", &"elem_ice", &"elem_light", &"lightning_blast", &"crit", \
+		INNATE_DAMAGE, BASE_WEAPON, BASE_TRINKET:
 			return Kind.DAMAGE
-		&"slot_bolt":
-			return Kind.DAMAGE_ALL
+		&"bleed":
+			return Kind.BLEED
+		&"cleave":
+			return Kind.CLEAVE
+		&"rain":
+			return Kind.RAIN
+		&"bomb_arrow":
+			return Kind.BOMB_ARROW
+		&"thunderburst":
+			return Kind.THUNDERBURST
 		&"slot_mend", INNATE_HEAL:
 			return Kind.HEAL
 		BASE_ARMOR, &"armor_block":
 			return Kind.BLOCK
-		&"dmg_pct":
-			return Kind.MULT
 		_:
 			return Kind.BLANK
 
 ## "" for a non-elemental icon, else "fire" / "ice" / "light" — the key
 ## GameState.element_color() and the battle overlay already speak.
+## `lightning_blast` and `thunderburst` tint as lightning too - both are
+## lightning-flavoured, stronger variants of elem_light.
 static func element_of(id: StringName) -> StringName:
 	match id:
 		&"elem_fire": return &"fire"
 		&"elem_ice": return &"ice"
-		&"elem_light": return &"light"
+		&"elem_light", &"lightning_blast", &"thunderburst": return &"light"
 	return &""
 
 static func is_innate(id: StringName) -> bool:
@@ -142,13 +162,16 @@ static func is_blank(icon: Dictionary) -> bool:
 ## The chip texture path for an icon id, or "" if none applies (blank). Innate
 ## ids borrow the nearest modifier chip.
 static func chip_path(id: StringName) -> String:
-	# [armor items] No reliquary chip art for block / life yet - borrow the
-	# shield and heart glyphs from the item card's stat-tile set.
+	# [armor items] No reliquary chip art for block yet - borrow the shield
+	# glyph from the item card's stat-tile set.
 	if id == BASE_ARMOR or id == &"armor_block":
 		return "res://assets/icons/glyph_shield.png"
-	if id == &"armor_life":
-		return "res://assets/icons/glyph_heal.png"
 	var key := id
+	# [icons phase 2] The generic attack icon (base weapon / the innate damage
+	# floor) and the trinket's base strike still borrow the old dmg_flat /
+	# elem_light chip art on disk - that art is orphaned as a MODIFIER id but
+	# the files themselves are harmless to keep pointing at for a plain
+	# "damage" and "magic strike" look until the new icons get their own art.
 	if id == INNATE_DAMAGE or id == BASE_WEAPON:
 		key = &"dmg_flat"
 	elif id == INNATE_HEAL:
@@ -192,25 +215,28 @@ static func board_glyph_texture(id: StringName) -> Texture2D:
 		return null
 	return load(path) as Texture2D
 
-## Short label for the win banner / readouts. "Sword", "Fire", "Chain", "Mend",
-## "Boost", "Heal".
+## Short label for the win banner / readouts.
 static func short_label(id: StringName) -> String:
 	match id:
-		&"dmg_flat", INNATE_DAMAGE: return "Damage"
-		&"dmg_pct": return "Boost"
+		INNATE_DAMAGE: return "Damage"
 		&"elem_fire": return "Fire"
 		&"elem_ice": return "Ice"
 		&"elem_light": return "Lightning"
-		&"slot_bolt": return "Chain"
+		&"bleed": return "Bleed"
+		&"bomb_arrow": return "Bomb Arrow"
+		&"lightning_blast": return "Lightning Blast"
 		&"slot_mend", INNATE_HEAL: return "Mend"
 		BASE_WEAPON: return "Strike"
 		BASE_ARMOR, &"armor_block": return "Block"
-		&"armor_life": return "Life"
 		BASE_TRINKET: return "Focus"
+		&"crit": return "Crit"
+		&"cleave": return "Cleave"
+		&"rain": return "Rain of Arrows"
+		&"thunderburst": return "Thunderburst"
 	return ""
 
 ## Percent-magnitude icons render their roll as "+N%"; the rest as "+N".
-## [armor items] BASE_ARMOR / armor_block are flat now (a block amount, not a
-## percent); armor_life IS a percent (of max hp).
+## [icons phase 2] slot_mend is the only remaining percent icon - everything
+## else (damage, block, bleed, the trinket ultimates) is a flat magnitude.
 static func is_percent(id: StringName) -> bool:
-	return id == &"dmg_pct" or id == &"slot_mend" or id == INNATE_HEAL or id == &"armor_life"
+	return id == &"slot_mend" or id == INNATE_HEAL
