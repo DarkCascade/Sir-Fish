@@ -674,7 +674,7 @@ func _apply_xp_to_hero(id: StringName, amount: int) -> void:
 
 ## [town] spec 3.2 party panel: the active party's HP for display, one entry per
 ## active_party member in roster order - {stats_id, display_name, current_hp,
-## max_hp, alive, color}. Reads hero_runtime where it has been built
+## max_hp, alive, color, level, xp}. Reads hero_runtime where it has been built
 ## (new_profile / start_expedition / any heal all run _reset_hero_runtime), and
 ## falls back to a full-HP synthetic entry for a profile loaded from a save that
 ## predates the "heroes" key: an un-run profile's heroes ARE whole, so that is
@@ -701,6 +701,7 @@ func party_status() -> Array[Dictionary]:
 			"alive": bool(entry.get("alive", cur > 0)),
 			"color": s.accent_color,
 			"level": hero_level(id),
+			"xp": hero_xp_for(id),
 		})
 	return out
 

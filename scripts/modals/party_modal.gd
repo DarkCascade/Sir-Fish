@@ -32,7 +32,9 @@ const BiomeTheme := preload("res://scripts/ui/biome_theme.gd")
 @onready var panel: PanelContainer = $Panel
 @onready var grain: TextureRect = $Panel/Grain
 @onready var close_button: Button = $Panel/Layout/Header/CloseButton
-@onready var members: VBoxContainer = $Panel/Layout/Members
+@onready var members_scroll: ScrollContainer = $Panel/Layout/MembersScroll
+@onready var members: VBoxContainer = $Panel/Layout/MembersScroll/Members
+@onready var frame: Control = $Frame
 
 func _ready() -> void:
 	BiomeTheme.apply_panel_backdrop(panel, grain)
@@ -49,15 +51,35 @@ func open() -> void:
 	# on its FIRST open for the rest of the session.
 	BiomeTheme.apply_panel_backdrop(panel, grain)
 	_rebuild()
+
+	# Hidden while the panel's height settles (below) - Panel is now anchored to
+	# grow from screen centre (grow_vertical = BOTH) so it stays vertically
+	# centred at any party size, but that means its final size isn't known
+	# until layout catches up, one or two frames from now. Fading it in only
+	# once settled avoids a one-frame flash at the wrong size/position.
+	scrim.modulate.a = 0.0
+	panel.modulate.a = 0.0
 	show()
 	get_tree().paused = true
 
-	scrim.modulate.a = 0.0
+	# Frame 1: MembersScroll still reports last open's cached minimum height
+	# (or none, on first open) until the queue_free()'d rows from the previous
+	# _rebuild() actually leave the tree.
+	await get_tree().process_frame
+	_fit_members_height()
+	# Frame 2: Panel's own size only reflects the new MembersScroll height
+	# (just set above) after this second pass.
+	await get_tree().process_frame
+	# Frame's corner art is a sibling with its own independent rect (spec: it
+	# has to overlay the panel's border, which would be inset if it were a
+	# PanelContainer child instead) - sync it to wherever Panel actually landed.
+	frame.position = panel.position
+	frame.size = panel.size
+
 	create_tween().tween_property(scrim, "modulate:a", 1.0, 0.2)
 
 	panel.pivot_offset = panel.size * 0.5
 	panel.scale = Vector2(0.85, 0.85)
-	panel.modulate.a = 0.0
 	var tw := create_tween().set_parallel(true)
 	tw.tween_property(panel, "scale", Vector2.ONE, 0.25) \
 		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
@@ -86,6 +108,16 @@ func _rebuild() -> void:
 	for h: Dictionary in GameState.party_status():
 		members.add_child(_member_row(h))
 
+## Caps MembersScroll's height at content or ~62% of the viewport, whichever is
+## smaller, so a full three-hero roster scrolls internally instead of pushing
+## the panel past the screen edges - Panel's own minimum size otherwise just
+## grows to whatever Members needs (a ScrollContainer never reports its
+## child's size as its own, so without this it would collapse to ~0 instead).
+func _fit_members_height() -> void:
+	var natural: float = members.get_combined_minimum_size().y
+	var cap: float = get_viewport_rect().size.y * 0.62
+	members_scroll.custom_minimum_size.y = minf(natural, cap)
+
 func _member_row(h: Dictionary) -> Control:
 	var alive: bool = h["alive"]
 	var cur: int = h["current_hp"]
@@ -100,6 +132,13 @@ func _member_row(h: Dictionary) -> Control:
 	var top_line := HBoxContainer.new()
 	top_line.add_theme_constant_override("separation", 16)
 	row.add_child(top_line)
+
+	var level_label := Label.new()
+	level_label.theme_type_variation = &"DisplayLabel"
+	level_label.add_theme_font_size_override("font_size", 46)
+	level_label.add_theme_color_override("font_color", Tuning.C_GOLD_BRIGHT)
+	level_label.text = "Lv %d" % int(h["level"])
+	top_line.add_child(level_label)
 
 	var name_label := Label.new()
 	name_label.theme_type_variation = &"DisplayLabel"
@@ -126,6 +165,8 @@ func _member_row(h: Dictionary) -> Control:
 		Tuning.C_DANGER.lerp(Tuning.C_HEAL, ratio) if alive else Tuning.C_DANGER))
 	row.add_child(bar)
 
+	row.add_child(_xp_row(int(h["level"]), int(h["xp"])))
+
 	# [slot phase 2] The third element: this hero's contribution to the slot bag,
 	# directly under the health bar. Inherits the "the only place a player can
 	# see what their inventory is doing" duty from the retired bonus strip
@@ -134,31 +175,88 @@ func _member_row(h: Dictionary) -> Control:
 	row.add_child(_reel_strip(h["stats_id"]))
 	return row
 
+## Level/XP readout, directly under the HP bar: a thin progress bar toward
+## xp_to_next(level), or "MAX" once the hero has hit Tuning.HERO_MAX_LEVEL and
+## can no longer bank xp toward anything.
+func _xp_row(level: int, xp: int) -> Control:
+	var line := HBoxContainer.new()
+	line.add_theme_constant_override("separation", 16)
+
+	var label := Label.new()
+	label.add_theme_font_size_override("font_size", 40)
+	label.add_theme_color_override("font_color", Tuning.C_TEXT_DIM)
+	label.text = "XP"
+	line.add_child(label)
+
+	if level >= Tuning.HERO_MAX_LEVEL:
+		label.text = "XP  MAX"
+		return line
+
+	var need := GameState.xp_to_next(level)
+	var bar := ProgressBar.new()
+	bar.custom_minimum_size = Vector2(0, 20)
+	bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	bar.show_percentage = false
+	bar.min_value = 0.0
+	bar.max_value = float(need)
+	bar.value = float(xp)
+	bar.add_theme_stylebox_override("background", _bar_bg())
+	bar.add_theme_stylebox_override("fill", _bar_fill(Tuning.C_GOLD_BRIGHT))
+	line.add_child(bar)
+
+	var text := Label.new()
+	text.add_theme_font_size_override("font_size", 40)
+	text.add_theme_color_override("font_color", Tuning.C_TEXT_DIM)
+	text.text = "%d / %d" % [xp, need]
+	line.add_child(text)
+
+	return line
+
 ## The hero's reel icons as a headed, wrapping strip of chips, each labelled with
 ## its rolled magnitude. Duplicates show as separate chips; the innate icon is
 ## marked. [slot ui phase 3] Drawn exactly as the board draws them: the board
 ## glyph (SlotIcon.board_glyph_texture) on the shared tile - plum or rootwood,
 ## matching whichever this modal was opened into (see SLOT_TILE_ROOTWOOD above).
+##
+## Collapsed by default behind its own "Reel icons (N)" header, which doubles
+## as the toggle button - this is easily the tallest thing in a member row, and
+## a full three-hero party makes that add up (spec: party modal enhancement,
+## Sept 2026). Per-hero rather than one modal-wide switch, so comparing
+## everyone's level/HP/XP stays a glance while still letting one hero's gear
+## get drilled into without hiding the rest.
 func _reel_strip(hero_class: StringName) -> Control:
 	var data: Dictionary = GameState.hero_reel_icons(hero_class)
 	var icons: Array = data["icons"]
+	var count := int(data["count"])
 
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 4)
 
-	var head := Label.new()
-	head.add_theme_font_size_override("font_size", 40)
-	head.add_theme_color_override("font_color", Tuning.C_TEXT_DIM)
-	head.text = "Reel icons (%d)" % int(data["count"])
-	box.add_child(head)
-
 	var flow := HFlowContainer.new()
 	flow.add_theme_constant_override("h_separation", 12)
 	flow.add_theme_constant_override("v_separation", 6)
-	box.add_child(flow)
+	flow.visible = false
 	for ic: Dictionary in icons:
 		flow.add_child(_reel_chip(ic))
+
+	var head := Button.new()
+	head.flat = true
+	head.focus_mode = Control.FOCUS_NONE
+	head.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	head.add_theme_font_size_override("font_size", 40)
+	head.add_theme_color_override("font_color", Tuning.C_TEXT_DIM)
+	head.add_theme_color_override("font_hover_color", Tuning.C_TEXT)
+	head.add_theme_color_override("font_pressed_color", Tuning.C_TEXT)
+	head.text = _reel_head_text(count, false)
+	head.pressed.connect(func() -> void:
+		flow.visible = not flow.visible
+		head.text = _reel_head_text(count, flow.visible))
+	box.add_child(head)
+	box.add_child(flow)
 	return box
+
+func _reel_head_text(count: int, expanded: bool) -> String:
+	return "%s Reel icons (%d)" % ["▾" if expanded else "▸", count]
 
 func _reel_chip(ic: Dictionary) -> Control:
 	var id: StringName = StringName(ic.get("id", &""))
@@ -168,6 +266,21 @@ func _reel_chip(ic: Dictionary) -> Control:
 	# tallest cell, and an innate/forged chip's extra tag line made a centred
 	# cell float its tile above the rest of the row.
 	cell.alignment = BoxContainer.ALIGNMENT_BEGIN
+
+	var tag_text := ""
+	var tag_color := Tuning.C_GOLD_BRIGHT
+	if bool(ic.get("innate", false)):
+		tag_text = "innate"
+	elif bool(ic.get("enhanced", false)):
+		tag_text = "forged"
+		tag_color = Tuning.RARITY_COLORS[Item.Rarity.ENHANCED]
+	if tag_text != "":
+		var tag := Label.new()
+		tag.add_theme_font_size_override("font_size", 40)
+		tag.add_theme_color_override("font_color", tag_color)
+		tag.text = tag_text
+		tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		cell.add_child(tag)
 
 	var tile := Panel.new()
 	tile.custom_minimum_size = Vector2(72, 72)
@@ -213,20 +326,6 @@ func _reel_chip(ic: Dictionary) -> Control:
 	lbl.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	cell.add_child(lbl)
 
-	var tag_text := ""
-	var tag_color := Tuning.C_GOLD_BRIGHT
-	if bool(ic.get("innate", false)):
-		tag_text = "innate"
-	elif bool(ic.get("enhanced", false)):
-		tag_text = "forged"
-		tag_color = Tuning.RARITY_COLORS[Item.Rarity.ENHANCED]
-	if tag_text != "":
-		var tag := Label.new()
-		tag.add_theme_font_size_override("font_size", 40)
-		tag.add_theme_color_override("font_color", tag_color)
-		tag.text = tag_text
-		tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		cell.add_child(tag)
 	return cell
 
 func _bar_bg() -> StyleBoxFlat:
