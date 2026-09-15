@@ -1,10 +1,10 @@
 class_name RigProfile
 extends Resource
-## Folds the three animation-binding registries CombatantAnimations.build()
-## used to dispatch across - CombatantBakedAnimations.CLIPS,
-## CombatantSkeletonAnimations.SKELETON_PATH (plus its `match stats.id`), and
-## CombatantAnimations._build_shadow()'s hardcoded call - behind one resource
-## referenced from CombatantStats.rig_profile (content-phase-0 spec §3 Step 3).
+## Folds the two animation-binding registries CombatantAnimations.build() used
+## to dispatch across - CombatantBakedAnimations.CLIPS and
+## CombatantSkeletonAnimations.SKELETON_PATH (plus its `match stats.id`) -
+## behind one resource referenced from CombatantStats.rig_profile
+## (content-phase-0 spec §3 Step 3).
 ##
 ## Only `clips` participates in `inherits` - it is the one field with a real
 ## duplication problem (the four KayKit skeleton enemies' clip blocks are
@@ -17,7 +17,6 @@ extends Resource
 enum Source {
 	BAKED,              # retargets clips off the model's own imported AnimationPlayer
 	AUTHORED_SKELETON,  # GDScript-authored bone tracks on an in-house-rig Skeleton3D
-	SHAPE_KEYS,         # GDScript-authored blend-shape / Visual-level tracks, no armature
 }
 
 ## Merge parent, child wins - see the header comment above for why this is
@@ -40,8 +39,6 @@ enum Source {
 ##                        itself stays GDScript, since it composes against a
 ##                        bone's live rest transform (spec 9.0.2) and is not
 ##                        expressible as plain data.
-##   SHAPE_KEYS        - unused; the shadow monster's four clips are still
-##                        fully hardcoded in CombatantAnimations._build_shadow().
 @export var clips: Dictionary = {}
 
 ## Was the orc_warlord ternary in CombatantSkeletonAnimations.build_for().

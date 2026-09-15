@@ -1,0 +1,16 @@
+[gd_resource type="Resource" script_class="RigProfile" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/rig_profile.gd" id="1_rig"]
+[ext_resource type="Script" path="res://scripts/battle/rig_finalizers/shadow_finalizer.gd" id="2_finalizer"]
+
+[resource]
+script = ExtResource("1_rig")
+source = 0
+finalizer = ExtResource("2_finalizer")
+clips = {
+&"idle": {"clip": "Melee_Unarmed_Idle", "length": 1.6, "loop": true},
+&"run": {"clip": "Running_A", "length": 0.7, "loop": true},
+&"attack": {"clip": "Melee_Unarmed_Attack_Punch_A", "length": 0.6, "loop": false, "impact": 0.24},
+&"hurt": {"clip": "Hit_A", "length": 0.3, "loop": false},
+&"die": {"clip": "Death_A", "length": 0.8, "loop": false}
+}
