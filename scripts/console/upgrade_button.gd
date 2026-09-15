@@ -42,7 +42,13 @@ var id: StringName = &""
 @onready var _icon: Control = $Icon
 @onready var _pips: Control = $Pips
 @onready var _coin: TextureRect = $Coin
+## [black-glass] The card's gold-vine rim, swapped by apply_boss_theme()/
+## clear_boss_theme() below - see slot_machine.gd's own copy of this pair for
+## the full contract (when apply/clear fire).
+@onready var _vines: NinePatchRect = $Vines
 var _pulse: Tween = null
+
+const BiomeTheme := preload("res://scripts/ui/biome_theme.gd")
 
 ## Called by the tray straight after instancing - which is before _ready(), so
 ## the id is stashed and the card is filled in once its children exist.
@@ -218,6 +224,19 @@ func _kill_pulse() -> void:
 		_pulse.kill()
 	_pulse = null
 	self_modulate = Color.WHITE
+
+# --- boss theme ---------------------------------------------------------------
+
+## Called by UpgradeTray.apply_boss_theme(), itself called from
+## Console.apply_boss_theme() - the same facade status_panel.gd and
+## slot_machine.gd answer to. Just the rim swap (P5): unlike the cabinet and
+## the resource strip, the card face itself stays plum - there is no boss
+## variant of its own to tween to.
+func apply_boss_theme() -> void:
+	_vines.texture = BiomeTheme.card_frame(BiomeTheme.for_boss())
+
+func clear_boss_theme() -> void:
+	_vines.texture = BiomeTheme.card_frame()
 
 # --- purchase ---------------------------------------------------------------
 

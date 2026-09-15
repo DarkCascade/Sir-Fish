@@ -37,6 +37,18 @@ func _ready() -> void:
 
 	EventBus.upgrade_purchased.connect(_on_upgrade_purchased)
 
+## [black-glass] Facade over each card's own apply/clear pair - see
+## upgrade_button.gd's copy of the pair for the full contract. Called by
+## Console.apply_boss_theme()/clear_boss_theme(), the same facade
+## status_panel.gd and slot_machine.gd answer to.
+func apply_boss_theme() -> void:
+	for button: Variant in _buttons:
+		button.apply_boss_theme()
+
+func clear_boss_theme() -> void:
+	for button: Variant in _buttons:
+		button.clear_boss_theme()
+
 ## Called by the console once it knows how much room the tray gets. Only the
 ## HEIGHT is imposed - each card keeps the x/width/top it was authored with.
 func apply_height(h: float) -> void:
