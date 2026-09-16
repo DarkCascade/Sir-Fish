@@ -125,7 +125,7 @@ layout_mode = 2
 theme_override_colors/font_color = Color(0.8392157, 0.8235294, 0.78431374, 1)
 theme_override_fonts/font = ExtResource("5_11l36")
 theme_override_font_sizes/font_size = 32
-text = "Rare Sword  ·  Lv 7  ·  Warrior"
+text = "Rare Sword  -  Lv 7  -  Warrior"
 clip_text = true
 text_overrun_behavior = 3
 

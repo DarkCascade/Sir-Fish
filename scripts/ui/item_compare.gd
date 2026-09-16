@@ -53,11 +53,17 @@ static func base_caption(item: Item) -> String:
 		_:
 			return "Weapon Damage"
 
-## "Rare Sword · Lv 7 · Warrior" - the one-line identity both surfaces print
+## "Rare Sword - Lv 7 - Warrior" - the one-line identity both surfaces print
 ## under the name. Item.subtitle() is not reused: it bakes the damage figure
 ## into the same string, which would print the headline number twice.
+## Separator is a plain hyphen, not "·" - the item card's MetaLabel renders in
+## barbaro.ttf, a bespoke 104-glyph display font that has no middle dot or
+## bullet at all (confirmed via glyph table, not a rendering quirk). Desktop
+## export papers over the missing glyph somehow; the web/mobile build does
+## not, so it printed nothing there. "-" is one of the few punctuation glyphs
+## barbaro.ttf actually has.
 static func meta_line(item: Item) -> String:
-	return "%s %s  ·  Lv %d  ·  %s" % [
+	return "%s %s  -  Lv %d  -  %s" % [
 		item.rarity_name(), item.type_name(), item.level, item.class_label(),
 	]
 
