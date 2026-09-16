@@ -32,7 +32,7 @@ const ACTION_IDS: Array[StringName] = [&"compare", &"equip", &"unequip", &"buy",
 ## still overruns at the floor gets an ellipsis - the label is single-line with
 ## clip_text on and can never wrap, because a second line would change the
 ## strip's height and break the uniform list.
-const NAME_SIZE_MAX := 38
+const NAME_SIZE_MAX := 52
 const NAME_SIZE_MIN := 24
 
 ## The strip's floor. setup() raises it to whatever the content actually needs

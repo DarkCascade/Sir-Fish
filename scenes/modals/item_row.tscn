@@ -3,6 +3,8 @@
 [ext_resource type="Script" uid="uid://cuagodqhda882" path="res://scripts/modals/item_row.gd" id="1_row"]
 [ext_resource type="Script" uid="uid://cqeao7bjt6s2m" path="res://scripts/modals/item_glyph.gd" id="2_glyph"]
 [ext_resource type="Texture2D" uid="uid://dqcrm8u30i7sv" path="res://assets/ui/reliquary/card_medallion.png" id="3_medallion"]
+[ext_resource type="FontFile" uid="uid://cgm0vysfmw028" path="res://assets/fonts/barbaro punta.ttf" id="4_ukvv7"]
+[ext_resource type="FontFile" uid="uid://qivn6cuynvi1" path="res://assets/fonts/barbaro.ttf" id="5_11l36"]
 
 [sub_resource type="StyleBoxFlat" id="row_backing"]
 bg_color = Color(0.101961, 0.082353, 0.14902, 1)
@@ -58,7 +60,7 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 theme_override_constants/margin_left = 24
-theme_override_constants/margin_top = 14
+theme_override_constants/margin_top = 32
 theme_override_constants/margin_right = 24
 theme_override_constants/margin_bottom = 14
 
@@ -70,7 +72,7 @@ theme_override_constants/separation = 16
 [node name="Medallion" type="Control" parent="Body/Content/Strip" unique_id=1237391070]
 custom_minimum_size = Vector2(112, 112)
 layout_mode = 2
-size_flags_vertical = 4
+size_flags_vertical = 0
 mouse_filter = 2
 
 [node name="Glyph" type="Control" parent="Body/Content/Strip/Medallion" unique_id=1732535010]
@@ -112,15 +114,18 @@ theme_override_constants/separation = 2
 layout_mode = 2
 theme_type_variation = &"DisplayLabel"
 theme_override_colors/font_color = Color(0.937255, 0.839216, 0.580392, 1)
-theme_override_font_sizes/font_size = 38
+theme_override_fonts/font = ExtResource("4_ukvv7")
+theme_override_font_sizes/font_size = 52
 text = "Grumbling Longsword"
 clip_text = true
 text_overrun_behavior = 3
 
 [node name="MetaLabel" type="Label" parent="Body/Content/Strip/Info" unique_id=679541514]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.709804, 0.823529, 0.784314, 1)
-theme_override_font_sizes/font_size = 26
+theme_override_colors/font_color = Color(0.8392157, 0.8235294, 0.78431374, 1)
+theme_override_colors/font_outline_color = Color(0.8392157, 0.8235294, 0.78431374, 1)
+theme_override_fonts/font = ExtResource("5_11l36")
+theme_override_font_sizes/font_size = 32
 text = "Rare Sword  ·  Lv 7  ·  Warrior"
 clip_text = true
 text_overrun_behavior = 3
@@ -195,18 +200,18 @@ theme_override_constants/separation = 14
 layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"SecondaryButton"
-text = "Comp"
+text = "Compare"
 
 [node name="Equip" type="Button" parent="Actions" unique_id=1718539194]
 layout_mode = 2
 size_flags_horizontal = 3
-text = "Eq"
+text = "Equip"
 
 [node name="Unequip" type="Button" parent="Actions" unique_id=1424229406]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_type_variation = &"SecondaryButton"
-text = "Uneq"
+text = "Unequip"
 
 [node name="Buy" type="Button" parent="Actions" unique_id=721002826]
 layout_mode = 2
