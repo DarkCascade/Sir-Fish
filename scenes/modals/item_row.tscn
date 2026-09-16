@@ -123,7 +123,6 @@ text_overrun_behavior = 3
 [node name="MetaLabel" type="Label" parent="Body/Content/Strip/Info" unique_id=679541514]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.8392157, 0.8235294, 0.78431374, 1)
-theme_override_colors/font_outline_color = Color(0.8392157, 0.8235294, 0.78431374, 1)
 theme_override_fonts/font = ExtResource("5_11l36")
 theme_override_font_sizes/font_size = 32
 text = "Rare Sword  ·  Lv 7  ·  Warrior"
@@ -166,13 +165,14 @@ mouse_filter = 2
 layout_mode = 2
 theme_override_colors/font_color = Color(0.937255, 0.839216, 0.580392, 1)
 theme_override_font_sizes/font_size = 54
-text = "58"
+text = "100"
 horizontal_alignment = 2
 
 [node name="Unit" type="Label" parent="Body/Content/Strip/Readout" unique_id=664150863]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.709804, 0.823529, 0.784314, 1)
-theme_override_font_sizes/font_size = 22
+theme_override_fonts/font = ExtResource("5_11l36")
+theme_override_font_sizes/font_size = 28
 text = "DAMAGE"
 horizontal_alignment = 2
 
