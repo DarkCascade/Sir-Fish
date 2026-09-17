@@ -18,14 +18,22 @@ const CATEGORY_ORDER: Array[int] = [
 	Category.XP, Category.ITEMS, Category.GOLD, Category.SCRAP,
 ]
 
-## Uniform draw - the four outcomes average to a 0.875x multiplier and a net
-## zero rating, so the roll is a swing rather than a tax.
-const OUTCOME_POOL: Array[int] = [
-	Outcome.LOSE, Outcome.KEEP, Outcome.KEEP_HALF, Outcome.DOUBLE,
-]
+## The pool a reel draws from depends on how the run ENDED: a wipe cannot pay
+## out and a win cannot come home empty-handed, so DOUBLE is off the table on a
+## defeat and LOSE is off it on a victory. KEEP and KEEP_HALF ride both, which
+## leaves a wipe rolling 0x/0.5x/1x and a win 1x/0.5x/2x - the defeat pool can
+## only ever take, the victory pool can only ever give.
+##
+## Uniform draw within each: a wipe averages 0.5x and a win 1.17x.
+const POOL_DEFEAT: Array[int] = [Outcome.LOSE, Outcome.KEEP, Outcome.KEEP_HALF]
+const POOL_VICTORY: Array[int] = [Outcome.KEEP, Outcome.KEEP_HALF, Outcome.DOUBLE]
 
-static func roll() -> Outcome:
-	return OUTCOME_POOL[RNG.randi_range(0, OUTCOME_POOL.size() - 1)] as Outcome
+static func pool_for(victory: bool) -> Array[int]:
+	return POOL_VICTORY if victory else POOL_DEFEAT
+
+static func roll(victory: bool) -> Outcome:
+	var pool := pool_for(victory)
+	return pool[RNG.randi_range(0, pool.size() - 1)] as Outcome
 
 static func multiplier(outcome: Outcome) -> float:
 	match outcome:

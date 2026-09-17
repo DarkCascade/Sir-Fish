@@ -33,16 +33,19 @@ extends Control
 ## verdict pops in, then Return to Town, then a shorter row set fades in fast
 ## and overlapped. `_victory == true` keeps the original all-at-once reveal.
 ##
-## [party-wipe-consequences] The failure reveal gained a beat between Sir Fish
-## and the verdict: four spoils reels (one per Spoils.Category) that decide what
-## the run actually brings home. THIS SCREEN IS WHERE THE RUN IS SETTLED now -
-## RunController hands over a wipe with its XP still banked and its loose loot
-## still in the inventory, and GameState.apply_spoils() resolves both here, once
-## the reels land. That also makes the verdict a rating rather than a fixed word:
-## the wipe is worth -1, each LOSE another -1 and each DOUBLE +1, and the sum
-## picks the word and its colour (red / yellow / green). A win rolls no reels -
-## victory keeps everything, so it settles with an empty roll (every category
-## defaults to KEEP) and keeps its own heading.
+## [party-wipe-consequences] BOTH reveals gained a beat before the heading: four
+## spoils reels (one per Spoils.Category) that decide what the run actually
+## brings home. THIS SCREEN IS WHERE THE RUN IS SETTLED now - RunController hands
+## over an ending with its XP still banked and its loose loot still in the
+## inventory, and GameState.apply_spoils() resolves both here, once the reels
+## land.
+##
+## Which is also why the heading is no longer a fixed word on either path. Each
+## LOSE is -1 and each DOUBLE +1, and that sum alone picks the word and its
+## colour - red at <= -1, yellow at 0, green at >= 1. Winning or wiping adds
+## nothing of its own to the total because the two POOLS already carry it (see
+## _verdict_points()), so the word rates what the party walked away with rather
+## than restating an outcome the player just watched.
 
 signal dismissed()
 
@@ -63,9 +66,9 @@ var _mode: Mode = Mode.RETRY
 var _victory: bool = false
 
 ## [party-wipe-consequences] The verdict, by rating. What used to be one bank of
-## punch words for every defeat is three, because a wipe that doubled its gold
-## and kept its loot is not an "oof" - see _verdict_points().
-const VERDICT_BAD := ["oof", "nope", "ouch"]
+## punch words for every defeat is three, because a wipe that held on to
+## everything is not an "oof" - see _verdict_points().
+const VERDICT_BAD := ["oof", "whomp whomp", "ouch"]
 const VERDICT_NEUTRAL := ["ok", "welp", "...cool"]
 const VERDICT_GOOD := ["nice", "way to go", "smooth"]
 
@@ -123,15 +126,8 @@ func present(victory: bool) -> void:
 	else:
 		_present_failure()
 
-## [party-wipe-consequences] Victory's heading is known up front; a defeat's is
-## not, because the spoils reels have not rolled yet - see _apply_verdict().
-func _apply_victory_heading(is_quest: bool) -> void:
-	title.text = "QUEST COMPLETE" if is_quest else "LEVEL CLEARED"
-	title.add_theme_font_size_override("font_size", 78)
-	title.add_theme_color_override("font_color", Tuning.C_GOLD)
-
-## The one-word verdict on a defeat, picked from the run's rating rather than
-## from a single bank of punch words (_verdict_points()).
+## The verdict, on BOTH paths - neither heading is known until the reels have
+## rolled, because the roll is what the word is rating (_verdict_points()).
 func _apply_verdict(points: int) -> void:
 	var bank: Array = VERDICT_NEUTRAL
 	var color: Color = Tuning.C_GOLD
@@ -142,7 +138,9 @@ func _apply_verdict(points: int) -> void:
 		bank = VERDICT_GOOD
 		color = Tuning.C_HEAL
 	title.text = bank[RNG.randi_range(0, bank.size() - 1)]
-	title.add_theme_font_size_override("font_size", 96)
+	# The longest words ("whomp whomp", "way to go") run edge to edge at 96 in a
+	# panel this wide, and Title cannot wrap - one size down clears them.
+	title.add_theme_font_size_override("font_size", 96 if title.text.length() <= 8 else 78)
 	title.add_theme_color_override("font_color", color)
 
 func _apply_subtitle(is_quest: bool) -> void:
@@ -203,24 +201,32 @@ func _dismiss() -> void:
 ## touches to 1.0 first, since the SAME long-lived instance may have just run
 ## _present_failure(), which leaves several of them at 0.
 func _present_victory() -> void:
-	# [party-wipe-consequences] A win brings home everything it earned, so there
-	# is nothing to gamble - no reels, and an empty roll, which settles at KEEP
-	# for every category (GameState.apply_spoils). It still has to be SETTLED,
-	# though: banked XP is applied from there now, on both paths.
-	spoils_reels.visible = false
-	_settle_spoils({})
-	_apply_victory_heading(GameState.completed_quest != null)
-
 	scrim.modulate.a = 0.0
 	var s := create_tween()
 	s.tween_property(scrim, "modulate:a", 1.0, 0.5)
 
 	fish.modulate.a = 1.0
-	title.modulate.a = 1.0
 	subtitle.modulate.a = 1.0
 	divider.modulate.a = 1.0
 	primary_button.modulate.a = 1.0
 
+	spoils_reels.visible = true
+	spoils_reels.modulate.a = 0.0
+	title.modulate.a = 0.0
+	# See _present_failure(): a Button that has not faded in still takes clicks,
+	# and dismissing before the roll lands would skip the settlement.
+	primary_button.disabled = true
+
+	# [party-wipe-consequences] A win rolls too, on its own pool - one that can
+	# only hold or improve what the run banked (Spoils.POOL_VICTORY). Everything
+	# downstream of the roll waits for it: the verdict word rates it, and the
+	# stat rows report what it settled on.
+	var outcomes := await _spin_spoils(true)
+	_settle_spoils(outcomes)
+	primary_button.disabled = false
+
+	_apply_verdict(_verdict_points(outcomes))
+	title.modulate.a = 1.0
 	title.pivot_offset = title.size * 0.5
 	title.scale = Vector2(1.6, 1.6)
 	var t := create_tween()
@@ -262,7 +268,7 @@ func _present_failure() -> void:
 
 	# [party-wipe-consequences] What the run brings home is decided here, before
 	# the verdict can be worded - the reels ARE the suspense beat.
-	var outcomes := await _spin_spoils()
+	var outcomes := await _spin_spoils(false)
 	_settle_spoils(outcomes)
 	_apply_verdict(_verdict_points(outcomes))
 	_fill_row_values()
@@ -323,11 +329,11 @@ func _reveal_rows_overlapped(order: Array[StringName]) -> void:
 ## Walks the authored children in order and pairs them with
 ## Spoils.CATEGORY_ORDER, so the reels read left to right in whatever order
 ## quest_result.tscn happens to author them.
-func _spin_spoils() -> Dictionary:
+func _spin_spoils(victory: bool) -> Dictionary:
 	var reels: Array[Node] = spoils_reels.get_children()
 	var count: int = mini(reels.size(), Spoils.CATEGORY_ORDER.size())
 	for i: int in range(count):
-		(reels[i] as SpoilsReel).setup(Spoils.CATEGORY_ORDER[i] as Spoils.Category)
+		(reels[i] as SpoilsReel).setup(Spoils.CATEGORY_ORDER[i] as Spoils.Category, victory)
 
 	await create_tween().tween_property(
 		spoils_reels, "modulate:a", 1.0, _SPOILS_FADE_TIME).finished
@@ -338,7 +344,7 @@ func _spin_spoils() -> Dictionary:
 	var outcomes: Dictionary = {}
 	for i: int in range(count):
 		var reel := reels[i] as SpoilsReel
-		var outcome := Spoils.roll()
+		var outcome := Spoils.roll(victory)
 		outcomes[Spoils.CATEGORY_ORDER[i]] = outcome
 		if i == count - 1:
 			# The last one is awaited in full, so the hold below starts once its
@@ -359,11 +365,18 @@ func _settle_spoils(outcomes: Dictionary) -> void:
 	if GameState.completed_quest != null:
 		SaveGame.save_profile()
 
-## The run's rating: the outcome itself (a wipe -1, a win +1) plus each reel's
-## own contribution. <= -1 reads red, 0 yellow, >= 1 green (_apply_verdict) - so
-## a wipe that doubled two of its four banks comes home a good run.
+## The run's rating, from the reels ALONE. <= -1 reads red, 0 yellow, >= 1 green
+## (_apply_verdict).
+##
+## Winning or wiping deliberately adds nothing of its own. It does not need to:
+## the two pools already carry it, since a wipe can only draw LOSE/KEEP/KEEP_HALF
+## and a win only KEEP/KEEP_HALF/DOUBLE. So a wipe rates between red and yellow
+## and a win between yellow and green, and the word ends up rating what the run
+## WALKED AWAY WITH rather than restating an outcome the player just watched. A
+## wipe that held on to everything is a "welp", not an "oof"; a win that doubled
+## nothing is the same "welp", not a "nice".
 func _verdict_points(outcomes: Dictionary) -> int:
-	var points: int = 1 if _victory else -1
+	var points: int = 0
 	for outcome: int in outcomes.values():
 		points += Spoils.points(outcome as Spoils.Outcome)
 	return points

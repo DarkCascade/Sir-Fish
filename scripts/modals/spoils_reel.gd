@@ -14,10 +14,11 @@ extends VBoxContainer
 
 var outcome: Spoils.Outcome = Spoils.Outcome.KEEP
 
-func setup(category: Spoils.Category) -> void:
+func setup(category: Spoils.Category, victory: bool) -> void:
 	caption.text = Spoils.caption(category)
 	result.text = ""
 	result.modulate.a = 0.0
+	window.set_victory(victory)
 
 func start_spin() -> void:
 	window.start_spin()

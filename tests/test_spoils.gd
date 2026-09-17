@@ -13,6 +13,8 @@ func _ready() -> void:
 	t.guard_user_file(SaveGame.PATH)
 
 	_test_tables(t)
+	_test_pools(t)
+	_test_verdict_range(t)
 	_test_gold_and_scrap(t)
 	_test_xp(t)
 	_test_items(t)
@@ -33,6 +35,52 @@ func _test_tables(t) -> void:
 	t.check(Spoils.points(Spoils.Outcome.KEEP) == 0, "KEEP rates neutral")
 	t.check(Spoils.points(Spoils.Outcome.KEEP_HALF) == 0, "KEEP_HALF rates neutral")
 	t.check(Spoils.points(Spoils.Outcome.DOUBLE) == 1, "DOUBLE rates +1")
+
+## A wipe can only ever take and a win can only ever give. Rolled rather than
+## just table-checked, because roll() drawing from the wrong pool is the way
+## this actually breaks.
+func _test_pools(t) -> void:
+	t.check(not Spoils.pool_for(false).has(Spoils.Outcome.DOUBLE),
+		"a wipe cannot roll DOUBLE")
+	t.check(not Spoils.pool_for(true).has(Spoils.Outcome.LOSE),
+		"a win cannot roll LOSE")
+	t.check(Spoils.pool_for(false).has(Spoils.Outcome.LOSE), "a wipe can roll LOSE")
+	t.check(Spoils.pool_for(true).has(Spoils.Outcome.DOUBLE), "a win can roll DOUBLE")
+
+	var defeat_ok := true
+	var victory_ok := true
+	for i: int in range(400):
+		if Spoils.multiplier(Spoils.roll(false)) > 1.0:
+			defeat_ok = false
+		if Spoils.multiplier(Spoils.roll(true)) < 0.5:
+			victory_ok = false
+	t.check(defeat_ok, "400 defeat rolls never pay out above 1x")
+	t.check(victory_ok, "400 victory rolls never come home empty")
+
+## quest_result.gd rates a run on the reels ALONE, so the pools are the only
+## thing deciding which verdict tiers a run can reach. A wipe has to be able to
+## climb to yellow (it held on to everything) and a win has to be able to fall
+## short of green (it doubled nothing), or the three word banks collapse back
+## into two and the tier that goes unreachable becomes dead content.
+func _test_verdict_range(t) -> void:
+	var defeat := _points_range(Spoils.pool_for(false))
+	var victory := _points_range(Spoils.pool_for(true))
+	t.check(defeat.y == 0,
+		"a wipe tops out at yellow, never green (got %d)" % defeat.y)
+	t.check(defeat.x < 0, "a wipe can still reach red (got %d)" % defeat.x)
+	t.check(victory.x == 0,
+		"a win bottoms out at yellow, never red (got %d)" % victory.x)
+	t.check(victory.y > 0, "a win can still reach green (got %d)" % victory.y)
+
+## Worst and best rating a full set of reels drawing from `pool` can total.
+func _points_range(pool: Array[int]) -> Vector2i:
+	var lo: int = Spoils.points(pool[0] as Spoils.Outcome)
+	var hi: int = lo
+	for outcome: int in pool:
+		lo = mini(lo, Spoils.points(outcome as Spoils.Outcome))
+		hi = maxi(hi, Spoils.points(outcome as Spoils.Outcome))
+	var reels: int = Spoils.CATEGORY_ORDER.size()
+	return Vector2i(lo * reels, hi * reels)
 
 ## Gold and scrap are already in the profile when the roll lands, so the roll has
 ## to settle them as a delta - the failure mode being a double credit.

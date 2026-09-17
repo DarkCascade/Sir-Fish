@@ -39,9 +39,23 @@ var _spinning: bool = false
 var _stopping: bool = false
 var _stop_tween: Tween = null
 
+## Which Spoils pool this reel is drawing from. Filler included: a wipe that
+## flashed DOUBLE on its way past would be promising a payout its pool cannot
+## deliver.
+var _victory: bool = false
+
 func _ready() -> void:
 	_build_strip(Spoils.Outcome.KEEP)
 	set_process(false)
+
+## Rebuilds the strip immediately rather than waiting for the next stop_on():
+## this same window is reused by every presentation, so a reel set to the defeat
+## pool would otherwise spend its whole spin scrolling the PREVIOUS run's
+## victory strip and flashing a DOUBLE it cannot land on.
+func set_victory(value: bool) -> void:
+	_victory = value
+	_build_strip(Spoils.roll(value))
+	queue_redraw()
 
 func _process(delta: float) -> void:
 	if _spinning:
@@ -87,7 +101,7 @@ func stop_on(outcome: Spoils.Outcome, duration: float = 0.42) -> Tween:
 func _build_strip(landed: Spoils.Outcome) -> void:
 	_strip.clear()
 	for i: int in range(STRIP_LEN):
-		_strip.append(Spoils.roll())
+		_strip.append(Spoils.roll(_victory))
 	_target_stop = RNG.randi_range(2, STRIP_LEN - 3)
 	_strip[_target_stop] = landed
 
