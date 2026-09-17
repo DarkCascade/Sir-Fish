@@ -394,10 +394,12 @@ func _run_complete() -> void:
 func _game_over() -> void:
 	state = RunState.GAME_OVER
 	director.stop_combat()
-	# Hold on the battlefield so the player sees the wipe (spec 18.1).
-	await get_tree().create_timer(1.0).timeout
+	# Cinematic hold on the battlefield so the player sees the wipe (spec
+	# 18.1 / PDR party-wipe-cinematic): time slows, the camera pushes in on
+	# whoever fell last, and the world bleeds to grayscale before the result
+	# modal ever opens.
+	await _play_wipe_cinematic()
 	_running = false
-	EventBus.game_over.emit()
 
 	# [levels] See _run_complete()'s matching call - a wipe still keeps every
 	# kill's XP (spec §3.2).
@@ -416,6 +418,37 @@ func _game_over() -> void:
 		SaveGame.save_profile()
 		EventBus.quest_finished.emit(false)
 		return
+
+## [wipe cinematic] EventBus.game_over starts Sir Fish's `slump` clip (both the
+## console's own instance and QuestResult's SummaryFish, which reacts to the
+## same global signal) right as the slowdown begins, so it plays out stretched
+## by WIPE_TIME_SCALE along with the fallen hero's own death animation - no
+## extra sync code needed for either. The camera push and desaturation are
+## driven in real seconds (ignore_time_scale) so their pacing stays authored
+## and predictable regardless of how slow the world gets.
+func _play_wipe_cinematic() -> void:
+	EventBus.game_over.emit()
+
+	var slow_tw := create_tween()
+	slow_tw.set_ignore_time_scale(true)
+	slow_tw.tween_property(Engine, "time_scale", Tuning.WIPE_TIME_SCALE, Tuning.WIPE_TIME_SCALE_RAMP) \
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+
+	var target: Combatant = director.last_fallen_hero()
+	if target != null:
+		world.push_in_on(target.global_position, Tuning.WIPE_CAMERA_PUSH_TIME, true)
+	world.tween_saturation(Tuning.WIPE_DESATURATE_TO, Tuning.WIPE_DESATURATE_TIME, true)
+
+	await get_tree().create_timer(Tuning.WIPE_HOLD_TIME, true, false, true).timeout
+
+	var restore_tw := create_tween()
+	restore_tw.set_ignore_time_scale(true)
+	restore_tw.tween_property(Engine, "time_scale", 1.0, Tuning.WIPE_TIME_SCALE_RESTORE)
+	await restore_tw.finished
+
+	# The result modal's scrim is about to cover the battlefield - safe to
+	# snap the camera/saturation back to their authored home values here.
+	world.reset_wipe_cinematic()
 
 	run_summary.present(false)    # endless / fixed dev path, unchanged
 

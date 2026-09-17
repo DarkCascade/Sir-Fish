@@ -24,6 +24,13 @@ var _shake_time: float = 0.0
 var _shake_duration: float = 0.0
 var _shake_amount: float = 0.0
 
+## [wipe cinematic] The camera's authored framing and the environment's
+## authored saturation, captured once so push_in_on()/tween_saturation() have
+## a home to snap back to via reset_wipe_cinematic().
+var _camera_home_transform: Transform3D
+var _camera_home_fov: float
+var _saturation_home: float
+
 ## Depth fog is enforced here rather than trusted to the .tscn's inline
 ## Environment default, same reason main_layout.gd enforces cam.keep_aspect
 ## instead of leaving it authored: the number that matters lives in Tuning,
@@ -42,6 +49,10 @@ func _ready() -> void:
 	# question Q7 in the perf spec questions doc).
 	if OS.has_feature("web"):
 		env.glow_enabled = false
+
+	_camera_home_transform = camera.transform
+	_camera_home_fov = camera.fov
+	_saturation_home = env.adjustment_saturation
 
 func _process(delta: float) -> void:
 	if _shake_time <= 0.0:
@@ -135,3 +146,47 @@ func tween_brightness(to_value: float, duration: float) -> Tween:
 			env.adjustment_brightness = v,
 		env.adjustment_brightness, to_value, duration)
 	return tween
+
+## [wipe cinematic] Bleeds adjustment_saturation toward `to_value` (0 = fully
+## grayscale). `ignore_time_scale` lets the caller drive this in real seconds
+## even while Engine.time_scale is lowered, or leave it slaved to time_scale
+## like every other idle-process tween.
+func tween_saturation(to_value: float, duration: float,
+		ignore_time_scale: bool = false) -> Tween:
+	var env := world_environment.environment
+	var tween := create_tween()
+	if ignore_time_scale:
+		tween.set_ignore_time_scale(true)
+	tween.tween_method(func(v: float) -> void:
+			env.adjustment_saturation = v,
+		env.adjustment_saturation, to_value, duration)
+	return tween
+
+## [wipe cinematic] Dollies the camera a fraction of the way toward
+## `target_position` and narrows its FOV, without re-aiming - the authored
+## camera angle stays intact, it just moves closer along its own line of
+## sight. Never call this without a matching reset_wipe_cinematic() before the
+## next encounter's camera framing is trusted again.
+func push_in_on(target_position: Vector3, duration: float,
+		ignore_time_scale: bool = false) -> Tween:
+	var from_origin: Vector3 = camera.transform.origin
+	var to_origin: Vector3 = from_origin.lerp(target_position, Tuning.WIPE_CAMERA_PUSH_FRACTION)
+	var to_fov: float = camera.fov * Tuning.WIPE_CAMERA_FOV_MULT
+	var tween := create_tween()
+	if ignore_time_scale:
+		tween.set_ignore_time_scale(true)
+	tween.set_parallel(true)
+	tween.tween_method(func(v: Vector3) -> void:
+			camera.transform.origin = v,
+		from_origin, to_origin, duration).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	tween.tween_property(camera, "fov", to_fov, duration) \
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	return tween
+
+## [wipe cinematic] Snaps the camera and saturation back to their authored
+## home values - called once the result modal's scrim already hides the
+## battlefield, so the cut is invisible.
+func reset_wipe_cinematic() -> void:
+	camera.transform = _camera_home_transform
+	camera.fov = _camera_home_fov
+	world_environment.environment.adjustment_saturation = _saturation_home

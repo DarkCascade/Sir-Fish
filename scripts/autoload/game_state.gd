@@ -40,6 +40,13 @@ var run_stats := {
 	"damage_taken": 0,
 	"slot_spins": 0,
 	"slot_wins": 0,
+	# [run-summary-modal] "X icons hit in Y spins" - X counts every icon
+	# resolution (a payline triple's centre-row repeats count twice, matching
+	# what the player actually sees pulse); Y counts only spins where at least
+	# one icon resolved, which naturally excludes a spin still spinning when
+	# the battle ends.
+	"slot_icons_hit": 0,
+	"slot_spins_resolved": 0,
 	"items_found": 0,
 	"items_sold": 0,
 	"items_dropped": 0,       # [drops] drop-only subset of items_found, for the summary
