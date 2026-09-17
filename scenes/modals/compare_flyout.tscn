@@ -257,7 +257,7 @@ theme_override_constants/separation = 4
 layout_mode = 2
 theme_override_colors/font_color = Color(0.709804, 0.823529, 0.784314, 1)
 theme_override_font_sizes/font_size = 30
-text = "Rare Sword  ·  Lv 7  ·  Warrior"
+text = "Rare Sword  -  Lv 7  -  Warrior"
 autowrap_mode = 3
 
 ; "replacing Fat Blade (Lv 5)", or what stands in for it when there is nothing

@@ -1,6 +1,6 @@
 [gd_resource type="Theme" format=3 uid="uid://b2apiaquobtkx"]
 
-[ext_resource type="FontVariation" path="res://assets/display_font.tres" id="1_display"]
+[ext_resource type="FontVariation" uid="uid://dvsr1ekxw0dwk" path="res://assets/display_font.tres" id="1_display"]
 [ext_resource type="FontVariation" path="res://assets/body_font.tres" id="2_body"]
 
 [sub_resource type="StyleBoxFlat" id="btn_disabled"]

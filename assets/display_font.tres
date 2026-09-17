@@ -1,12 +1,7 @@
-[gd_resource type="FontVariation" format=3 load_steps=2]
+[gd_resource type="FontVariation" format=3 uid="uid://dvsr1ekxw0dwk"]
 
-[ext_resource type="FontFile" path="res://assets/fonts/Cinzel-VariableFont.ttf" id="1_cinzel"]
+[ext_resource type="FontFile" uid="uid://c0000qslynpqp" path="res://assets/fonts/Cinzel-VariableFont.ttf" id="1_cinzel"]
 
-; [presentation redesign] Cinzel (Google Fonts, SIL Open Font License - see
-; assets/fonts/Cinzel-OFL.txt), replacing Baloo 2 ExtraBold. Cinzel has no
-; lowercase - its "lowercase" glyphs ARE small caps - so every heading string
-; keeps its natural mixed case rather than being upper-cased in script; that
-; mixed case is what produces the two-tier engraved-caps look.
 [resource]
 base_font = ExtResource("1_cinzel")
 variation_opentype = {

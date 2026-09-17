@@ -32,7 +32,7 @@ const ACTION_IDS: Array[StringName] = [&"compare", &"equip", &"unequip", &"buy",
 ## still overruns at the floor gets an ellipsis - the label is single-line with
 ## clip_text on and can never wrap, because a second line would change the
 ## strip's height and break the uniform list.
-const NAME_SIZE_MAX := 38
+const NAME_SIZE_MAX := 52
 const NAME_SIZE_MIN := 24
 
 ## The strip's floor. setup() raises it to whatever the content actually needs
@@ -112,13 +112,62 @@ func action_button(id: StringName) -> Button:
 ## because "show me this item against what I am wearing" is exactly what the
 ## Compare button used to ask for - so every host's existing handler already
 ## knows what to do with it, and the button itself can retire from the lists.
+##
+## This is the one shared list entry (see the class doc), so its input handling
+## is every host list's scroll behaviour, and it used to fire on the PRESS event
+## and immediately accept_event() it. On a touch screen that is fatal to
+## scrolling: the press that starts a drag-to-scroll gesture is the exact same
+## event, and consuming it here meant the ScrollContainer above never saw the
+## touch begin, so it had nothing to track once the finger moved. A real tap and
+## the first few pixels of a scroll swipe are indistinguishable until the finger
+## either lifts or travels - so the press no longer commits to anything. It only
+## records where the gesture started, and accept_event() moves to the release,
+## firing `compare` (and consuming the event, to stop the scroll container from
+## also intercepting it - see _drag_forwarded) only if that release lands within
+## TAP_DRAG_THRESHOLD of the start. Cross the threshold first and the gesture is
+## read as a scroll, not a tap, and it fires nothing.
+const TAP_DRAG_THRESHOLD := 16.0
+
+var _press_active := false
+var _press_pos := Vector2.ZERO
+var _drag_forwarded := false
+
 func _on_body_input(event: InputEvent) -> void:
-	var tapped := (event is InputEventMouseButton and (event as InputEventMouseButton).pressed \
-			and (event as InputEventMouseButton).button_index == MOUSE_BUTTON_LEFT) \
-		or (event is InputEventScreenTouch and (event as InputEventScreenTouch).pressed)
-	if tapped:
-		action_pressed.emit(&"compare")
-		_body.accept_event()
+	if event is InputEventScreenTouch:
+		var t := event as InputEventScreenTouch
+		if t.pressed:
+			_press_active = true
+			_drag_forwarded = false
+			_press_pos = t.position
+		elif _press_active:
+			_press_active = false
+			if not _drag_forwarded:
+				action_pressed.emit(&"compare")
+				_body.accept_event()
+	elif event is InputEventScreenDrag:
+		_track_drag((event as InputEventScreenDrag).position)
+	elif event is InputEventMouseButton:
+		var mb := event as InputEventMouseButton
+		if mb.button_index != MOUSE_BUTTON_LEFT:
+			return
+		if mb.pressed:
+			_press_active = true
+			_drag_forwarded = false
+			_press_pos = mb.position
+		elif _press_active:
+			_press_active = false
+			if not _drag_forwarded:
+				action_pressed.emit(&"compare")
+				_body.accept_event()
+	elif event is InputEventMouseMotion and _press_active:
+		_track_drag((event as InputEventMouseMotion).position)
+
+## Once a gesture has travelled past the threshold it is committed as a scroll
+## for the rest of the press - `_drag_forwarded` latches so a finger that drifts
+## back within TAP_DRAG_THRESHOLD before lifting still cannot fire a tap.
+func _track_drag(pos: Vector2) -> void:
+	if _press_active and not _drag_forwarded and pos.distance_to(_press_pos) > TAP_DRAG_THRESHOLD:
+		_drag_forwarded = true
 
 ## Pips authors three slots - RARITY_MOD_COUNT tops out at 3 - and this shows
 ## the first `modifiers.size()` of them rather than building nodes at runtime,
