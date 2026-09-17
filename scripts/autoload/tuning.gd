@@ -19,6 +19,20 @@ const COOLDOWN_START_JITTER := 0.10       # +/-10% (spec 21-D2)
 const HURT_ANIM_TIME := 0.30
 const DEAD_HERO_EXIT_TIME := 1.6          # dead heroes slide off the left edge
 const ENCOUNTER_RESOLVE_PAUSE := 0.8      # beat between "cleared" and travel starting
+## [wipe cinematic] Replaces the old flat 1.0s post-wipe hold (spec 18.1).
+## The ramp/restore pair ignores Engine.time_scale (authored in real seconds);
+## the hold, camera push and desaturation run at WIPE_TIME_SCALE, so the
+## fallen hero's own death animation and Sir Fish's slump both play out
+## slowed for free, with no extra sync code.
+const WIPE_TIME_SCALE := 0.2              # how slow the world crawls during the hold
+const WIPE_TIME_SCALE_RAMP := 0.25        # real seconds easing down to WIPE_TIME_SCALE
+const WIPE_TIME_SCALE_RESTORE := 0.2      # real seconds easing back to 1.0
+const WIPE_HOLD_TIME := 1.6               # real seconds spent at WIPE_TIME_SCALE
+const WIPE_CAMERA_PUSH_FRACTION := 0.45   # how far toward the fallen hero the camera dollies
+const WIPE_CAMERA_FOV_MULT := 0.7         # narrows FOV for the push-in
+const WIPE_CAMERA_PUSH_TIME := 1.1        # game seconds for the dolly/FOV tween
+const WIPE_DESATURATE_TO := 0.0           # fully grayscale
+const WIPE_DESATURATE_TIME := 1.3         # game seconds to bleed out color
 ## [overworld prototype] How long a shop encounter holds on the building when
 ## the UI is hidden and there is no modal to open (RunController._run_shop).
 const SHOP_SKIP_HOLD := 1.8

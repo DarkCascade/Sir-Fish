@@ -11,6 +11,11 @@ var enemies: Array[Combatant] = []
 var _active: bool = false
 var _resolving: bool = false
 
+## [wipe cinematic] Whichever hero this loop processes last before the party
+## empties out - overwritten on every hero death, so it always names the one
+## _check_resolution() catches the party wipe on.
+var _last_hero_died: Combatant = null
+
 ## [drops] Items banked from enemies killed in the current fight, as
 ## {item: Item, position: Vector3}. See §5's note on why the roll and the award
 ## happen at different times.
@@ -60,6 +65,8 @@ func _ready() -> void:
 	EventBus.combatant_died.connect(_on_combatant_died)
 
 func _on_combatant_died(c) -> void:
+	if c is Combatant and c.is_hero:
+		_last_hero_died = c
 	if _active and c is Combatant and enemies.has(c):
 		_roll_drop(c)
 		# [town] spec 9: gold + scrap arc off the corpse now, during the hold, not
@@ -530,6 +537,13 @@ func dead_heroes() -> Array[Combatant]:
 		if is_instance_valid(c) and not c.is_alive():
 			out.append(c)
 	return out
+
+## [wipe cinematic] Null-safe: cleared party rosters between runs never leave
+## a stale reference alive here, but check anyway before using it.
+func last_fallen_hero() -> Combatant:
+	if _last_hero_died != null and is_instance_valid(_last_hero_died):
+		return _last_hero_died
+	return null
 
 # --- resolution -------------------------------------------------------------
 

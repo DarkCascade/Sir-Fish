@@ -395,6 +395,10 @@ func _resolve_board(jackpot_id: StringName) -> void:
 	# only, never BLOCK.
 	var swing := 0
 	var block := 0
+	# [run-summary-modal] "X icons hit in Y spins" - live-incremented per icon
+	# resolution rather than tallied at the end, so a spin the wipe cuts off
+	# mid-resolve still counts whatever it actually resolved before that.
+	var any_icon_resolved := false
 	for idx: int in range(_board.size()):
 		var ic: Dictionary = _board[idx]
 		var id := StringName(ic.get("id", &""))
@@ -405,6 +409,8 @@ func _resolve_board(jackpot_id: StringName) -> void:
 		var repeats := 2 if (jackpot_id != &"" and idx >= 3 and idx <= 5) else 1
 		for _r: int in range(repeats):
 			_pulse_cell(idx)
+			any_icon_resolved = true
+			GameState.run_stats["slot_icons_hit"] = int(GameState.run_stats["slot_icons_hit"]) + 1
 			if kind == SlotIcon.Kind.DAMAGE:
 				# [balance pass] Flat per-icon floor on top of the rolled value.
 				var contribution := maxi(1, int(round(float(int(ic.get("roll", 0))) * mult))) \
@@ -435,6 +441,9 @@ func _resolve_board(jackpot_id: StringName) -> void:
 				total_damage += out.x
 				total_heal += out.y
 			await get_tree().create_timer(Tuning.AOE_STAGGER).timeout
+
+	if any_icon_resolved:
+		GameState.run_stats["slot_spins_resolved"] = int(GameState.run_stats["slot_spins_resolved"]) + 1
 
 	if swing > 0:
 		total_damage += await _hero_swing(swing)
