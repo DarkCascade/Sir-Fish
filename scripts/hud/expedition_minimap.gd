@@ -37,18 +37,29 @@ func _ready() -> void:
 	_rebuild()
 
 func _rebuild() -> void:
-	_encounters = GameState.level.encounters if GameState.level != null else []
+	_read_encounters()
 	_current_index = GameState.current_encounter_index
 	queue_redraw()
 
 func _on_encounter_started(index: int, _def: EncounterDef) -> void:
-	_encounters = GameState.level.encounters if GameState.level != null else []
+	_read_encounters()
 	_current_index = index
 	_marker_pop = 1.0
 	var tw := create_tween()
 	tw.tween_method(_set_pop, 1.0, 0.0, 0.4) \
 		.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	queue_redraw()
+
+## A ternary here evaluates its `[]` branch as plain untyped Array, not
+## Array[EncounterDef] - assigning that into _encounters throws a runtime type
+## error the moment GameState.level is null, which it always is at boot
+## (Hud._ready() runs before any expedition exists). An if/else sidesteps the
+## inference entirely instead of fighting it with a cast.
+func _read_encounters() -> void:
+	if GameState.level != null:
+		_encounters = GameState.level.encounters
+	else:
+		_encounters.clear()
 
 func _set_pop(v: float) -> void:
 	_marker_pop = v
@@ -99,10 +110,13 @@ func _color_for(enc: EncounterDef) -> Color:
 ## settles to its resting size.
 func _draw_party_marker(at: Vector2, is_boss: bool) -> void:
 	var clearance := (BOSS_RADIUS if is_boss else MARKER_RADIUS) + 10.0
-	var scale := 1.0 + _marker_pop * 0.5
+	# Named pop_scale, not scale - Control already has a `scale` property
+	# (Vector2), and shadowing it here was a standing warning even though
+	# nothing read the real one.
+	var pop_scale := 1.0 + _marker_pop * 0.5
 	var tip := at + Vector2(0, -clearance)
-	var w := 7.0 * scale
-	var h := 11.0 * scale
+	var w := 7.0 * pop_scale
+	var h := 11.0 * pop_scale
 	draw_colored_polygon(PackedVector2Array([
 		tip, tip + Vector2(-w, -h), tip + Vector2(w, -h),
 	]), Tuning.C_GOLD_BRIGHT)
