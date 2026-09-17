@@ -140,11 +140,13 @@ var hero_xp: Dictionary = {}
 ## expedition end (spec §3.2) - a hero's power never changes mid-fight. Tallied
 ## by the kill hook in BattleDirector, applied by apply_expedition_xp().
 ## Unlike expedition_gold/scrap (which credit the profile immediately on
-## pickup and so survive a wipe on their own), this field IS the thing that
-## survives a wipe: apply_expedition_xp() runs on every expedition end,
-## victory or defeat, mirroring the existing "gold/scrap earned mid-run is
-## never clawed back" rule rather than the "loose loot is discarded" one -
-## killing enemies before a wipe should count for something.
+## pickup), this stays banked until the expedition ends - which makes it the one
+## bank the spoils roll can scale directly rather than by a delta.
+##
+## [party-wipe-consequences] apply_expedition_xp() is no longer called by
+## RunController. apply_spoils() scales this field by the XP reel and then
+## applies it, on every expedition end, victory or defeat. A win rolls no reels
+## and so still keeps every point, as it always did.
 var expedition_xp: int = 0
 
 ## [inn & recovery] The meal buff. Percent added to every hero's damage for the
@@ -1148,6 +1150,84 @@ func discard_expedition_loot() -> void:
 	for i: int in range(inventory.size() - 1, _expedition_inventory_mark - 1, -1):
 		if inventory[i].equipped_by == &"" and inventory[i].kind != Item.Kind.RELIC:
 			inventory.remove_at(i)
+	EventBus.party_bonuses_changed.emit(party_bonuses())
+
+# --- [party-wipe-consequences] the spoils roll ------------------------------
+
+## Applies the run summary's four-reel roll: `outcomes` maps each
+## Spoils.Category to the Spoils.Outcome its reel landed on. Called once, by
+## quest_result.gd, after the reels resolve and before the rows are filled - so
+## every "brought home" number the modal then prints is the post-roll truth.
+##
+## The four banks settle differently because they are banked differently. Gold
+## and scrap hit the profile the moment they were picked up (add_expedition_gold),
+## so they settle as a DELTA against what the expedition tallied rather than
+## being paid out a second time. XP is the opposite: it sits untouched in
+## expedition_xp until here, which is why RunController stopped calling
+## apply_expedition_xp() itself. Items are neither - they are already in the
+## inventory, so the roll only decides how many stay.
+func apply_spoils(outcomes: Dictionary) -> void:
+	expedition_xp = int(float(expedition_xp) * _spoils_mult(outcomes, Spoils.Category.XP))
+	apply_expedition_xp()
+
+	_settle_expedition_loot(outcomes.get(Spoils.Category.ITEMS, Spoils.Outcome.KEEP))
+
+	var gold_delta := _spoils_delta(expedition_gold, _spoils_mult(outcomes, Spoils.Category.GOLD))
+	if gold_delta != 0:
+		gold = maxi(0, gold + gold_delta)
+		# gold_earned is always >= expedition_gold (add_expedition_gold routes
+		# through add_gold), so this can never drive the run's net gold negative
+		# on its own - and leaving it alone would print a NetGold row that the
+		# reel just made untrue.
+		run_stats["gold_earned"] = maxi(0, int(run_stats["gold_earned"]) + gold_delta)
+		expedition_gold += gold_delta
+		EventBus.gold_changed.emit(gold, gold_delta)
+
+	var scrap_delta := _spoils_delta(expedition_scrap, _spoils_mult(outcomes, Spoils.Category.SCRAP))
+	if scrap_delta != 0:
+		scrap = maxi(0, scrap + scrap_delta)
+		expedition_scrap += scrap_delta
+		EventBus.scrap_changed.emit(scrap, scrap_delta)
+
+## How many inventory entries the expedition is actually bringing back - what is
+## left at or past _expedition_inventory_mark once the ITEMS reel has settled.
+## Counts the equipped and RELIC entries the roll cannot touch, and the fresh
+## batch a DOUBLE rolls, so it is "brought home" rather than "found".
+func expedition_items_held() -> int:
+	return maxi(0, inventory.size() - _expedition_inventory_mark)
+
+func _spoils_mult(outcomes: Dictionary, category: Spoils.Category) -> float:
+	return Spoils.multiplier(outcomes.get(category, Spoils.Outcome.KEEP))
+
+func _spoils_delta(banked: int, mult: float) -> int:
+	return int(float(banked) * mult) - banked
+
+## The ITEMS reel, applied to the loose expedition haul - the same set
+## discard_expedition_loot() drops, under the same equipped/RELIC exemptions.
+## DOUBLE cannot clone the haul (two of the same sword is not a reward), so it
+## rolls a second batch of the same size at the party's current item level.
+func _settle_expedition_loot(outcome: Spoils.Outcome) -> void:
+	var loose: Array[int] = []
+	for i: int in range(_expedition_inventory_mark, inventory.size()):
+		if inventory[i].equipped_by == &"" and inventory[i].kind != Item.Kind.RELIC:
+			loose.append(i)
+	if loose.is_empty():
+		return
+
+	match outcome:
+		Spoils.Outcome.DOUBLE:
+			for item: Item in Itemizer.generate_items(loose.size()):
+				add_item(item)
+		Spoils.Outcome.KEEP_HALF, Spoils.Outcome.LOSE:
+			# Half ROUNDS UP what the player keeps: a lone item surviving reads as
+			# "half", while rounding down would make a single find indistinguishable
+			# from LOSE.
+			var keep: int = 0 if outcome == Spoils.Outcome.LOSE \
+				else int(ceil(float(loose.size()) * 0.5))
+			# Backwards, so each remove_at() leaves the lower indices valid.
+			for i: int in range(loose.size() - 1, keep - 1, -1):
+				inventory.remove_at(loose[i])
+
 	EventBus.party_bonuses_changed.emit(party_bonuses())
 
 # --- [inn & recovery] coming home, the bed and the meal ---------------------

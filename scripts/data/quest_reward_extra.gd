@@ -10,9 +10,13 @@ extends Resource
 ##
 ## Two traps recorded for whoever adds an XP or scrap subclass (spec §3 Step
 ## 1b; RecruitRewardExtra hits neither):
-##   - Bank an XP extra into GameState.expedition_xp BEFORE _run_complete()
-##     calls apply_expedition_xp(), or grant() it straight to the hero -
-##     apply_expedition_xp() runs first and zeroes expedition_xp right after.
+##   - [party-wipe-consequences] An XP extra may now bank into
+##     GameState.expedition_xp and it will land: apply_expedition_xp() moved out
+##     of _run_complete() and into GameState.apply_spoils(), which the result
+##     modal drives AFTER grant() has run. It used to run first and strand
+##     anything banked here. Note that a wipe's XP reel can scale what is banked;
+##     grant() straight to the hero to keep a reward off that table (and reward
+##     extras only ever run on victory, whose roll is always KEEP anyway).
 ##   - A ScrapRewardExtra amends "scrap comes only from combat pickups"
 ##     (quest_def.gd / the town spec's own comment) - update both comments in
 ##     the same commit that ships one.

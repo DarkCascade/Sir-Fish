@@ -358,10 +358,9 @@ func _run_complete() -> void:
 	_running = false
 	EventBus.run_completed.emit()
 
-	# [levels] Banked kill XP is applied here, before the quest/endless branch
-	# below - a win or a loss both reach this point, and a hero's power should
-	# never be clawed back for a wipe any more than banked scrap is (spec §3.2).
-	GameState.apply_expedition_xp()
+	# [party-wipe-consequences] Banked kill XP is NOT applied here any more - the
+	# result modal's spoils roll has to be able to scale it, so
+	# GameState.apply_spoils() applies it. Both endings reach the modal.
 
 	# [town] spec 8.5 victory. RunController does the synchronous profile work
 	# and emits; QuestResult (a persistent Hud child, unlike this scene) does the
@@ -401,15 +400,13 @@ func _game_over() -> void:
 	await _play_wipe_cinematic()
 	_running = false
 
-	# [levels] See _run_complete()'s matching call - a wipe still keeps every
-	# kill's XP (spec §3.2).
-	GameState.apply_expedition_xp()
-
-	# [town] spec 8.5 failure: keep banked gold and scrap, drop every unequipped
-	# item found this trip, then hand off to QuestResult exactly as victory does
-	# (see _run_complete()'s comment for why the route is not driven from here).
+	# [town] spec 8.5 failure, minus the settlement: a wipe used to keep all its
+	# banked XP and drop every unequipped item unconditionally, and both are the
+	# spoils roll's to decide now, so GameState.apply_spoils() does it from the
+	# modal. Gold and scrap are still banked on pickup and adjusted from there.
+	# Handing off to QuestResult is otherwise exactly what victory does (see
+	# _run_complete()'s comment for why the route is not driven from here).
 	if GameState.quest != null:
-		GameState.discard_expedition_loot()
 		GameState.completed_quest = GameState.quest
 		GameState.quest = null
 		# [inn & recovery] A wipe still gets the party home: every hero up to at
