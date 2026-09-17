@@ -54,7 +54,6 @@ theme_override_styles/hover = SubResource("StyleBoxEmpty_hit")
 theme_override_styles/focus = SubResource("StyleBoxEmpty_hit")
 
 [node name="ItemForgeButton" type="Button" parent="." unique_id=975102079]
-visible = false
 layout_mode = 0
 offset_left = 376.0
 offset_top = 886.0
