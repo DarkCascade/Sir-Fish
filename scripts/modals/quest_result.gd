@@ -196,11 +196,15 @@ func _dismiss() -> void:
 	if _mode != Mode.RETRY:
 		SceneRouter.go(SceneRouter.Place.TOWN)
 
-## The original all-at-once reveal (spec 8.5): scrim wash, title overshoot,
-## stat rows sliding in staggered. Explicitly resets every alpha this screen
-## touches to 1.0 first, since the SAME long-lived instance may have just run
+## The all-at-once reveal (spec 8.5): scrim wash, everything already on the page,
+## title overshoot. Explicitly resets every alpha this screen touches to 1.0
+## first, since the SAME long-lived instance may have just run
 ## _present_failure(), which leaves several of them at 0.
 func _present_victory() -> void:
+	# Up front, opaque, and filled with what the run banked - a win shows its
+	# stats THROUGH the spin rather than after it (_show_victory_rows).
+	_show_victory_rows()
+
 	scrim.modulate.a = 0.0
 	var s := create_tween()
 	s.tween_property(scrim, "modulate:a", 1.0, 0.5)
@@ -218,12 +222,13 @@ func _present_victory() -> void:
 	primary_button.disabled = true
 
 	# [party-wipe-consequences] A win rolls too, on its own pool - one that can
-	# only hold or improve what the run banked (Spoils.POOL_VICTORY). Everything
-	# downstream of the roll waits for it: the verdict word rates it, and the
-	# stat rows report what it settled on.
+	# only hold or improve what the run banked (Spoils.POOL_VICTORY). Only the
+	# verdict waits for it; the rows are already up, and just take their new
+	# numbers in place.
 	var outcomes := await _spin_spoils(true)
 	_settle_spoils(outcomes)
 	primary_button.disabled = false
+	_fill_row_values()
 
 	_apply_verdict(_verdict_points(outcomes))
 	title.modulate.a = 1.0
@@ -232,8 +237,6 @@ func _present_victory() -> void:
 	var t := create_tween()
 	t.tween_property(title, "scale", Vector2.ONE, 0.35) \
 		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-
-	_build_stats()
 
 ## [run-summary-modal] Any defeat (spec: PDR party-wipe-cinematic /
 ## run-summary-modal): blank, Sir Fish's tank fades in over his own
@@ -381,15 +384,24 @@ func _verdict_points(outcomes: Dictionary) -> int:
 		points += Spoils.points(outcome as Spoils.Outcome)
 	return points
 
-## Fills in the authored rows and plays them in one at a time. The three quest
-## rows (QuestReward / ExpeditionGold / ExpeditionScrap) are shown only on a
-## quest ending, and QuestReward only on a win. Victory-only - see
-## _prepare_failure_rows() for the failure reveal's own, shorter row set.
+## Puts the victory row set up, filled and fully opaque, BEFORE anything spins.
+## The three quest rows (QuestReward / ExpeditionGold / ExpeditionScrap) are
+## shown only on a quest ending, and QuestReward only on a win. Victory-only -
+## see _prepare_failure_rows() for the failure reveal's own, shorter row set.
+##
+## [party-wipe-consequences] These used to slide in one at a time after the
+## heading. A win now reads its stats while the reels are still turning, and the
+## numbers the reels touch change in place when the roll lands (_present_victory
+## re-fills them) - so the player watches "Gold brought home" double rather than
+## being told about it afterwards. Nothing animates them in a second time.
+##
+## The alphas have to be asserted rather than assumed: the SAME long-lived
+## instance may have just run _present_failure(), which leaves every row at 0.
 ##
 ## The slot-win PERCENTAGE stays deliberately absent (spec 18.2 / 17.8 / Q24):
 ## at ~20 spins one sigma is ~11 points, so a healthy machine can print "33%"
 ## and read as rigged. Raw count here; the 50% check lives in test_slot_odds.
-func _build_stats() -> void:
+func _show_victory_rows() -> void:
 	var is_quest: bool = GameState.completed_quest != null
 	_row_visible(&"QuestReward", is_quest and _victory)
 	_row_visible(&"ExpeditionGold", is_quest)
@@ -399,18 +411,8 @@ func _build_stats() -> void:
 	_rebuild_reward_extra_rows(is_quest and _victory)
 	_fill_row_values()
 
-	var i := 0
 	for row: Control in stat_rows.get_children():
-		if not row.visible:
-			continue
-		# Reveal one at a time, 0.08s apart, sliding in from the left.
-		row.modulate.a = 0.0
-		row.position.x = -60.0
-		var tw: Tween = row.create_tween().set_parallel(true)
-		tw.tween_property(row, "modulate:a", 1.0, 0.2).set_delay(0.08 * float(i))
-		tw.tween_property(row, "position:x", 0.0, 0.25).set_delay(0.08 * float(i)) \
-			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-		i += 1
+		row.modulate.a = 1.0
 
 ## Every row this screen can show, keyed by node NAME - both present() paths
 ## call this and let it just leave stale text sitting under a hidden row.
