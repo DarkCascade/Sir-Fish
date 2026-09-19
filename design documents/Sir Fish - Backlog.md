@@ -745,20 +745,26 @@ or sequenced against P1–P4.
 
 **Town / blacksmith**
 
-- **Closing the Hud-level inventory modal over the blacksmith screen should refresh
-  the Forge tab.** `blacksmith.gd` already has `_on_equip_changed()` (rebuilds Forge/
-  Scrap/Sell and saves), but it's only ever called from the blacksmith's own Scrap/Sell
-  item rows (`_on_item_action()`'s `equip`/`unequip` branch) - not from an equip made
-  through the Hud's inventory modal (`scripts/modals/inventory_modal.gd`, which has no
-  `closed` signal today and nothing in `blacksmith.gd` listens for it). So equipping a
-  different item there while standing in the blacksmith, then closing the modal, leaves
-  the Forge tab showing the stale equipped set until the player leaves and re-enters.
-  Likely fix: either give `inventory_modal.gd` a `closed` signal `blacksmith.gd`
-  connects to `_on_equip_changed()`, or have `blacksmith.gd` connect straight to
-  `EventBus.item_equipped` (what `GameState.equip_item()` already emits) the way
-  `_on_currency_changed()` listens to `EventBus.gold_changed`/`scrap_changed` - the
-  latter is more robust since it covers equip changes from anywhere, not just this one
-  modal.
+- ~~**Closing the Hud-level inventory modal over the blacksmith screen should refresh
+  the Forge tab.**~~ **Done 2026-09-15** (`079eb2a`). The symptom was that
+  `_on_equip_changed()` (rebuilds Forge/Scrap/Sell and saves) was only reachable from
+  the blacksmith's own Scrap/Sell rows, so an equip made through the Hud's inventory
+  modal left the Forge tab showing the stale equipped set until the player left and
+  re-entered. Took the second of the two options sketched here - `blacksmith.gd`
+  `_ready()` now connects `EventBus.item_equipped`/`item_unequipped` to
+  `_on_item_equip_event()`, which routes to `_on_equip_changed()`, the way
+  `_on_currency_changed()` already listened to `gold_changed`/`scrap_changed`. That
+  covers equip changes from *any* caller, so `inventory_modal.gd` needed no `closed`
+  signal and no new coupling to the blacksmith.
+
+  Two corrections to the sketch above, both found in the doing. `item_equipped` existed
+  but had **no listeners at all** - it was the deliberate-equip hook from town spec 3.3,
+  emitted and unused. And there was no `item_unequipped` counterpart: the fix added the
+  signal to `event_bus.gd` and its emit to `GameState.unequip_item()`, without which
+  unequipping through the modal would still have gone unnoticed. `_on_item_action()`'s
+  `equip`/`unequip` branch also dropped its direct `_on_equip_changed()` call, since the
+  signal now carries it and keeping both would have rebuilt all three tabs twice per
+  change.
 
 ---
 
