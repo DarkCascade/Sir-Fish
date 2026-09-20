@@ -105,10 +105,9 @@ func _accept(q: QuestDef) -> void:
 ## [recruitment] A recruitment quest is ALSO filtered a second way, by
 ## outcome rather than by id: once its class is in active_party, re-offering
 ## it would be a lie the board tells, whether or not the quest was authored
-## one_shot. This is what actually retires recruit_mage.tres, which ships
-## with neither unlock_level nor one_shot set (a deliberate low-level, always-
-## offered pacing - see backlog §2) - so a future second recruitment quest
-## needs no edit here even if it skips the unlock_level/one_shot fields too.
+## one_shot. This is what actually retires recruit_mage.tres, which is gated
+## (unlock_level = 5) but ships without one_shot - so a future second
+## recruitment quest needs no edit here even if it skips the one_shot field.
 ##
 ## Restored 2026-09-20: the unlock_level/one_shot/completed_quest_ids checks
 ## below were dropped when _already_recruited() was added (both landed on

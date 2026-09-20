@@ -21,10 +21,21 @@ extends QuestRewardExtra
 ## Left empty, the recruit simply joins bare-handed.
 @export var token_weapon_type: StringName = &""
 
+## The level the recruit joins at - the level their quest unlocks at (ranger 3,
+## mage 5), NOT the party's best level. hero_level() treats a missing entry as
+## level 1, so without this a recruit joined at level 1 whatever the party had
+## reached, and (every member earning the full expedition_xp) trailed by the same
+## XP for good. Never lowers a level the class already has. 1 leaves the
+## recruit at the default, i.e. no change.
+@export var join_level: int = 1
+
 func grant() -> void:
 	if hero_class == &"" or GameState.active_party.has(hero_class):
 		return
 	GameState.active_party.append(hero_class)
+	if join_level > GameState.hero_level(hero_class):
+		GameState.hero_levels[hero_class] = join_level
+		GameState.hero_xp[hero_class] = 0
 	if token_weapon_type == &"":
 		return
 	for item: Item in GameState.inventory:
@@ -39,8 +50,13 @@ func kind() -> StringName:
 	return &"recruit"
 
 func _to_dict_extra() -> Dictionary:
-	return { "hero_class": hero_class, "token_weapon_type": token_weapon_type }
+	return {
+		"hero_class": hero_class,
+		"token_weapon_type": token_weapon_type,
+		"join_level": join_level,
+	}
 
 func _from_dict_extra(data: Dictionary) -> void:
 	hero_class = StringName(data.get("hero_class", &""))
 	token_weapon_type = StringName(data.get("token_weapon_type", &""))
+	join_level = int(data.get("join_level", 1))

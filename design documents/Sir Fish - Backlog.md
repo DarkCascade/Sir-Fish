@@ -8,14 +8,15 @@
 > decisions were settled in review on 2026-09-13, and spike S1 was run the same day
 > (§4). P5 is an unscoped list of small polish items.
 >
-> **P1 and P2 are built and tested.** P2 was built the same day as P1 (2026-09-14) and
-> went unrecorded here until the 2026-09-20 audit, which also found and fixed two P1
-> regressions that P2's commit had introduced (§1 "Found and fixed"). The balance question
-> P1 left open is now measured: `test_level_curves` models warrior + recruits, and recruits
-> make the early game easier without leaving the solo bands (§1 "Balance check"). What is
-> still open on P1 and P2 is design, not code: recruits join at level 1, the ranger never
-> animates on her starting kit, the mage quest is not gated to level 5, and nothing scales
-> enemies with party size. §7 collects every decision with its status.
+> **P1 and P2 are built and tested, and their design calls are settled.** P2 was built the
+> same day as P1 (2026-09-14) and went unrecorded here until the 2026-09-20 audit, which
+> also found and fixed two P1 regressions that P2's commit had introduced (§1 "Found and
+> fixed"). The balance question P1 left open is now measured: `test_level_curves` models
+> warrior + recruits, and recruits make the early game easier without leaving the solo
+> bands (§1 "Balance check"). Decided the same day: the mage quest is gated at level 5,
+> recruits join at their quest's level (ranger 3, mage 5), enemies do **not** scale with
+> party size, and the warbow is left alone pending a future slot-icon effort. §7 collects
+> every decision with its status.
 
 ---
 
@@ -23,8 +24,8 @@
 
 | # | Idea | Player value | Effort | Blocked by | Why this position |
 |---|---|---|---|---|---|
-| **P1** | ~~Ranger recruitment quest, offered from level 3~~ | High | M | nothing | **Built 2026-09-14; regressions fixed and balance measured 2026-09-20.** Unlock gate, one-shot tracking, relic-based `CollectObjective`, `RecruitRewardExtra`, the quest and its warbow relic, all tested. The live playtest caught and fixed a real combat-loop bug (§1). Open design points: level-1 joins, the ranger's silent kit, enemy scaling (§7) |
-| **P2** | ~~Mage recruitment quest~~ (planned for level 5) | High | S | nothing | **Built 2026-09-14, the same day as P1; recorded here 2026-09-20.** Deviated from the plan: one authored RELIC (the heartstone, a trinket) via `QuestDef.guaranteed_boss_drop`, and **no level-5 gate** - it is offered from level 1 (`level_range` 1-5), out of step with the intended tutorial order (§2). Its own `_load_authored_quests()` rewrite is what caused P1's regressions |
+| **P1** | ~~Ranger recruitment quest, offered from level 3~~ | High | M | nothing | **Built 2026-09-14; regressions fixed, balance measured, join level set 2026-09-20.** Unlock gate, one-shot tracking, relic-based `CollectObjective`, `RecruitRewardExtra` (joins at level 3), the quest and its warbow relic, all tested. The live playtest caught and fixed a real combat-loop bug (§1) |
+| **P2** | ~~Mage recruitment quest, offered from level 5~~ | High | S | nothing | **Built 2026-09-14, the same day as P1; recorded here 2026-09-20, gated at level 5 the same day.** Deviated from the plan: one authored RELIC (the heartstone, a trinket) via `QuestDef.guaranteed_boss_drop`, not a staff. Its own `_load_authored_quests()` rewrite is what caused P1's regressions |
 | **S1** | ~~Spike: does KayKit's `Rig_Medium` match the shipped rig?~~ | — | XS | — | **Done 2026-09-13: it matches** (§4) |
 | **P3** | Four-modifier sets per item type; item types for every shipped hand mesh | Medium | M data + M visible props | P1–P2 for tuning | Loot for three classes can only be tuned with three classes in the party |
 | **P4** | Prompt → Meshy → Blender → glb character skill | Medium | M | nothing: the trial character proved the route (§4) | What remains is packaging `rig_bandit_officer.py` as a skill and building 4.3's shared clip source |
@@ -111,14 +112,17 @@ decision 1.1 records what the first form did. Verified by the headless suites
    a key") says no bump is needed. `RunController._run_complete()` appends the quest's
    id on victory, alongside gold and the reward extras, guarded idempotent.
 3. **`RecruitRewardExtra`** (`scripts/data/reward_extras/recruit_reward_extra.gd`), the
-   first concrete `QuestRewardExtra`. Exports `hero_class` and `token_weapon_type`.
-   `grant()` appends `hero_class` to `active_party` only if absent (idempotent), then
-   equips the first unequipped inventory item whose `weapon_type` matches
-   `token_weapon_type` onto the recruit - or leaves her empty-handed if there is none.
-   It generates nothing. `describe()` reads "Ranger joins the party". Registered in
-   `QuestRewardExtra.from_dict()`; the base class also gained the
-   `_to_dict_extra()`/`_from_dict_extra()` hook pattern its own header already promised,
-   mirroring `QuestObjective`'s.
+   first concrete `QuestRewardExtra`. Exports `hero_class`, `token_weapon_type` and
+   `join_level`. `grant()` appends `hero_class` to `active_party` only if absent
+   (idempotent); sets the recruit's level to `join_level` (never lowering a level she
+   already has) with no xp toward the next; then equips the first unequipped inventory
+   item whose `weapon_type` matches `token_weapon_type` onto the recruit - or leaves her
+   empty-handed if there is none. It generates nothing. `describe()` reads "Ranger joins
+   the party". Registered in `QuestRewardExtra.from_dict()`; the base class also gained
+   the `_to_dict_extra()`/`_from_dict_extra()` hook pattern its own header already
+   promised, mirroring `QuestObjective`'s. `join_level` is 3 for the ranger and 5 for
+   the mage, each equal to its quest's `unlock_level` (both tests assert that), and an
+   old save with no `join_level` loads as 1.
 4. **The starting kit is the relic and nothing else** (decision 1.2).
 5. **`CollectObjective`** (`scripts/data/objectives/collect_objective.gd`), registered
    in `QuestObjective.from_dict()`. Exports `target_weapon_type` and `count`; completes
@@ -164,8 +168,8 @@ phase 2 has since replaced `DAMAGE_ALL` and `slot_bolt` with `BOMB_ARROW`, `THUN
 and `RAIN`; `slot_gesture()` is generic over `_executor_for(kind, false)` and was
 unaffected.)
 
-**Still open: the ranger never animates on the kit she ships with (checked in code
-2026-09-20).** `slot_gesture()` fires only when an icon of a kind her class executes
+**Known, and left alone (decided 2026-09-20): the ranger never animates on the kit she
+ships with.** `slot_gesture()` fires only when an icon of a kind her class executes
 lands, and the ranger executes `BOMB_ARROW` and `RAIN`. The warbow has no modifiers and
 she has no ring, so nothing she wears ever puts either in the bag until a drop does. What
 the warbow *does* add is two `DAMAGE` icons: her innate icon, equal to the equipped
@@ -173,14 +177,14 @@ weapon's Power (45), and the warbow's base strike (also 45). Every `DAMAGE` icon
 as the party's one summed swing, by the first living hero whose class executes `DAMAGE`,
 and that is the warrior. So a fresh ranger supplies most of the party's damage
 (see "Balance check") while the screen shows the warrior swinging for it and her standing
-idle. That is the P1 playtest complaint, reduced but not closed. The mage is better off:
-her innate icon is a `HEAL`, so she animates whenever mend lands, though her heartstone's
-base strike is likewise swung by the warrior.
+idle. The mage is better off: her innate icon is a `HEAL`, so she animates whenever mend
+lands, though her heartstone's base strike is likewise swung by the warrior.
 
-The cheap fix is the one this paragraph originally proposed: force a `bomb_arrow`
-modifier onto the warbow's authored resource, mirroring `new_profile()`'s forced
-`elem_fire` on the warrior's starter weapon. It would also change the ranger's damage
-(a `BOMB_ARROW` hits every enemy), so re-run the balance check with it. Decision 1.7.
+The warbow stays as it is. A future effort is planned around slot icons generally, and
+the fix belongs there (who animates for which icon) rather than in a one-off modifier
+forced onto one relic. The obvious cheap fix - a forced `bomb_arrow` on the warbow - is
+recorded here only so it is not rediscovered; it would also change the ranger's damage
+(a `BOMB_ARROW` hits every enemy), so it would need the balance check re-run. Decision 1.7.
 
 ### Decisions (built 2026-09-14)
 
@@ -228,14 +232,18 @@ decision was never built for either recruit. The relic also keeps its own author
 `level` (warbow 9, heartstone 7) whatever the party's level, carries no modifiers, and the
 ranger arrives with no armor and no trinket.
 
-**1.3 What level does the recruit join at?** *New question; the outline does not cover
-it. Recommended, **not built**.* `RecruitRewardExtra.grant()` never sets a level, and
-`hero_levels` treats a missing entry as level 1, so a ranger recruited by a level-4
-warrior joins at level 1 and, because every member receives the full `expedition_xp`,
-trails by the same XP forever. *Recommend joining at `hero_level()`, the party's best*,
-which needs `hero_levels` and `hero_xp` set consistently for the new hero (see
-`_apply_xp_to_hero`). The balance check above prices the difference: none in damage,
-about 20-30% in party HP.
+**1.3 What level does the recruit join at?** *Decided and built 2026-09-20: at their
+quest's level - ranger 3, mage 5.* Not level 1, which is what shipped until then
+(`RecruitRewardExtra.grant()` never set a level, so `hero_level()` defaulted a missing
+entry to 1 and, because every member receives the full `expedition_xp`, a recruit trailed
+by the same XP for good), and not the party's best level, which was the original
+recommendation. A quest's level is the level the tutorial expects the player to be at,
+so a recruit arrives at the level of the content that recruited them whatever the
+warrior has reached since; if the warrior has out-levelled the quest the recruit is
+simply behind, which is the point of a recruit. The level lives in
+`RecruitRewardExtra.join_level`, one authored number per quest. The balance check below
+prices the difference from level 1: none in damage (the relic drives it), but 20% more
+party HP at level 3 (284 -> 340).
 
 **1.4 When does the recruit join?** The outline's §5.3 recommendation stands.
 `grant()` already runs only on victory, and `_reset_hero_runtime()` rebuilds the party
@@ -253,46 +261,57 @@ added dilutes the others' icons as well as adding its own. The file's header lis
 what the model credits (single-target swing, `BOMB_ARROW`/`THUNDERBURST` against every
 enemy, `RAIN`/`CLEAVE` spreading the swing, heal as regen) and what it leaves out (crit,
 bleed ticks, payline doubles, `BLOCK`'s temporary armor, the trinket ultimates' 25% drop,
-a hero dying mid-fight). Figures below are one seeded run (seed 20260910, 8,000 sampled
-boards per party), enemies at the warrior's level, a group of two. "ttk" is seconds to
-kill a regular enemy with everything on it, then to clear the group; "ttd" is seconds for
-the group to kill the whole party (heal regen not subtracted).
+a hero dying mid-fight). Recruits enter at `RecruitRewardExtra.join_level`, read from the
+authored resources, so the harness follows the data.
 
-| Party | L3 ttk | L3 ttd | L5 ttk | L5 ttd |
-|---|---|---|---|---|
-| solo warrior | 7.2 / 14.3 | 13.9 | 5.2 / 10.4 | 14.4 |
-| + ranger, joins at level 1 (**what ships**) | 3.9 / 7.8 | 17.0 | 3.9 / 7.7 | 15.8 |
-| + ranger, joins at party level (decision 1.3) | 3.9 / 7.8 | 20.4 | 3.9 / 7.8 | 20.6 |
-| + ranger + mage, both level 1 | 3.6 / 7.2 | 20.4 | 3.8 / 7.6 | 17.9 |
+Figures are one seeded run (seed 20260910, 8,000 sampled boards per party), enemies at
+the warrior's level, a group of two. "ttk" is seconds to kill a regular enemy with
+everything on it, then to clear the group; "ttd" is seconds for the group to kill the
+whole party (heal regen not subtracted). **Read the direction and the size of the gaps,
+not the decimals**: the warrior's Magic gear is randomly rolled from the same seeded
+stream, so an absolute figure moves when cases are reordered (the level-5 solo row went
+from 5.2 / 10.4 to 6.6 / 8.6 that way) even though nothing in the game changed.
+
+| Party | ttk | ttd | party hp |
+|---|---|---|---|
+| **warrior L3**: solo | 7.2 / 14.3 | 13.9 | 204 |
+| + ranger, just joined (L3) | 3.9 / 7.8 | 20.4 | 340 |
+| **warrior L5**: solo | 6.6 / 8.6 | 14.4 | 288 |
+| + ranger, just joined (L3) | 4.5 / 6.1 | 18.2 | 424 |
+| + ranger levelled with the party (L5) | 4.5 / 6.1 | 20.6 | 480 |
+| + ranger (L5) + mage, just joined (L5) | 4.3 / 6.0 | 26.6 | 650 |
 
 | Full geared party (all three at the band's rarity) | ttk | ttd |
 |---|---|---|
-| band 10: solo warrior -> warrior + ranger + mage | 6.8 / 8.9 -> 4.8 / 6.3 | 14.9 -> 33.8 |
-| band 20 | 6.0 / 8.4 -> 4.1 / 5.4 | 15.3 -> 34.6 |
-| band 30 | 5.5 / 6.8 -> 3.8 / 4.9 | 15.4 -> 34.9 |
+| band 10: solo warrior -> warrior + ranger + mage | 6.7 / 8.7 -> 4.8 / 6.0 | 14.9 -> 33.8 |
+| band 20 | 6.7 / 9.3 -> 4.4 / 5.9 | 15.3 -> 34.6 |
+| band 30 | 5.5 / 6.8 -> 4.0 / 4.8 | 15.4 -> 34.9 |
 
 What it says:
 
 1. **Recruits make the early game easier, as intended.** At level 3 the ranger nearly
-   halves the time to clear a group (14.3s to 7.8s) and lengthens the party's life by a
-   fifth. Both directions, for both recruits, are asserted.
-2. **Easier, not trivial.** A recruited party still kills a regular enemy in 3.6-3.9s
-   at the recruit levels, and a full geared party in 3.8-4.8s at bands 10-30: all inside
-   the solo bands' own 3-9s window. That is asserted too; the 3s floor is borrowed from
-   the solo bands, not a fresh design number.
-3. **Almost all of it is the ranger, and almost all of the ranger is her relic.** The
-   warbow's Power is 45 (level 9 x 5), and it counts twice: as her innate icon and as the
-   warbow's own base strike, each worth 52 on the board against the level-3 warrior's 18-Power
-   sword. Adding the mage on top moves the group clear time by 0.6s at level 3 and
-   0.1s at level 5. The mage is worth HP and about 2 HP/s of regen, not damage.
-4. **Decision 1.3 (join at the party's level) changes HP only.** The recruit's damage
-   comes from the relic, not from her level, so the ttk rows are identical; her HP is
-   what moves (party HP 284 -> 340 at level 3, 368 -> 480 at level 5).
-5. **The solo bands hold for one hero only.** A full geared party stays inside the ttk
-   window but **outlasts the solo warrior about 2.3x at every late band** (~34s against
-   ~15s), because the enemy group is two whatever the party size and nothing scales
-   enemies with the party. Whether the late game should stay as tense with three heroes
-   is a design call, not something this run can settle (decision 1.6).
+   halves the time to clear a group (14.3s to 7.8s) and lengthens the party's life by
+   about half (13.9s to 20.4s). At level 5 she still cuts the clear time by about 30%.
+   Each recruit shortening the fight and lengthening the party's life is asserted.
+2. **Easier, not trivial.** A recruited party kills a regular enemy in 3.9-4.5s, and a
+   full geared party in 4.0-4.8s at bands 10-30: all inside the solo bands' own 3-9s
+   window. That is asserted too; the 3s floor is borrowed from the solo bands, not a
+   fresh design number.
+3. **Almost all of the damage is the ranger, and almost all of the ranger is her relic.**
+   The warbow's Power is 45 (level 9 x 5), and it counts twice: as her innate icon and as
+   the warbow's own base strike, each worth 52 on the board against the level-3
+   warrior's 18-Power sword. The mage is worth HP and healing, not damage: on top of the
+   level-5 ranger she moves the group clear time by 0.1s, but lengthens the party's life
+   from 20.6s to 26.6s and roughly triples regen (1.6 to 4.8 HP/s).
+4. **Joining at the quest's level instead of level 1 changes HP only** (party HP 284 ->
+   340 at level 3; ttd 17.0s -> 20.4s). The recruit's damage comes from the relic, not
+   from her level, so the ttk rows do not move.
+5. **The late game is far sturdier with a full party, and that is accepted.** A full
+   geared party stays inside the ttk window but **outlasts the solo warrior about 2.3x at
+   every late band** (~34s against ~15s), because the enemy group is two whatever the
+   party size. Decided 2026-09-20: enemies will **not** scale with party size, so this
+   is the intended shape rather than a gap (decision 1.6). The harness asserts only that
+   the full party stays inside the ttk window and outlasts the solo warrior.
 
 ### Found and fixed (2026-09-20)
 
@@ -315,7 +334,7 @@ reconciled against them:
    `tools/run_tests.py` turned up as never having a recorded pass; see P6 §6.1) - asserts
    exactly the 4-quest, gate-respecting list this regression breaks. **Fixed**: restored
    the two checks alongside `_already_recruited()`, which stays (it's still what retires
-   `recruit_mage.tres`, which ships with neither field set - see §2).
+   `recruit_mage.tres`, which was ungated at the time and is now gated at level 5 but still ships without `one_shot` - see §2).
 2. **The ranger's own resources were never migrated to the relic design.** `7bfae68`
    also rewrote `collect_objective.gd` and `recruit_reward_extra.gd` wholesale for the
    mage's new design (decision 1.1's "what actually ships", above) - a real behavior
@@ -342,7 +361,7 @@ reconciled against them:
 
 ---
 
-## 2. P2 — Mage recruitment quest (planned for level 5; ships ungated)
+## 2. P2 — Mage recruitment quest (offered from level 5)
 
 **Built 2026-09-14, the same day as P1, one commit later (`7bfae68`) - complete with its
 own dedicated test (`tests/test_recruit_mage.gd`) and a live-tested pacing fix (see
@@ -366,35 +385,31 @@ found the two P1 regressions this same commit introduced (§1 "Found and fixed")
   generator... no ClassDef lists these in item_types"). Decision 3.4 (shields to the
   warrior, tome to the mage) hadn't landed and still hasn't (§3 is still open) - this
   sidesteps it rather than depending on it.
-- ~~**`unlock_level = 5`.**~~ **Not set - deliberately, unlike the ranger's `unlock_level
-  = 3`.** `recruit_mage.tres` ships with neither `unlock_level` nor `one_shot`, and
-  `test_quest_generator.gd::_check_authored_quest_order` explicitly asserts it appears
-  in a fresh, level-1 profile's quest list. Retirement is via `_already_recruited()`
-  alone (§1 "Found and fixed" point 1) - once the mage joins, the quest disappears
-  regardless of `one_shot`/`completed_quest_ids`. **Consequence: the mage can be recruited
-  from level 1, before the ranger's level-3 gate opens**, which is out of step with the
-  direction in §1 (a tutorial that introduces the ranger, then the mage). Decision 2.1.
+- ~~**`unlock_level = 5`.**~~ **Set 2026-09-20** (it shipped ungated on 2026-09-14, offered
+  from level 1, so the mage could join before the ranger). `recruit_mage.tres` now has
+  `unlock_level = 5` and `RecruitRewardExtra.join_level = 5`. It still ships without
+  `one_shot`: retirement is via `_already_recruited()` alone (§1 "Found and fixed"
+  point 1), which drops the quest from the board once the mage is in `active_party`.
+  `test_quest_generator` pins the board at levels 1, 3, 4 and 5.
 - **Three heroes is a bigger step than two - covered on both axes.** *Animation:* P1's
   `slot_gesture()` fix (§1, "Fixed 2026-09-14") is generic over `_executor_for(kind,
   false)`, so the mage's `HEAL` icon already animates her. *Balance:* `test_level_curves`
-  now models warrior + ranger + mage (§1 "Balance check"). The mage adds little damage
-  (group ttk 7.8s -> 7.2s at level 3, 7.7s -> 7.6s at level 5), a few HP and about 2 HP/s
-  of regen; nearly all of the recruits' early-game lift is the ranger's warbow.
-  `meal_cost()` still triples with three heroes (`MEAL_COST_PER_HERO * party size`).
+  now models warrior + ranger + mage (§1 "Balance check"). The mage adds almost no
+  damage (group clear 6.1s -> 6.0s at level 5) but a lot of survivability (party life
+  20.6s -> 26.6s, regen 1.6 -> 4.8 HP/s); nearly all of the recruits' early-game lift is
+  the ranger's warbow. `meal_cost()` still triples with three heroes
+  (`MEAL_COST_PER_HERO * party size`).
 - ~~**Pacing (rough estimate, not measured).**~~ **Superseded by a live-testing result.**
   The commit message: "Pacing mirrors easy.tres (5 encounters, level 1-5, a shop stop
   before the boss) after an early higher-level/shorter draft wiped a solo starting
-  warrior in live testing." The quest shipped at `level_range = Vector2i(1, 5)`, not a
-  level-5-gated band - which is also why `unlock_level` was dropped rather than set to
-  5: a quest playable from level 1 doesn't need a level-5 door on it.
-
-**Still open (decision 2.1).** If the tutorial order is meant literally (lone warrior,
-then the ranger at level 3, then the mage at level 5), the mage quest needs
-`unlock_level = 5` and probably `one_shot = true`, a re-banded `level_range` (a quest
-gated at level 5 should not be tuned for a level-1 party - the reason it was ungated in
-the first place), and an edit to `test_quest_generator.gd::_check_authored_quest_order`,
-which pins the current level-1 offer. `_already_recruited()` stays either way; it is what
-retires the quest once she has joined.
+  warrior in live testing." The quest shipped at `level_range = Vector2i(1, 5)` and it
+  is **unchanged by the level-5 gate**: that band was chosen for a level-1 party, and a
+  gated quest is only ever seen by a party of level 5 or more, so it now runs a little
+  easy for who can take it. The ranger's own quest is banded to match its gate
+  (`unlock_level = 3`, `level_range` 3-7); doing the same here, 5-9, is the obvious
+  follow-up, and it would also remove the `level_range.x` tie with `easy` that
+  `test_quest_generator` has to work around. Not done: this change was scoped to the
+  gate alone, and a re-band is a difficulty change that wants a playtest. Decision 2.2.
 
 ---
 
@@ -995,8 +1010,8 @@ left alone deliberately: it is an accurate record of what that pass ran, not a l
 ### 6.1 A first full green bar (done locally, 2026-09-20)
 
 `python tools/run_tests.py`, run on the merged `backlog-p3` branch under the local Godot
-install: **31 suites, 942 checks, 0 failing** (962 once the party cases below were added
-to `test_level_curves`). Nothing timed out and nothing ended without a result line.
+install: **31 suites, 942 checks, 0 failing** (975 since, with the party cases in
+`test_level_curves` and the join-level and gate checks). Nothing timed out and nothing ended without a result line.
 
 The nine suites that had never been recorded green alongside the rest all pass:
 `test_ability_resolve`, `test_content_registry`, `test_executor`, `test_inn_recovery`,
@@ -1049,12 +1064,13 @@ Two small things to fold in while touching this:
 |---|---|---|---|
 | 1.1 | Is the retrieved item a real `Item` mid-run? | **Superseded, built** | Yes, as of the P2 commit: a real `Item.Kind.RELIC`, guaranteed off the boss (`QuestDef.guaranteed_boss_drop`) - see §1 decision 1.1 for the original (now-superseded) answer |
 | 1.2 | Recruit's starting kit | **Built, narrower than planned** | The authored relic and nothing else: no armor, no trinket, no modifiers. The relic keeps its own level (warbow 9, heartstone 7) whatever the party's level |
-| 1.3 | Recruit's starting level | **Recommended, not built** | Recruits join at level 1: `grant()` never sets a level. The recommendation stands (join at the party's best). Measured 2026-09-20: it changes the recruit's HP, not the party's damage (§1 "Balance check") |
+| 1.3 | Recruit's starting level | **Decided, built 2026-09-20** | At their quest's level: ranger 3, mage 5 (`RecruitRewardExtra.join_level`). Not level 1, not the party's best |
 | 1.4 | When the recruit joins | **Decided, built** | On victory; in the party from the next expedition (outline §5.3) |
 | 1.5 | Balance target for recruits | **Decided 2026-09-20, asserted** | Recruits make the early game easier (the design call). "Not trivial" is pinned to the solo bands' 3-9s time-to-kill window, a bound the harness borrowed rather than a designed one. `test_level_curves` checks both |
-| 1.6 | Should enemies scale with party size? | Open | Nothing does today. A full geared party kills inside the solo band but outlasts the solo warrior about 2.3x at every late band (§1 "Balance check") |
-| 1.7 | Should the ranger's starting kit animate her? | Open | It does not: the warbow has no modifiers, so nothing of hers ever rolls a `BOMB_ARROW` or `RAIN`. Force a `bomb_arrow` onto the warbow, or accept it (§1) |
-| 2.1 | Gate the mage quest at level 5? | Open | It ships ungated, offered from level 1, so the mage can join before the ranger. The tutorial order wants `unlock_level = 5` (§2) |
+| 1.6 | Should enemies scale with party size? | **Decided 2026-09-20: no** | Nothing scales enemies with the party, and nothing will. A full party outlasts the solo warrior about 2.3x at every late band (§1 "Balance check"); that is the intended shape |
+| 1.7 | Should the ranger's starting kit animate her? | **Decided 2026-09-20: leave it** | The warbow is not changed. A future slot-icon effort owns who animates for which icon (§1) |
+| 2.1 | Gate the mage quest at level 5? | **Decided, built 2026-09-20** | `recruit_mage.tres` has `unlock_level = 5`; the mage joins at level 5 |
+| 2.2 | Re-band the mage quest to match its gate? | Open | `level_range` is still 1-5, chosen for a level-1 party. The ranger's is 3-7 for gate 3; 5-9 would match. A difficulty change that wants a playtest (§2) |
 | 3.1 | Modifier rule | **Decided** | Four per type, dealt in random order (Magic 1 / Rare 2 / Enhanced 3); Enhanced then boosts one of its three by 1.5× |
 | 3.2 | Does equipping change the model? | **Decided** | Hand items first; head and chest props stay cosmetic |
 | 3.3 | Tower shield mesh | **Decided** | `Rectangle_Shield` |

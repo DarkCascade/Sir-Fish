@@ -16,6 +16,7 @@ func _ready() -> void:
 	_check_collect_objective(t)
 	_check_authored_quest_consistency(t)
 	_check_recruit_reward_extra(t)
+	_check_join_level(t)
 	_check_wipe_survival(t)
 	_check_end_to_end(t)
 	_check_persistence(t)
@@ -63,6 +64,10 @@ func _check_authored_quest_consistency(t: TestSupport) -> void:
 	t.check(extra.hero_class == &"mage", "the reward extra recruits the mage")
 	t.check(GameState.get_class_def(extra.hero_class) != null,
 		"the recruited class has a registered ClassDef")
+	t.check(q.unlock_level == 5, "recruit_mage.tres unlocks at level 5")
+	t.check(extra.join_level == 5 and extra.join_level == q.unlock_level,
+		"the mage joins at her quest's own level (got join_level %d, unlock_level %d)"
+			% [extra.join_level, q.unlock_level])
 
 	# §5.8 (resolved): the mage must actually be able to equip a TRINKET.
 	t.check(token.slot() == Item.Slot.TRINKET, "the guaranteed drop resolves to the TRINKET slot")
@@ -90,6 +95,36 @@ func _check_recruit_reward_extra(t: TestSupport) -> void:
 	extra.grant()
 	t.check(GameState.active_party.size() == party_size_before,
 		"grant() does not duplicate an already-recruited class")
+
+## Recruits join at their quest's level, not level 1 and not the party's best.
+func _check_join_level(t: TestSupport) -> void:
+	var extra: RecruitRewardExtra = (load("res://resources/quests/recruit_mage.tres") as QuestDef).reward_extras[0]
+
+	GameState.new_profile()
+	GameState.hero_levels[&"warrior"] = 9   # a party well past her quest's level
+	extra.grant()
+	t.check(GameState.hero_level(&"mage") == 5,
+		"the mage joins at level 5, not level 1 and not the level-9 party's (got %d)"
+			% GameState.hero_level(&"mage"))
+	t.check(GameState.hero_xp_for(&"mage") == 0, "a fresh recruit starts with no xp toward the next level")
+	var entry := _status_entry(&"mage")
+	t.check(not entry.is_empty() and int(entry["level"]) == 5
+			and int(entry["max_hp"]) == GameState.get_stats(&"mage").hp_at(5),
+		"party_status() shows the mage at level 5 max hp")
+
+	GameState.hero_levels[&"mage"] = 6
+	extra.grant()
+	t.check(GameState.hero_level(&"mage") == 6, "a repeat grant() leaves a levelled recruit alone")
+
+	var back := QuestRewardExtra.from_dict(extra.to_dict()) as RecruitRewardExtra
+	t.check(back != null and back.join_level == 5, "join_level round-trips through to_dict()/from_dict()")
+
+## The party_status() row for `id`, or {} when that hero is not in the party.
+func _status_entry(id: StringName) -> Dictionary:
+	for e: Dictionary in GameState.party_status():
+		if e["stats_id"] == id:
+			return e
+	return {}
 
 func _check_wipe_survival(t: TestSupport) -> void:
 	GameState.new_profile()

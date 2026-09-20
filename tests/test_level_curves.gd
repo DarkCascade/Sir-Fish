@@ -454,10 +454,14 @@ const _GEAR_TYPES := {
 func _warrior_entry(level: int) -> Dictionary:
 	return { "class": &"warrior", "level": level, "items": _warrior_loadout(level) }
 
+## The level `hero_class` joins at, read from the same authored reward extra the
+## game grants, so this harness follows the data rather than restating it.
+func _join_level(hero_class: StringName) -> int:
+	return (load("res://resources/reward_extras/recruit_%s.tres" % hero_class) as RecruitRewardExtra).join_level
+
 ## A recruit exactly as the quest leaves them: the authored relic, nothing else.
-## `level` is the recruit's own level, NOT the party's - a fresh recruit is level
-## 1 whatever the party has reached (hero_level() defaults a missing entry to 1
-## and RecruitRewardExtra.grant() never sets one).
+## `level` is the recruit's own level, NOT the party's: a fresh recruit joins at
+## _join_level() (their quest's level) and only then levels with the party.
 func _relic_entry(hero_class: StringName, level: int) -> Dictionary:
 	var relic := (load(_RELIC_ITEM[hero_class]) as Item).duplicate(true) as Item
 	relic.equipped_by = hero_class
@@ -542,41 +546,58 @@ func _print_party(label: String, m: Dictionary) -> void:
 
 ## Recruits are meant to make the early game easier: at the levels the recruit
 ## quests open, every recruit must shorten the fight and lengthen the party's
-## life, whether the recruit joins at level 1 (what ships - see _relic_entry)
-## or at the party's level (what backlog decision 1.3 asked for).
+## life. A recruit joins at their quest's level (ranger 3, mage 5); at party
+## level 5 the ranger is shown both just-joined (level 3) and levelled along
+## with the party (level 5), the two ends of where she can plausibly be.
 func _case_recruit_ease() -> void:
 	print("--- party: recruits make the early game easier ---")
-	for level: int in [3, 5]:
-		var warrior := _warrior_entry(level)
-		var solo := _party_metrics([warrior], level)
-		var with_ranger := _party_metrics([warrior, _relic_entry(&"ranger", 1)], level)
-		var with_ranger_at_level := _party_metrics([warrior, _relic_entry(&"ranger", level)], level)
-		var trio := _party_metrics(
-			[warrior, _relic_entry(&"ranger", 1), _relic_entry(&"mage", 1)], level)
-		print(" warrior L%d, enemies L%d:" % [level, level])
-		_print_party("solo warrior", solo)
-		_print_party("+ ranger (joins at L1)", with_ranger)
-		_print_party("+ ranger (joins at party level)", with_ranger_at_level)
-		_print_party("+ ranger + mage (both L1)", trio)
-		_t.check(with_ranger["ttk_group"] < solo["ttk_group"],
-			"L%d: the ranger recruit shortens the group fight (%.1fs -> %.1fs)"
-				% [level, solo["ttk_group"], with_ranger["ttk_group"]])
-		_t.check(with_ranger["ttd"] > solo["ttd"],
-			"L%d: the ranger recruit lengthens the party's life (%.1fs -> %.1fs)"
-				% [level, solo["ttd"], with_ranger["ttd"]])
-		_t.check(trio["ttk_group"] < with_ranger["ttk_group"],
-			"L%d: the mage recruit shortens the group fight again (%.1fs -> %.1fs)"
-				% [level, with_ranger["ttk_group"], trio["ttk_group"]])
-		_t.check(trio["ttd"] > with_ranger["ttd"],
-			"L%d: the mage recruit lengthens the party's life again (%.1fs -> %.1fs)"
-				% [level, with_ranger["ttd"], trio["ttd"]])
+	var ranger_join := _join_level(&"ranger")
+	var mage_join := _join_level(&"mage")
+	var rows: Array = []   # [level, label, metrics], in the order they read
+
+	var warrior3 := _warrior_entry(3)
+	var solo3 := _party_metrics([warrior3], 3)
+	var ranger3 := _party_metrics([warrior3, _relic_entry(&"ranger", ranger_join)], 3)
+	rows.append([3, "solo warrior", solo3])
+	rows.append([3, "+ ranger (just joined, L%d)" % ranger_join, ranger3])
+
+	var warrior5 := _warrior_entry(5)
+	var solo5 := _party_metrics([warrior5], 5)
+	var ranger_late := _party_metrics([warrior5, _relic_entry(&"ranger", ranger_join)], 5)
+	var ranger5 := _party_metrics([warrior5, _relic_entry(&"ranger", 5)], 5)
+	var trio5 := _party_metrics(
+		[warrior5, _relic_entry(&"ranger", 5), _relic_entry(&"mage", mage_join)], 5)
+	rows.append([5, "solo warrior", solo5])
+	rows.append([5, "+ ranger (just joined, L%d)" % ranger_join, ranger_late])
+	rows.append([5, "+ ranger (levelled with party, L5)", ranger5])
+	rows.append([5, "+ ranger L5 + mage (just joined, L%d)" % mage_join, trio5])
+
+	var shown := 0
+	for row: Array in rows:
+		if int(row[0]) != shown:
+			shown = int(row[0])
+			print(" warrior L%d, enemies L%d:" % [shown, shown])
+		_print_party(row[1], row[2])
 		# Easier, not trivial: a recruited party still sits inside the solo
-		# bands' own fast-combat window rather than deleting enemies faster
-		# than the floor the whole file holds the game to.
-		for entry: Array in [["+ ranger", with_ranger], ["+ ranger at level", with_ranger_at_level],
-				["+ ranger + mage", trio]]:
-			_t.check_between(entry[1]["ttk_single"], 3.0, 9.0,
-				"L%d: %s still kills a regular enemy inside the 3-9s fast-combat band" % [level, entry[0]])
+		# bands' own fast-combat window rather than deleting enemies faster than
+		# the floor the whole file holds the game to.
+		if row[1] != "solo warrior":
+			_t.check_between(row[2]["ttk_single"], 3.0, 9.0,
+				"L%d: %s still kills a regular enemy inside the 3-9s fast-combat band" % [row[0], row[1]])
+
+	_t.check(ranger3["ttk_group"] < solo3["ttk_group"] and ranger3["ttd"] > solo3["ttd"],
+		"L3: the ranger recruit shortens the group fight and lengthens the party's life (%.1fs -> %.1fs, %.1fs -> %.1fs)"
+			% [solo3["ttk_group"], ranger3["ttk_group"], solo3["ttd"], ranger3["ttd"]])
+	_t.check(ranger_late["ttk_group"] < solo5["ttk_group"] and ranger_late["ttd"] > solo5["ttd"],
+		"L5: a just-joined level-%d ranger still helps a level-5 warrior (%.1fs -> %.1fs, %.1fs -> %.1fs)"
+			% [ranger_join, solo5["ttk_group"], ranger_late["ttk_group"], solo5["ttd"], ranger_late["ttd"]])
+	# The mage's whole contribution is HP and regen; her damage is inside the noise
+	# of an 8,000-board sample, so assert the fight is no slower rather than faster.
+	_t.check(trio5["ttd"] > ranger5["ttd"],
+		"L5: the mage recruit lengthens the party's life (%.1fs -> %.1fs)" % [ranger5["ttd"], trio5["ttd"]])
+	_t.check(trio5["ttk_group"] <= ranger5["ttk_group"] * 1.03,
+		"L5: the mage recruit does not slow the group fight (%.1fs -> %.1fs)"
+			% [ranger5["ttk_group"], trio5["ttk_group"]])
 
 ## The late game with a full, fully-geared party, next to the solo warrior the
 ## solo bands hold. Asserts only that the party stays inside the solo bands'

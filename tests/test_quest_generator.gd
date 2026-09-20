@@ -192,28 +192,55 @@ func _check_persistence(t: TestSupport) -> void:
 		"a legacy save with no quest_board key loads as never-generated")
 
 func _check_authored_quest_order(t: TestSupport) -> void:
-	# [recruitment] 4, not 3, since recruit_mage.tres joined the standing
-	# contracts - a fresh profile (active_party still just the warrior at this
-	# point in the suite) has not recruited the mage yet, so
-	# _load_authored_quests()'s _already_recruited() filter lets it through.
+	# [recruitment] Both recruitment quests are level-gated (ranger 3, mage 5), so
+	# a fresh level-1 profile's board is just the three standing contracts. The
+	# board is sorted by level_range.x rather than a hardcoded id list; the mage
+	# ties `easy` at x = 1, so order within a tie is not asserted.
 	var m := MayorOfficeScript.new()
 	var authored: Array[QuestDef] = m._load_authored_quests()
-	t.check(authored.size() == 4, "4 hand-authored quests load from disk (got %d)" % authored.size())
-	var ids: Array[StringName] = []
-	for q: QuestDef in authored:
-		ids.append(q.id)
-	t.check(ids == ([&"easy", &"recruit_mage", &"medium", &"hard"] as Array[StringName]),
-		"authored quests sort by level_range.x, not a hardcoded QUEST_ORDER (got %s)"
-			% [ids])
+	var ids: Array[StringName] = _quest_ids(authored)
+	t.check(ids == ([&"easy", &"medium", &"hard"] as Array[StringName]),
+		"a fresh level-1 board offers only the three standing contracts (got %s)" % [ids])
+	t.check(_is_sorted_by_level_range(authored),
+		"authored quests sort by level_range.x, not a hardcoded QUEST_ORDER (got %s)" % [ids])
 
-	# [recruitment] Once the mage is recruited, the board must stop offering
-	# the quest that recruits her (mayor_office.gd's own header).
+	# Level 3 opens the ranger's quest and nothing else; level 5 opens the mage's.
+	GameState.hero_levels[&"warrior"] = 3
+	ids = _quest_ids(m._load_authored_quests())
+	t.check(ids.has(&"ranger_recruit") and not ids.has(&"recruit_mage"),
+		"level 3 offers the ranger quest but not the mage's (got %s)" % [ids])
+	GameState.hero_levels[&"warrior"] = 4
+	ids = _quest_ids(m._load_authored_quests())
+	t.check(ids.has(&"ranger_recruit") and not ids.has(&"recruit_mage"),
+		"level 4 still does not offer the mage quest (got %s)" % [ids])
+	GameState.hero_levels[&"warrior"] = 5
+	var at_five: Array[QuestDef] = m._load_authored_quests()
+	ids = _quest_ids(at_five)
+	t.check(ids.has(&"ranger_recruit") and ids.has(&"recruit_mage") and ids.size() == 5,
+		"level 5 offers both recruitment quests alongside the standing three (got %s)" % [ids])
+	t.check(_is_sorted_by_level_range(at_five), "the level-5 board is still sorted by level_range.x")
+
+	# [recruitment] Once a class is recruited, the board must stop offering the
+	# quest that recruits her (mayor_office.gd's own header).
 	GameState.active_party.append(&"mage")
 	var after_recruit: Array[QuestDef] = m._load_authored_quests()
-	t.check(after_recruit.size() == 3 and not after_recruit.any(func(q: QuestDef) -> bool: return q.id == &"recruit_mage"),
+	t.check(after_recruit.size() == 4 and not after_recruit.any(func(q: QuestDef) -> bool: return q.id == &"recruit_mage"),
 		"a completed recruitment quest stops being offered once its class has joined")
 	GameState.active_party.erase(&"mage")
+	GameState.hero_levels.erase(&"warrior")
 	m.free()
+
+func _quest_ids(quests: Array[QuestDef]) -> Array[StringName]:
+	var out: Array[StringName] = []
+	for q: QuestDef in quests:
+		out.append(q.id)
+	return out
+
+func _is_sorted_by_level_range(quests: Array[QuestDef]) -> bool:
+	for i: int in range(1, quests.size()):
+		if quests[i - 1].level_range.x > quests[i].level_range.x:
+			return false
+	return true
 
 func _check_endless_uses_area(t: TestSupport) -> void:
 	GameState.reset_run()

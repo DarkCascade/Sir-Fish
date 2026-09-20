@@ -26,6 +26,7 @@ func _ready() -> void:
 
 	_check_authored_quest_consistency(t)
 	_check_recruit_reward_extra(t)
+	_check_join_level(t)
 	_check_wipe_survival(t)
 	_check_end_to_end(t)
 
@@ -55,6 +56,9 @@ func _check_authored_quest_consistency(t: TestSupport) -> void:
 	t.check(extra.hero_class == &"ranger", "the reward extra recruits the ranger")
 	t.check(GameState.get_class_def(extra.hero_class) != null,
 		"the recruited class has a registered ClassDef")
+	t.check(extra.join_level == 3 and extra.join_level == q.unlock_level,
+		"the ranger joins at her quest's own level (got join_level %d, unlock_level %d)"
+			% [extra.join_level, q.unlock_level])
 
 	# The relic must resolve to WEAPON, not fall through Item.slot()'s
 	# unknown-type default - this is exactly the hazard backlog decision 1.1
@@ -83,6 +87,49 @@ func _check_recruit_reward_extra(t: TestSupport) -> void:
 	extra.grant()
 	t.check(GameState.active_party.size() == party_size_before,
 		"grant() does not duplicate an already-recruited class")
+
+## Recruits join at their quest's level, not level 1 and not the party's best.
+func _check_join_level(t: TestSupport) -> void:
+	var extra: RecruitRewardExtra = (load("res://resources/quests/ranger_recruit.tres") as QuestDef).reward_extras[0]
+
+	GameState.new_profile()
+	GameState.hero_levels[&"warrior"] = 8   # a party well past her quest's level
+	extra.grant()
+	t.check(GameState.hero_level(&"ranger") == 3,
+		"the ranger joins at level 3, not level 1 and not the level-8 party's (got %d)"
+			% GameState.hero_level(&"ranger"))
+	t.check(GameState.hero_xp_for(&"ranger") == 0, "a fresh recruit starts with no xp toward the next level")
+	var entry := _status_entry(&"ranger")
+	t.check(not entry.is_empty() and int(entry["level"]) == 3
+			and int(entry["max_hp"]) == GameState.get_stats(&"ranger").hp_at(3),
+		"party_status() shows the ranger at level 3 max hp")
+
+	# A second grant must not reset a recruit who has since levelled.
+	GameState.hero_levels[&"ranger"] = 4
+	extra.grant()
+	t.check(GameState.hero_level(&"ranger") == 4, "a repeat grant() leaves a levelled recruit alone")
+
+	# And a class that somehow already outranks the join level is never lowered.
+	GameState.new_profile()
+	GameState.hero_levels[&"ranger"] = 7
+	extra.grant()
+	t.check(GameState.hero_level(&"ranger") == 7, "grant() never lowers a level the class already has")
+
+	# join_level survives a save round-trip.
+	var back := QuestRewardExtra.from_dict(extra.to_dict()) as RecruitRewardExtra
+	t.check(back != null and back.join_level == 3, "join_level round-trips through to_dict()/from_dict()")
+	var legacy := extra.to_dict()
+	legacy.erase("join_level")
+	var legacy_back := QuestRewardExtra.from_dict(legacy) as RecruitRewardExtra
+	t.check(legacy_back != null and legacy_back.join_level == 1,
+		"a save with no join_level loads as 1 (the old behaviour)")
+
+## The party_status() row for `id`, or {} when that hero is not in the party.
+func _status_entry(id: StringName) -> Dictionary:
+	for e: Dictionary in GameState.party_status():
+		if e["stats_id"] == id:
+			return e
+	return {}
 
 func _check_wipe_survival(t: TestSupport) -> void:
 	GameState.new_profile()
