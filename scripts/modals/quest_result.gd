@@ -32,6 +32,20 @@ extends Control
 ## plays in sync with the battlefield's own slow-motion beat), then the
 ## verdict pops in, then Return to Town, then a shorter row set fades in fast
 ## and overlapped. `_victory == true` keeps the original all-at-once reveal.
+##
+## [party-wipe-consequences] BOTH reveals gained a beat before the heading: four
+## spoils reels (one per Spoils.Category) that decide what the run actually
+## brings home. THIS SCREEN IS WHERE THE RUN IS SETTLED now - RunController hands
+## over an ending with its XP still banked and its loose loot still in the
+## inventory, and GameState.apply_spoils() resolves both here, once the reels
+## land.
+##
+## Which is also why the heading is no longer a fixed word on either path. Each
+## LOSE is -1 and each DOUBLE +1, and that sum alone picks the word and its
+## colour - red at <= -1, yellow at 0, green at >= 1. Winning or wiping adds
+## nothing of its own to the total because the two POOLS already carry it (see
+## _verdict_points()), so the word rates what the party walked away with rather
+## than restating an outcome the player just watched.
 
 signal dismissed()
 
@@ -40,6 +54,7 @@ enum Mode { RETRY, VICTORY, FAILURE }
 @onready var scrim: ColorRect = $Scrim
 @onready var panel: PanelContainer = $Panel
 @onready var fish: Control = $Panel/Layout/SummaryFish
+@onready var spoils_reels: HBoxContainer = $Panel/Layout/SpoilsReels
 @onready var title: Label = $Panel/Layout/Title
 @onready var subtitle: Label = $Panel/Layout/Subtitle
 @onready var divider: HBoxContainer = $Panel/Layout/Divider
@@ -50,20 +65,29 @@ enum Mode { RETRY, VICTORY, FAILURE }
 var _mode: Mode = Mode.RETRY
 var _victory: bool = false
 
-## Short, punchy stand-ins for "DEFEATED" on any failure (spec: PDR
-## party-wipe-cinematic) - picked once per present(), not per branch below.
-const PUNCH_WORDS := ["ouch", "oof", "nope"]
+## [party-wipe-consequences] The verdict, by rating. What used to be one bank of
+## punch words for every defeat is three, because a wipe that held on to
+## everything is not an "oof" - see _verdict_points().
+const VERDICT_BAD := ["oof", "whomp whomp", "ouch"]
+const VERDICT_NEUTRAL := ["ok", "welp", "...cool"]
+const VERDICT_GOOD := ["nice", "way to go", "smooth"]
 
-## [run-summary-modal] The failure reveal's own, shorter row set, in the exact
-## order it should read - reordered into place every present() regardless of
-## how quest_result.tscn happens to author them, since the authored order
-## interleaves victory-only rows this case hides.
-const _FAILURE_ROW_ORDER: Array[StringName] = [
+## [victory-failure-stat-parity] The shared stat row set, in the exact order it
+## should read - reordered into place every present() regardless of how
+## quest_result.tscn happens to author them. Originally the failure reveal's
+## own shorter set; the victory reveal now uses the same rows and order so the
+## two screens read as one format, with QuestReward (and its extras) leading
+## on a win since a loss has no reward to show.
+const _STAT_ROW_ORDER: Array[StringName] = [
 	&"NetGold", &"ExpeditionScrap", &"ItemsFound", &"EncountersCleared",
 	&"RunTime", &"DamageDealt", &"DamageTaken", &"IconsSpins",
 ]
-const _VICTORY_ONLY_ROWS: Array[StringName] = [
-	&"QuestReward", &"ExpeditionGold", &"GoldEarned", &"GoldSpent",
+## [victory-failure-stat-parity] Superseded by _STAT_ROW_ORDER - these used to
+## be the victory reveal's own, larger row set. Kept as authored chrome in
+## quest_result.tscn (see _row_values(), which still fills them) but never
+## shown on either screen any more.
+const _RETIRED_ROWS: Array[StringName] = [
+	&"ExpeditionGold", &"GoldEarned", &"GoldSpent",
 	&"GoldOnHand", &"SlotSpins", &"SlotWins", &"UpgradesBought", &"ItemsSold",
 ]
 
@@ -74,6 +98,11 @@ const _TEXT_POP_TIME := 0.4
 const _BUTTON_FADE_TIME := 0.25
 const _ROW_FADE_TIME := 0.22
 const _ROW_OVERLAP := 0.75        # next row starts once the current one is this fraction opaque
+
+const _SPOILS_FADE_TIME := 0.3
+const _SPOILS_SPIN_TIME := 1.1    # all four free-spinning before the first stops
+const _SPOILS_STAGGER := 0.45     # between one reel landing and the next stopping
+const _SPOILS_HOLD := 0.6         # the four words read together before the verdict
 
 func _ready() -> void:
 	primary_button.pressed.connect(_on_primary_pressed)
@@ -95,7 +124,7 @@ func present(victory: bool) -> void:
 		_mode = Mode.RETRY
 
 	show()
-	_apply_heading(is_quest)
+	_apply_subtitle(is_quest)
 	_configure_buttons()
 
 	if victory:
@@ -103,16 +132,24 @@ func present(victory: bool) -> void:
 	else:
 		_present_failure()
 
-func _apply_heading(is_quest: bool) -> void:
-	var punch_word: String = PUNCH_WORDS[RNG.randi_range(0, PUNCH_WORDS.size() - 1)]
-	if is_quest:
-		title.text = "QUEST COMPLETE" if _victory else punch_word
-	else:
-		title.text = "LEVEL CLEARED" if _victory else punch_word
-	title.add_theme_font_size_override("font_size", 78 if _victory else 96)
-	title.add_theme_color_override("font_color",
-		Tuning.C_GOLD if _victory else Tuning.C_DANGER)
+## The verdict, on BOTH paths - neither heading is known until the reels have
+## rolled, because the roll is what the word is rating (_verdict_points()).
+func _apply_verdict(points: int) -> void:
+	var bank: Array = VERDICT_NEUTRAL
+	var color: Color = Tuning.C_GOLD
+	if points <= -1:
+		bank = VERDICT_BAD
+		color = Tuning.C_DANGER
+	elif points >= 1:
+		bank = VERDICT_GOOD
+		color = Tuning.C_HEAL
+	title.text = bank[RNG.randi_range(0, bank.size() - 1)]
+	# The longest words ("whomp whomp", "way to go") run edge to edge at 96 in a
+	# panel this wide, and Title cannot wrap - one size down clears them.
+	title.add_theme_font_size_override("font_size", 96 if title.text.length() <= 8 else 78)
+	title.add_theme_color_override("font_color", color)
 
+func _apply_subtitle(is_quest: bool) -> void:
 	if is_quest:
 		# Quest names already lead with "The" ("The Shallow Wood"), so the
 		# failure line takes the same "%s — ..." shape as the victory one rather
@@ -165,28 +202,47 @@ func _dismiss() -> void:
 	if _mode != Mode.RETRY:
 		SceneRouter.go(SceneRouter.Place.TOWN)
 
-## The original all-at-once reveal (spec 8.5): scrim wash, title overshoot,
-## stat rows sliding in staggered. Explicitly resets every alpha this screen
-## touches to 1.0 first, since the SAME long-lived instance may have just run
+## The all-at-once reveal (spec 8.5): scrim wash, everything already on the page,
+## title overshoot. Explicitly resets every alpha this screen touches to 1.0
+## first, since the SAME long-lived instance may have just run
 ## _present_failure(), which leaves several of them at 0.
 func _present_victory() -> void:
+	# Up front, opaque, and filled with what the run banked - a win shows its
+	# stats THROUGH the spin rather than after it (_show_victory_rows).
+	_show_victory_rows()
+
 	scrim.modulate.a = 0.0
 	var s := create_tween()
 	s.tween_property(scrim, "modulate:a", 1.0, 0.5)
 
 	fish.modulate.a = 1.0
-	title.modulate.a = 1.0
 	subtitle.modulate.a = 1.0
 	divider.modulate.a = 1.0
 	primary_button.modulate.a = 1.0
 
+	spoils_reels.visible = true
+	spoils_reels.modulate.a = 0.0
+	title.modulate.a = 0.0
+	# See _present_failure(): a Button that has not faded in still takes clicks,
+	# and dismissing before the roll lands would skip the settlement.
+	primary_button.disabled = true
+
+	# [party-wipe-consequences] A win rolls too, on its own pool - one that can
+	# only hold or improve what the run banked (Spoils.POOL_VICTORY). Only the
+	# verdict waits for it; the rows are already up, and just take their new
+	# numbers in place.
+	var outcomes := await _spin_spoils(true)
+	_settle_spoils(outcomes)
+	primary_button.disabled = false
+	_fill_row_values()
+
+	_apply_verdict(_verdict_points(outcomes))
+	title.modulate.a = 1.0
 	title.pivot_offset = title.size * 0.5
 	title.scale = Vector2(1.6, 1.6)
 	var t := create_tween()
 	t.tween_property(title, "scale", Vector2.ONE, 0.35) \
 		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-
-	_build_stats()
 
 ## [run-summary-modal] Any defeat (spec: PDR party-wipe-cinematic /
 ## run-summary-modal): blank, Sir Fish's tank fades in over his own
@@ -200,6 +256,12 @@ func _present_failure() -> void:
 	create_tween().tween_property(scrim, "modulate:a", 1.0, 0.5)
 
 	fish.modulate.a = 0.0
+	spoils_reels.visible = true
+	spoils_reels.modulate.a = 0.0
+	# A transparent Button still takes clicks, and the spoils roll is what
+	# SETTLES the run - dismissing mid-spin would strand the XP and the loot and
+	# skip the save. Re-enabled with the fade-in below, once the roll has landed.
+	primary_button.disabled = true
 	title.modulate.a = 0.0
 	subtitle.modulate.a = 0.0
 	divider.modulate.a = 0.0
@@ -213,6 +275,13 @@ func _present_failure() -> void:
 	await create_tween().tween_property(fish, "modulate:a", 1.0, _FISH_FADE_TIME).finished
 	await get_tree().create_timer(_FISH_HOLD).timeout
 
+	# [party-wipe-consequences] What the run brings home is decided here, before
+	# the verdict can be worded - the reels ARE the suspense beat.
+	var outcomes := await _spin_spoils(false)
+	_settle_spoils(outcomes)
+	_apply_verdict(_verdict_points(outcomes))
+	_fill_row_values()
+
 	# The verdict explodes in - an exaggerated version of the victory title's
 	# own overshoot, big enough to read as impact rather than a heading.
 	title.modulate.a = 1.0
@@ -224,26 +293,29 @@ func _present_failure() -> void:
 	text_tw.tween_property(subtitle, "modulate:a", 1.0, _TEXT_POP_TIME)
 	await text_tw.finished
 
+	primary_button.disabled = false
 	var button_tw := create_tween().set_parallel(true)
 	button_tw.tween_property(primary_button, "modulate:a", 1.0, _BUTTON_FADE_TIME)
 	button_tw.tween_property(divider, "modulate:a", 1.0, _BUTTON_FADE_TIME)
 	await button_tw.finished
 
-	_reveal_rows_overlapped(_FAILURE_ROW_ORDER)
+	_reveal_rows_overlapped(_STAT_ROW_ORDER)
 
-## Hides every victory-only row, shows and reorders the failure set into
-## _FAILURE_ROW_ORDER, and fills every visible row's Value label.
+## Hides QuestReward and every retired row, and reorders the shared set into
+## _STAT_ROW_ORDER. [party-wipe-consequences] Does NOT fill the values any
+## more - the spoils roll rewrites what the run brought home, so the fill waits
+## until it has settled (_present_failure).
 func _prepare_failure_rows() -> void:
 	_rebuild_reward_extra_rows(false)
-	for row_name: StringName in _VICTORY_ONLY_ROWS:
+	_row_visible(&"QuestReward", false)
+	for row_name: StringName in _RETIRED_ROWS:
 		_row_visible(row_name, false)
-	for row_name: StringName in _FAILURE_ROW_ORDER:
+	for row_name: StringName in _STAT_ROW_ORDER:
 		_row_visible(row_name, true)
-	for i: int in range(_FAILURE_ROW_ORDER.size()):
-		var row := stat_rows.get_node_or_null(NodePath(_FAILURE_ROW_ORDER[i]))
+	for i: int in range(_STAT_ROW_ORDER.size()):
+		var row := stat_rows.get_node_or_null(NodePath(_STAT_ROW_ORDER[i]))
 		if row != null:
 			stat_rows.move_child(row, i)
-	_fill_row_values()
 
 ## Fades each row in fully, starting the next once the current one is
 ## _ROW_OVERLAP (75%) opaque - a linear fade reaches that fraction of its
@@ -258,36 +330,110 @@ func _reveal_rows_overlapped(order: Array[StringName]) -> void:
 		create_tween().tween_property(row, "modulate:a", 1.0, _ROW_FADE_TIME).set_delay(delay)
 		delay += _ROW_FADE_TIME * _ROW_OVERLAP
 
-## Fills in the authored rows and plays them in one at a time. The three quest
-## rows (QuestReward / ExpeditionGold / ExpeditionScrap) are shown only on a
-## quest ending, and QuestReward only on a win. Victory-only - see
-## _prepare_failure_rows() for the failure reveal's own, shorter row set.
+# --- [party-wipe-consequences] the spoils machine ----------------------------
+
+## Fades the four reels in, spins them together, then lands them left to right
+## with a beat between each. Returns the roll as
+## { Spoils.Category: Spoils.Outcome }.
 ##
-## The slot-win PERCENTAGE stays deliberately absent (spec 18.2 / 17.8 / Q24):
-## at ~20 spins one sigma is ~11 points, so a healthy machine can print "33%"
-## and read as rigged. Raw count here; the 50% check lives in test_slot_odds.
-func _build_stats() -> void:
+## Walks the authored children in order and pairs them with
+## Spoils.CATEGORY_ORDER, so the reels read left to right in whatever order
+## quest_result.tscn happens to author them.
+func _spin_spoils(victory: bool) -> Dictionary:
+	var reels: Array[Node] = spoils_reels.get_children()
+	var count: int = mini(reels.size(), Spoils.CATEGORY_ORDER.size())
+	for i: int in range(count):
+		(reels[i] as SpoilsReel).setup(Spoils.CATEGORY_ORDER[i] as Spoils.Category, victory)
+
+	await create_tween().tween_property(
+		spoils_reels, "modulate:a", 1.0, _SPOILS_FADE_TIME).finished
+	for i: int in range(count):
+		(reels[i] as SpoilsReel).start_spin()
+	await get_tree().create_timer(_SPOILS_SPIN_TIME).timeout
+
+	var outcomes: Dictionary = {}
+	for i: int in range(count):
+		var reel := reels[i] as SpoilsReel
+		var outcome := Spoils.roll(victory)
+		outcomes[Spoils.CATEGORY_ORDER[i]] = outcome
+		if i == count - 1:
+			# The last one is awaited in full, so the hold below starts once its
+			# word has actually popped rather than once its reel stopped moving.
+			await reel.stop_on(outcome)
+		else:
+			reel.stop_on(outcome)
+			await get_tree().create_timer(_SPOILS_STAGGER).timeout
+
+	await get_tree().create_timer(_SPOILS_HOLD).timeout
+	return outcomes
+
+## Hands the roll to GameState, then re-saves. The quest path already saved in
+## RunController, but that save predates everything the roll just changed - the
+## XP it applied, the loot it kept or dropped, the gold and scrap it moved.
+func _settle_spoils(outcomes: Dictionary) -> void:
+	GameState.apply_spoils(outcomes)
+	if GameState.completed_quest != null:
+		SaveGame.save_profile()
+
+## The run's rating, from the reels ALONE. <= -1 reads red, 0 yellow, >= 1 green
+## (_apply_verdict).
+##
+## Winning or wiping deliberately adds nothing of its own. It does not need to:
+## the two pools already carry it, since a wipe can only draw LOSE/KEEP/KEEP_HALF
+## and a win only KEEP/KEEP_HALF/DOUBLE. So a wipe rates between red and yellow
+## and a win between yellow and green, and the word ends up rating what the run
+## WALKED AWAY WITH rather than restating an outcome the player just watched. A
+## wipe that held on to everything is a "welp", not an "oof"; a win that doubled
+## nothing is the same "welp", not a "nice".
+func _verdict_points(outcomes: Dictionary) -> int:
+	var points: int = 0
+	for outcome: int in outcomes.values():
+		points += Spoils.points(outcome as Spoils.Outcome)
+	return points
+
+## Puts the victory row set up, filled and fully opaque, BEFORE anything spins.
+## [victory-failure-stat-parity] Same row set and order as the failure reveal
+## (_STAT_ROW_ORDER) - only QuestReward, and any QuestRewardExtra rows, lead
+## the list, and only on a quest win, since a loss has no reward to show.
+##
+## [party-wipe-consequences] These used to slide in one at a time after the
+## heading. A win now reads its stats while the reels are still turning, and the
+## numbers the reels touch change in place when the roll lands (_present_victory
+## re-fills them) - so the player watches "Gold brought home" double rather than
+## being told about it afterwards. Nothing animates them in a second time.
+##
+## The alphas have to be asserted rather than assumed: the SAME long-lived
+## instance may have just run _present_failure(), which leaves every row at 0.
+func _show_victory_rows() -> void:
 	var is_quest: bool = GameState.completed_quest != null
-	_row_visible(&"QuestReward", is_quest and _victory)
-	_row_visible(&"ExpeditionGold", is_quest)
-	_row_visible(&"ExpeditionScrap", is_quest)
-	_row_visible(&"NetGold", false)
-	_row_visible(&"IconsSpins", false)
-	_rebuild_reward_extra_rows(is_quest and _victory)
+	var show_reward: bool = is_quest and _victory
+	_row_visible(&"QuestReward", show_reward)
+	for row_name: StringName in _RETIRED_ROWS:
+		_row_visible(row_name, false)
+	for row_name: StringName in _STAT_ROW_ORDER:
+		_row_visible(row_name, true)
+	_rebuild_reward_extra_rows(show_reward)
+
+	var insert_index := 0
+	if show_reward:
+		var quest_reward_row := stat_rows.get_node_or_null(NodePath(&"QuestReward"))
+		if quest_reward_row != null:
+			stat_rows.move_child(quest_reward_row, insert_index)
+			insert_index += 1
+		for row: Node in stat_rows.get_children():
+			if row.is_in_group(_REWARD_EXTRA_GROUP):
+				stat_rows.move_child(row, insert_index)
+				insert_index += 1
+	for row_name: StringName in _STAT_ROW_ORDER:
+		var row := stat_rows.get_node_or_null(NodePath(row_name))
+		if row != null:
+			stat_rows.move_child(row, insert_index)
+			insert_index += 1
+
 	_fill_row_values()
 
-	var i := 0
 	for row: Control in stat_rows.get_children():
-		if not row.visible:
-			continue
-		# Reveal one at a time, 0.08s apart, sliding in from the left.
-		row.modulate.a = 0.0
-		row.position.x = -60.0
-		var tw: Tween = row.create_tween().set_parallel(true)
-		tw.tween_property(row, "modulate:a", 1.0, 0.2).set_delay(0.08 * float(i))
-		tw.tween_property(row, "position:x", 0.0, 0.25).set_delay(0.08 * float(i)) \
-			.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-		i += 1
+		row.modulate.a = 1.0
 
 ## Every row this screen can show, keyed by node NAME - both present() paths
 ## call this and let it just leave stale text sitting under a hidden row.
@@ -317,7 +463,11 @@ func _row_values() -> Dictionary:
 		&"IconsSpins": "%d icons hit in %d spins" % \
 			[int(stats["slot_icons_hit"]), int(stats["slot_spins_resolved"])],
 		&"UpgradesBought": str(int(stats["upgrades_bought"])),
-		&"ItemsFound": str(int(stats["items_found"])),
+		# [party-wipe-consequences] What came home, not what was found - the ITEMS
+		# reel can halve or drop the haul, and "Items found 4" beside a LOSE is a
+		# straight contradiction. run_stats["items_found"] is left as the true
+		# find count for anything else that wants it.
+		&"ItemsFound": str(GameState.expedition_items_held()),
 		&"ItemsSold": str(int(stats["items_sold"])),
 	}
 

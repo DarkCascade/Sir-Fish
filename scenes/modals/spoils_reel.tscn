@@ -1,0 +1,51 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/modals/spoils_reel.gd" id="1_reel"]
+[ext_resource type="Script" path="res://scripts/modals/spoils_reel_window.gd" id="2_window"]
+
+; [party-wipe-consequences] The reel tile - a darker recess than the reliquary
+; panel it sits on, with the same muted rim as the modal's border so the little
+; machine reads as part of the same cabinet.
+[sub_resource type="StyleBoxFlat" id="tile"]
+bg_color = Color(0.0627451, 0.0509804, 0.0980392, 1)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0.227451, 0.227451, 0.282353, 1)
+corner_radius_top_left = 14
+corner_radius_top_right = 14
+corner_radius_bottom_right = 14
+corner_radius_bottom_left = 14
+
+[node name="SpoilsReel" type="VBoxContainer"]
+custom_minimum_size = Vector2(168, 0)
+theme_override_constants/separation = 6
+script = ExtResource("1_reel")
+
+[node name="Caption" type="Label" parent="."]
+custom_minimum_size = Vector2(0, 38)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.611765, 0.690196, 0.674510, 1)
+theme_override_font_sizes/font_size = 34
+text = "Gold"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+; clip_contents is what makes this a reel WINDOW - spoils_reel_window.gd draws
+; one cell above and below the landed one so a partial scroll is never a gap,
+; and this is what keeps them from spilling onto the caption and the result.
+[node name="Window" type="Control" parent="."]
+custom_minimum_size = Vector2(168, 132)
+layout_mode = 2
+clip_contents = true
+script = ExtResource("2_window")
+tile_style = SubResource("tile")
+
+[node name="Result" type="Label" parent="."]
+custom_minimum_size = Vector2(0, 44)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.960784, 0.945098, 0.894118, 1)
+theme_override_font_sizes/font_size = 36
+horizontal_alignment = 1
+vertical_alignment = 1

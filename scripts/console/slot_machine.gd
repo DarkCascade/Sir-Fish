@@ -399,6 +399,20 @@ func _resolve_board(jackpot_id: StringName) -> void:
 	# resolution rather than tallied at the end, so a spin the wipe cuts off
 	# mid-resolve still counts whatever it actually resolved before that.
 	var any_icon_resolved := false
+
+	# [combat loop redesign fix] Known before anything resolves, so the
+	# fallback:false cosmetic gestures below (_should_gesture) can tell whether
+	# they are about to collide with the REAL combined swing this same spin. A
+	# DAMAGE icon anywhere on the board guarantees swing > 0 once the loop
+	# finishes (every contribution is >= 1 + the floor), so this needs no
+	# repeats/payline handling of its own - presence is all it has to answer.
+	var board_has_damage := false
+	for ic: Dictionary in _board:
+		if SlotIcon.kind_of(StringName(ic.get("id", &""))) == SlotIcon.Kind.DAMAGE:
+			board_has_damage = true
+			break
+	var damage_executor: Combatant = _executor_for(SlotIcon.Kind.DAMAGE) if board_has_damage else null
+
 	for idx: int in range(_board.size()):
 		var ic: Dictionary = _board[idx]
 		var id := StringName(ic.get("id", &""))
@@ -429,15 +443,17 @@ func _resolve_board(jackpot_id: StringName) -> void:
 				# next combined swing consumes (SlotMachine._hero_swing).
 				var executor := _executor_for(SlotIcon.Kind.CLEAVE, false)
 				if executor != null:
-					executor.slot_gesture()
+					if _should_gesture(executor, board_has_damage, damage_executor):
+						executor.slot_gesture()
 					_pending_cleave = true
 			elif kind == SlotIcon.Kind.RAIN:
 				var executor := _executor_for(SlotIcon.Kind.RAIN, false)
 				if executor != null:
-					executor.slot_gesture()
+					if _should_gesture(executor, board_has_damage, damage_executor):
+						executor.slot_gesture()
 					_pending_rain = true
 			else:
-				var out := await _resolve_icon(ic, kind, mult)
+				var out := await _resolve_icon(ic, kind, mult, board_has_damage, damage_executor)
 				total_damage += out.x
 				total_heal += out.y
 			await get_tree().create_timer(Tuning.AOE_STAGGER).timeout
@@ -467,7 +483,12 @@ func _resolve_board(jackpot_id: StringName) -> void:
 ## Resolves one board icon that is neither a single-target attack, a block
 ## grant, nor a pending-buff icon (those are all handled inline in
 ## _resolve_board - see above). Returns Vector2i(damage_dealt, heal_done).
-func _resolve_icon(ic: Dictionary, kind: int, mult: float) -> Vector2i:
+##
+## `board_has_damage` / `damage_executor` are _resolve_board()'s pre-scan,
+## threaded through so every fallback:false cosmetic gesture in here can run
+## the same _should_gesture() check the inline CLEAVE/RAIN branches do.
+func _resolve_icon(ic: Dictionary, kind: int, mult: float,
+		board_has_damage: bool, damage_executor: Combatant) -> Vector2i:
 	if director == null:
 		return Vector2i.ZERO
 	var id := StringName(ic.get("id", &""))
@@ -480,14 +501,14 @@ func _resolve_icon(ic: Dictionary, kind: int, mult: float) -> Vector2i:
 			# (no fallback), same reasoning the old DAMAGE_ALL comment gave:
 			# the fallback hero already has a real swing via _hero_swing().
 			var executor := _executor_for(kind, false)
-			if executor != null:
+			if executor != null and _should_gesture(executor, board_has_damage, damage_executor):
 				executor.slot_gesture()
 			return Vector2i(await _hit_all(id, roll, mult), 0)
 		SlotIcon.Kind.BLEED:
 			# No immediate damage - applies/refreshes the DoT, which ticks off
 			# the target's own actions (BattleDirector._take_action).
 			var executor := _executor_for(SlotIcon.Kind.BLEED, false)
-			if executor != null:
+			if executor != null and _should_gesture(executor, board_has_damage, damage_executor):
 				executor.slot_gesture()
 			var target: Combatant = director.random_living_enemy()
 			if target != null:
@@ -495,10 +516,32 @@ func _resolve_icon(ic: Dictionary, kind: int, mult: float) -> Vector2i:
 			return Vector2i.ZERO
 		SlotIcon.Kind.HEAL:
 			var executor := _executor_for(SlotIcon.Kind.HEAL, false)
-			if executor != null:
+			if executor != null and _should_gesture(executor, board_has_damage, damage_executor):
 				executor.slot_gesture()
 			return Vector2i(0, _heal_lowest(roll))
 	return Vector2i.ZERO
+
+## [combat loop redesign fix] Whether a fallback:false cosmetic gesture
+## (Combatant.slot_gesture()) should actually play, or whether `executor` is
+## about to make the REAL combined swing later in this same _resolve_board()
+## call instead (this spin's board rolled a DAMAGE icon, and `executor` is
+## DAMAGE's own executor - see _hero_swing).
+##
+## Both calls play the identical "attack" clip through the identical
+## ATTACKING-state guard (Combatant.slot_attack), so without this check the
+## cosmetic gesture fires FIRST (CLEAVE/BLEED/etc. resolve earlier in the
+## board than the aggregated swing) and is still mid-clip when _hero_swing()
+## tries to start the real one - which then silently no-ops, since
+## slot_attack() never sets `pending` if it doesn't run. The player sees an
+## attack animation (the gesture) with no damage number and no enemy reaction:
+## the swing that should have carried the board's actual sword icons never
+## happened. This collides on the warrior specifically, and every spin that
+## rolls both a DAMAGE icon and a CLEAVE or BLEED icon triggers it - the
+## warrior is the only hero whose executes list includes DAMAGE alongside
+## either of those (warrior.tres), so he is always both executors at once.
+func _should_gesture(executor: Combatant, board_has_damage: bool,
+		damage_executor: Combatant) -> bool:
+	return not (board_has_damage and executor == damage_executor)
 
 ## [combat loop redesign] The board's summed attack-icon damage, delivered as a
 ## single swing by a living front-line hero. Returns the damage dealt (0 if no

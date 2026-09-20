@@ -1,21 +1,20 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene format=3 uid="uid://vy350a3hyd5o"]
 
-[ext_resource type="Script" path="res://scripts/modals/quest_result.gd" id="1_sum"]
+[ext_resource type="Script" uid="uid://cqdkjj5jwddbq" path="res://scripts/modals/quest_result.gd" id="1_sum"]
 [ext_resource type="PackedScene" uid="uid://46oh8n83yecw" path="res://scenes/console/sir_fish_tank.tscn" id="2_fish"]
-[ext_resource type="Shader" path="res://assets/shaders/reliquary_mist.gdshader" id="3_mist"]
+[ext_resource type="Shader" uid="uid://bdysf21ort1yh" path="res://assets/shaders/reliquary_mist.gdshader" id="3_mist"]
 [ext_resource type="PackedScene" path="res://scenes/modals/reliquary_frame.tscn" id="4_frame"]
-[ext_resource type="Texture2D" path="res://assets/ui/reliquary/fleuron.png" id="5_fleuron"]
+[ext_resource type="Texture2D" uid="uid://cl2teb6o53173" path="res://assets/ui/reliquary/fleuron.png" id="5_fleuron"]
+[ext_resource type="PackedScene" path="res://scenes/modals/spoils_reel.tscn" id="6_spoils"]
 
 [sub_resource type="ShaderMaterial" id="mist_mat"]
 shader = ExtResource("3_mist")
-shader_parameter/fog_color = Color(0.545, 0.361, 0.965, 1.0)
-shader_parameter/deep_color = Color(0.141, 0.082, 0.239, 1.0)
+shader_parameter/fog_color = Color(0.545, 0.361, 0.965, 1)
+shader_parameter/deep_color = Color(0.141, 0.082, 0.239, 1)
 shader_parameter/density = 0.34
 shader_parameter/drift_speed = 0.045
 shader_parameter/scale = 2.4
 
-; [reliquary] Plum-black panel, inlined per scene (the Godot editor overwrites
-; out-of-editor edits to a shared theme.tres).
 [sub_resource type="StyleBoxFlat" id="rel_panel"]
 content_margin_left = 72.0
 content_margin_top = 48.0
@@ -32,32 +31,25 @@ corner_radius_top_right = 22
 corner_radius_bottom_right = 22
 corner_radius_bottom_left = 22
 
-; [move-elements-to-editor] Two things were built in code here and are authored
-; now. Sir Fish (SummaryFish) was instanced and move_child'd to the top of the
-; column; he is the first row of the VBox. And the twelve stat rows were a
-; hardcoded table of HBox + two Labels; each is a real row now, named after the
-; statistic it reports, carrying its own caption and a plausible dummy value so
-; the whole screen reads in the editor.
-;
-; quest_result.gd fills the Value labels in by row NAME - so rows can be
-; reordered, restyled or removed here without touching the script, and a row it
-; has no number for simply keeps whatever the editor shows.
-
-[node name="QuestResult" type="Control"]
+[node name="QuestResult" type="Control" unique_id=781259743]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 script = ExtResource("1_sum")
 
-[node name="Scrim" type="ColorRect" parent="."]
+[node name="Scrim" type="ColorRect" parent="." unique_id=1853202534]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
 color = Color(0.141176, 0.094118, 0.196078, 0.82)
 
-[node name="Mist" type="ColorRect" parent="."]
+[node name="Mist" type="ColorRect" parent="." unique_id=1791419370]
 material = SubResource("mist_mat")
 layout_mode = 1
 anchors_preset = 15
@@ -67,7 +59,7 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 
-[node name="Panel" type="PanelContainer" parent="."]
+[node name="Panel" type="PanelContainer" parent="." unique_id=1243825749]
 layout_mode = 1
 anchors_preset = 8
 anchor_left = 0.5
@@ -82,19 +74,36 @@ grow_horizontal = 2
 grow_vertical = 2
 theme_override_styles/panel = SubResource("rel_panel")
 
-[node name="Layout" type="VBoxContainer" parent="Panel"]
+[node name="Layout" type="VBoxContainer" parent="Panel" unique_id=222145619]
 layout_mode = 2
 theme_override_constants/separation = 14
 
-[node name="SummaryFish" parent="Panel/Layout" instance=ExtResource("2_fish")]
+[node name="SummaryFish" parent="Panel/Layout" unique_id=389673689 instance=ExtResource("2_fish")]
 custom_minimum_size = Vector2(328, 328)
 layout_mode = 2
 size_flags_horizontal = 4
 
-[node name="Title" type="Label" parent="Panel/Layout"]
-theme_type_variation = &"DisplayLabel"
+[node name="SpoilsReels" type="HBoxContainer" parent="Panel/Layout" unique_id=296875496]
+layout_mode = 2
+theme_override_constants/separation = 16
+alignment = 1
+
+[node name="Xp" parent="Panel/Layout/SpoilsReels" unique_id=1980331317 instance=ExtResource("6_spoils")]
+layout_mode = 2
+
+[node name="Items" parent="Panel/Layout/SpoilsReels" unique_id=1517984675 instance=ExtResource("6_spoils")]
+layout_mode = 2
+
+[node name="Gold" parent="Panel/Layout/SpoilsReels" unique_id=508604097 instance=ExtResource("6_spoils")]
+layout_mode = 2
+
+[node name="Scrap" parent="Panel/Layout/SpoilsReels" unique_id=677937203 instance=ExtResource("6_spoils")]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="Panel/Layout" unique_id=1725855443]
 custom_minimum_size = Vector2(0, 110)
 layout_mode = 2
+theme_type_variation = &"DisplayLabel"
 theme_override_colors/font_color = Color(0.894118, 0.282353, 0.309804, 1)
 theme_override_colors/font_outline_color = Color(0.019608, 0.054902, 0.062745, 1)
 theme_override_constants/outline_size = 12
@@ -103,25 +112,24 @@ text = "DEFEATED"
 horizontal_alignment = 1
 vertical_alignment = 1
 
-[node name="Subtitle" type="Label" parent="Panel/Layout"]
+[node name="Subtitle" type="Label" parent="Panel/Layout" unique_id=1893431644]
+visible = false
 layout_mode = 2
 theme_override_colors/font_color = Color(0.611765, 0.686275, 0.643137, 1)
 theme_override_font_sizes/font_size = 46
 horizontal_alignment = 1
 autowrap_mode = 3
 
-; [reliquary] rule - fleuron - rule. Meshy ornament (assets/ui/reliquary/
-; fleuron.png); the two HSeparators carry the split until it exists.
-[node name="Divider" type="HBoxContainer" parent="Panel/Layout"]
+[node name="Divider" type="HBoxContainer" parent="Panel/Layout" unique_id=1108266255]
 layout_mode = 2
 theme_override_constants/separation = 14
 
-[node name="RuleL" type="HSeparator" parent="Panel/Layout/Divider"]
+[node name="RuleL" type="HSeparator" parent="Panel/Layout/Divider" unique_id=227062494]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 4
 
-[node name="Fleuron" type="TextureRect" parent="Panel/Layout/Divider"]
+[node name="Fleuron" type="TextureRect" parent="Panel/Layout/Divider" unique_id=367199256]
 custom_minimum_size = Vector2(220, 96)
 layout_mode = 2
 size_flags_horizontal = 4
@@ -130,261 +138,255 @@ texture = ExtResource("5_fleuron")
 expand_mode = 1
 stretch_mode = 5
 
-[node name="RuleR" type="HSeparator" parent="Panel/Layout/Divider"]
+[node name="RuleR" type="HSeparator" parent="Panel/Layout/Divider" unique_id=1892145179]
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 4
 
-[node name="Stats" type="VBoxContainer" parent="Panel/Layout"]
+[node name="Stats" type="VBoxContainer" parent="Panel/Layout" unique_id=1138477910]
 layout_mode = 2
 size_flags_vertical = 3
 theme_override_constants/separation = 4
 
-[node name="QuestReward" type="HBoxContainer" parent="Panel/Layout/Stats"]
+[node name="QuestReward" type="HBoxContainer" parent="Panel/Layout/Stats" unique_id=272057412]
 custom_minimum_size = Vector2(0, 54)
 layout_mode = 2
 
-[node name="Caption" type="Label" parent="Panel/Layout/Stats/QuestReward"]
+[node name="Caption" type="Label" parent="Panel/Layout/Stats/QuestReward" unique_id=1020927671]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_colors/font_color = Color(0.941176, 0.784314, 0.376471, 1)
 theme_override_font_sizes/font_size = 46
 text = "Quest reward"
 
-[node name="Value" type="Label" parent="Panel/Layout/Stats/QuestReward"]
+[node name="Value" type="Label" parent="Panel/Layout/Stats/QuestReward" unique_id=472821947]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.941176, 0.784314, 0.376471, 1)
 theme_override_font_sizes/font_size = 46
 text = "200"
 horizontal_alignment = 2
 
-; [run-summary-modal] Net gold for the run (gold_earned - gold_spent, can be
-; negative) - the failure reveal's own row, shown instead of the
-; ExpeditionGold/GoldEarned/GoldSpent/GoldOnHand rows below.
-[node name="NetGold" type="HBoxContainer" parent="Panel/Layout/Stats"]
+[node name="NetGold" type="HBoxContainer" parent="Panel/Layout/Stats" unique_id=1649595403]
 custom_minimum_size = Vector2(0, 54)
 layout_mode = 2
 
-[node name="Caption" type="Label" parent="Panel/Layout/Stats/NetGold"]
+[node name="Caption" type="Label" parent="Panel/Layout/Stats/NetGold" unique_id=491961491]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_colors/font_color = Color(0.611765, 0.690196, 0.674510, 1)
+theme_override_colors/font_color = Color(0.611765, 0.690196, 0.67451, 1)
 theme_override_font_sizes/font_size = 46
-text = "Total gold"
+text = "Gold brought home"
 
-[node name="Value" type="Label" parent="Panel/Layout/Stats/NetGold"]
+[node name="Value" type="Label" parent="Panel/Layout/Stats/NetGold" unique_id=1348085284]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.960784, 0.945098, 0.894118, 1)
 theme_override_font_sizes/font_size = 46
 text = "1275"
 horizontal_alignment = 2
 
-[node name="ExpeditionGold" type="HBoxContainer" parent="Panel/Layout/Stats"]
+[node name="ExpeditionGold" type="HBoxContainer" parent="Panel/Layout/Stats" unique_id=1431245856]
 custom_minimum_size = Vector2(0, 54)
 layout_mode = 2
 
-[node name="Caption" type="Label" parent="Panel/Layout/Stats/ExpeditionGold"]
+[node name="Caption" type="Label" parent="Panel/Layout/Stats/ExpeditionGold" unique_id=1488352760]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_colors/font_color = Color(0.611765, 0.690196, 0.674510, 1)
+theme_override_colors/font_color = Color(0.611765, 0.690196, 0.67451, 1)
 theme_override_font_sizes/font_size = 46
 text = "Gold brought home"
 
-[node name="Value" type="Label" parent="Panel/Layout/Stats/ExpeditionGold"]
+[node name="Value" type="Label" parent="Panel/Layout/Stats/ExpeditionGold" unique_id=25929989]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.960784, 0.945098, 0.894118, 1)
 theme_override_font_sizes/font_size = 46
 text = "47"
 horizontal_alignment = 2
 
-[node name="ExpeditionScrap" type="HBoxContainer" parent="Panel/Layout/Stats"]
+[node name="ExpeditionScrap" type="HBoxContainer" parent="Panel/Layout/Stats" unique_id=1386063314]
 custom_minimum_size = Vector2(0, 54)
 layout_mode = 2
 
-[node name="Caption" type="Label" parent="Panel/Layout/Stats/ExpeditionScrap"]
+[node name="Caption" type="Label" parent="Panel/Layout/Stats/ExpeditionScrap" unique_id=1696255392]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_colors/font_color = Color(0.611765, 0.690196, 0.674510, 1)
+theme_override_colors/font_color = Color(0.611765, 0.690196, 0.67451, 1)
 theme_override_font_sizes/font_size = 46
 text = "Scrap brought home"
 
-[node name="Value" type="Label" parent="Panel/Layout/Stats/ExpeditionScrap"]
+[node name="Value" type="Label" parent="Panel/Layout/Stats/ExpeditionScrap" unique_id=290915298]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.960784, 0.945098, 0.894118, 1)
 theme_override_font_sizes/font_size = 46
 text = "31"
 horizontal_alignment = 2
 
-[node name="EncountersCleared" type="HBoxContainer" parent="Panel/Layout/Stats"]
+[node name="EncountersCleared" type="HBoxContainer" parent="Panel/Layout/Stats" unique_id=2030079747]
 custom_minimum_size = Vector2(0, 54)
 layout_mode = 2
 
-[node name="Caption" type="Label" parent="Panel/Layout/Stats/EncountersCleared"]
+[node name="Caption" type="Label" parent="Panel/Layout/Stats/EncountersCleared" unique_id=1228003352]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_colors/font_color = Color(0.611765, 0.690196, 0.674510, 1)
+theme_override_colors/font_color = Color(0.611765, 0.690196, 0.67451, 1)
 theme_override_font_sizes/font_size = 46
 text = "Encounters cleared"
 
-[node name="Value" type="Label" parent="Panel/Layout/Stats/EncountersCleared"]
+[node name="Value" type="Label" parent="Panel/Layout/Stats/EncountersCleared" unique_id=612526298]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.960784, 0.945098, 0.894118, 1)
 theme_override_font_sizes/font_size = 46
 text = "6"
 horizontal_alignment = 2
 
-[node name="RunTime" type="HBoxContainer" parent="Panel/Layout/Stats"]
+[node name="RunTime" type="HBoxContainer" parent="Panel/Layout/Stats" unique_id=704904997]
 custom_minimum_size = Vector2(0, 54)
 layout_mode = 2
 
-[node name="Caption" type="Label" parent="Panel/Layout/Stats/RunTime"]
+[node name="Caption" type="Label" parent="Panel/Layout/Stats/RunTime" unique_id=626454776]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_colors/font_color = Color(0.611765, 0.690196, 0.674510, 1)
+theme_override_colors/font_color = Color(0.611765, 0.690196, 0.67451, 1)
 theme_override_font_sizes/font_size = 46
 text = "Run time"
 
-[node name="Value" type="Label" parent="Panel/Layout/Stats/RunTime"]
+[node name="Value" type="Label" parent="Panel/Layout/Stats/RunTime" unique_id=2080027768]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.960784, 0.945098, 0.894118, 1)
 theme_override_font_sizes/font_size = 46
 text = "7:24"
 horizontal_alignment = 2
 
-[node name="GoldEarned" type="HBoxContainer" parent="Panel/Layout/Stats"]
+[node name="GoldEarned" type="HBoxContainer" parent="Panel/Layout/Stats" unique_id=295087093]
 custom_minimum_size = Vector2(0, 54)
 layout_mode = 2
 
-[node name="Caption" type="Label" parent="Panel/Layout/Stats/GoldEarned"]
+[node name="Caption" type="Label" parent="Panel/Layout/Stats/GoldEarned" unique_id=735613530]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_colors/font_color = Color(0.611765, 0.690196, 0.674510, 1)
+theme_override_colors/font_color = Color(0.611765, 0.690196, 0.67451, 1)
 theme_override_font_sizes/font_size = 46
 text = "Gold earned"
 
-[node name="Value" type="Label" parent="Panel/Layout/Stats/GoldEarned"]
+[node name="Value" type="Label" parent="Panel/Layout/Stats/GoldEarned" unique_id=496100869]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.960784, 0.945098, 0.894118, 1)
 theme_override_font_sizes/font_size = 46
 text = "1480"
 horizontal_alignment = 2
 
-[node name="GoldSpent" type="HBoxContainer" parent="Panel/Layout/Stats"]
+[node name="GoldSpent" type="HBoxContainer" parent="Panel/Layout/Stats" unique_id=1024194132]
 custom_minimum_size = Vector2(0, 54)
 layout_mode = 2
 
-[node name="Caption" type="Label" parent="Panel/Layout/Stats/GoldSpent"]
+[node name="Caption" type="Label" parent="Panel/Layout/Stats/GoldSpent" unique_id=1563162021]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_colors/font_color = Color(0.611765, 0.690196, 0.674510, 1)
+theme_override_colors/font_color = Color(0.611765, 0.690196, 0.67451, 1)
 theme_override_font_sizes/font_size = 46
 text = "Gold spent"
 
-[node name="Value" type="Label" parent="Panel/Layout/Stats/GoldSpent"]
+[node name="Value" type="Label" parent="Panel/Layout/Stats/GoldSpent" unique_id=80689911]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.960784, 0.945098, 0.894118, 1)
 theme_override_font_sizes/font_size = 46
 text = "205"
 horizontal_alignment = 2
 
-[node name="GoldOnHand" type="HBoxContainer" parent="Panel/Layout/Stats"]
+[node name="GoldOnHand" type="HBoxContainer" parent="Panel/Layout/Stats" unique_id=2107515822]
 custom_minimum_size = Vector2(0, 54)
 layout_mode = 2
 
-[node name="Caption" type="Label" parent="Panel/Layout/Stats/GoldOnHand"]
+[node name="Caption" type="Label" parent="Panel/Layout/Stats/GoldOnHand" unique_id=1263566483]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_colors/font_color = Color(0.611765, 0.690196, 0.674510, 1)
+theme_override_colors/font_color = Color(0.611765, 0.690196, 0.67451, 1)
 theme_override_font_sizes/font_size = 46
 text = "Gold on hand"
 
-[node name="Value" type="Label" parent="Panel/Layout/Stats/GoldOnHand"]
+[node name="Value" type="Label" parent="Panel/Layout/Stats/GoldOnHand" unique_id=442636143]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.960784, 0.945098, 0.894118, 1)
 theme_override_font_sizes/font_size = 46
 text = "1275"
 horizontal_alignment = 2
 
-[node name="DamageDealt" type="HBoxContainer" parent="Panel/Layout/Stats"]
+[node name="DamageDealt" type="HBoxContainer" parent="Panel/Layout/Stats" unique_id=115138004]
 custom_minimum_size = Vector2(0, 54)
 layout_mode = 2
 
-[node name="Caption" type="Label" parent="Panel/Layout/Stats/DamageDealt"]
+[node name="Caption" type="Label" parent="Panel/Layout/Stats/DamageDealt" unique_id=1642387018]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_colors/font_color = Color(0.611765, 0.690196, 0.674510, 1)
+theme_override_colors/font_color = Color(0.611765, 0.690196, 0.67451, 1)
 theme_override_font_sizes/font_size = 46
 text = "Damage dealt"
 
-[node name="Value" type="Label" parent="Panel/Layout/Stats/DamageDealt"]
+[node name="Value" type="Label" parent="Panel/Layout/Stats/DamageDealt" unique_id=241719019]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.960784, 0.945098, 0.894118, 1)
 theme_override_font_sizes/font_size = 46
 text = "3910"
 horizontal_alignment = 2
 
-[node name="DamageTaken" type="HBoxContainer" parent="Panel/Layout/Stats"]
+[node name="DamageTaken" type="HBoxContainer" parent="Panel/Layout/Stats" unique_id=1702193040]
 custom_minimum_size = Vector2(0, 54)
 layout_mode = 2
 
-[node name="Caption" type="Label" parent="Panel/Layout/Stats/DamageTaken"]
+[node name="Caption" type="Label" parent="Panel/Layout/Stats/DamageTaken" unique_id=1615732595]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_colors/font_color = Color(0.611765, 0.690196, 0.674510, 1)
+theme_override_colors/font_color = Color(0.611765, 0.690196, 0.67451, 1)
 theme_override_font_sizes/font_size = 46
 text = "Damage taken"
 
-[node name="Value" type="Label" parent="Panel/Layout/Stats/DamageTaken"]
+[node name="Value" type="Label" parent="Panel/Layout/Stats/DamageTaken" unique_id=1563099355]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.960784, 0.945098, 0.894118, 1)
 theme_override_font_sizes/font_size = 46
 text = "1102"
 horizontal_alignment = 2
 
-[node name="SlotSpins" type="HBoxContainer" parent="Panel/Layout/Stats"]
+[node name="SlotSpins" type="HBoxContainer" parent="Panel/Layout/Stats" unique_id=2125839409]
 custom_minimum_size = Vector2(0, 54)
 layout_mode = 2
 
-[node name="Caption" type="Label" parent="Panel/Layout/Stats/SlotSpins"]
+[node name="Caption" type="Label" parent="Panel/Layout/Stats/SlotSpins" unique_id=506278322]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_colors/font_color = Color(0.611765, 0.690196, 0.674510, 1)
+theme_override_colors/font_color = Color(0.611765, 0.690196, 0.67451, 1)
 theme_override_font_sizes/font_size = 46
 text = "Slot spins"
 
-[node name="Value" type="Label" parent="Panel/Layout/Stats/SlotSpins"]
+[node name="Value" type="Label" parent="Panel/Layout/Stats/SlotSpins" unique_id=981645013]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.960784, 0.945098, 0.894118, 1)
 theme_override_font_sizes/font_size = 46
 text = "38"
 horizontal_alignment = 2
 
-[node name="SlotWins" type="HBoxContainer" parent="Panel/Layout/Stats"]
+[node name="SlotWins" type="HBoxContainer" parent="Panel/Layout/Stats" unique_id=1092601519]
 custom_minimum_size = Vector2(0, 54)
 layout_mode = 2
 
-[node name="Caption" type="Label" parent="Panel/Layout/Stats/SlotWins"]
+[node name="Caption" type="Label" parent="Panel/Layout/Stats/SlotWins" unique_id=1086717444]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_colors/font_color = Color(0.611765, 0.690196, 0.674510, 1)
+theme_override_colors/font_color = Color(0.611765, 0.690196, 0.67451, 1)
 theme_override_font_sizes/font_size = 46
 text = "Slot wins"
 
-[node name="Value" type="Label" parent="Panel/Layout/Stats/SlotWins"]
+[node name="Value" type="Label" parent="Panel/Layout/Stats/SlotWins" unique_id=176600936]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.960784, 0.945098, 0.894118, 1)
 theme_override_font_sizes/font_size = 46
 text = "19"
 horizontal_alignment = 2
 
-; [run-summary-modal] "X icons hit in Y spins" - one phrase, not a
-; caption/number pair, so this row is a single centered Value label; the rest
-; of the row-fill code skips a row it finds no Caption on.
-[node name="IconsSpins" type="HBoxContainer" parent="Panel/Layout/Stats"]
+[node name="IconsSpins" type="HBoxContainer" parent="Panel/Layout/Stats" unique_id=167087246]
 custom_minimum_size = Vector2(0, 54)
 layout_mode = 2
 
-[node name="Value" type="Label" parent="Panel/Layout/Stats/IconsSpins"]
+[node name="Value" type="Label" parent="Panel/Layout/Stats/IconsSpins" unique_id=2010706995]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_colors/font_color = Color(0.960784, 0.945098, 0.894118, 1)
@@ -392,83 +394,82 @@ theme_override_font_sizes/font_size = 46
 text = "37 icons hit in 12 spins"
 horizontal_alignment = 1
 
-[node name="UpgradesBought" type="HBoxContainer" parent="Panel/Layout/Stats"]
+[node name="UpgradesBought" type="HBoxContainer" parent="Panel/Layout/Stats" unique_id=1867994401]
 custom_minimum_size = Vector2(0, 54)
 layout_mode = 2
 
-[node name="Caption" type="Label" parent="Panel/Layout/Stats/UpgradesBought"]
+[node name="Caption" type="Label" parent="Panel/Layout/Stats/UpgradesBought" unique_id=299904102]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_colors/font_color = Color(0.611765, 0.690196, 0.674510, 1)
+theme_override_colors/font_color = Color(0.611765, 0.690196, 0.67451, 1)
 theme_override_font_sizes/font_size = 46
 text = "Upgrades bought"
 
-[node name="Value" type="Label" parent="Panel/Layout/Stats/UpgradesBought"]
+[node name="Value" type="Label" parent="Panel/Layout/Stats/UpgradesBought" unique_id=1473789562]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.960784, 0.945098, 0.894118, 1)
 theme_override_font_sizes/font_size = 46
 text = "4"
 horizontal_alignment = 2
 
-[node name="ItemsFound" type="HBoxContainer" parent="Panel/Layout/Stats"]
+[node name="ItemsFound" type="HBoxContainer" parent="Panel/Layout/Stats" unique_id=1976506994]
 custom_minimum_size = Vector2(0, 54)
 layout_mode = 2
 
-[node name="Caption" type="Label" parent="Panel/Layout/Stats/ItemsFound"]
+[node name="Caption" type="Label" parent="Panel/Layout/Stats/ItemsFound" unique_id=1999441603]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_colors/font_color = Color(0.611765, 0.690196, 0.674510, 1)
+theme_override_colors/font_color = Color(0.611765, 0.690196, 0.67451, 1)
 theme_override_font_sizes/font_size = 46
-text = "Items found"
+text = "Items brought home"
 
-[node name="Value" type="Label" parent="Panel/Layout/Stats/ItemsFound"]
+[node name="Value" type="Label" parent="Panel/Layout/Stats/ItemsFound" unique_id=2123878787]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.960784, 0.945098, 0.894118, 1)
 theme_override_font_sizes/font_size = 46
 text = "7"
 horizontal_alignment = 2
 
-[node name="ItemsSold" type="HBoxContainer" parent="Panel/Layout/Stats"]
+[node name="ItemsSold" type="HBoxContainer" parent="Panel/Layout/Stats" unique_id=198033373]
 custom_minimum_size = Vector2(0, 54)
 layout_mode = 2
 
-[node name="Caption" type="Label" parent="Panel/Layout/Stats/ItemsSold"]
+[node name="Caption" type="Label" parent="Panel/Layout/Stats/ItemsSold" unique_id=458743159]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_colors/font_color = Color(0.611765, 0.690196, 0.674510, 1)
+theme_override_colors/font_color = Color(0.611765, 0.690196, 0.67451, 1)
 theme_override_font_sizes/font_size = 46
 text = "Items sold"
 
-[node name="Value" type="Label" parent="Panel/Layout/Stats/ItemsSold"]
+[node name="Value" type="Label" parent="Panel/Layout/Stats/ItemsSold" unique_id=955862465]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.960784, 0.945098, 0.894118, 1)
 theme_override_font_sizes/font_size = 46
 text = "3"
 horizontal_alignment = 2
 
-[node name="Buttons" type="HBoxContainer" parent="Panel/Layout"]
+[node name="Buttons" type="HBoxContainer" parent="Panel/Layout" unique_id=1674321943]
 layout_mode = 2
 theme_override_constants/separation = 20
 alignment = 1
 
-[node name="PrimaryButton" type="Button" parent="Panel/Layout/Buttons"]
+[node name="PrimaryButton" type="Button" parent="Panel/Layout/Buttons" unique_id=152582925]
 custom_minimum_size = Vector2(0, 136)
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 54
 text = "RETRY"
 
-[node name="SecondaryButton" type="Button" parent="Panel/Layout/Buttons"]
+[node name="SecondaryButton" type="Button" parent="Panel/Layout/Buttons" unique_id=1004984596]
+visible = false
 custom_minimum_size = Vector2(0, 136)
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_font_sizes/font_size = 54
 text = "Sleep in the street — free"
-visible = false
 
-; [reliquary] Corner ornaments, as a sibling overlaying the panel exactly so
-; the PanelContainer content margin does not inset them off the panel edge.
-[node name="Frame" parent="." instance=ExtResource("4_frame")]
+[node name="Frame" parent="." unique_id=942291701 instance=ExtResource("4_frame")]
+layout_mode = 1
 anchors_preset = 8
 anchor_left = 0.5
 anchor_top = 0.5
@@ -478,5 +479,3 @@ offset_left = -450.0
 offset_top = -880.0
 offset_right = 450.0
 offset_bottom = 880.0
-grow_horizontal = 2
-grow_vertical = 2

@@ -15,6 +15,10 @@ extends CanvasLayer
 ## spec 3.2: the heal-glyph button beside the backpack, same visibility rule.
 @onready var party_button: Button = $PartyButton
 @onready var currency_plate: PanelContainer = $CurrencyPlate
+## [minimap] The expedition progress strip - the inverse of currency_plate's
+## own quest-only rule (see _process): visible ONLY during a quest, where
+## currency_plate hides in favour of the console's own gold/scrap plate.
+@onready var expedition_minimap: Control = $ExpeditionMinimap
 @onready var modal_layer: Control = $ModalLayer
 ## spec 6: opened by the backpack button, in town and (outside COMBAT) the forest.
 @onready var inventory_modal = $ModalLayer/InventoryModal   # InventoryModal (untyped: custom API)
@@ -54,6 +58,8 @@ func _process(_delta: float) -> void:
 	# now (status_panel.tscn), so this one steps aside for the whole quest. Town
 	# and the blacksmith have no other readout, so they keep it.
 	currency_plate.visible = SceneRouter.place != SceneRouter.Place.QUEST
+	# [minimap] Exactly the inverse - nothing to map outside a quest.
+	expedition_minimap.visible = SceneRouter.place == SceneRouter.Place.QUEST
 
 ## True during a quest's COMBAT state. Reads SceneRouter.place (set by go(), and
 ## re-asserted by every routed scene's _ready() for direct launches - Q8) and
