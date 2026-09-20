@@ -69,6 +69,7 @@ func _ready() -> void:
 	await _check_board_charges_its_owner()
 	_check_authored_specials()
 	_check_invoke_guards()
+	_check_charge_meter()
 	_t.finish(get_tree(), "test_specials")
 
 # --- the meter ---------------------------------------------------------------
@@ -262,3 +263,49 @@ func _check_invoke_guards() -> void:
 	ranger.state = Combatant.State.DEAD
 	_t.check(not d.invoke_hero_special(ranger), "a dead hero refuses the invoke")
 	_t.check(GameState.special_ready(&"ranger"), "and keeps her meter")
+
+# --- the charge meter ---------------------------------------------------------
+
+## ChargeMeter.lit_pips() is the only thing relating SPECIAL_PIP_COUNT (3, from
+## the art) to SPECIAL_CHARGE_COST (10). Pure and static, so it is checked here
+## without a viewport.
+func _check_charge_meter() -> void:
+	print("--- charge meter pip mapping ---")
+	var cost: int = Tuning.SPECIAL_CHARGE_COST
+	var pips: int = Tuning.SPECIAL_PIP_COUNT
+
+	var empty := ChargeMeter.lit_pips(0, cost, pips)
+	_t.check(empty == Vector2.ZERO, "an empty meter lights no pips and fills none")
+
+	var full := ChargeMeter.lit_pips(cost, cost, pips)
+	_t.check(full == Vector2(float(pips), 0.0),
+		"a full meter lights every pip with nothing left filling (got %s)" % [full])
+
+	# Overfull cannot happen (add_special_charge caps), but must not light a
+	# fourth pip if it ever did.
+	_t.check(ChargeMeter.lit_pips(cost * 3, cost, pips) == Vector2(float(pips), 0.0),
+		"charges past the cost never light more pips than exist")
+
+	# The partial wedge is what keeps 3 pips honest about a 10-charge meter:
+	# every single charge has to move something.
+	var seen: Array = []
+	var last := Vector2(-1, -1)
+	for c: int in range(cost + 1):
+		var got := ChargeMeter.lit_pips(c, cost, pips)
+		_t.check(got != last, "charge %d moves the meter (got %s, was %s)" % [c, got, last])
+		last = got
+		seen.append(got.x)
+	_t.check(seen[0] == 0.0 and seen[cost] == float(pips),
+		"the meter runs from no pips at 0 to every pip at the cost")
+
+	# Monotonic: a charge can never dim a pip that was already lit.
+	var ok := true
+	for i: int in range(1, seen.size()):
+		if float(seen[i]) < float(seen[i - 1]):
+			ok = false
+	_t.check(ok, "lit pips never go backwards as charges rise")
+
+	# Degenerate configs must not divide by zero - both are Tuning constants a
+	# future pass could set to anything.
+	_t.check(ChargeMeter.lit_pips(5, 0, pips) == Vector2.ZERO, "a zero cost is survivable")
+	_t.check(ChargeMeter.lit_pips(5, cost, 0) == Vector2.ZERO, "a zero pip count is survivable")

@@ -727,6 +727,25 @@ const C_ROOTWOOD_GEM := Color("6FCB52")    # innate-icon inlay, canopy leaf-gree
 ## gold trim becomes the glowing seam instead, since a boss fight is the one
 ## moment this console is allowed to stop reading as friendly UI chrome.
 const C_OBSIDIAN_DEEP := Color("140F1C")   # status strip / recessed reel windows - darkest glass
+## [specials] The invoker buttons and their charge meters, sampled off the Meshy
+## style prototype (a gold-rimmed glass button with a neon glyph and a pip row in
+## a tab below it). The render came back ALREADY ON PALETTE: its ring gold
+## measured D8A949 against C_GOLD's D8AF52, its bright rim EEDDAC against
+## C_GOLD_BRIGHT's F5DFA0, and the tab's lit edge 7A6630 against C_GOLD_DARK's
+## 7A5A18 - so the meter reuses those three rather than duplicating them. Only
+## the domed glass lens needed new tones, which are lighter and bluer than
+## C_OBSIDIAN / C_GLASS_FACET.
+const C_INVOKER_GLASS := Color("554B6A")      # lens body, the dome's shadowed mass
+const C_INVOKER_GLASS_LIT := Color("AF9DE2")  # the dome's top specular
+
+## How many pips a charge meter draws. Three, from the prototype's own pip row -
+## DELIBERATELY not SPECIAL_CHARGE_COST (10): ten dots would not fit the tab and
+## would read as a progress bar rather than a charge. Each pip is a third of the
+## meter, and the one being filled draws a partial wedge, so the row still shows
+## real progress at a glance. Change either number freely; ChargeMeter.lit_pips()
+## is the only thing that relates them.
+const SPECIAL_PIP_COUNT := 3
+
 const C_OBSIDIAN := Color("211A2E")        # panel faces: cabinet, gold plate
 const C_GLASS_FACET := Color("3B3152")     # glyph tiles, raised off C_OBSIDIAN
 const C_SEAM := Color("D9A6FF")            # glowing trim, replacing gold on borders and the reel lattice

@@ -16,3 +16,7 @@ __pycache__/
 # not our source, too large to keep in history.
 /third_party/kaykit/
 
+
+# Throwaway look-at-it scenes and probes. CLAUDE.md and the backlog both already
+# describe this folder as ignored; it was not actually listed until now.
+scratch/
