@@ -72,16 +72,22 @@ const VERDICT_BAD := ["oof", "whomp whomp", "ouch"]
 const VERDICT_NEUTRAL := ["ok", "welp", "...cool"]
 const VERDICT_GOOD := ["nice", "way to go", "smooth"]
 
-## [run-summary-modal] The failure reveal's own, shorter row set, in the exact
-## order it should read - reordered into place every present() regardless of
-## how quest_result.tscn happens to author them, since the authored order
-## interleaves victory-only rows this case hides.
-const _FAILURE_ROW_ORDER: Array[StringName] = [
+## [victory-failure-stat-parity] The shared stat row set, in the exact order it
+## should read - reordered into place every present() regardless of how
+## quest_result.tscn happens to author them. Originally the failure reveal's
+## own shorter set; the victory reveal now uses the same rows and order so the
+## two screens read as one format, with QuestReward (and its extras) leading
+## on a win since a loss has no reward to show.
+const _STAT_ROW_ORDER: Array[StringName] = [
 	&"NetGold", &"ExpeditionScrap", &"ItemsFound", &"EncountersCleared",
 	&"RunTime", &"DamageDealt", &"DamageTaken", &"IconsSpins",
 ]
-const _VICTORY_ONLY_ROWS: Array[StringName] = [
-	&"QuestReward", &"ExpeditionGold", &"GoldEarned", &"GoldSpent",
+## [victory-failure-stat-parity] Superseded by _STAT_ROW_ORDER - these used to
+## be the victory reveal's own, larger row set. Kept as authored chrome in
+## quest_result.tscn (see _row_values(), which still fills them) but never
+## shown on either screen any more.
+const _RETIRED_ROWS: Array[StringName] = [
+	&"ExpeditionGold", &"GoldEarned", &"GoldSpent",
 	&"GoldOnHand", &"SlotSpins", &"SlotWins", &"UpgradesBought", &"ItemsSold",
 ]
 
@@ -293,20 +299,21 @@ func _present_failure() -> void:
 	button_tw.tween_property(divider, "modulate:a", 1.0, _BUTTON_FADE_TIME)
 	await button_tw.finished
 
-	_reveal_rows_overlapped(_FAILURE_ROW_ORDER)
+	_reveal_rows_overlapped(_STAT_ROW_ORDER)
 
-## Hides every victory-only row and reorders the failure set into
-## _FAILURE_ROW_ORDER. [party-wipe-consequences] Does NOT fill the values any
+## Hides QuestReward and every retired row, and reorders the shared set into
+## _STAT_ROW_ORDER. [party-wipe-consequences] Does NOT fill the values any
 ## more - the spoils roll rewrites what the run brought home, so the fill waits
 ## until it has settled (_present_failure).
 func _prepare_failure_rows() -> void:
 	_rebuild_reward_extra_rows(false)
-	for row_name: StringName in _VICTORY_ONLY_ROWS:
+	_row_visible(&"QuestReward", false)
+	for row_name: StringName in _RETIRED_ROWS:
 		_row_visible(row_name, false)
-	for row_name: StringName in _FAILURE_ROW_ORDER:
+	for row_name: StringName in _STAT_ROW_ORDER:
 		_row_visible(row_name, true)
-	for i: int in range(_FAILURE_ROW_ORDER.size()):
-		var row := stat_rows.get_node_or_null(NodePath(_FAILURE_ROW_ORDER[i]))
+	for i: int in range(_STAT_ROW_ORDER.size()):
+		var row := stat_rows.get_node_or_null(NodePath(_STAT_ROW_ORDER[i]))
 		if row != null:
 			stat_rows.move_child(row, i)
 
@@ -385,9 +392,9 @@ func _verdict_points(outcomes: Dictionary) -> int:
 	return points
 
 ## Puts the victory row set up, filled and fully opaque, BEFORE anything spins.
-## The three quest rows (QuestReward / ExpeditionGold / ExpeditionScrap) are
-## shown only on a quest ending, and QuestReward only on a win. Victory-only -
-## see _prepare_failure_rows() for the failure reveal's own, shorter row set.
+## [victory-failure-stat-parity] Same row set and order as the failure reveal
+## (_STAT_ROW_ORDER) - only QuestReward, and any QuestRewardExtra rows, lead
+## the list, and only on a quest win, since a loss has no reward to show.
 ##
 ## [party-wipe-consequences] These used to slide in one at a time after the
 ## heading. A win now reads its stats while the reels are still turning, and the
@@ -397,18 +404,32 @@ func _verdict_points(outcomes: Dictionary) -> int:
 ##
 ## The alphas have to be asserted rather than assumed: the SAME long-lived
 ## instance may have just run _present_failure(), which leaves every row at 0.
-##
-## The slot-win PERCENTAGE stays deliberately absent (spec 18.2 / 17.8 / Q24):
-## at ~20 spins one sigma is ~11 points, so a healthy machine can print "33%"
-## and read as rigged. Raw count here; the 50% check lives in test_slot_odds.
 func _show_victory_rows() -> void:
 	var is_quest: bool = GameState.completed_quest != null
-	_row_visible(&"QuestReward", is_quest and _victory)
-	_row_visible(&"ExpeditionGold", is_quest)
-	_row_visible(&"ExpeditionScrap", is_quest)
-	_row_visible(&"NetGold", false)
-	_row_visible(&"IconsSpins", false)
-	_rebuild_reward_extra_rows(is_quest and _victory)
+	var show_reward: bool = is_quest and _victory
+	_row_visible(&"QuestReward", show_reward)
+	for row_name: StringName in _RETIRED_ROWS:
+		_row_visible(row_name, false)
+	for row_name: StringName in _STAT_ROW_ORDER:
+		_row_visible(row_name, true)
+	_rebuild_reward_extra_rows(show_reward)
+
+	var insert_index := 0
+	if show_reward:
+		var quest_reward_row := stat_rows.get_node_or_null(NodePath(&"QuestReward"))
+		if quest_reward_row != null:
+			stat_rows.move_child(quest_reward_row, insert_index)
+			insert_index += 1
+		for row: Node in stat_rows.get_children():
+			if row.is_in_group(_REWARD_EXTRA_GROUP):
+				stat_rows.move_child(row, insert_index)
+				insert_index += 1
+	for row_name: StringName in _STAT_ROW_ORDER:
+		var row := stat_rows.get_node_or_null(NodePath(row_name))
+		if row != null:
+			stat_rows.move_child(row, insert_index)
+			insert_index += 1
+
 	_fill_row_values()
 
 	for row: Control in stat_rows.get_children():
