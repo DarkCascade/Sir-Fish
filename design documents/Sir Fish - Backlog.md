@@ -1,7 +1,7 @@
 # Sir Fish — Backlog
 
 > **Status: prioritised 2026-09-13, nothing scheduled; P5 added 2026-09-14; P6 added
-> 2026-09-19; P1 and P2 audited against the code and balance-checked 2026-09-20.** Six
+> 2026-09-19; P1 and P2 audited and balance-checked, P7 opened 2026-09-20.** Seven
 > ideas plus one spike, ranked. Each section records what already exists (checked against
 > the code), what is missing, and what is decided or still open; where a section describes
 > a design that was later replaced, it says so and gives what ships. The P3 and P4
@@ -15,8 +15,15 @@
 > warrior + recruits, and recruits make the early game easier without leaving the solo
 > bands (§1 "Balance check"). Decided the same day: the mage quest is gated at level 5,
 > recruits join at their quest's level (ranger 3, mage 5), enemies do **not** scale with
-> party size, and the warbow is left alone pending a future slot-icon effort. §7 collects
-> every decision with its status.
+> party size, and the warbow is left alone pending a future slot-icon effort.
+>
+> **A slot-first pivot landed 2026-09-20 (§7), and it is now the active work.** The slot is
+> the main character mechanically and the party emotionally: slot damage splits by icon owner
+> so each hero swings for their own gear (`66298b9`), and hero specials - finished content
+> that nothing could reach - became invokable off a charge meter (`e7f8298`). Both are
+> headless-tested only, never yet seen in a running game. Decided but unbuilt: the upgrade
+> tray becomes three special invokers, the warrior trades Defend for cleave, and the three
+> slot upgrades move to town. §8 collects every decision with its status.
 
 ---
 
@@ -27,10 +34,11 @@
 | **P1** | ~~Ranger recruitment quest, offered from level 3~~ | High | M | nothing | **Built 2026-09-14; regressions fixed, balance measured, join level set 2026-09-20.** Unlock gate, one-shot tracking, relic-based `CollectObjective`, `RecruitRewardExtra` (joins at level 3), the quest and its warbow relic, all tested. The live playtest caught and fixed a real combat-loop bug (§1) |
 | **P2** | ~~Mage recruitment quest, offered from level 5~~ | High | S | nothing | **Built 2026-09-14, the same day as P1; recorded here 2026-09-20, gated at level 5 the same day.** Deviated from the plan: one authored RELIC (the heartstone, a trinket) via `QuestDef.guaranteed_boss_drop`, not a staff. Its own `_load_authored_quests()` rewrite is what caused P1's regressions |
 | **S1** | ~~Spike: does KayKit's `Rig_Medium` match the shipped rig?~~ | — | XS | — | **Done 2026-09-13: it matches** (§4) |
-| **P3** | Four-modifier sets per item type; item types for every shipped hand mesh | Medium | M data + M visible props | P1–P2 for tuning | Loot for three classes can only be tuned with three classes in the party |
+| **P3** | Modifier sets per item type; item types for every shipped hand mesh | Medium | M data + M visible props | 3.7 / 3.8, and P7 for what an icon does | P1–P2 unblocked it (a full party can be tuned now, §1's balance check). What blocks it is design: the new slot-icon ids are named but nobody has said what they DO (3.7), and the item-modifier rework may replace decision 3.1 entirely (3.8, §7) |
 | **P4** | Prompt → Meshy → Blender → glb character skill | Medium | M | nothing: the trial character proved the route (§4) | What remains is packaging `rig_bandit_officer.py` as a skill and building 4.3's shared clip source |
 | **P5** | Small polish pass: post-expedition summary, chest presentation, slot upgrade UI, party modal info, shadow monster rework | Low–Medium | S (each item) | nothing | Queued during a later session; not yet scoped against P1–P4 |
 | **P6** | Make the headless suite a real gate: one full green-bar run, then CI on push | — (dev) | S | nothing | The first full green bar is recorded (2026-09-20: 31 suites, 0 failing - §6.1). What remains is CI: nothing runs the suites automatically. `tools/run_tests.py` (2026-09-19) exits non-zero on failure precisely so it can gate |
+| **P7** | Slot-first combat: owner swings, invokable specials, player decisions in a fight | High | M | nothing | **Pivot decided and two pieces built 2026-09-20 (§7).** Damage splits by icon owner (`66298b9`) and specials are invokable off a charge meter (`e7f8298`). Remaining: the tray rewire, the warrior's cleave, moving the upgrades to town. Hold-and-respin is deferred behind the specials |
 
 ```mermaid
 flowchart LR
@@ -40,6 +48,11 @@ flowchart LR
   P3b -. fixes the handslot contract .-> P4[P4 Character skill]
   P5[P5 Small polish pass]
   P6a[P6 Full green-bar run] --> P6b[P6 CI gate on push]
+  P7a[P7 Owner swings, built] --> P7b[P7 Charge meter + invoke, built]
+  P7b --> P7c[P7 Tray becomes invokers]
+  P7b --> P7d[P7 Warrior cleave]
+  P7c -. needs a decision worth making .-> P7e[P7 Hold-and-respin]
+  P3a -. what each icon DOES .-> P7d
 ```
 
 Solid arrows are hard dependencies. Dashed arrows are "better after".
@@ -593,9 +606,12 @@ the rollable ones):
 | Types | Have | Short by |
 |---|---|---|
 | axe, sword | `elem_fire`, `elem_ice`, `elem_light`, `bleed` | 0 |
-| bow, dagger (and any new crossbow) | `bomb_arrow` | 3 |
-| staff (and any new wand) | `lightning_blast` | 3 |
-| helm, mail, shield (and any new shield or tome) | `armor_block`, `slot_mend` | 2 |
+| bow | `bomb_arrow`; `bow_shoot` (named 2026-09-20, not built) | 2 |
+| dagger | `bomb_arrow`; `dagger_stab`, `dagger_throw` (named) | 1 |
+| crossbow, heavy crossbow (planned, 3.6) | none named | 4 |
+| staff | `lightning_blast`; `staff_bolt` (named) | 2 |
+| wand (planned) | `wand_bolt`, `wand_lightning` (named) | 2 |
+| helm, mail, tome, and each shield | `armor_block`, `slot_mend`; per-shield ids to be named (3.7) | 2 |
 | idol, ring, amulet | `crit` and one ultimate each | 2 |
 
 - **Armor is the worst case:** every armor type rolls the identical two ids, so telling
@@ -634,9 +650,10 @@ Drafting all 17 sets is P3a's first task, after decision 3.7 says which new ids 
 
 ### Still open
 
-**3.5 The two off-hand weapons and `Throwable`:** make them item types, or leave them
-hidden? `Throwable` shares the weapon hand, so it is probably an ability prop rather
-than an item.
+**3.5 The two off-hand weapons and `Throwable`:** *Decided 2026-09-20: ignore them for
+now.* The focus is a few equipment meshes first; the off-hand weapons and `Throwable`
+stay hidden and are not item types until that is done. (`Throwable` shares the weapon
+hand, so it is probably an ability prop rather than an item when it comes back.)
 
 **3.6 Axe and bow:** the meshes now exist in the Adventurers 2.0 pack (`axe_1handed`,
 `axe_2handed`, `bow`, `bow_withString`), so this is a design question, not an art one.
@@ -648,8 +665,32 @@ than an item.
 
 That adds two types to the table above and avoids renaming the `bow` id.
 
-**3.7 New modifier ids:** which to add. At minimum, enough armor ids to tell the shields
-apart, and ideally a second `DAMAGE_ALL` and a second `HEAL` id.
+**3.7 New modifier ids: partly decided 2026-09-20.** This is the slot-icon work; naming
+the ids closes the question of *which* ids exist, not yet of what they do.
+
+- **Weapon ids, named:** bow `bow_shoot`; dagger `dagger_stab` and `dagger_throw`; staff
+  `staff_bolt`; wand (a new type) `wand_bolt` and `wand_lightning`. None is built yet.
+- **Shield ids, pending:** one per shield, to tell them apart. The available shields:
+
+  | Mesh on `knight.glb` | Pack file (Adventurers 2.0) | Working name (decided, §3) |
+  |---|---|---|
+  | `Round_Shield` | `shield_round` | round shield |
+  | `Badge_Shield` | `shield_badge` | kite shield |
+  | `Rectangle_Shield` | `shield_square` | tower shield |
+  | `Spike_Shield` | `shield_spikes` | spiked shield |
+  | none on the knight | `shield_round_barbarian` | unnamed: a fifth shield the pack ships |
+
+  The pack has `_color` variants of `round`, `badge`, `spikes` and `square` (not
+  `round_barbarian`). The knight-to-pack pairing above is by name and unverified. The
+  older `warrior.glb` also carries a shield (`W_ShieldFace`, `W_ShieldRim`), but as part
+  of that model, not a prop.
+- **Trinkets:** `crit` has no `types` restriction, so **all three trinket types can roll
+  it** (idol, ring and amulet). Each also rolls its own class ultimate (`cleave`, `rain`,
+  `thunderburst`), and that is the whole pool of two. The authored relics (`heartstone`,
+  `warbow`) roll nothing.
+- **Still undecided, and blocking the set drafts:** what each new id *does*: its `Kind`,
+  what it scales off, and which class executes and animates it. See the gaps table for
+  what is still short of four after these ids.
 
 ---
 
@@ -1057,7 +1098,218 @@ Two small things to fold in while touching this:
 
 ---
 
-## 7. Open decisions, collected
+## 7. P7 — Slot-first combat: owner swings and invokable specials
+
+### The pivot (decided 2026-09-20)
+
+The question raised was whether the **slot** or the **party** is the main character. It had
+been the party for a while, and the archetype reviews prompted a look at what the player
+actually does during an expedition.
+
+**The diagnosis came first: nobody was acting.**
+
+- **Heroes don't act.** The combat loop redesign moved all party output onto the board;
+  `BattleDirector.request_turn()` returns immediately for a hero. The bag's output over one
+  spin cycle is the party's entire DPS.
+- **The player doesn't act either.** `SlotMachine._spin_loop()` is
+  `while _should_spin: await _one_spin()`. A fight takes zero input.
+- **Mid-expedition the player's whole verb list** is: open the inventory (equip/unequip),
+  open the party modal (read-only), buy up to three run-scoped slot upgrades from the tray,
+  and shop at the one shop encounter.
+
+So the slot was *already* the mechanical protagonist - the only thing in the game that
+resolves anything - and the party was the fiction wrapped around it. What was missing was
+not a protagonist but **a verb at spin time**, and the slot is the only surface that can
+carry one.
+
+**Decided: the slot is the main character mechanically, the party emotionally.** Player
+decisions live on the slot; the party is the *expression* of those decisions. This is not a
+contest between the two, and it is also the fix for the ranger never animating (§1).
+
+Why slot-first is much closer to done than party-first: **the bag is already a deck.** Nine
+icons drawn without replacement from 18-42 entries, `polish` is literally card thinning,
+items are cards, and `_rebuild_bag()` runs at the top of every spin - so per-spin state can
+shape the draw.
+
+### Done: damage splits by owner (`66298b9`)
+
+Every icon in the bag now carries an `owner` - the wearer for an item icon,
+the hero for an innate one. `_resolve_board()` banks DAMAGE per owner and `_deliver_swings()`
+has each hero swing for their own share, in roster order, staggered by
+`Tuning.SLOT_SWING_STAGGER` (0.12s) so three heroes read as a volley rather than one blob.
+
+- **Every swing lands on the SAME primary target**, so the total damage put on one enemy is
+  unchanged from the pooled version. Spreading it per hero would have quietly nerfed the
+  party by splitting damage across the group, and broken `test_level_curves`' bands.
+- **No damage is ever dropped.** An unowned icon, or one whose owner is dead or off the
+  field, resolves through the DAMAGE executor exactly as before.
+- **The cleave/rain buff is still party-wide**, consumed by the first swing of the spin
+  whoever makes it. Attributing it to the hero whose trinket armed it is a reasonable
+  follow-up, not part of this change.
+- **`_should_gesture()` generalised.** It took a single DAMAGE executor; it now takes the
+  list of heroes really swinging this board, so the cosmetic-gesture-eats-a-real-swing bug
+  (§1, `test_slot_swing_gesture`) stays fixed for *any* hero who owns both kinds, not just
+  the warrior.
+
+**It exposed a real bug.** `ProjectileAbility.resolve()` threw away the Ability's
+`fixed_damage` and re-rolled from `source.compute_damage()` - which is **1** for every hero,
+since all hero `weapon_power`/`magic_power` are 0 and item Power drives damage now. The
+moment the ranger and mage began swinging for their own icons, their entire share would have
+landed as 1 point each. Both projectile types now take the swing's total through `launch()`.
+`test_slot_swing_gesture` pins it: two 19-damage shares arrive as 35-40, not 2.
+
+**Consequence worth watching in the real game:** a slot swing resolves through each hero's
+own PRIMARY ability, so the ranger and mage now genuinely fire an arrow and a bolt off the
+board every spin. `make_slot_strike`'s own comment said "the ranger/mage would still send a
+projectile the day the party has one" - that day is today. It works, but it is many more
+projectiles on screen than before, and it has only been seen headless.
+
+### Done: the charge meter and the invoke path (`e7f8298`)
+
+**The find that made this cheap: hero specials were finished content nothing could reach.**
+`request_turn()` returns early for heroes, so `_take_action()` - the only reader of
+`CombatantStats.special_every_n_actions` - never runs for one. All three heroes already had
+a `special` AbilityDef *and* an authored `special` animation clip (warrior "Block" 0.55s,
+ranger "1H_Ranged_Shoot" 0.8s, mage "Spellcast_Shoot" 0.85s with a staff glow node), and the
+ranger's special is already the bomb arrow. The dispatch path works; it is live for enemies.
+
+- **Charges reuse the ownership above.** Every non-blank icon a hero owns charges *that
+  hero's* meter by 1 as it resolves, so no new icon ids are needed and a better-geared hero
+  charges faster. The raw owner, never `_swing_hero_for()`'s executor fallback - crediting
+  the warrior for an unowned icon would charge his meter off other heroes' gear. A payline
+  triple charges twice, as it resolves twice.
+- **`BattleDirector.invoke_hero_special()`** spends a full meter and fires the special. It
+  refuses, and spends nothing, when the hero is dead or not a hero, is already mid-action
+  (the same `ATTACKING` guard `slot_attack()` uses - otherwise the two clips eat each other),
+  the meter is short, there is no valid target, or the mage's heal has nobody to heal.
+- **Charges are run-scoped and deliberately unsaved**, the stance `Upgrades.levels` takes:
+  combat momentum, not progression. They carry **across encounters within one expedition**,
+  because a 2-spin fight cannot fill a meter on its own.
+- **`tests/test_specials.gd`**, 41 checks: the meter, run scoping, absence from the save,
+  accrual through a real resolved board, and the invoke guards against a real
+  `BattleDirector` (it extends `Node` with no `@onready`, so it stands up bare).
+
+**The charge cost is 10, not the 3 the review recommended.** That 3 was calibrated against a
+different, unbuilt source - one dedicated charge icon per special, appearing on maybe a
+quarter of boards, which put 10 charges at 20-40 spins and made a special unreachable.
+Charging off every owned icon is far richer:
+
+| Party | Icons that hero owns | Bag | Charges per spin | Spins to fire |
+|---|---|---|---|---|
+| solo warrior, Magic gear | 7 | 16 | ~3.9 | ~2.6 |
+| one hero of a geared trio, Enhanced | 13 | 42 | ~2.8 | ~3.6 |
+
+A fight is 2-6 spins, so ~3 spins per special is the once-or-twice-per-fight cadence 3 was
+chosen for. At 3 a special would fire every single spin. `Tuning.SPECIAL_CHARGE_COST` is one
+number to re-tune after a playtest, and the arithmetic is in its comment.
+
+### Decided, not built
+
+1. **The upgrade tray becomes three special invokers**, positioned to match the battlefield
+   formation: **middle = warrior, left = ranger, right = mage**. That ordering is the real
+   one, but note the trap: `Tuning.PARTY_FORMATION` is indexed by **position in
+   `active_party`**, not by class, and `active_party` starts `[warrior]` and *appends*
+   recruits. So the slots fill warrior (front-centre), ranger (back-left), mage (back-right).
+   The comment there used to claim a fixed "0 mage, 1 ranger, 2 warrior", which has not
+   matched the real recruitment order since the party became a solo warrior; corrected in
+   `66298b9`. Each button also needs a charge meter on it, and there is no charge UI today.
+2. **One special per class, and only two of them are hit-all.**
+   - **Warrior: cleave**, hitting all enemies - *replaces* Defend.
+   - **Ranger: bomb arrow** - already exists, zero work.
+   - **Mage: keeps her party heal** rather than gaining chain lightning. This was a
+     deliberate trim of the original three-hit-alls plan: it keeps a heal source and leaves
+     only two specials doing the same thing.
+   - Known cost: the warrior loses Defend, the party's only damage-reduction special. His
+     `special` clip is also "Block", wrong for a sweep, and a replacement clip has to be
+     added to `tools/strip_unused_animations.gd`'s `KEEP` table, which
+     `test_animation_clips` pins. There is also **no hit-all `AbilityDef` yet** - the four
+     that exist are `MeleeStrikeAbility`, `ProjectileAbility`, `SelfBuffAbility` and
+     `HealAllyAbility` - so cleave needs a new one.
+3. **The three upgrades (`quick_reels`, `overcharge`, `polish`) move to town**, freeing the
+   tray. This keeps both the run-scoped gold sink and `polish`, which is the board-density
+   lever `test_level_curves` reads. **One trap found while reading:** `Upgrades.reset()` is
+   called from `GameState.start_expedition()`, so buying them in town and *then* departing
+   would wipe the purchase. The reset has to move to the end of a run.
+
+### Discussed, deferred: hold-and-respin
+
+The classic fruit-machine verb, and the strongest candidate for a real spin-time decision:
+after the reels stop but before the board resolves, the player keeps the cells they like and
+respins the rest. `_one_spin()` already has the seam (reels stop, then `_payline_triple()`,
+then `_resolve_board()`), and `draw_nine()` already redraws from the bag.
+
+Three questions were raised and none is settled:
+
+- **What limits it?** Once per fight is one decision in a 2-6 spin fight, so most spins stay
+  passive. Once per spin makes every spin a decision but adds a mandatory pause to a 2.22s
+  cycle.
+- **Does it pause combat?** Enemies act on their own real-time cooldowns. Either the board
+  waits for input and combat freezes, or the clock runs and thinking is punished. A short
+  visible countdown is the middle path.
+- **What is the actual decision?** Holding only matters if cells differ in value. Today a
+  board is mostly damage icons and blanks, so "hold the non-blanks" is obvious rather than
+  interesting. It gets interesting once cells carry tension - a big damage icon against a
+  heal you need, a kill against a charge.
+
+**That last point sets the order: specials before hold.** Hold-and-respin needs the
+charge/special layer to exist to have anything worth deciding about.
+
+### The item-modifier proposal (reviewed 2026-09-20, NOT decided)
+
+A full rework of icons per rarity was proposed and reviewed in the same session. It is
+recorded here as a proposal, because it **conflicts with decision 3.1** (four modifiers per
+type, Enhanced boosts one) and nothing has been chosen:
+
+- weapons carry four icons at max rarity (2 basic attacks + 1 charge icon per class
+  special), armor and trinkets two;
+- a Common weapon rolls two at random, and each forge rung lets the player *choose* which
+  icon to add;
+- armor rolls flat max life, gains an armor icon at Magic, more at Rare and Enhanced;
+- trinkets roll crit chance as a stat, and gain a charge-granting icon that scales with
+  rarity.
+
+The review found these, which any revived version has to answer:
+
+- **The forge choice is illusory at the top end.** A 4-deep set filled by Rare means every
+  Rare+ weapon of a type is identical; the player's picks change acquisition order only.
+- **A Common could roll two charge icons and deal no damage at all.**
+- **Weapons get weaker.** Half an Enhanced weapon's modifier icons would stop dealing
+  damage, and the specials meant to compensate fire about once per fight. The 3-9s
+  time-to-kill band the harness holds would break low.
+- **The board is the bottleneck and it saturates.** Expected filled cells of 9 run 4.5 /
+  6.0 / 6.8 / 8.2 across the gear curve, so a new icon adds almost nothing and mainly makes
+  the icons you care about rarer: a specific icon's appearance falls from 50% (solo, bag 18)
+  to 27% (geared trio, bag 33). **Thinning and weighting beat adding.**
+- **Trinket charge icons would dwarf the weapon's own.** At Enhanced, 2 charges to every
+  special from three trinkets is ~1.2 charges per special per spin against a dedicated
+  weapon icon's ~0.27 - 4.5x, for all six specials at once, and they would all fill
+  simultaneously.
+- **Overlapping mitigation.** A new armor icon would join `BASE_ARMOR`'s block grant, the
+  passive `Combatant.armor`, and (then) Defend - three or four sources of the same effect,
+  and `add_temp_armor()` takes the larger of two grants rather than adding.
+- **Crit as a per-hero stat does not fit**: with one pooled swing it was meaningless on
+  non-warrior gear. The owner split (`66298b9`) softens this but does not remove it.
+- **Retiring `elem_fire`/`elem_ice`/`elem_light`/`bleed`/`rain`** would delete the elemental
+  tinting system and silently drop icons from every saved item, since an unknown id resolves
+  to no icon. `new_profile()` also force-rolls `elem_fire` on the starter sword.
+
+### Still open
+
+- **What each new slot-icon id does** (§3.7): its `Kind`, what it scales off, and which
+  class executes and animates it. Naming the ids did not answer this, and it blocks the
+  per-type sets.
+- **Per-shield ids** (§3.7), for which the available meshes are now listed.
+- **Whether fights should get longer.** Slot-as-protagonist wants more, smaller spins -
+  currently 2-6 spins at 2.22s a spin. That reopens the 3-9s time-to-kill band the whole
+  harness is tuned to, and it is the real price of this pivot.
+- **Whether the item-modifier proposal above is revived**, and how it reconciles with
+  decision 3.1.
+- **Live verification of everything in this section.** Both commits are headless-tested
+  only; the ranger and mage firing projectiles off every board has never been looked at.
+
+---
+
+## 8. Open decisions, collected
 
 | # | Decision | Status | Answer or recommendation |
 |---|---|---|---|
@@ -1074,9 +1326,10 @@ Two small things to fold in while touching this:
 | 3.2 | Does equipping change the model? | **Decided** | Hand items first; head and chest props stay cosmetic |
 | 3.3 | Tower shield mesh | **Decided** | `Rectangle_Shield` |
 | 3.4 | Shield ownership | **Decided** | Shields go to the warrior; the tome is the mage's armor |
-| 3.5 | Off-hand weapons and `Throwable` | Open | — |
+| 3.5 | Off-hand weapons and `Throwable` | **Decided 2026-09-20: defer** | Ignored until a few equipment meshes are done |
+| 3.8 | Does the item-modifier rework replace decision 3.1? | Open | Proposed and reviewed 2026-09-20, not decided - §7 records the proposal and the eight findings against it |
 | 3.6 | Axe and bow | Recommended | Meshes are in Adventurers 2.0 (downloaded); keep `axe` and a true `bow`, and add crossbows as further ranger types |
-| 3.7 | New modifier ids | Open | Needed before the 17 sets can differ; armor first |
+| 3.7 | New modifier ids | **Partly decided 2026-09-20** | Weapon ids named (`bow_shoot`, `dagger_stab`, `dagger_throw`, `staff_bolt`, `wand_bolt`, `wand_lightning`). Shield ids pending. What each id does is undecided |
 | 4.1 | Standard skeleton | **Decided** | `Rig_Medium`; S1 confirmed the shipped `Rig` is identical |
 | 4.2 | Clip source | **Decided** | KayKit Character Animations: 132 `Rig_Medium` clips, CC0, verified |
 | 4.3 | Bake clips or share them | Recommended | One shared library; needs a second clip source on `RigProfile` |
@@ -1087,3 +1340,10 @@ Two small things to fold in while touching this:
 | 4.8 | Weights from the mannequin | **Confirmed** | Nearest-surface transfer from the body parts, a head blend, rigid small parts |
 | 6.1 | Per-push or nightly CI | Open | Decided by the cold `--import` measurement on 97 MB of assets; cache `.godot/` first |
 | 6.2 | Does a red suite block the Pages deploy? | Open | `deploy-pages.yml` publishes on every push to `main` today with nothing gating it |
+| 7.1 | Slot or party as the main character | **Decided 2026-09-20** | Slot mechanically, party emotionally: player decisions live on the slot, the party expresses them (§7) |
+| 7.2 | Does slot damage split by owner? | **Decided, built** | Yes - each hero swings for the icons their own gear put on the board (`66298b9`) |
+| 7.3 | What gates a special invoke | **Decided, built** | A charge meter, filled by every icon that hero owns. `SPECIAL_CHARGE_COST` is 10, which lands at ~3 spins; 3 would have fired every spin (§7) |
+| 7.4 | One special per class, which ones | **Decided, part built** | Warrior cleave (replaces Defend, unbuilt), ranger bomb arrow (already exists), mage keeps her party heal - only two hit-alls, and a heal source survives |
+| 7.5 | What happens to the three slot upgrades | **Decided, not built** | They move to town. `Upgrades.reset()` must move off `start_expedition()` first, or departing wipes the purchase |
+| 7.6 | Hold-and-respin | Deferred | A good verb, but it needs the specials layer first to have anything worth deciding about, and three questions are unanswered (§7) |
+| 7.7 | Should fights be longer? | Open | Slot-first wants more, smaller spins; fights are 2-6 spins today. Reopens the harness's 3-9s time-to-kill band (§7) |
