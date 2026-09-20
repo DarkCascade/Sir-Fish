@@ -138,7 +138,7 @@ decision 1.1 records what the first form did. Verified by the headless suites
 The ranger recruitment quest itself is authored at `resources/quests/ranger_recruit.tres`
 ("The Ranger's Bow", `unlock_level = 3`, `one_shot = true`, boss `bandit_officer`, a
 guaranteed boss drop of `resources/items/ranger_warbow.tres`, reward
-`recruit_ranger.tres`).
+`recruit_ranger.tres`). Its `level_range` is 3-5.
 
 **Live-played, and it surfaced a real bug - not in P1's own code, but in the combat
 loop P1 was the first thing to ever actually exercise with two heroes.** Reported as
@@ -402,14 +402,13 @@ found the two P1 regressions this same commit introduced (§1 "Found and fixed")
 - ~~**Pacing (rough estimate, not measured).**~~ **Superseded by a live-testing result.**
   The commit message: "Pacing mirrors easy.tres (5 encounters, level 1-5, a shop stop
   before the boss) after an early higher-level/shorter draft wiped a solo starting
-  warrior in live testing." The quest shipped at `level_range = Vector2i(1, 5)` and it
-  is **unchanged by the level-5 gate**: that band was chosen for a level-1 party, and a
-  gated quest is only ever seen by a party of level 5 or more, so it now runs a little
-  easy for who can take it. The ranger's own quest is banded to match its gate
-  (`unlock_level = 3`, `level_range` 3-7); doing the same here, 5-9, is the obvious
-  follow-up, and it would also remove the `level_range.x` tie with `easy` that
-  `test_quest_generator` has to work around. Not done: this change was scoped to the
-  gate alone, and a re-band is a difficulty change that wants a playtest. Decision 2.2.
+  warrior in live testing." The quest first shipped at `level_range = Vector2i(1, 5)`, a
+  band chosen for a level-1 party. **Re-banded 2026-09-20 to 5-7** to match its level-5
+  gate (a gated quest is only ever seen by a party of level 5 or more), and the ranger's
+  from 3-7 to **3-5** the same day. The mage's is the harder band of the two; both are
+  playtest-unverified. With them no two authored quests share a `level_range.x` (1, 3, 5,
+  6 and 15), so `test_quest_generator` asserts the exact board order at level 5:
+  easy, ranger, mage, medium, hard. Decision 2.2.
 
 ---
 
@@ -1070,7 +1069,7 @@ Two small things to fold in while touching this:
 | 1.6 | Should enemies scale with party size? | **Decided 2026-09-20: no** | Nothing scales enemies with the party, and nothing will. A full party outlasts the solo warrior about 2.3x at every late band (§1 "Balance check"); that is the intended shape |
 | 1.7 | Should the ranger's starting kit animate her? | **Decided 2026-09-20: leave it** | The warbow is not changed. A future slot-icon effort owns who animates for which icon (§1) |
 | 2.1 | Gate the mage quest at level 5? | **Decided, built 2026-09-20** | `recruit_mage.tres` has `unlock_level = 5`; the mage joins at level 5 |
-| 2.2 | Re-band the mage quest to match its gate? | Open | `level_range` is still 1-5, chosen for a level-1 party. The ranger's is 3-7 for gate 3; 5-9 would match. A difficulty change that wants a playtest (§2) |
+| 2.2 | Quest difficulty bands for the recruit quests | **Decided, built 2026-09-20** | Ranger `level_range` 3-5 (gate 3), mage 5-7 (gate 5). Playtest-unverified, so the numbers may move (§2) |
 | 3.1 | Modifier rule | **Decided** | Four per type, dealt in random order (Magic 1 / Rare 2 / Enhanced 3); Enhanced then boosts one of its three by 1.5× |
 | 3.2 | Does equipping change the model? | **Decided** | Hand items first; head and chest props stay cosmetic |
 | 3.3 | Tower shield mesh | **Decided** | `Rectangle_Shield` |

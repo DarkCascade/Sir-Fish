@@ -194,8 +194,7 @@ func _check_persistence(t: TestSupport) -> void:
 func _check_authored_quest_order(t: TestSupport) -> void:
 	# [recruitment] Both recruitment quests are level-gated (ranger 3, mage 5), so
 	# a fresh level-1 profile's board is just the three standing contracts. The
-	# board is sorted by level_range.x rather than a hardcoded id list; the mage
-	# ties `easy` at x = 1, so order within a tie is not asserted.
+	# board is sorted by level_range.x rather than a hardcoded id list.
 	var m := MayorOfficeScript.new()
 	var authored: Array[QuestDef] = m._load_authored_quests()
 	var ids: Array[StringName] = _quest_ids(authored)
@@ -216,9 +215,9 @@ func _check_authored_quest_order(t: TestSupport) -> void:
 	GameState.hero_levels[&"warrior"] = 5
 	var at_five: Array[QuestDef] = m._load_authored_quests()
 	ids = _quest_ids(at_five)
-	t.check(ids.has(&"ranger_recruit") and ids.has(&"recruit_mage") and ids.size() == 5,
-		"level 5 offers both recruitment quests alongside the standing three (got %s)" % [ids])
-	t.check(_is_sorted_by_level_range(at_five), "the level-5 board is still sorted by level_range.x")
+	t.check(ids == ([&"easy", &"ranger_recruit", &"recruit_mage", &"medium", &"hard"] as Array[StringName]),
+		"level 5 offers both recruitment quests, sorted by level_range.x (got %s)" % [ids])
+	t.check(_is_sorted_by_level_range(at_five), "the level-5 board is sorted by level_range.x")
 
 	# [recruitment] Once a class is recruited, the board must stop offering the
 	# quest that recruits her (mayor_office.gd's own header).
