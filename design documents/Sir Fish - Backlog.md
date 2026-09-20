@@ -8,8 +8,8 @@
 > list of small polish items queued during a later session. P1's machinery is built,
 > tested (headless and live), and its live playtest caught a real combat-loop bug
 > (heroes other than the DAMAGE executor never had a visible action) that's now fixed
-> - what's left is the balance re-tune §1 flags. §6 collects every decision with its
-> status.
+> - what's left is the balance re-tune §1 flags. P6 was added 2026-09-19 alongside
+> `tools/run_tests.py`. §7 collects every decision with its status.
 
 ---
 
@@ -23,6 +23,7 @@
 | **P3** | Four-modifier sets per item type; item types for every shipped hand mesh | Medium | M data + M visible props | P1–P2 for tuning | Loot for three classes can only be tuned with three classes in the party |
 | **P4** | Prompt → Meshy → Blender → glb character skill | Medium | M | nothing: the trial character proved the route (§4) | What remains is packaging `rig_bandit_officer.py` as a skill and building 4.3's shared clip source |
 | **P5** | Small polish pass: post-expedition summary, chest presentation, slot upgrade UI, party modal info, shadow monster rework | Low–Medium | S (each item) | nothing | Queued during a later session; not yet scoped against P1–P4 |
+| **P6** | Make the headless suite a real gate: one full green-bar run, then CI on push | — (dev) | S | nothing | 28 suites exist and nothing runs them automatically. `tools/run_tests.py` (2026-09-19) exits non-zero on failure precisely so it can gate |
 
 ```mermaid
 flowchart LR
@@ -31,6 +32,7 @@ flowchart LR
   P3a --> P3b[P3b Equipped item shows its mesh]
   P3b -. fixes the handslot contract .-> P4[P4 Character skill]
   P5[P5 Small polish pass]
+  P6a[P6 Full green-bar run] --> P6b[P6 CI gate on push]
 ```
 
 Solid arrows are hard dependencies. Dashed arrows are "better after".
@@ -768,7 +770,77 @@ or sequenced against P1–P4.
 
 ---
 
-## 6. Open decisions, collected
+## 6. P6 — Make the headless suite a real gate
+
+### The idea
+
+`tests/` holds 28 headless suites with real assertions in them, and **nothing runs them
+automatically**. Making them a gate is two steps: prove they are all green once, then put
+that proof on every push.
+
+### Already in place (2026-09-19)
+
+`tools/run_tests.py` runs the whole suite and prints one table. It discovers
+`tests/test_*.tscn` rather than naming the suites, so a new one is picked up as soon as
+it exists; it classifies TIMEOUT (a missing `t.finish()` hangs the process - this has
+happened) and ERROR (died on load, reporting the engine's parse error) as failures
+rather than letting them read as blank; and it exits non-zero unless every selected
+suite passed, which is the whole point for CI. CLAUDE.md documents it.
+
+Before it, the only way to run everything was a shell loop pasted into "Sir Fish - Web
+Performance Acceptance Testing Spec.md" §0.4 that spelled out each name. That loop is
+left alone deliberately: it is an accurate record of what that pass ran, not a live list.
+
+### 6.1 A first full green bar
+
+**The 28 suites have never been run as one set.** The §0.4 loop names 20, so eight have
+no recorded all-green run alongside the rest:
+
+`test_ability_resolve`, `test_content_registry`, `test_executor`, `test_inn_recovery`,
+`test_level_curves`, `test_quest_generator`, `test_quest_objectives`, `test_recruit_mage`
+
+Run `python tools/run_tests.py` under real Godot and record the result here. This is a
+prerequisite for 6.2, not a formality: **if one of the eight fails, that is a real
+finding about the game, not a bug in the runner.** They were written to pass and then
+fell out of the loop's hand-maintained list, so nothing has been watching them since.
+The runner itself was verified against a stub binary reproducing each outcome, so a
+failure it reports is the suite's, not its own.
+
+### 6.2 Gate CI on the suite
+
+`.github/workflows/` has two workflows and neither runs a test: `deploy-pages.yml`
+(push to `main`) and `deploy-itch.yml` (`workflow_dispatch` only). The work is a third
+workflow that runs `run_tests.py` on push and on pull requests.
+
+What makes this cheaper than it looks: the test job needs **only the headless Godot
+binary**, not the export templates `deploy-pages.yml` downloads through
+`firebelley/godot-export`.
+
+The one real unknown is the import pass. `.godot/` is gitignored, so a fresh CI clone
+has no import cache, and the suites do load imported assets - `test_animation_clips.gd`
+reads the characters' `.glb` scenes. So `godot --headless --import` has to run before
+the suites, and on 97 MB of committed assets that, not the tests, is the slow step.
+Caching `.godot/` keyed on the asset tree is the obvious lever; measure the cold import
+first, since it decides whether this is a per-push gate or a nightly one.
+
+Two small things to fold in while touching this:
+
+- **`deploy-pages.yml`'s `lfs: true` is a no-op.** There is no `.gitattributes` and the
+  meshes are plain blobs (`knight.glb` is a real 3.6 MB binary, not a pointer). Harmless,
+  but it implies an LFS setup that does not exist, so a new test workflow should not copy
+  it.
+- Point §0.4 of the acceptance-testing spec at the runner for *future* runs, without
+  rewriting what it recorded.
+
+### Still open
+
+- **Per-push or nightly**, decided by the cold-import measurement above.
+- **Whether a red suite blocks the Pages deploy**, or only reports. `deploy-pages.yml`
+  publishes on every push to `main` today, with nothing gating it.
+
+---
+
+## 7. Open decisions, collected
 
 | # | Decision | Status | Answer or recommendation |
 |---|---|---|---|
@@ -791,3 +863,5 @@ or sequenced against P1–P4.
 | 4.6 | Move current characters to pack clips | Recommended | Not yet; do it with 4.3 as one visual pass |
 | 4.7 | T-pose or A-pose for Meshy | **Confirmed** | T-pose for `Rig_Medium`, proven by the trial |
 | 4.8 | Weights from the mannequin | **Confirmed** | Nearest-surface transfer from the body parts, a head blend, rigid small parts |
+| 6.1 | Per-push or nightly CI | Open | Decided by the cold `--import` measurement on 97 MB of assets; cache `.godot/` first |
+| 6.2 | Does a red suite block the Pages deploy? | Open | `deploy-pages.yml` publishes on every push to `main` today with nothing gating it |
