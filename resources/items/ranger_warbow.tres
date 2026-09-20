@@ -1,0 +1,12 @@
+[gd_resource type="Resource" script_class="Item" format=3]
+
+[ext_resource type="Script" path="res://scripts/data/item.gd" id="1_item"]
+
+[resource]
+script = ExtResource("1_item")
+display_name = "Recovered Warbow"
+kind = 2
+rarity = 2
+weapon_type = &"warbow"
+value = 90
+level = 9

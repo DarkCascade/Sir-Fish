@@ -5,3 +5,5 @@
 [resource]
 script = ExtResource("1_collect")
 description = "Retrieve the ranger's stolen bow from the bandits."
+target_weapon_type = &"warbow"
+count = 1

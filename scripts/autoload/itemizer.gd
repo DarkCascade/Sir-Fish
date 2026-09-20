@@ -43,6 +43,11 @@ const ITEM_TYPES := {
 	# resources/items/) has a slot()/power() to resolve against - see
 	# RecruitRewardExtra's header for why relics are never generated. ---
 	&"heartstone": { "slot": Item.Slot.TRINKET, "base_value": 0, "power": 5 },
+	# The ranger's stolen bow (resources/items/ranger_warbow.tres) - a WEAPON,
+	# not a TRINKET like heartstone, since the ranger recruitment quest is
+	# specifically about recovering her own bow. power matches the ordinary
+	# `bow` row so she isn't over- or under-tuned relative to a generated one.
+	&"warbow": { "slot": Item.Slot.WEAPON, "base_value": 0, "power": 5 },
 }
 
 const ADJECTIVES := [

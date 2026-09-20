@@ -3,6 +3,7 @@
 [ext_resource type="Script" path="res://scripts/data/quest_def.gd" id="1_qd"]
 [ext_resource type="Resource" path="res://resources/objectives/collect_ranger_bow.tres" id="2_obj"]
 [ext_resource type="Resource" path="res://resources/reward_extras/recruit_ranger.tres" id="3_extra"]
+[ext_resource type="Resource" path="res://resources/items/ranger_warbow.tres" id="4_relic"]
 
 [resource]
 script = ExtResource("1_qd")
@@ -16,6 +17,7 @@ reward_extras = Array[QuestRewardExtra]([ExtResource("3_extra")])
 enemy_pool = Array[StringName]([&"shadow_monster", &"skeleton_minion"])
 boss_pool = Array[StringName]([&"bandit_officer"])
 boss_drop_rarity_floor = 0
+guaranteed_boss_drop = ExtResource("4_relic")
 travel_durations = Array[float]([2.0, 3.0, 3.0, 3.0, 4.0])
 level_range = Vector2i(3, 7)
 unlock_level = 3
