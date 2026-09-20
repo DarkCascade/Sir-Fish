@@ -28,11 +28,14 @@ var _color: Color = Tuning.C_LIGHTNING
 @onready var _core: MeshInstance3D = $Core
 @onready var _light: OmniLight3D = $Glow
 
-func launch(source: Combatant, target: Combatant, director, _is_special: bool) -> void:
+## [owner swings] `fixed_damage` >= 0 is a caller-supplied total (a slot swing,
+## see ProjectileAbility.resolve); -1 rolls from the source's own stats.
+func launch(source: Combatant, target: Combatant, director, _is_special: bool,
+		fixed_damage: int = -1) -> void:
 	_source = source
 	_target = target
 	_director = director
-	_damage = source.compute_damage()
+	_damage = fixed_damage if fixed_damage >= 0 else source.compute_damage()
 	_color = source.stats.accent_color
 
 	_start = source.hand_world_position()

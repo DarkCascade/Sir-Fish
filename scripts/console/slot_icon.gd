@@ -147,11 +147,17 @@ static func from_modifier(mod: Dictionary, _item: Item = null) -> Dictionary:
 ## the hero's own stats no longer feed combat. 0 when the hero is unarmed
 ## (handled later). Only the DAMAGE branch uses it; a HEAL innate keeps its
 ## flat SLOT_INNATE_HEAL_PCT.
+## [owner swings] `owner` is the hero whose action this icon becomes when it
+## resolves - SlotMachine sums each owner's DAMAGE icons into that hero's OWN
+## swing, so a ranger's bow icons are swung by the ranger. Every icon in the bag
+## carries one (SlotMachine._rebuild_bag() stamps the item icons from
+## Item.equipped_by); an icon built without one - a rigged test board, a legacy
+## caller - resolves through the DAMAGE executor, exactly as before.
 static func innate(hero_class: StringName, weapon_power: int = 0) -> Dictionary:
 	var cdef := GameState.get_class_def(hero_class)
 	var id: StringName = cdef.innate_icon if cdef != null and cdef.innate_icon != &"" else INNATE_DAMAGE
 	var roll: int = weapon_power if id == INNATE_DAMAGE else Tuning.SLOT_INNATE_HEAL_PCT
-	return { "id": id, "roll": roll, "enhanced": false, "innate": true }
+	return { "id": id, "roll": roll, "enhanced": false, "innate": true, "owner": hero_class }
 
 static func blank() -> Dictionary:
 	return { "id": BLANK, "roll": 0, "enhanced": false }

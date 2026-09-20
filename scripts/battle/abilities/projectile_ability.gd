@@ -18,4 +18,9 @@ func resolve(source: Combatant, ability: Ability) -> void:
 		return
 	var proj = scene.instantiate()
 	ability.director.world.projectile_root.add_child(proj)
-	proj.launch(source, ability.target, ability.director, bomb_payload)
+	# [owner swings] fixed_damage is the slot board's own summed total for this
+	# hero (Ability.make_slot_strike); -1 means "roll it yourself", which is what
+	# an ordinary ability cast still does. Without this a ranger/mage slot swing
+	# arrived for compute_damage(), and every hero's weapon_power is 0 now that
+	# item Power drives damage - so their whole share of the board landed as 1.
+	proj.launch(source, ability.target, ability.director, bomb_payload, ability.fixed_damage)

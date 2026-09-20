@@ -32,17 +32,24 @@ var _director = null              # BattleDirector (untyped: custom API)
 var _damage: int = 0
 var _flying: bool = false
 
-func launch(source: Combatant, target: Combatant, director, bomb: bool) -> void:
+## [owner swings] `fixed_damage` >= 0 is a caller-supplied total (a slot swing,
+## see ProjectileAbility.resolve); -1 keeps the original behaviour of rolling
+## from the source's own stats.
+func launch(source: Combatant, target: Combatant, director, bomb: bool,
+		fixed_damage: int = -1) -> void:
 	is_bomb = bomb
 	_source = source
 	_target = target
 	_director = director
 	# Damage is locked in at release so a source that dies mid-flight cannot
 	# null out the resolution.
-	_damage = source.compute_damage()
-	if is_bomb:
-		_damage = maxi(1, int(round(float(source.power(Combatant.School.WEAPON))
-			* source.damage_multiplier * Tuning.RANGER_BOMB_AOE_MULT)))
+	if fixed_damage >= 0:
+		_damage = fixed_damage
+	else:
+		_damage = source.compute_damage()
+		if is_bomb:
+			_damage = maxi(1, int(round(float(source.power(Combatant.School.WEAPON))
+				* source.damage_multiplier * Tuning.RANGER_BOMB_AOE_MULT)))
 	_start = source.hand_world_position()
 	# [overworld prototype] The fallback aim is down the run axis, not +X: the
 	# ranger can be facing anywhere on the field now.

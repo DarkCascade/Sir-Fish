@@ -190,7 +190,15 @@ const PARTY_ANCHOR := Vector3(-1.6, 0.0, 3.4)
 ## The party formation, in RUN_DIR's own frame rather than world axes:
 ##   x = across, in units of PARTY_ROW_SPREAD (+ is the party's right)
 ##   y = back,   in units of PARTY_ROW_DEPTH  (+ is further from the enemy)
-## Indexed by hero slot, which is fixed: 0 mage, 1 ranger, 2 warrior.
+## Indexed by the hero's POSITION IN active_party, not by class - spawn_party()
+## passes its loop index straight to world.hero_slot_position(). active_party
+## starts as [warrior] and RecruitRewardExtra.grant() appends, so in practice the
+## slots fill warrior, then ranger, then mage: slot 0 front-centre is the
+## warrior, 1 is back-left, 2 is back-right. (An older comment here claimed a
+## fixed "0 mage, 1 ranger, 2 warrior", which the commented-out table below was
+## written for; it has not matched the real recruitment order since the party
+## became a solo warrior.) A party of one or two therefore leaves the back-right
+## slot empty rather than shifting anyone.
 ##
 ## Warrior alone in front, mage and ranger flanking behind him. Authoring it as
 ## a table rather than deriving it from a spacing means a new shape is three
@@ -407,6 +415,12 @@ const SLOT_RESULT_HOLD := 0.65            # pause after reel 3 stops before the 
 ## the swing's impact and damage number land inside SLOT_RESULT_HOLD rather
 ## than bleeding into the next spin. Roughly the warrior chop's impact_delay.
 const SLOT_SWING_SETTLE := 0.45
+## [owner swings] Gap between one hero's swing and the next when several heroes
+## swing off the same board (SlotMachine._deliver_swings). Small on purpose: the
+## swings should read as a volley, and the spin cycle - which is the party's
+## whole damage cadence (test_level_curves) - must not stretch with party size.
+## A full party of three adds 2x this, not 2x SLOT_SWING_SETTLE.
+const SLOT_SWING_STAGGER := 0.12
 
 ## The nine scoring cells: _cells[1], _cells[2], _cells[3] on each of the three
 ## reels (offsets -1 / 0 / +1 from the payline). _cells[0] / _cells[4] are

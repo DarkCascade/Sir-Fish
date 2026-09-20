@@ -230,11 +230,17 @@ func _rebuild_bag() -> void:
 		# Common putting zero icons in the bag. Added before the modifier loop
 		# so a Common's one icon and a fully-modded item's base+N icons both
 		# read as "this item is in the bag" first.
-		_bag.append(SlotIcon.from_item_base(item))
+		# [owner swings] Every icon an item contributes belongs to its wearer, so
+		# its damage becomes that hero's own swing rather than the party's pooled
+		# one - see SlotIcon.innate()'s `owner` note.
+		var base_icon := SlotIcon.from_item_base(item)
+		base_icon["owner"] = item.equipped_by
+		_bag.append(base_icon)
 		for mod: Dictionary in item.modifiers:
 			var icon := SlotIcon.from_modifier(mod, item)
 			if icon.is_empty():
 				continue
+			icon["owner"] = item.equipped_by
 			# [icons phase 2] Trinket ultimates (crit/cleave/rain/thunderburst)
 			# show up 25% less often than every other icon - their extra power
 			# is offset by rarity of appearance, rolled fresh each spin rather
@@ -388,12 +394,16 @@ func _resolve_board(jackpot_id: StringName) -> void:
 	var total_heal := 0
 	# [combat loop redesign] Single-target attack icons no longer call down
 	# their own lightning. Their rolled magnitudes are summed here and dealt as
-	# ONE swing by the party's front-line hero after the rest of the board
-	# resolves ("one swing, 3x damage"). [armor items] BLOCK icons aggregate the
-	# same way into one temp-armor grant. Bomb arrow / thunderburst / mend still
-	# resolve per-cell, in place, staggered. Overcharge touches damage output
-	# only, never BLOCK.
-	var swing := 0
+	# a swing after the rest of the board resolves ("one swing, 3x damage").
+	# [owner swings] Summed PER OWNER now, not into one pooled total: each hero
+	# swings for the icons their own gear put on the board, so the ranger's and
+	# mage's gear animates them instead of feeding a warrior swing. Keyed by
+	# hero class, totals in board order. [armor items] BLOCK icons still
+	# aggregate into ONE party-wide temp-armor grant - it buffs every hero, so
+	# it has no meaningful owner. Bomb arrow / thunderburst / mend still resolve
+	# per-cell, in place, staggered. Overcharge touches damage output only,
+	# never BLOCK.
+	var swings: Dictionary = {}
 	var block := 0
 	# [run-summary-modal] "X icons hit in Y spins" - live-incremented per icon
 	# resolution rather than tallied at the end, so a spin the wipe cuts off
@@ -402,16 +412,18 @@ func _resolve_board(jackpot_id: StringName) -> void:
 
 	# [combat loop redesign fix] Known before anything resolves, so the
 	# fallback:false cosmetic gestures below (_should_gesture) can tell whether
-	# they are about to collide with the REAL combined swing this same spin. A
-	# DAMAGE icon anywhere on the board guarantees swing > 0 once the loop
-	# finishes (every contribution is >= 1 + the floor), so this needs no
-	# repeats/payline handling of its own - presence is all it has to answer.
-	var board_has_damage := false
+	# they are about to collide with a REAL swing this same spin. A DAMAGE icon
+	# anywhere on the board guarantees its owner swings once the loop finishes
+	# (every contribution is >= 1 + the floor), so this needs no repeats/payline
+	# handling of its own - presence is all it has to answer.
+	# [owner swings] A LIST now, since several heroes can swing on one board.
+	var swinging: Array[Combatant] = []
 	for ic: Dictionary in _board:
-		if SlotIcon.kind_of(StringName(ic.get("id", &""))) == SlotIcon.Kind.DAMAGE:
-			board_has_damage = true
-			break
-	var damage_executor: Combatant = _executor_for(SlotIcon.Kind.DAMAGE) if board_has_damage else null
+		if SlotIcon.kind_of(StringName(ic.get("id", &""))) != SlotIcon.Kind.DAMAGE:
+			continue
+		var owner := _swing_hero_for(ic)
+		if owner != null and not swinging.has(owner):
+			swinging.append(owner)
 
 	for idx: int in range(_board.size()):
 		var ic: Dictionary = _board[idx]
@@ -435,25 +447,30 @@ func _resolve_board(jackpot_id: StringName) -> void:
 				# the swing, rolled independently of every other icon here.
 				if id == &"crit" and RNG.randf() < Tuning.CRIT_CHANCE:
 					contribution *= 2
-				swing += contribution
+				# [owner swings] Banked against this icon's owner rather than one
+				# pooled total. An unowned icon resolves to the DAMAGE executor,
+				# so no damage is ever dropped.
+				var swinger := _swing_hero_for(ic)
+				var key: StringName = swinger.stats.id if swinger != null else &""
+				swings[key] = int(swings.get(key, 0)) + contribution
 			elif kind == SlotIcon.Kind.BLOCK:
 				block += maxi(1, int(ic.get("roll", 0)))
 			elif kind == SlotIcon.Kind.CLEAVE:
 				# [icons phase 2] No immediate effect - just arms the buff the
-				# next combined swing consumes (SlotMachine._hero_swing).
+				# next swing consumes (_deliver_swings).
 				var executor := _executor_for(SlotIcon.Kind.CLEAVE, false)
 				if executor != null:
-					if _should_gesture(executor, board_has_damage, damage_executor):
+					if _should_gesture(executor, swinging):
 						executor.slot_gesture()
 					_pending_cleave = true
 			elif kind == SlotIcon.Kind.RAIN:
 				var executor := _executor_for(SlotIcon.Kind.RAIN, false)
 				if executor != null:
-					if _should_gesture(executor, board_has_damage, damage_executor):
+					if _should_gesture(executor, swinging):
 						executor.slot_gesture()
 					_pending_rain = true
 			else:
-				var out := await _resolve_icon(ic, kind, mult, board_has_damage, damage_executor)
+				var out := await _resolve_icon(ic, kind, mult, swinging)
 				total_damage += out.x
 				total_heal += out.y
 			await get_tree().create_timer(Tuning.AOE_STAGGER).timeout
@@ -461,8 +478,8 @@ func _resolve_board(jackpot_id: StringName) -> void:
 	if any_icon_resolved:
 		GameState.run_stats["slot_spins_resolved"] = int(GameState.run_stats["slot_spins_resolved"]) + 1
 
-	if swing > 0:
-		total_damage += await _hero_swing(swing)
+	if not swings.is_empty():
+		total_damage += await _deliver_swings(swings)
 	if block > 0:
 		_grant_block(block)
 
@@ -484,11 +501,11 @@ func _resolve_board(jackpot_id: StringName) -> void:
 ## grant, nor a pending-buff icon (those are all handled inline in
 ## _resolve_board - see above). Returns Vector2i(damage_dealt, heal_done).
 ##
-## `board_has_damage` / `damage_executor` are _resolve_board()'s pre-scan,
-## threaded through so every fallback:false cosmetic gesture in here can run
+## `swinging` is _resolve_board()'s pre-scan of every hero who will swing this
+## board, threaded through so each fallback:false cosmetic gesture in here runs
 ## the same _should_gesture() check the inline CLEAVE/RAIN branches do.
 func _resolve_icon(ic: Dictionary, kind: int, mult: float,
-		board_has_damage: bool, damage_executor: Combatant) -> Vector2i:
+		swinging: Array[Combatant]) -> Vector2i:
 	if director == null:
 		return Vector2i.ZERO
 	var id := StringName(ic.get("id", &""))
@@ -501,14 +518,14 @@ func _resolve_icon(ic: Dictionary, kind: int, mult: float,
 			# (no fallback), same reasoning the old DAMAGE_ALL comment gave:
 			# the fallback hero already has a real swing via _hero_swing().
 			var executor := _executor_for(kind, false)
-			if executor != null and _should_gesture(executor, board_has_damage, damage_executor):
+			if executor != null and _should_gesture(executor, swinging):
 				executor.slot_gesture()
 			return Vector2i(await _hit_all(id, roll, mult), 0)
 		SlotIcon.Kind.BLEED:
 			# No immediate damage - applies/refreshes the DoT, which ticks off
 			# the target's own actions (BattleDirector._take_action).
 			var executor := _executor_for(SlotIcon.Kind.BLEED, false)
-			if executor != null and _should_gesture(executor, board_has_damage, damage_executor):
+			if executor != null and _should_gesture(executor, swinging):
 				executor.slot_gesture()
 			var target: Combatant = director.random_living_enemy()
 			if target != null:
@@ -516,69 +533,116 @@ func _resolve_icon(ic: Dictionary, kind: int, mult: float,
 			return Vector2i.ZERO
 		SlotIcon.Kind.HEAL:
 			var executor := _executor_for(SlotIcon.Kind.HEAL, false)
-			if executor != null and _should_gesture(executor, board_has_damage, damage_executor):
+			if executor != null and _should_gesture(executor, swinging):
 				executor.slot_gesture()
 			return Vector2i(0, _heal_lowest(roll))
 	return Vector2i.ZERO
 
 ## [combat loop redesign fix] Whether a fallback:false cosmetic gesture
 ## (Combatant.slot_gesture()) should actually play, or whether `executor` is
-## about to make the REAL combined swing later in this same _resolve_board()
-## call instead (this spin's board rolled a DAMAGE icon, and `executor` is
-## DAMAGE's own executor - see _hero_swing).
+## about to make a REAL swing later in this same _resolve_board() call instead.
 ##
 ## Both calls play the identical "attack" clip through the identical
 ## ATTACKING-state guard (Combatant.slot_attack), so without this check the
-## cosmetic gesture fires FIRST (CLEAVE/BLEED/etc. resolve earlier in the
-## board than the aggregated swing) and is still mid-clip when _hero_swing()
-## tries to start the real one - which then silently no-ops, since
-## slot_attack() never sets `pending` if it doesn't run. The player sees an
-## attack animation (the gesture) with no damage number and no enemy reaction:
-## the swing that should have carried the board's actual sword icons never
-## happened. This collides on the warrior specifically, and every spin that
-## rolls both a DAMAGE icon and a CLEAVE or BLEED icon triggers it - the
-## warrior is the only hero whose executes list includes DAMAGE alongside
-## either of those (warrior.tres), so he is always both executors at once.
-func _should_gesture(executor: Combatant, board_has_damage: bool,
-		damage_executor: Combatant) -> bool:
-	return not (board_has_damage and executor == damage_executor)
-
-## [combat loop redesign] The board's summed attack-icon damage, delivered as a
-## single swing by a living front-line hero. Returns the damage dealt (0 if no
-## hero can swing or no enemy is alive). One variance roll on the whole total,
-## so a board of three attack icons lands as ~3x one icon.
+## cosmetic gesture fires FIRST (CLEAVE/BLEED/etc. resolve earlier in the board
+## than the aggregated swing) and is still mid-clip when the real swing tries to
+## start - which then silently no-ops, since slot_attack() never sets `pending`
+## if it doesn't run. The player sees an attack animation with no damage number
+## and no enemy reaction.
 ##
-## [icons phase 2] A pending cleave/rain buff (set by CLEAVE/RAIN resolving on
-## an earlier or this same spin - see _resolve_board) is consumed here, on the
-## next real swing: rain hits every living enemy, cleave hits the swing's
-## target plus its neighbours by board x-position. The extra targets land via
-## _strike() (the same flat, no-per-target-animation hit AoE icons already
-## use) rather than a second hero animation - only the primary target gets the
-## real swing anim.
-func _hero_swing(amount: int) -> int:
+## [owner swings] `swinging` is every hero who will swing this board, so this now
+## covers any hero who owns both a DAMAGE icon and a CLEAVE/RAIN/BLEED one - not
+## just the warrior, who used to be the only hero a real swing could land on.
+func _should_gesture(executor: Combatant, swinging: Array[Combatant]) -> bool:
+	return not swinging.has(executor)
+
+## [owner swings] The hero who swings for `ic`: its `owner` if that hero is alive
+## and on the field, otherwise the DAMAGE executor. The fallback is what keeps a
+## rigged test board, a legacy save's icon or a hero who died between the bag
+## rebuild and resolution from silently dropping damage.
+func _swing_hero_for(ic: Dictionary) -> Combatant:
+	if director == null:
+		return null
+	var owner := StringName(ic.get("owner", &""))
+	if owner != &"":
+		for h: Combatant in director.living_heroes():
+			if h.stats != null and h.stats.id == owner:
+				return h
+	return _executor_for(SlotIcon.Kind.DAMAGE)
+
+## [combat loop redesign] The board's summed attack-icon damage, delivered as
+## real swings by the heroes who own the icons. One variance roll per hero's
+## total, so a board of three attack icons lands as ~3x one icon.
+##
+## [owner swings] Was ONE swing by whoever executes DAMAGE (always the warrior).
+## Now every owner with damage banked this board swings for their own share, in
+## roster order, staggered by SLOT_SWING_STAGGER so three heroes read as a volley
+## rather than one blob. Every swing lands on the SAME primary target: the total
+## damage put on one enemy is therefore unchanged from the pooled version, which
+## is what keeps test_level_curves' bands honest - spreading it per hero would
+## quietly nerf the party by splitting damage across the group.
+##
+## [icons phase 2] A pending cleave/rain buff is consumed by the FIRST swing of
+## the spin, whoever makes it - the buff was always party-wide (see
+## _pending_cleave's own note) and stays that way here. Attributing it to the
+## hero whose trinket armed it is a reasonable follow-up, not this change.
+func _deliver_swings(swings: Dictionary) -> int:
 	if director == null:
 		return 0
-	var hero: Combatant = _executor_for(SlotIcon.Kind.DAMAGE)
 	var primary: Combatant = director.random_living_enemy()
-	if hero == null or primary == null:
+	if primary == null:
 		return 0
+	# Orphaned damage (an owner who died mid-resolution, or an unowned icon)
+	# folds into the DAMAGE executor so none of it is lost.
+	var fallback: Combatant = _executor_for(SlotIcon.Kind.DAMAGE)
+	var banked: Dictionary = {}
+	for key: StringName in swings:
+		var hero: Combatant = null
+		for h: Combatant in director.living_heroes():
+			if h.stats != null and h.stats.id == key:
+				hero = h
+				break
+		if hero == null:
+			hero = fallback
+		if hero == null:
+			continue
+		banked[hero] = int(banked.get(hero, 0)) + int(swings[key])
+
+	var total := 0
+	var first := true
+	for hero: Combatant in director.living_heroes():
+		if not banked.has(hero):
+			continue
+		total += _swing_for(hero, int(banked[hero]), primary, first)
+		first = false
+		await get_tree().create_timer(Tuning.SLOT_SWING_STAGGER).timeout
+	# slot_attack lands on the animation's impact beat - hold here so the hits
+	# and their numbers resolve inside SLOT_RESULT_HOLD, not over the next spin.
+	await get_tree().create_timer(Tuning.SLOT_SWING_SETTLE).timeout
+	return total
+
+## One hero's swing for `amount` at `primary`. `consume_buffs` is true for the
+## first swing of the spin only - see _deliver_swings' note on cleave/rain.
+##
+## [icons phase 2] Rain hits every living enemy, cleave the target plus its
+## neighbours by board x-position. The extra targets land via _strike() (the
+## same flat, no-per-target-animation hit AoE icons already use) rather than a
+## second hero animation - only the primary target gets the real swing anim.
+func _swing_for(hero: Combatant, amount: int, primary: Combatant, consume_buffs: bool) -> int:
 	var dealt := maxi(1, int(round(float(amount) * RNG.randf_range(
 		1.0 - Tuning.DAMAGE_VARIANCE, 1.0 + Tuning.DAMAGE_VARIANCE))))
 	hero.slot_attack(primary, dealt)
 	var total := dealt
-	if _pending_rain:
+	if consume_buffs and _pending_rain:
 		_pending_rain = false
 		for enemy: Combatant in director.living_enemies():
 			if enemy == primary or not is_instance_valid(enemy) or not enemy.is_alive():
 				continue
 			total += _strike(enemy, SlotIcon.BASE_WEAPON, amount, 1.0)
-	elif _pending_cleave:
+	elif consume_buffs and _pending_cleave:
 		_pending_cleave = false
 		for enemy: Combatant in _adjacent_enemies(primary):
 			total += _strike(enemy, SlotIcon.BASE_WEAPON, amount, 1.0)
-	# slot_attack lands on the animation's impact beat - hold here so the hit
-	# and its number resolve inside SLOT_RESULT_HOLD, not over the next spin.
-	await get_tree().create_timer(Tuning.SLOT_SWING_SETTLE).timeout
 	return total
 
 ## The living enemies immediately left/right of `primary` by board x-position -
