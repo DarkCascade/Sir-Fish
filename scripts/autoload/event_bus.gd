@@ -72,3 +72,9 @@ signal slot_spin_stopped(icon_ids: Array)       # [slot phase 2] the 9 board ico
 ## anything else -> cheer).
 signal slot_payout(kind: String, magnitude: int)
 signal upgrade_purchased(id: StringName, new_level: int)   # [v2] spec 17.6
+
+# --- [specials] The invokable per-hero special (backlog P3 slot-icon work).
+## `charges` is the hero's meter after the change, `cost` what it needs to fill -
+## both carried so a listener needs no Tuning read of its own.
+signal special_charges_changed(hero_class: StringName, charges: int, cost: int)
+signal special_invoked(hero_class: StringName)

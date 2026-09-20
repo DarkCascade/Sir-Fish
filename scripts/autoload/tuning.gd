@@ -414,6 +414,21 @@ const SLOT_RESULT_HOLD := 0.65            # pause after reel 3 stops before the 
 ## front-line hero is told to swing, the resolve coroutine waits this long so
 ## the swing's impact and damage number land inside SLOT_RESULT_HOLD rather
 ## than bleeding into the next spin. Roughly the warrior chop's impact_delay.
+## [specials] Icons a hero must land before their special can be invoked. Every
+## non-blank icon the hero OWNS charges their own meter by 1 (SlotMachine.
+## _resolve_board), so a better-geared hero charges faster and no new icon ids
+## are needed.
+##
+## 10, not the 3 the design review recommended: that 3 was calibrated against a
+## different, unbuilt source - ONE dedicated charge icon per special, which lands
+## on maybe a quarter of boards. Charging off every owned icon is far richer. A
+## solo warrior in Magic gear owns 7 of a 16-entry bag and so lands ~3.9 of them
+## per spin; a fully-geared hero in a three-hero party owns 13 of 42 and lands
+## ~2.8. Both put a special at roughly 3 spins, and a fight is 2-6 - which is the
+## once-or-twice-per-fight cadence 3 was picked for. At 3 a special would fire
+## every single spin. One number to re-tune after a playtest.
+const SPECIAL_CHARGE_COST := 10
+
 const SLOT_SWING_SETTLE := 0.45
 ## [owner swings] Gap between one hero's swing and the next when several heroes
 ## swing off the same board (SlotMachine._deliver_swings). Small on purpose: the

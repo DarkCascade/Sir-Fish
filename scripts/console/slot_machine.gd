@@ -437,6 +437,12 @@ func _resolve_board(jackpot_id: StringName) -> void:
 			_pulse_cell(idx)
 			any_icon_resolved = true
 			GameState.run_stats["slot_icons_hit"] = int(GameState.run_stats["slot_icons_hit"]) + 1
+			# [specials] Every icon a hero owns charges THAT hero's special. The raw
+			# owner, not _swing_hero_for() - its DAMAGE-executor fallback exists so
+			# damage is never dropped, and crediting the warrior for an unowned icon
+			# would charge his meter off other heroes' gear. A payline triple charges
+			# twice, same as it resolves twice.
+			GameState.add_special_charge(StringName(ic.get("owner", &"")))
 			if kind == SlotIcon.Kind.DAMAGE:
 				# [balance pass] Flat per-icon floor on top of the rolled value.
 				var contribution := maxi(1, int(round(float(int(ic.get("roll", 0))) * mult))) \
