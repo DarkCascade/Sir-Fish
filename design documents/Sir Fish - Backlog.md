@@ -9,7 +9,10 @@
 > tested (headless and live), and its live playtest caught a real combat-loop bug
 > (heroes other than the DAMAGE executor never had a visible action) that's now fixed
 > - what's left is the balance re-tune §1 flags. P6 was added 2026-09-19 alongside
-> `tools/run_tests.py`. §7 collects every decision with its status.
+> `tools/run_tests.py`. **P2 turned out to already be built** - a same-day follow-up
+> commit on 2026-09-14, undocumented here until 2026-09-20 - and that audit found and
+> fixed two regressions the follow-up commit had silently introduced into P1 (§1
+> "Found and fixed"). §7 collects every decision with its status.
 
 ---
 
@@ -17,17 +20,17 @@
 
 | # | Idea | Player value | Effort | Blocked by | Why this position |
 |---|---|---|---|---|---|
-| **P1** | ~~Ranger recruitment quest, offered from level 3~~ | High | M | nothing | **Built and live-playtested 2026-09-14** - unlock gate, one-shot tracking, `CollectObjective`, `RecruitRewardExtra`, the quest resource, headless- and live-tested. The playtest caught and fixed a real combat-loop bug (§1). The two-hero balance re-tune is still open |
-| **P2** | Mage recruitment quest, offered from level 5 | High | S | P1 (built) | Should be resources only now that P1's machinery exists, which makes it the real acceptance test |
+| **P1** | ~~Ranger recruitment quest, offered from level 3~~ | High | M | nothing | **Built and live-playtested 2026-09-14; two regressions found and fixed 2026-09-20** - unlock gate, one-shot tracking, `CollectObjective`, `RecruitRewardExtra`, the quest resource, headless- and live-tested. The playtest caught and fixed a real combat-loop bug (§1). A same-day follow-up commit (P2) had silently dropped the unlock gate and left the ranger's own objective non-functional; both restored. The two-hero balance re-tune is still open |
+| **P2** | ~~Mage recruitment quest, offered from level 5~~ | High | S | nothing | **Built 2026-09-14, same day as P1 - undocumented here until this audit.** Deviated from the plan below: a single static authored RELIC (`Item.Kind.RELIC` + `QuestDef.guaranteed_boss_drop`), not a dynamically-generated weapon, and no level-5 gate (mirrors `easy.tres`'s pacing instead). Its own `_load_authored_quests()` rewrite is what caused P1's regressions |
 | **S1** | ~~Spike: does KayKit's `Rig_Medium` match the shipped rig?~~ | — | XS | — | **Done 2026-09-13: it matches** (§4) |
 | **P3** | Four-modifier sets per item type; item types for every shipped hand mesh | Medium | M data + M visible props | P1–P2 for tuning | Loot for three classes can only be tuned with three classes in the party |
 | **P4** | Prompt → Meshy → Blender → glb character skill | Medium | M | nothing: the trial character proved the route (§4) | What remains is packaging `rig_bandit_officer.py` as a skill and building 4.3's shared clip source |
 | **P5** | Small polish pass: post-expedition summary, chest presentation, slot upgrade UI, party modal info, shadow monster rework | Low–Medium | S (each item) | nothing | Queued during a later session; not yet scoped against P1–P4 |
-| **P6** | Make the headless suite a real gate: one full green-bar run, then CI on push | — (dev) | S | nothing | 28 suites exist and nothing runs them automatically. `tools/run_tests.py` (2026-09-19) exits non-zero on failure precisely so it can gate |
+| **P6** | Make the headless suite a real gate: one full green-bar run, then CI on push | — (dev) | S | nothing | 29 suites exist and nothing runs them automatically. `tools/run_tests.py` (2026-09-19) exits non-zero on failure precisely so it can gate |
 
 ```mermaid
 flowchart LR
-  P1[P1 Ranger recruit] --> P2[P2 Mage recruit]
+  P1[P1 Ranger recruit, built] --> P2[P2 Mage recruit, built]
   P2 -. tune against a full party .-> P3a[P3a Modifier sets + type roster]
   P3a --> P3b[P3b Equipped item shows its mesh]
   P3b -. fixes the handslot contract .-> P4[P4 Character skill]
@@ -163,30 +166,47 @@ while turns out to still read badly in practice.
 
 ### Decisions (built 2026-09-14)
 
-**1.1 Is the retrieved item a real `Item` during the run?** *Decided: no.* Tracked as
-objective progress: `CollectObjective` completes when the quest's boss encounter
-resolves (the same `encounter_resolved` event `ClearEncountersObjective` reads,
-filtered to `def.is_boss`) - functionally identical timing to `ClearEncountersObjective`
-since the boss is always the last encounter, but the description reads as "retrieve the
-item" rather than "clear the road", and `can_end_early()` is `false` for the same
-reason. `RecruitRewardExtra.grant()` creates the real item at victory. This avoids two
-hazards the outline found:
-- `Item.slot()` puts any unknown type in the weapon slot (§5.1).
-- `discard_expedition_loot()` deletes unequipped inventory on a wipe (§5.2).
+**1.1 Is the retrieved item a real `Item` during the run?** *Decided: no* - superseded,
+see "Found and fixed" below. Originally: tracked as objective progress, `CollectObjective`
+completing when the quest's boss encounter resolves (the same `encounter_resolved` event
+`ClearEncountersObjective` reads, filtered to `def.is_boss`), with `RecruitRewardExtra.
+grant()` creating the real item only at victory - avoiding two hazards the outline found:
+`Item.slot()`'s unknown-type fallback (§5.1) and `discard_expedition_loot()`'s wipe sweep
+(§5.2). **What actually ships (as of the P2 commit, 2026-09-14): the opposite answer.**
+The item IS a real mid-run `Item`, of a new `Item.Kind.RELIC`, guaranteed to drop from the
+quest's boss (`QuestDef.guaranteed_boss_drop`, bypassing `_roll_drop()`'s RNG entirely);
+`CollectObjective` completes on the `item_added` event once the relic's own
+`target_weapon_type` is seen, not on `encounter_resolved`. Both original hazards are
+avoided a different way instead: the relic's `weapon_type` gets its own real
+`Itemizer.ITEM_TYPES` row (so `Item.slot()` never falls through to the unknown-type
+default), and `Kind.RELIC` is exempted from `discard_expedition_loot()`'s wipe sweep by
+kind, not by tracking the token as non-existent. This is a strictly more robust design
+(the objective tracker now shows real progress, and the token itself survives a wipe
+rather than never having existed) - see "Found and fixed" for why the ranger's own
+resources didn't carry it until 2026-09-20.
 
 **Not built**: a distinct "pickup beat" VFX at the moment of retrieval, or a dedicated
 line on the result screen calling the item out by name - `RecruitRewardExtra.describe()`
 covers the reward row generically ("Joins the party: Ranger"). Worth a P5-style polish
 pass, not a blocker.
 
-Failing the quest just loses the progress, because objectives are duplicated fresh for
-every run.
+Failing the quest before the boss falls just loses the progress - `start_expedition()`
+always duplicates a fresh, zeroed `CollectObjective`, and the boss is always the last
+encounter, so a wipe can only happen before the relic ever drops. A wipe can no longer
+happen after it drops: `guaranteed_boss_drop`'s `item_added` completes the objective
+immediately, which ends the run in victory before any further encounter could wipe the
+party - the retrieved-item design closed off the case the original sentence here was
+hedging against.
 
 **1.2 What does the recruit start with?** *Recommend: the retrieved item is the
 recruit's weapon.* The quest is to recover the ranger's lost bow, and the ranger
 arrives with it equipped, plus a Common armor piece the way `new_profile()` equips the
 warrior. That answers both the outline's §5.4 (is the token consumed?) and the
-unarmed-recruit problem.
+unarmed-recruit problem. **What actually ships: no armor piece.** `RecruitRewardExtra`
+only ever searches inventory for an existing item matching `token_weapon_type` and
+equips it if found (silently joining bare-handed if not) - there is no dynamic
+generation of a Magic weapon or Common armor at grant time. The armor half of this
+decision was never built for either recruit.
 
 **1.3 What level does the recruit join at?** *New question; the outline does not cover
 it.* `hero_levels` treats a missing entry as level 1. A ranger recruited by a level-4
@@ -199,26 +219,96 @@ warrior would join at level 1, and because every member receives the full
 from `active_party` at the next `start_expedition()`. So the recruit is in the party
 when the player gets back to town, with no live-combat spawning needed.
 
+### Found and fixed (2026-09-20)
+
+This audit set out to start P2, and found it already built (§2) - which meant checking
+whether it actually still agreed with what P1 shipped six days earlier. It didn't, in
+two ways, both traced to the mage commit (`7bfae68`) rewriting the same shared files
+P1 had just built, apparently developed in parallel without P1's changes and never
+reconciled against them:
+
+1. **The unlock gate silently disappeared.** `bc9b70d` (P1) added the `unlock_level`/
+   `one_shot`/`completed_quest_ids` checks to `mayor_office.gd::_load_authored_quests()`
+   described in point 1 above. `7bfae68` (P2), the same evening, rewrote that same
+   function to add `_already_recruited()` - but its version of the function was a plain
+   `if res is QuestDef: out.append(res)`, with no unlock_level/one_shot logic at all,
+   silently dropping both checks. The ranger recruitment quest has been offerable from
+   level 1, not level 3, ever since, and any future `one_shot` quest that isn't also a
+   recruit would never retire. Caught because `tests/test_quest_generator.gd`'s
+   `_check_authored_quest_order` - written the same evening, correctly assuming the gate
+   was still there, and simply never run until this audit (it's one of the eight suites
+   `tools/run_tests.py` turned up as never having a recorded pass; see P6 §6.1) - asserts
+   exactly the 4-quest, gate-respecting list this regression breaks. **Fixed**: restored
+   the two checks alongside `_already_recruited()`, which stays (it's still what retires
+   `recruit_mage.tres`, which ships with neither field set - see §2).
+2. **The ranger's own resources were never migrated to the relic design.** `7bfae68`
+   also rewrote `collect_objective.gd` and `recruit_reward_extra.gd` wholesale for the
+   mage's new design (decision 1.1's "what actually ships", above) - a real behavior
+   change to a shared base class, landed without updating `ranger_recruit.tres`'s own
+   `collect_ranger_bow.tres` (no `target_weapon_type`, so its `CollectObjective` could
+   never legitimately complete - `is_complete()` needs an `item_added` matching a type
+   that was never set) or `ranger_recruit.tres` itself (no `guaranteed_boss_drop`, so
+   there was nothing authored for it to match against). The quest still worked in
+   practice only because `_next_encounter()` has a second, independent path to
+   `_run_complete()` when the encounter list runs out (the boss is always last) -
+   the objective tracker just permanently read 0/1, and `RecruitRewardExtra` had no
+   guaranteed item to find, so the ranger recruit's `token_weapon_type = &"bow"` could
+   only ever equip an ordinary bow that happened to be sitting unequipped in inventory,
+   joining bare-handed otherwise. **Fixed**: added `&"warbow"` to `Itemizer.ITEM_TYPES`'s
+   authored-relics block (mirroring `heartstone`, but `Slot.WEAPON` - the ranger's own
+   quest is specifically about recovering her bow), authored
+   `resources/items/ranger_warbow.tres` (RELIC, level 9 - two above the quest's own
+   band ceiling, mirroring `mage_heartstone.tres`'s level 7 against its band's ceiling
+   of 5), set `target_weapon_type`/`guaranteed_boss_drop` on the ranger's own two
+   resources, and updated `recruit_ranger.tres`'s `token_weapon_type` to match. Added
+   `tests/test_recruit_ranger.gd`, mirroring `test_recruit_mage.gd`'s coverage, since
+   nothing had exercised the ranger's own resource wiring before - the gap that let
+   this drift six days without being caught.
+
 ---
 
 ## 2. P2 — Mage recruitment quest (offered from level 5)
 
-The same shape as P1, for the mage.
+**Built 2026-09-14, the same day as P1, one commit later (`7bfae68`) - complete with its
+own dedicated test (`tests/test_recruit_mage.gd`, 2026-09-14) and a live-tested pacing
+fix (see below). None of this was recorded here until the 2026-09-20 audit that started
+this section, and that audit is also what found the two P1 regressions this same commit
+introduced (§1 "Found and fixed").**
 
-- **Should be resources only**: one `QuestDef` with `unlock_level = 5`, `one_shot`, a
+*Original plan, below, superseded by what actually shipped:*
+
+- ~~**Should be resources only**: one `QuestDef` with `unlock_level = 5`, `one_shot`, a
   `CollectObjective`, and a `RecruitRewardExtra` whose `class_id` is `mage`. If any code
   has to change, P1's machinery was not generic enough; fix it there. This is the
-  outline's criterion 8.
-- **The retrieved item is the mage's staff.** After decision 3.4 the mage's item types
-  become `staff`, `tome` and `amulet`, plus the draft `wand`.
-- **Three heroes is a bigger step than two.** The mage executes `HEAL` on the board.
-  Until now a party's mend icons fell back to the first living hero. `meal_cost()`
-  triples. Re-run the balance sims.
-- **Pacing (rough estimate, not measured).** `xp_to_next(n) = 100 × n`, so level 3 takes
-  300 total XP and level 5 takes 1,000. A kill is worth `12 × enemy level`, and a boss
-  3× that. A cleared *The Shallow Wood* (level band 1–5) comes to roughly 300 XP. That
-  puts the ranger offer after about one cleared quest and the mage offer after three or
-  four. If that feels early, raise the gates rather than the XP curve.
+  outline's criterion 8.~~ **Code did change** - `collect_objective.gd` and
+  `recruit_reward_extra.gd` were rewritten for a new, more robust design (decision 1.1),
+  not because P1's machinery was too narrow but because this one is a real improvement:
+  a real, RELIC-kind mid-run item with a guaranteed boss drop, rather than P1's abstract
+  "boss encounter resolved" progress tracking. `RecruitRewardExtra`'s fields are
+  `hero_class`/`token_weapon_type`, not `class_id`.
+- ~~**The retrieved item is the mage's staff.**~~ **It's the mage's TRINKET instead** -
+  `resources/items/mage_heartstone.tres`, an authored `heartstone` RELIC resolving to
+  `Item.Slot.TRINKET` (`Itemizer.ITEM_TYPES`'s own comment: "never rolled by any
+  generator... no ClassDef lists these in item_types"). Decision 3.4 (shields to the
+  warrior, tome to the mage) hadn't landed and still hasn't (§3 is still open) - this
+  sidesteps it rather than depending on it.
+- ~~**`unlock_level = 5`.**~~ **Not set - deliberately, unlike the ranger's `unlock_level
+  = 3`.** `recruit_mage.tres` ships with neither `unlock_level` nor `one_shot`, and
+  `test_quest_generator.gd::_check_authored_quest_order` explicitly asserts it appears
+  in a fresh, level-1 profile's quest list. Retirement is via `_already_recruited()`
+  alone (§1 "Found and fixed" point 1) - once the mage joins, the quest disappears
+  regardless of `one_shot`/`completed_quest_ids`, so the level-5 gate this bullet
+  planned for turned out not to be needed for correctness, only for pacing (see below).
+- **Three heroes is a bigger step than two - already covered.** P1's `slot_gesture()`
+  fix (§1, "Fixed 2026-09-14") is generic over `_executor_for(kind, false)`, not
+  ranger-specific, so the mage's `HEAL` icon already animates her the same way. Not a
+  P2-specific concern in the end.
+- ~~**Pacing (rough estimate, not measured).**~~ **Superseded by a live-testing result.**
+  The commit message: "Pacing mirrors easy.tres (5 encounters, level 1-5, a shop stop
+  before the boss) after an early higher-level/shorter draft wiped a solo starting
+  warrior in live testing." The quest shipped at `level_range = Vector2i(1, 5)`, not a
+  level-5-gated band - which is also why `unlock_level` was dropped rather than set to
+  5: a quest playable from level 1 doesn't need a level-5 door on it.
 
 ---
 
@@ -774,7 +864,7 @@ or sequenced against P1–P4.
 
 ### The idea
 
-`tests/` holds 28 headless suites with real assertions in them, and **nothing runs them
+`tests/` holds 29 headless suites with real assertions in them, and **nothing runs them
 automatically**. Making them a gate is two steps: prove they are all green once, then put
 that proof on every push.
 
@@ -793,17 +883,22 @@ left alone deliberately: it is an accurate record of what that pass ran, not a l
 
 ### 6.1 A first full green bar
 
-**The 28 suites have never been run as one set.** The §0.4 loop names 20, so eight have
+**The 29 suites have never been run as one set.** The §0.4 loop names 20, so nine have
 no recorded all-green run alongside the rest:
 
 `test_ability_resolve`, `test_content_registry`, `test_executor`, `test_inn_recovery`,
-`test_level_curves`, `test_quest_generator`, `test_quest_objectives`, `test_recruit_mage`
+`test_level_curves`, `test_quest_generator`, `test_quest_objectives`, `test_recruit_mage`,
+and `test_recruit_ranger` (new 2026-09-20, alongside the §1/§2 audit).
 
 Run `python tools/run_tests.py` under real Godot and record the result here. This is a
-prerequisite for 6.2, not a formality: **if one of the eight fails, that is a real
-finding about the game, not a bug in the runner.** They were written to pass and then
-fell out of the loop's hand-maintained list, so nothing has been watching them since.
-The runner itself was verified against a stub binary reproducing each outcome, so a
+prerequisite for 6.2, not a formality: **if one of the nine fails, that is a real
+finding about the game, not a bug in the runner** - `test_quest_generator` and
+`test_recruit_mage` are exactly this: never run, and `test_quest_generator` in
+particular was already asserting the behavior the §1 "Found and fixed" regression
+broke. The eight pre-existing ones were written to pass and then fell out of the
+loop's hand-maintained list, so nothing has been watching them since;
+`test_recruit_ranger` is untested for the more ordinary reason that it is new. The
+runner itself was verified against a stub binary reproducing each outcome, so a
 failure it reports is the suite's, not its own.
 
 ### 6.2 Gate CI on the suite
@@ -844,8 +939,8 @@ Two small things to fold in while touching this:
 
 | # | Decision | Status | Answer or recommendation |
 |---|---|---|---|
-| 1.1 | Is the retrieved item a real `Item` mid-run? | **Decided, built** | No: tracked as objective progress (`CollectObjective`), item created in `grant()` |
-| 1.2 | Recruit's starting kit | **Decided, built** | The retrieved item is their weapon (Magic), plus a Common armor piece |
+| 1.1 | Is the retrieved item a real `Item` mid-run? | **Superseded, built** | Yes, as of the P2 commit: a real `Item.Kind.RELIC`, guaranteed off the boss (`QuestDef.guaranteed_boss_drop`) - see §1 decision 1.1 for the original (now-superseded) answer |
+| 1.2 | Recruit's starting kit | **Built, narrower than planned** | Whatever unequipped item already matches the token type, or bare-handed if none - no dynamic Magic weapon / Common armor generation was ever built |
 | 1.3 | Recruit's starting level | **Decided, built** | The party's best level (`hero_level()`) |
 | 1.4 | When the recruit joins | **Decided, built** | On victory; in the party from the next expedition (outline §5.3) |
 | 3.1 | Modifier rule | **Decided** | Four per type, dealt in random order (Magic 1 / Rare 2 / Enhanced 3); Enhanced then boosts one of its three by 1.5× |

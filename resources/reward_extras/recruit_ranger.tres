@@ -6,4 +6,4 @@
 script = ExtResource("1_recruit")
 description = "The ranger joins the party, bow recovered."
 hero_class = &"ranger"
-token_weapon_type = &"bow"
+token_weapon_type = &"warbow"
