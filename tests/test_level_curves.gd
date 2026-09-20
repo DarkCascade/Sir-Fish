@@ -20,8 +20,12 @@ extends Node
 ##   - A "regular enemy" is skeleton_warrior at the band's own level; "the
 ##     boss" is the same id at level + BOSS_LEVEL_BONUS with the duplicated-
 ##     resource HP multiply battle_director.start_combat() actually applies.
-##   - Party size is 1 (the solo warrior, matching active_party's real
-##     default); enemy group size is 2, ENDLESS_EARLY_POOL / easy.tres's own
+##   - The band cases (_case_band / _case_underlevelled_party_loses) model a
+##     party of 1: the solo warrior, matching active_party's real default.
+##     The party cases at the bottom of the file (_case_recruit_ease,
+##     _case_full_party_bands - [party balance]) model warrior + recruits; see
+##     "Party model" there for what they credit and what they leave out.
+##     Enemy group size is 2, ENDLESS_EARLY_POOL / easy.tres's own
 ##     enemy_count floor.
 ##
 ## This note assumes the real-time default this harness was written against,
@@ -66,6 +70,7 @@ const BANDS: Array[int] = [1, 5, 10, 20, 30]
 ## re-derive the plan. ENHANCED assumes one full forge ladder climbed.
 const GEAR_RARITY_AT_LEVEL := {
 	1: Item.Rarity.MAGIC,     # the starting weapon a fresh profile ships
+	3: Item.Rarity.MAGIC,     # [party balance] the ranger quest's unlock level
 	5: Item.Rarity.MAGIC,
 	10: Item.Rarity.MAGIC,
 	20: Item.Rarity.RARE,
@@ -84,6 +89,10 @@ func _ready() -> void:
 		_case_band(level)
 	_case_underlevelled_party_loses()
 	_case_crossover_table()
+	# [party balance] After every solo case on purpose: they draw from the shared
+	# seeded RNG, so putting them last leaves each solo figure exactly as it was.
+	_case_recruit_ease()
+	_case_full_party_bands()
 	_t.finish(get_tree(), "test_level_curves")
 
 # --- gear model (spec §5.1's table, made concrete) --------------------------
@@ -101,21 +110,27 @@ const _TYPE_FOR_SLOT := {
 ## modifier on an ENHANCED item is doubled+flagged, matching forge()'s real
 ## rule (only the final rung's addition is the enhanced one - the other three
 ## came from the normal ladder).
-func _make_geared_item(slot: Item.Slot, rarity: int, level: int) -> Item:
+##
+## [party balance] `type_id` / `hero` default to the solo warrior's type for
+## `slot`, so every existing caller is unchanged; the party cases pass a
+## ranger or mage type instead.
+func _make_geared_item(slot: Item.Slot, rarity: int, level: int,
+		type_id: StringName = &"", hero: StringName = &"warrior") -> Item:
+	var type_used: StringName = type_id if type_id != &"" else _TYPE_FOR_SLOT[slot]
 	var item := Item.new()
 	item.kind = Item.Kind.WEAPON
-	item.weapon_type = _TYPE_FOR_SLOT[slot]
+	item.weapon_type = type_used
 	item.rarity = rarity
 	item.level = level
-	item.equipped_by = &"warrior"
+	item.equipped_by = hero
 	var mods: Array[Dictionary] = []
 	# [icons phase 2] Roll from this exact type's real sub-pool (class-
 	# restricted for weapons/trinkets now, not just slot-restricted).
-	var pool: Array = Itemizer._modifiers_for_type(_TYPE_FOR_SLOT[slot]).duplicate()
+	var pool: Array = Itemizer._modifiers_for_type(type_used).duplicate()
 	var count: int = Itemizer.RARITY_MOD_COUNT[rarity]
 	for i: int in range(count):
 		if pool.is_empty():
-			pool = Itemizer._modifiers_for_type(_TYPE_FOR_SLOT[slot]).duplicate()   # small pools repeat to reach Enhanced
+			pool = Itemizer._modifiers_for_type(type_used).duplicate()   # small pools repeat to reach Enhanced
 		var pick_index: int = RNG.randi_range(0, pool.size() - 1)
 		var def: Dictionary = pool[pick_index]
 		pool.remove_at(pick_index)
@@ -133,8 +148,16 @@ func _make_geared_item(slot: Item.Slot, rarity: int, level: int) -> Item:
 ## band and reused across every sample draw, matching how the real bag is
 ## rebuilt once at the top of each spin, not redrawn per icon.
 func _typical_bag(level: int) -> Array:
+	var bag := _hero_icons(&"warrior", _warrior_loadout(level))
+	for _i: int in range(Tuning.SLOT_BLANK_PAD_START):
+		bag.append(SlotIcon.blank())
+	return bag
+
+## The solo warrior's equipped items at `level` (the gear model this file has
+## always used), split out of _typical_bag() so the party cases can reuse it.
+## Same RNG draws in the same order as before the split.
+func _warrior_loadout(level: int) -> Array[Item]:
 	var rarity: int = int(GEAR_RARITY_AT_LEVEL.get(level, Item.Rarity.COMMON))
-	var bag: Array = []
 	var geared := {}
 	# [balance pass] A brand-new profile ships a Magic sword and a plain COMMON
 	# shield (a heal icon, no damage) and no trinket. Model just the weapon at
@@ -150,19 +173,29 @@ func _typical_bag(level: int) -> Array:
 	# the loadout a fresh player actually has, not a random Magic roll.
 	if level <= 1 and not (geared[Item.Slot.WEAPON] as Item).modifiers.is_empty():
 		Itemizer.force_modifier(geared[Item.Slot.WEAPON], 0, &"elem_fire")
-	# [item power model] The innate damage icon is 100% of the EQUIPPED weapon's
-	# Power now, not a fraction of a hero stat.
-	bag.append(SlotIcon.innate(&"warrior", (geared[Item.Slot.WEAPON] as Item).power()))
+	var items: Array[Item] = []
 	for slot: Item.Slot in slots:
-		var item: Item = geared[slot]
-		bag.append(SlotIcon.from_item_base(item))
+		items.append(geared[slot])
+	return items
+
+## One hero's icons: the innate icon plus, per equipped item, its base icon and
+## one icon per modifier - what SlotMachine._rebuild_bag() adds for that hero.
+## [item power model] The innate damage icon is 100% of the EQUIPPED weapon's
+## Power, not a fraction of a hero stat (0 when the hero holds no weapon).
+func _hero_icons(hero_class: StringName, items: Array[Item]) -> Array:
+	var weapon_power := 0
+	for item: Item in items:
+		if item.slot() == Item.Slot.WEAPON:
+			weapon_power = item.power()
+			break
+	var icons: Array = [SlotIcon.innate(hero_class, weapon_power)]
+	for item: Item in items:
+		icons.append(SlotIcon.from_item_base(item))
 		for mod: Dictionary in item.modifiers:
 			var ic := SlotIcon.from_modifier(mod, item)
 			if not ic.is_empty():
-				bag.append(ic)
-	for _i: int in range(Tuning.SLOT_BLANK_PAD_START):
-		bag.append(SlotIcon.blank())
-	return bag
+				icons.append(ic)
+	return icons
 
 # --- output model ------------------------------------------------------------
 
@@ -371,3 +404,197 @@ func _case_crossover_table() -> void:
 	_t.check_between(hard_total / easy_enhanced, 0.65, 1.4,
 		"a hard-tier Common roughly ties a fully-forged easy-tier Enhanced (got ratio %.2f)"
 			% (hard_total / easy_enhanced))
+
+# --- party model [party balance] -----------------------------------------------
+#
+# The band cases above hold a SOLO warrior to the fast-combat bands. The game
+# does not stay solo: the ranger (from level 3) and the mage join through their
+# recruitment quests, and recruits are meant to make the early game EASIER. The
+# cases below model warrior + recruits, assert that direction, and print the
+# late-game picture for a full party.
+#
+# One party = an Array of { "class", "level", "items" } entries. The party's
+# icons all go into ONE shared bag drawn onto ONE 3x3 board (exactly what
+# SlotMachine._rebuild_bag() does), so a hero added dilutes the others' icons as
+# well as adding its own - the power jump is not additive.
+#
+# Credited (mean per spin over SlotMachine.draw_nine of the party bag):
+#   - DAMAGE icons: one summed swing on a single target, as the solo model.
+#   - BOMB_ARROW / THUNDERBURST: hit every enemy, so once per enemy in the group.
+#   - RAIN / CLEAVE: the buffed swing also lands on the other enemies
+#     (approximated as the same spin's swing; rain hits all, cleave up to two).
+#   - HEAL icons: reported as regen, never asserted on.
+# Left out, as the solo model leaves them out: crit doubling, bleed ticks,
+# payline double-resolves, BLOCK's temporary armor, the trinket ultimates' 25%
+# per-spin drop, and a hero dying mid-fight (its icons leave the bag).
+#
+# Reported per party:
+#   ttk_single  time to kill ONE regular enemy if all output lands on it (AoE
+#               counted once) - directly comparable to the solo band's ttk.
+#   ttk_group   time to clear the whole group of ENEMY_GROUP_SIZE, AoE counted
+#               against each enemy it hits.
+#   ttd         time for the group to kill the whole party (total party HP over
+#               group dps, per-hit reduced by each hero's own armor, all
+#               heroes equally likely to be hit).
+#   regen       HP/s the party's HEAL icons restore (NOT subtracted from ttd).
+
+## The authored relic each recruitment quest hands over - what the recruit is
+## actually wearing the moment they join (RecruitRewardExtra.grant()).
+const _RELIC_ITEM := {
+	&"ranger": "res://resources/items/ranger_warbow.tres",
+	&"mage": "res://resources/items/mage_heartstone.tres",
+}
+
+## The generated gear types a late-game recruit wears, per slot.
+const _GEAR_TYPES := {
+	&"ranger": { Item.Slot.WEAPON: &"bow", Item.Slot.ARMOR: &"helm", Item.Slot.TRINKET: &"ring" },
+	&"mage": { Item.Slot.WEAPON: &"staff", Item.Slot.ARMOR: &"shield", Item.Slot.TRINKET: &"amulet" },
+}
+
+func _warrior_entry(level: int) -> Dictionary:
+	return { "class": &"warrior", "level": level, "items": _warrior_loadout(level) }
+
+## A recruit exactly as the quest leaves them: the authored relic, nothing else.
+## `level` is the recruit's own level, NOT the party's - a fresh recruit is level
+## 1 whatever the party has reached (hero_level() defaults a missing entry to 1
+## and RecruitRewardExtra.grant() never sets one).
+func _relic_entry(hero_class: StringName, level: int) -> Dictionary:
+	var relic := (load(_RELIC_ITEM[hero_class]) as Item).duplicate(true) as Item
+	relic.equipped_by = hero_class
+	var items: Array[Item] = [relic]
+	return { "class": hero_class, "level": level, "items": items }
+
+## A recruit in a full loadout of generated gear at the band's rarity - the
+## late-game picture, where drops have long since replaced the relic.
+func _geared_entry(hero_class: StringName, level: int) -> Dictionary:
+	var rarity: int = int(GEAR_RARITY_AT_LEVEL.get(level, Item.Rarity.COMMON))
+	var items: Array[Item] = []
+	for slot: Item.Slot in [Item.Slot.WEAPON, Item.Slot.ARMOR, Item.Slot.TRINKET]:
+		items.append(_make_geared_item(slot, rarity, level, _GEAR_TYPES[hero_class][slot], hero_class))
+	return { "class": hero_class, "level": level, "items": items }
+
+## Mean per-spin output of `bag` against a group of `group` enemies.
+func _spin_stats(bag: Array, group: int, samples: int = 8000) -> Dictionary:
+	var single := 0.0
+	var group_total := 0.0
+	var heal_pct := 0.0
+	for _i: int in range(samples):
+		var swing := 0.0
+		var aoe := 0.0
+		var rain := false
+		var cleave := false
+		for ic: Dictionary in SlotMachineScript.draw_nine(bag):
+			var kind: int = SlotIcon.kind_of(StringName(ic.get("id", &"")))
+			var hit := float(ic.get("roll", 0)) + float(Tuning.SLOT_ATTACK_ICON_FLOOR)
+			match kind:
+				SlotIcon.Kind.DAMAGE:
+					swing += hit
+				SlotIcon.Kind.BOMB_ARROW, SlotIcon.Kind.THUNDERBURST:
+					aoe += hit
+				SlotIcon.Kind.RAIN:
+					rain = true
+				SlotIcon.Kind.CLEAVE:
+					cleave = true
+				SlotIcon.Kind.HEAL:
+					heal_pct += float(ic.get("roll", 0))
+		var extra_targets := 0
+		if swing > 0.0:
+			extra_targets = (group - 1) if rain else (mini(2, group - 1) if cleave else 0)
+		single += swing + aoe
+		group_total += swing * float(1 + extra_targets) + aoe * float(group)
+	return {
+		"single": single / float(samples),
+		"group": group_total / float(samples),
+		"heal_pct": heal_pct / float(samples),
+	}
+
+## The six figures the party cases read, for `party` against regular enemies of
+## `enemy_level`.
+func _party_metrics(party: Array, enemy_level: int) -> Dictionary:
+	var e := GameState.get_stats(ENEMY_ID)
+	var bag: Array = []
+	var party_hp := 0
+	var hit_sum := 0.0
+	for h: Dictionary in party:
+		bag.append_array(_hero_icons(h["class"], h["items"]))
+		party_hp += GameState.get_stats(h["class"]).hp_at(int(h["level"]))
+		var armor := 0
+		for item: Item in h["items"]:
+			armor += item.armor_value()
+		hit_sum += maxf(1.0, float(e.weapon_power_at(enemy_level)) - float(armor))
+	for _i: int in range(Tuning.SLOT_BLANK_PAD_START):
+		bag.append(SlotIcon.blank())
+	var spin := _spin_stats(bag, ENEMY_GROUP_SIZE)
+	var enemy_hp := float(e.hp_at(enemy_level))
+	var group_dps: float = (hit_sum / float(party.size())) \
+		/ (e.attack_cooldown + ENEMY_ATTACK_CLIP) * float(ENEMY_GROUP_SIZE)
+	return {
+		"ttk_single": enemy_hp / (float(spin["single"]) / _SPIN_CYCLE),
+		"ttk_group": enemy_hp * float(ENEMY_GROUP_SIZE) / (float(spin["group"]) / _SPIN_CYCLE),
+		"ttd": float(party_hp) / group_dps,
+		"party_hp": party_hp,
+		"regen": float(spin["heal_pct"]) / 100.0 * (float(party_hp) / float(party.size())) / _SPIN_CYCLE,
+	}
+
+func _print_party(label: String, m: Dictionary) -> void:
+	print("  %-34s ttk %.1fs single / %.1fs group | ttd %.1fs (party hp %d) | regen %.1f hp/s"
+		% [label, m["ttk_single"], m["ttk_group"], m["ttd"], m["party_hp"], m["regen"]])
+
+## Recruits are meant to make the early game easier: at the levels the recruit
+## quests open, every recruit must shorten the fight and lengthen the party's
+## life, whether the recruit joins at level 1 (what ships - see _relic_entry)
+## or at the party's level (what backlog decision 1.3 asked for).
+func _case_recruit_ease() -> void:
+	print("--- party: recruits make the early game easier ---")
+	for level: int in [3, 5]:
+		var warrior := _warrior_entry(level)
+		var solo := _party_metrics([warrior], level)
+		var with_ranger := _party_metrics([warrior, _relic_entry(&"ranger", 1)], level)
+		var with_ranger_at_level := _party_metrics([warrior, _relic_entry(&"ranger", level)], level)
+		var trio := _party_metrics(
+			[warrior, _relic_entry(&"ranger", 1), _relic_entry(&"mage", 1)], level)
+		print(" warrior L%d, enemies L%d:" % [level, level])
+		_print_party("solo warrior", solo)
+		_print_party("+ ranger (joins at L1)", with_ranger)
+		_print_party("+ ranger (joins at party level)", with_ranger_at_level)
+		_print_party("+ ranger + mage (both L1)", trio)
+		_t.check(with_ranger["ttk_group"] < solo["ttk_group"],
+			"L%d: the ranger recruit shortens the group fight (%.1fs -> %.1fs)"
+				% [level, solo["ttk_group"], with_ranger["ttk_group"]])
+		_t.check(with_ranger["ttd"] > solo["ttd"],
+			"L%d: the ranger recruit lengthens the party's life (%.1fs -> %.1fs)"
+				% [level, solo["ttd"], with_ranger["ttd"]])
+		_t.check(trio["ttk_group"] < with_ranger["ttk_group"],
+			"L%d: the mage recruit shortens the group fight again (%.1fs -> %.1fs)"
+				% [level, with_ranger["ttk_group"], trio["ttk_group"]])
+		_t.check(trio["ttd"] > with_ranger["ttd"],
+			"L%d: the mage recruit lengthens the party's life again (%.1fs -> %.1fs)"
+				% [level, with_ranger["ttd"], trio["ttd"]])
+		# Easier, not trivial: a recruited party still sits inside the solo
+		# bands' own fast-combat window rather than deleting enemies faster
+		# than the floor the whole file holds the game to.
+		for entry: Array in [["+ ranger", with_ranger], ["+ ranger at level", with_ranger_at_level],
+				["+ ranger + mage", trio]]:
+			_t.check_between(entry[1]["ttk_single"], 3.0, 9.0,
+				"L%d: %s still kills a regular enemy inside the 3-9s fast-combat band" % [level, entry[0]])
+
+## The late game with a full, fully-geared party, next to the solo warrior the
+## solo bands hold. Asserts only that the party stays inside the solo bands'
+## 3-9s ttk window and lives longer than the solo warrior: nothing pins what
+## the late game SHOULD be for a party of three (the solo bands were tuned for
+## one hero), so the printed gap between the two rows is the thing to read.
+func _case_full_party_bands() -> void:
+	print("--- party: full geared party vs the solo bands ---")
+	for level: int in [10, 20, 30]:
+		var warrior := _warrior_entry(level)
+		var solo := _party_metrics([warrior], level)
+		var trio := _party_metrics(
+			[warrior, _geared_entry(&"ranger", level), _geared_entry(&"mage", level)], level)
+		print(" band %d:" % level)
+		_print_party("solo warrior", solo)
+		_print_party("warrior + ranger + mage", trio)
+		_t.check_between(trio["ttk_single"], 3.0, 9.0,
+			"L%d: a full geared party still kills a regular enemy inside the 3-9s band" % level)
+		_t.check(trio["ttd"] > solo["ttd"],
+			"L%d: a full geared party outlasts the solo warrior (%.1fs vs %.1fs)"
+				% [level, trio["ttd"], solo["ttd"]])
