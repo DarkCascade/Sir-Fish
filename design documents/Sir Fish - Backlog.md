@@ -1164,7 +1164,7 @@ board every spin. `make_slot_strike`'s own comment said "the ranger/mage would s
 projectile the day the party has one" - that day is today. It works, but it is many more
 projectiles on screen than before, and it has only been seen headless.
 
-### Done: the charge meter and the invoke path (`e7f8298`)
+### Done: the charge system and the invoke path (`e7f8298`)
 
 **The find that made this cheap: hero specials were finished content nothing could reach.**
 `request_turn()` returns early for heroes, so `_take_action()` - the only reader of
@@ -1203,7 +1203,36 @@ A fight is 2-6 spins, so ~3 spins per special is the once-or-twice-per-fight cad
 chosen for. At 3 a special would fire every single spin. `Tuning.SPECIAL_CHARGE_COST` is one
 number to re-tune after a playtest, and the arithmetic is in its comment.
 
+### Done: the meter UI and the invoker button (`2b41ed9`, `9dca4b3`, `5449e21`)
+
+`ChargeMeter` draws one hero's meter as a pip row, and `SpecialInvoker` is the button
+that fires their special with that meter in its tab. Both are styled off a Meshy
+prototype kept at `design documents/reference/special_invoker/`.
+
+- **The prototype came back already on palette** - its ring gold sampled `#D8A949`
+  against `C_GOLD`'s `#D8AF52`, its bright rim `#EEDDAC` against `C_GOLD_BRIGHT`, its
+  tab edge `#7A6630` against `C_GOLD_DARK`. Only the glass dome needed new tones.
+- **The pips are drawn, not textured**, because they must light, dim, partially fill and
+  pulse. The first render baked its pips into the image, where they could never animate;
+  a second render with an **empty tab** is the one in use.
+- **Five pips, not the art's three** (`SPECIAL_PIP_COUNT`): 5 divides the cost of 10
+  exactly, so a partial pip is always a clean half-moon rather than a 30/60/90% wedge.
+- **The art ships with no alpha** and a baked ground a hair off `C_PLUM_VOID`, so it was
+  keyed with a flood fill from the corners - a flat threshold punches holes in the tab
+  interior and the ring's inner shadows, which are the same dark value. Verified over
+  all four console grounds.
+- The tab was measured off the artwork (x 0.219-0.781, y 0.810-0.897) and the meter is
+  anchored to those fractions, so it tracks the art at any size keeping its aspect.
+- The button holds no rules: pressing asks `invoke_hero_special()`, which refuses and
+  spends nothing when it cannot fire. It dims rather than disables while charging.
+
 ### Decided, not built
+
+**Three written-up prompts live in `design documents/prompts/`**, each with the code
+references, the traps and the acceptance criteria for an implementing model:
+`P7 - Warrior Cleave.md`, `P7 - Ranger and Mage Invokers.md`,
+`P7 - Slot Upgrades to Town.md`.
+
 
 1. **The upgrade tray becomes three special invokers**, positioned to match the battlefield
    formation: **middle = warrior, left = ranger, right = mage**. That ordering is the real
