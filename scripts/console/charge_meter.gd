@@ -27,7 +27,7 @@ extends Control
 
 ## Pip radius as a fraction of the row's height. The prototype's dots are round
 ## and generously spaced rather than crowding their tab.
-const PIP_RADIUS_FRACTION := 0.34
+const PIP_RADIUS_FRACTION := 0.40
 const PLATE_CORNER := 10.0
 
 var _charge: int = 0
@@ -115,8 +115,11 @@ func _draw_plate() -> void:
 ## upgrade card's pips settled on, that a player must be able to count what is
 ## LEFT at a glance, and a hairline reads as absence rather than as a slot.
 func _draw_pip_socket(c: Vector2, r: float) -> void:
-	draw_circle(c, r, Color(Tuning.C_GOLD_DARK, 0.55))
-	draw_circle(c, r * 0.72, Tuning.C_PLUM_VOID)
+	# Opaque, not translucent: inside the button art's own dark tab a 55% rim
+	# washed out entirely at button size, and an empty meter has to still read
+	# as "five slots waiting" rather than as nothing at all.
+	draw_circle(c, r, Tuning.C_GOLD_DARK)
+	draw_circle(c, r * 0.70, Tuning.C_PLUM_VOID)
 
 ## A charged pip: gold, lit from above like everything else in this console,
 ## wrapped in the soft halo the prototype's dots carry.
