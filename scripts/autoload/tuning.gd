@@ -738,13 +738,19 @@ const C_OBSIDIAN_DEEP := Color("140F1C")   # status strip / recessed reel window
 const C_INVOKER_GLASS := Color("554B6A")      # lens body, the dome's shadowed mass
 const C_INVOKER_GLASS_LIT := Color("AF9DE2")  # the dome's top specular
 
-## How many pips a charge meter draws. Three, from the prototype's own pip row -
-## DELIBERATELY not SPECIAL_CHARGE_COST (10): ten dots would not fit the tab and
-## would read as a progress bar rather than a charge. Each pip is a third of the
-## meter, and the one being filled draws a partial wedge, so the row still shows
-## real progress at a glance. Change either number freely; ChargeMeter.lit_pips()
-## is the only thing that relates them.
-const SPECIAL_PIP_COUNT := 3
+## How many pips a charge meter draws. DELIBERATELY not SPECIAL_CHARGE_COST (10):
+## ten dots would not fit the tab and would read as a progress bar rather than a
+## charge. The pip being filled draws a partial wedge, so the row still shows real
+## progress at a glance. Change either number freely; ChargeMeter.lit_pips() is the
+## only thing that relates them, and the tests read this constant rather than a
+## literal.
+##
+## Five, not the prototype art's three: 5 divides the cost of 10 exactly, so a
+## partial pip is always a clean half-moon, where thirds gave arbitrary 30/60/90%
+## wedges that read as pie charts. Watch the spacing if it changes again - at five
+## the halos start to merge under about 280px of width, and the row stops reading
+## as discrete dots.
+const SPECIAL_PIP_COUNT := 5
 
 const C_OBSIDIAN := Color("211A2E")        # panel faces: cabinet, gold plate
 const C_GLASS_FACET := Color("3B3152")     # glyph tiles, raised off C_OBSIDIAN
