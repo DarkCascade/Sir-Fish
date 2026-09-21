@@ -13,7 +13,7 @@ extends Node
 ## [armor items] ARMOR rows carry `armor` instead - a flat damage reduction
 ## that item.armor_value() scales by level, shown as "Armor". Armor's base slot
 ## icon is a BLOCK (a temporary flat-armor buff), never a strike, and armor
-## only rolls block / mend modifiers - see Itemizer.MODIFIERS' `slots` field.
+## only rolls the block modifier - see Itemizer.MODIFIERS' `slots` field.
 ## [content phase 1] No `classes` key on any row any more (spec §3 Step 2b) -
 ## class eligibility is read from ClassDef.item_types instead
 ## (weapon_types_for() / Itemizer.classes_for_type()). Weapons stay one class
@@ -43,6 +43,11 @@ const ITEM_TYPES := {
 	# resources/items/) has a slot()/power() to resolve against - see
 	# RecruitRewardExtra's header for why relics are never generated. ---
 	&"heartstone": { "slot": Item.Slot.TRINKET, "base_value": 0, "power": 5 },
+	# The ranger's stolen bow (resources/items/ranger_warbow.tres) - a WEAPON,
+	# not a TRINKET like heartstone, since the ranger recruitment quest is
+	# specifically about recovering her own bow. power matches the ordinary
+	# `bow` row so she isn't over- or under-tuned relative to a generated one.
+	&"warbow": { "slot": Item.Slot.WEAPON, "base_value": 0, "power": 5 },
 }
 
 const ADJECTIVES := [
@@ -58,12 +63,18 @@ const ADJECTIVES := [
 ## [icons phase 2] Each def carries `slots` (the Item.Slot values that may roll
 ## it) and an optional `types` (the specific Itemizer.ITEM_TYPES keys that may
 ## roll it, within those slots). No `types` key means every type in `slots` is
-## eligible - that's how armor_block/slot_mend stay shared across all three
+## eligible - that's how armor_block stays shared across all three
 ## armor types regardless of who wears them, and `crit` stays shared across all
 ## three trinket types. A def WITH `types` is how warrior weapons, ranger
 ## weapons, mage weapons and each class's trinket ultimate stay exclusive to
 ## their own item types. _modifiers_for_type() filters on both before
 ## _generate_typed()/forge() pick from the result.
+## [backlog P7] Modifier ids that no longer exist, and the saved items still
+## carrying them. Item.from_dict() drops these on load, so a card never advertises
+## a stat that does nothing. slot_mend went with the slot's heal: healing is the
+## mage's invokable Healing Aura now.
+const RETIRED_MODIFIER_IDS: Array[StringName] = [&"slot_mend"]
+
 const MODIFIERS := [
 	# --- warrior weapons (axe, sword): elements + the physical bleed DoT ---
 	{ "id": &"elem_fire",  "label": "+%d Fire Damage",   "caption": "Fire Damage",   "pct": false, "roll": [3, 11], "value_mult": [0.35, 0.70], "slots": [Item.Slot.WEAPON], "types": [&"axe", &"sword"] },
@@ -76,7 +87,6 @@ const MODIFIERS := [
 	{ "id": &"lightning_blast", "label": "+%d Lightning Blast", "caption": "Lightning Blast", "pct": false, "roll": [4, 14], "value_mult": [0.55, 0.90], "slots": [Item.Slot.WEAPON], "types": [&"staff"] },
 	# --- armor (helm, mail, shield): shared pool, any class ---
 	{ "id": &"armor_block", "label": "+%d Block",        "caption": "Block",         "pct": false, "roll": [3, 9],  "value_mult": [0.35, 0.70], "slots": [Item.Slot.ARMOR] },
-	{ "id": &"slot_mend",   "label": "+%d%% Mend Power", "caption": "Mend Power",    "pct": true,  "roll": [3, 9],  "value_mult": [0.40, 0.75], "slots": [Item.Slot.ARMOR] },
 	# --- trinkets (ring, amulet, idol): crit is universal, the rest exclusive ---
 	{ "id": &"crit",         "label": "+%d Crit Damage",  "caption": "Crit Damage",  "pct": false, "roll": [3, 11], "value_mult": [0.35, 0.70], "slots": [Item.Slot.TRINKET] },
 	{ "id": &"cleave",       "label": "+%d Cleave",       "caption": "Cleave",       "pct": false, "roll": [3, 11], "value_mult": [0.40, 0.75], "slots": [Item.Slot.TRINKET], "types": [&"idol"] },
@@ -248,7 +258,7 @@ func _modifier_pool_excluding(item: Item) -> Array:
 	for def: Dictionary in slot_pool:
 		if not have.has(def["id"]):
 			pool.append(def)
-	# [icons phase 2] Every pool here is small (armor: {block, mend}; ranger/mage
+	# [icons phase 2] Every pool here is small (armor: {block}; ranger/mage
 	# weapons: one id apiece; a trinket type: {crit, its own ultimate}) - once
 	# all of it is carried, the last forge rung has to repeat a roll rather than
 	# stall the ladder short of Enhanced. Only the warrior weapon pool of 4
@@ -278,8 +288,8 @@ func _modifiers_for_type(wtype: StringName) -> Array:
 ## enhanced icon); CLEAVE/RAIN scale the same way too, as a value/pricing
 ## figure - the resolution itself (SlotMachine) doesn't currently read it, only
 ## whether the icon rolled at all, so it's a balance knob reserved for later.
-## HEAL (mend) keeps its own percent roll from the modifier's range (enhanced
-## -> the top of that range).
+## A kind with no scaling basis (an armor item with no armor value, say) falls
+## back to the def's own flat roll range (enhanced -> the top of that range).
 func _roll_icon_magnitude(def: Dictionary, item: Item, enhanced: bool) -> int:
 	var kind: int = SlotIcon.kind_of(StringName(def["id"]))
 	# [armor items] BLOCK scales off armor_value the way DAMAGE scales off Power.
@@ -294,7 +304,7 @@ func _roll_icon_magnitude(def: Dictionary, item: Item, enhanced: bool) -> int:
 		var frac: float = Tuning.FORGE_ICON_POWER_MAX if enhanced \
 			else RNG.randf_range(Tuning.FORGE_ICON_POWER_MIN, Tuning.FORGE_ICON_POWER_MAX)
 		return maxi(1, int(round(float(basis) * frac)))
-	# HEAL (mend) keeps its own percent roll.
+	# No scaling basis: the def's own flat roll range.
 	return int(def["roll"][1]) if enhanced \
 		else RNG.randi_range(int(def["roll"][0]), int(def["roll"][1]))
 
@@ -319,7 +329,7 @@ func _build_modifier(def: Dictionary, item: Item, enhanced: bool) -> Dictionary:
 ## [balance pass] Rewrites modifier slot `idx` with a fresh roll of `id`. The
 ## starting weapon (GameState.new_profile()) uses this to guarantee its one
 ## modifier is a plain damage add - a fresh run is never handed a dead roll
-## (a boost with nothing to boost, a mend on a solo warrior's damage bag).
+## (a boost with nothing to boost).
 func force_modifier(item: Item, idx: int, id: StringName) -> void:
 	if item == null or idx < 0 or idx >= item.modifiers.size():
 		return

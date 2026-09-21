@@ -485,12 +485,75 @@ func _take_action(c: Combatant) -> void:
 
 	c.begin_action(Ability.make(c, use_special, target, self))
 
+## [specials] Fires `c`'s special NOW, on the player's say-so, rather than on the
+## action-count cadence _take_action() uses for enemies. Heroes never reach that
+## cadence at all - request_turn() returns early for them, so
+## special_every_n_actions has been unreachable for a hero since the combat loop
+## redesign; this is the entry point that makes a hero special reachable again.
+##
+## Returns false and spends NOTHING when the invoke cannot happen, so a rejected
+## press never costs the player their meter. Rejects: not a living hero, already
+## mid-action (the same ATTACKING guard slot_attack() uses, or the special's clip
+## would eat a swing and vice versa), meter not full, no valid target, or the
+## mage's heal with nobody hurt.
+##
+## The targeting rules are _take_action()'s, deliberately duplicated rather than
+## refactored out: that function also advances action_count, ticks bleed and
+## handles the pending-special flag, none of which a manual invoke should do.
+func invoke_hero_special(c: Combatant) -> bool:
+	if not can_invoke_hero_special(c):
+		return false
+
+	var target: Combatant = null
+	if c.stats.special.special_targets_opponent:
+		target = _random_target_for(c)
+		if target == null:
+			return false
+
+	if not GameState.spend_special_charges(c.stats.id):
+		return false
+	c.special_pending = false
+	c.begin_action(Ability.make(c, true, target, self))
+	EventBus.special_invoked.emit(c.stats.id)
+	return true
+
+## Whether invoke_hero_special(c) would fire RIGHT NOW. The one guard chain both
+## the invoke and the invoker buttons use, so what the button shows and what a
+## press does cannot drift apart - the mage is why: her heal refuses a party at
+## full HP, and a button that lit at a full meter regardless would read as broken.
+##
+## `ignore_busy` skips the mid-action guard. A button passes it so it does not
+## flicker dark for the half-second a hero is animating; invoke itself never does.
+func can_invoke_hero_special(c: Combatant, ignore_busy: bool = false) -> bool:
+	if c == null or not is_instance_valid(c) or not c.is_hero or not c.is_alive():
+		return false
+	if c.state == Combatant.State.ATTACKING and not ignore_busy:
+		return false
+	if c.stats == null or c.stats.special == null:
+		return false
+	if not GameState.special_ready(c.stats.id):
+		return false
+
+	# The wounded-ally rule (mage's heal): a press with nobody hurt is refused
+	# with the meter intact, rather than fired into a full-HP party and wasted.
+	if c.stats.special.special_requires_wounded_ally and _every_living_ally_at_full_hp(c):
+		return false
+
+	# Something to aim at - only for specials that aim at an opponent. The mage
+	# (like the warrior) targets none, so hers stays usable as the last enemy dies.
+	if c.stats.special.special_targets_opponent and _opponents_of(c).is_empty():
+		return false
+	return true
+
 ## Uniformly random among living opponents (spec 10.2 step 3).
 func _random_target_for(c: Combatant) -> Combatant:
-	var pool := living_enemies() if c.is_hero else living_heroes()
+	var pool := _opponents_of(c)
 	if pool.is_empty():
 		return null
 	return pool[RNG.randi_range(0, pool.size() - 1)]
+
+func _opponents_of(c: Combatant) -> Array[Combatant]:
+	return living_enemies() if c.is_hero else living_heroes()
 
 ## [v3] "Ally" is every living combatant on c's own side, including c itself,
 ## so a wounded mage in an otherwise-healthy party still heals itself

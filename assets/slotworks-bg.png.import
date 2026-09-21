@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://b8joix12s0ixh"
-path="res://.godot/imported/glyph_slot_mend.png-20bd5f9ec241d9839c586e3deeb8361d.ctex"
+uid="uid://srtyvrw0uh20"
+path="res://.godot/imported/slotworks-bg.png-54f11f25fda79302630e872b4dce3b13.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/ui/slot/glyph_slot_mend.png"
-dest_files=["res://.godot/imported/glyph_slot_mend.png-20bd5f9ec241d9839c586e3deeb8361d.ctex"]
+source_file="res://assets/slotworks-bg.png"
+dest_files=["res://.godot/imported/slotworks-bg.png-54f11f25fda79302630e872b4dce3b13.ctex"]
 
 [params]
 

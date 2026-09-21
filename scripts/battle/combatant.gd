@@ -309,9 +309,8 @@ func slot_attack(enemy: Combatant, amount: int) -> void:
 	begin_action(Ability.make_slot_strike(enemy, amount, director))
 
 ## [combat loop redesign] A purely cosmetic swing for a hero whose OWN icon
-## kind resolved (DAMAGE_ALL's chain bolt, HEAL's recipient-picked heal) but
-## whose damage/heal is already applied elsewhere (SlotMachine._hit_all() /
-## _heal_lowest()) - without this, only whichever class executes DAMAGE ever
+## kind resolved (DAMAGE_ALL's chain bolt) but whose damage is already applied
+## elsewhere (SlotMachine._hit_all()) - without this, only whichever class executes DAMAGE ever
 ## animates at all (SlotMachine._hero_swing()), which reads as "the ranger/
 ## mage never do anything in combat" the moment a second hero exists (only
 ## visible once the party is no longer a solo warrior).

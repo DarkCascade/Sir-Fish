@@ -126,7 +126,7 @@ const ITEM_VALUE_PER_LEVEL := 0.35
 ## item's Power - stronger than the base icon. The Enhanced step's own added
 ## icon is locked at the max; the others on an Enhanced item keep their rolled
 ## fraction. Damage-flavoured icons only (see Itemizer._roll_icon_magnitude) -
-## HEAL (mend) keeps its own percent roll from Itemizer.MODIFIERS.
+## anything else keeps its own roll range from Itemizer.MODIFIERS.
 const FORGE_ICON_POWER_MIN := 1.25
 const FORGE_ICON_POWER_MAX := 1.75
 
@@ -190,7 +190,15 @@ const PARTY_ANCHOR := Vector3(-1.6, 0.0, 3.4)
 ## The party formation, in RUN_DIR's own frame rather than world axes:
 ##   x = across, in units of PARTY_ROW_SPREAD (+ is the party's right)
 ##   y = back,   in units of PARTY_ROW_DEPTH  (+ is further from the enemy)
-## Indexed by hero slot, which is fixed: 0 mage, 1 ranger, 2 warrior.
+## Indexed by the hero's POSITION IN active_party, not by class - spawn_party()
+## passes its loop index straight to world.hero_slot_position(). active_party
+## starts as [warrior] and RecruitRewardExtra.grant() appends, so in practice the
+## slots fill warrior, then ranger, then mage: slot 0 front-centre is the
+## warrior, 1 is back-left, 2 is back-right. (An older comment here claimed a
+## fixed "0 mage, 1 ranger, 2 warrior", which the commented-out table below was
+## written for; it has not matched the real recruitment order since the party
+## became a solo warrior.) A party of one or two therefore leaves the back-right
+## slot empty rather than shifting anyone.
 ##
 ## Warrior alone in front, mage and ranger flanking behind him. Authoring it as
 ## a table rather than deriving it from a spacing means a new shape is three
@@ -342,7 +350,7 @@ const FORGE_COSTS := [
 ## [item power model] The final rung's added icon carries an `enhanced: true`
 ## marker the UI tints, and its magnitude is locked to the maximum bonus:
 ## FORGE_ICON_POWER_MAX of the item's Power for a DAMAGE / DAMAGE_ALL icon, or
-## the top of the modifier's roll range for a HEAL / MULT icon. Only that one
+## the top of the modifier's roll range for an icon with no Power basis. Only that one
 ## icon is maxed - the other rungs on an Enhanced item keep their rolls.
 
 # --- [town] Combat pickups (spec 9) ----------------------------------------------
@@ -406,7 +414,28 @@ const SLOT_RESULT_HOLD := 0.65            # pause after reel 3 stops before the 
 ## front-line hero is told to swing, the resolve coroutine waits this long so
 ## the swing's impact and damage number land inside SLOT_RESULT_HOLD rather
 ## than bleeding into the next spin. Roughly the warrior chop's impact_delay.
+## [specials] Icons a hero must land before their special can be invoked. Every
+## non-blank icon the hero OWNS charges their own meter by 1 (SlotMachine.
+## _resolve_board), so a better-geared hero charges faster and no new icon ids
+## are needed.
+##
+## 10, not the 3 the design review recommended: that 3 was calibrated against a
+## different, unbuilt source - ONE dedicated charge icon per special, which lands
+## on maybe a quarter of boards. Charging off every owned icon is far richer. A
+## solo warrior in Magic gear owns 7 of a 16-entry bag and so lands ~3.9 of them
+## per spin; a fully-geared hero in a three-hero party owns 13 of 42 and lands
+## ~2.8. Both put a special at roughly 3 spins, and a fight is 2-6 - which is the
+## once-or-twice-per-fight cadence 3 was picked for. At 3 a special would fire
+## every single spin. One number to re-tune after a playtest.
+const SPECIAL_CHARGE_COST := 10
+
 const SLOT_SWING_SETTLE := 0.45
+## [owner swings] Gap between one hero's swing and the next when several heroes
+## swing off the same board (SlotMachine._deliver_swings). Small on purpose: the
+## swings should read as a volley, and the spin cycle - which is the party's
+## whole damage cadence (test_level_curves) - must not stretch with party size.
+## A full party of three adds 2x this, not 2x SLOT_SWING_SETTLE.
+const SLOT_SWING_STAGGER := 0.12
 
 ## The nine scoring cells: _cells[1], _cells[2], _cells[3] on each of the three
 ## reels (offsets -1 / 0 / +1 from the payline). _cells[0] / _cells[4] are
@@ -439,9 +468,10 @@ const SLOT_ATTACK_ICON_FLOOR := 7
 ## composition to the slot and guarantees the bag is never empty of icons.
 ##
 ## [item power model] The innate DAMAGE icon is 100% of the hero's equipped
-## weapon Power (GameState.hero_weapon_power(id) -> Item.power()); only the
-## innate HEAL icon (the mage) still uses a fixed constant, this one.
-const SLOT_INNATE_HEAL_PCT := 8         # percent of max hp to the lowest-hp hero
+## weapon Power (GameState.hero_weapon_power(id) -> Item.power()), for every
+## hero. [backlog P7] The mage's innate icon was a fixed percent heal
+## (SLOT_INNATE_HEAL_PCT); it is damage now, and her healing is the invokable
+## Healing Aura.
 ## [v2] Attract mode (spec 16.6 / Q17): out of combat the reels drift instead of
 ## stopping. "Does nothing" means nothing that affects the game - not dead air.
 const SLOT_ATTRACT_SPEED := 0.15          # fraction of spin speed while drifting
@@ -698,6 +728,31 @@ const C_ROOTWOOD_GEM := Color("6FCB52")    # innate-icon inlay, canopy leaf-gree
 ## gold trim becomes the glowing seam instead, since a boss fight is the one
 ## moment this console is allowed to stop reading as friendly UI chrome.
 const C_OBSIDIAN_DEEP := Color("140F1C")   # status strip / recessed reel windows - darkest glass
+## [specials] The invoker buttons and their charge meters, sampled off the Meshy
+## style prototype (a gold-rimmed glass button with a neon glyph and a pip row in
+## a tab below it). The render came back ALREADY ON PALETTE: its ring gold
+## measured D8A949 against C_GOLD's D8AF52, its bright rim EEDDAC against
+## C_GOLD_BRIGHT's F5DFA0, and the tab's lit edge 7A6630 against C_GOLD_DARK's
+## 7A5A18 - so the meter reuses those three rather than duplicating them. Only
+## the domed glass lens needed new tones, which are lighter and bluer than
+## C_OBSIDIAN / C_GLASS_FACET.
+const C_INVOKER_GLASS := Color("554B6A")      # lens body, the dome's shadowed mass
+const C_INVOKER_GLASS_LIT := Color("AF9DE2")  # the dome's top specular
+
+## How many pips a charge meter draws. DELIBERATELY not SPECIAL_CHARGE_COST (10):
+## ten dots would not fit the tab and would read as a progress bar rather than a
+## charge. The pip being filled draws a partial wedge, so the row still shows real
+## progress at a glance. Change either number freely; ChargeMeter.lit_pips() is the
+## only thing that relates them, and the tests read this constant rather than a
+## literal.
+##
+## Five, not the prototype art's three: 5 divides the cost of 10 exactly, so a
+## partial pip is always a clean half-moon, where thirds gave arbitrary 30/60/90%
+## wedges that read as pie charts. Watch the spacing if it changes again - at five
+## the halos start to merge under about 280px of width, and the row stops reading
+## as discrete dots.
+const SPECIAL_PIP_COUNT := 5
+
 const C_OBSIDIAN := Color("211A2E")        # panel faces: cabinet, gold plate
 const C_GLASS_FACET := Color("3B3152")     # glyph tiles, raised off C_OBSIDIAN
 const C_SEAM := Color("D9A6FF")            # glowing trim, replacing gold on borders and the reel lattice

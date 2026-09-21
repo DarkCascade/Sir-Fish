@@ -99,6 +99,10 @@ static func from_dict(data: Dictionary) -> Item:
 	item.weapon_type = StringName(data.get("weapon_type", &""))
 	var mods: Array[Dictionary] = []
 	for m: Dictionary in data.get("modifiers", []):
+		# A retired id (Itemizer.RETIRED_MODIFIER_IDS) is dropped, not carried as a
+		# dead stat - the item simply has one modifier fewer than its rarity implies.
+		if Itemizer.RETIRED_MODIFIER_IDS.has(StringName(m.get("id", &""))):
+			continue
 		mods.append((m as Dictionary).duplicate(true))
 	item.modifiers = mods
 	item.value = int(data.get("value", 0))

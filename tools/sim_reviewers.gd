@@ -218,8 +218,9 @@ func _play(arch: Dictionary) -> Dictionary:
 		log["input_events"] = int(log["input_events"]) + 2
 
 		GameState.start_expedition(q)
-		# Upgrades are RUN-scoped (Upgrades.reset() from start_expedition) - every
-		# upgrade bought last expedition is gone. This is load-bearing for the
+		# Upgrades are RUN-scoped (Upgrades.reset() from recover_after_expedition) -
+		# every upgrade bought last expedition is gone. NOTE (P7): they are bought
+		# in town now, so this tool's mid-fight buying model is stale. This is load-bearing for the
 		# review: it is why the only in-combat input resets to zero every trip.
 		var won := _run_expedition(arch, log)
 		GameState.apply_expedition_xp()
@@ -498,7 +499,7 @@ func _run_combat(arch: Dictionary, log: Dictionary, enc: EncounterDef, party: Ar
 ## One spin, resolved as slot_machine._resolve_board() does it TODAY: every
 ## DAMAGE icon's contribution sums into a single combined swing at one random
 ## enemy; the centre row resolves twice on a payline triple; AoE icons hit every
-## living enemy per-cell; HEAL tops up the lowest hero; BLOCK is granted to the
+## living enemy per-cell; BLOCK is granted to the
 ## whole party as temp armor, max-not-sum.
 func _resolve_spin(log: Dictionary, party: Array, enemies: Array, now: float) -> void:
 	var bag := _build_bag(party)
@@ -530,12 +531,6 @@ func _resolve_spin(log: Dictionary, party: Array, enemies: Array, now: float) ->
 					for e: Dictionary in enemies:
 						if e["hp"] > 0:
 							e["hp"] = int(e["hp"]) - _rolled(roll, mult)
-				SlotIcon.Kind.HEAL:
-					var low: Variant = _lowest_hero(party)
-					if low != null:
-						var amount: int = maxi(1, int(round(
-							float(low["max_hp"]) * float(roll) / 100.0)))
-						low["hp"] = mini(int(low["max_hp"]), int(low["hp"]) + amount)
 				_:
 					pass
 
@@ -646,16 +641,6 @@ func _random_living_enemy(enemies: Array) -> Variant:
 	if pool.is_empty():
 		return null
 	return pool[RNG.randi_range(0, pool.size() - 1)]
-
-func _lowest_hero(party: Array) -> Variant:
-	var best: Variant = null
-	for h: Dictionary in party:
-		if int(h["hp"]) <= 0:
-			continue
-		if best == null or float(h["hp"]) / float(h["max_hp"]) \
-				< float(best["hp"]) / float(best["max_hp"]):
-			best = h
-	return best
 
 # =============================================================================
 # Non-combat encounters

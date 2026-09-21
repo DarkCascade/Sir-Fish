@@ -36,6 +36,8 @@ func _ready() -> void:
 		"inn.tscn exists (Place.INN, widened in at step 7)")
 	t.check(ResourceLoader.exists(SceneRouter.PATHS[SceneRouter.Place.BLACKSMITH]),
 		"blacksmith.tscn exists (Place.BLACKSMITH, widened in at step 10)")
+	t.check(ResourceLoader.exists(SceneRouter.PATHS[SceneRouter.Place.SLOTWORKS]),
+		"slotworks.tscn exists (Place.SLOTWORKS)")
 	t.check(ResourceLoader.exists(SceneRouter.PATHS[SceneRouter.Place.MAYOR]),
 		"mayor_office.tscn exists (Place.MAYOR, widened in at step 8)")
 	t.check(ResourceLoader.exists(SceneRouter.PATHS[SceneRouter.Place.QUEST]),

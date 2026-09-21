@@ -245,8 +245,19 @@ or when a check needs a real scene tree rather than a one-off script: make
 `res://scratch/<name>.tscn` (the `scratch/` folder is gitignored), `play_scene` it, read
 `get_output_log`, then `capture_frames` to confirm the mesh actually deforms. The
 permission rules deny `rm -rf`, so leave scratch files where they are instead of trying
-to delete them. Run headless suites through `run_headless_scene`, which needs no editor
-connection at all.
+to delete them. Run a single headless suite through `run_headless_scene`, which needs no
+editor connection at all.
+
+**For the whole suite, use `python tools/run_tests.py`.** It discovers every
+`tests/test_*.tscn` rather than naming them, so a new suite is picked up the moment it
+exists, and it prints one table of verdicts and check counts, exiting non-zero if
+anything failed. Pass substrings to narrow it (`run_tests.py quest forge`), `--list` to
+see the selection, `-v` to stream full output. Godot comes from `GODOT_PATH`, then the
+known install paths, then `PATH`; on Windows it wants `Godot_console.exe`, since plain
+`Godot.exe` writes nothing to a redirected stdout. A suite that hangs (a missing
+`t.finish()` does this) is cut off by `--timeout` and reported as TIMEOUT rather than
+blocking the run, and one that dies on load is reported as ERROR with the parse error
+that killed it.
 
 One caveat on `execute_editor_script`: its file-write guard is a substring match
 over five write APIs, and its own error text says it is an accident guard, not a

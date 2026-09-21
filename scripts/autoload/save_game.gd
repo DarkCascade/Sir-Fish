@@ -164,6 +164,10 @@ func save_profile() -> void:
 		# been finished, which is exactly true of a save written before this
 		# key existed.
 		"completed_quest_ids": GameState.completed_quest_ids,
+		# [backlog P7] Permanent slot upgrades (Upgrades.levels). Additive - no
+		# VERSION bump; absent on an older save reads as "none bought", which is
+		# exactly true of a save written when they were run-scoped.
+		"upgrades": Upgrades.levels,
 	}))
 
 ## Returns false when there is no save, or it is unreadable, or its version is
@@ -251,6 +255,14 @@ func load_profile() -> bool:
 	for raw: Variant in d.get("completed_quest_ids", []):
 		completed.append(StringName(raw))
 	GameState.completed_quest_ids = completed
+
+	# [backlog P7] Rebuilt per known id and clamped, never trusted verbatim: a
+	# hand-edited save must not hold a level past the ceiling, and an id that is
+	# no longer in Upgrades.DEFS is simply dropped.
+	var raw_upgrades: Dictionary = d.get("upgrades", {})
+	for id: StringName in Upgrades.DEFS.keys():
+		Upgrades.levels[id] = clampi(int(raw_upgrades.get(id, raw_upgrades.get(String(id), 0))),
+			0, Tuning.UPGRADE_MAX_LEVEL)
 
 	return true
 

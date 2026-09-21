@@ -50,9 +50,7 @@ var run_stats := {
 	"items_found": 0,
 	"items_sold": 0,
 	"items_dropped": 0,       # [drops] drop-only subset of items_found, for the summary
-	"upgrades_bought": 0,     # [v2]
-	# [town] forge uses (spec 5.4). The slot machine's three run-scoped upgrades
-	# stay counted by upgrades_bought - the forge is never an "upgrade".
+	# [town] forge uses (spec 5.4).
 	"items_forged": 0,
 	"run_time": 0.0,
 }
@@ -95,6 +93,18 @@ var scrap: int = 0
 ## spawn_party() via hero_runtime) only matter once this stops equalling
 ## PARTY_ORDER. PARTY_ORDER itself is untouched.
 var active_party: Array[StringName] = [&"warrior"]
+
+## [specials] Charges toward each hero's invokable special, keyed by hero class
+## (Tuning.SPECIAL_CHARGE_COST to fill). Filled by that hero's own icons landing
+## on the slot board and spent by BattleDirector.invoke_hero_special().
+##
+## Run-scoped and DELIBERATELY NOT SAVED, the same stance Upgrades.levels takes:
+## it is combat momentum, not progression, so a save/quit mid-expedition drops it
+## rather than letting a player bank three full meters across sessions. Carried
+## ACROSS encounters within one expedition on purpose - a 2-spin fight cannot fill
+## a meter on its own, so resetting per encounter would make specials unreachable
+## exactly as a 10-charge auto-trigger would have.
+var special_charges: Dictionary = {}
 
 ## [town] The quest being run, or null in town / outside a quest (spec 8.1).
 ## build_level() branches on it first, ahead of endless_mode (spec 8.3); the
@@ -461,7 +471,7 @@ func party_bonuses() -> Dictionary:
 		# dmg_flat) hits no branch below and contributes nothing.
 		"elem_fire": 0, "elem_ice": 0, "elem_light": 0, "bleed": 0,
 		"bomb_arrow": 0, "lightning_blast": 0,
-		"armor_block": 0, "slot_mend": 0,
+		"armor_block": 0,
 		"crit": 0, "cleave": 0, "rain": 0, "thunderburst": 0,
 	}
 	# Elemental totals are kept apart rather than summed into one number, because
@@ -570,6 +580,33 @@ func hero_level(id: StringName = &"") -> int:
 	for c: StringName in active_party:
 		best = maxi(best, int(hero_levels.get(c, 1)))
 	return best
+
+## [specials] Adds one charge to `hero_class`'s special meter, capped at the cost
+## so a long fight cannot bank several activations. Silent no-op for an empty
+## class id (an icon with no owner charges nobody).
+func add_special_charge(hero_class: StringName) -> void:
+	if hero_class == &"":
+		return
+	var now: int = mini(special_charge(hero_class) + 1, Tuning.SPECIAL_CHARGE_COST)
+	if now == special_charge(hero_class):
+		return
+	special_charges[hero_class] = now
+	EventBus.special_charges_changed.emit(hero_class, now, Tuning.SPECIAL_CHARGE_COST)
+
+func special_charge(hero_class: StringName) -> int:
+	return int(special_charges.get(hero_class, 0))
+
+func special_ready(hero_class: StringName) -> bool:
+	return special_charge(hero_class) >= Tuning.SPECIAL_CHARGE_COST
+
+## Drains `hero_class`'s meter. Returns false without spending anything if it was
+## not full, so a rejected invoke never costs the player their charges.
+func spend_special_charges(hero_class: StringName) -> bool:
+	if not special_ready(hero_class):
+		return false
+	special_charges[hero_class] = 0
+	EventBus.special_charges_changed.emit(hero_class, 0, Tuning.SPECIAL_CHARGE_COST)
+	return true
 
 func hero_xp_for(id: StringName) -> int:
 	return int(hero_xp.get(id, 0))
@@ -1013,6 +1050,8 @@ func new_profile() -> void:
 	quest_board_generated = false
 	# [backlog P1] A fresh profile has finished no one_shot quests.
 	completed_quest_ids.clear()
+	special_charges.clear()
+	Upgrades.reset()
 	active_party = [&"warrior"]
 	# [item power model] A fresh profile ships one weapon, already equipped.
 	# Since the combat loop redesign a hero's entire offense is its equipped
@@ -1063,7 +1102,10 @@ func start_expedition(q: QuestDef = null) -> void:
 	expedition_xp = 0
 	_expedition_inventory_mark = inventory.size()
 	drops_by_class.clear()
-	Upgrades.reset()
+	# [backlog P7] Slot upgrades are permanent profile state now (bought at the
+	# Slotworks, saved with the profile) - an expedition neither resets nor owns them.
+	# [specials] Momentum never crosses expeditions (see special_charges).
+	special_charges.clear()
 	level = build_level()
 	# [content phase 1] Fresh runtime instances, never the shared cached
 	# QuestDef's own array (QuestObjective's header) - bind() right after so

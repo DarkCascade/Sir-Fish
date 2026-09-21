@@ -3,7 +3,7 @@
 [ext_resource type="Script" uid="uid://cocctwxs4qpah" path="res://scripts/console/console.gd" id="1_console"]
 [ext_resource type="PackedScene" uid="uid://bfc4cto1qm00f" path="res://scenes/console/status_panel.tscn" id="2_status"]
 [ext_resource type="PackedScene" uid="uid://pgqpokgjbr7y" path="res://scenes/console/slot_machine.tscn" id="3_slot"]
-[ext_resource type="PackedScene" path="res://scenes/console/upgrade_tray.tscn" id="7_tray"]
+[ext_resource type="PackedScene" path="res://scenes/console/invoker_tray.tscn" id="7_invokers"]
 
 [node name="Console" type="Control" unique_id=354530052]
 custom_minimum_size = Vector2(1080, 1272)
@@ -32,7 +32,7 @@ layout_mode = 0
 offset_top = 130.0
 offset_bottom = 1010.0
 
-[node name="UpgradeTray" parent="." unique_id=1017938638 instance=ExtResource("7_tray")]
+[node name="InvokerTray" parent="." instance=ExtResource("7_invokers")]
 anchors_preset = 0
 offset_top = 1010.0
 offset_bottom = 1272.0

@@ -1,0 +1,38 @@
+[gd_scene load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/console/special_invoker.gd" id="1_inv"]
+[ext_resource type="Texture2D" path="res://assets/ui/invoker/invoker_cleave.png" id="2_art"]
+[ext_resource type="Script" path="res://scripts/console/charge_meter.gd" id="3_meter"]
+
+[node name="SpecialInvoker" type="Button"]
+custom_minimum_size = Vector2(240, 262)
+offset_right = 240.0
+offset_bottom = 262.0
+flat = true
+script = ExtResource("1_inv")
+hero_class = &"warrior"
+
+[node name="Art" type="TextureRect" parent="."]
+show_behind_parent = true
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("2_art")
+expand_mode = 1
+stretch_mode = 0
+
+[node name="Meter" type="Control" parent="."]
+anchors_preset = -1
+anchor_left = 0.219
+anchor_top = 0.81
+anchor_right = 0.781
+anchor_bottom = 0.897
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("3_meter")
+hero_class = &"warrior"
+show_plate = false

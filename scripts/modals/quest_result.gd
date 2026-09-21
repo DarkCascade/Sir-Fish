@@ -88,7 +88,7 @@ const _STAT_ROW_ORDER: Array[StringName] = [
 ## shown on either screen any more.
 const _RETIRED_ROWS: Array[StringName] = [
 	&"ExpeditionGold", &"GoldEarned", &"GoldSpent",
-	&"GoldOnHand", &"SlotSpins", &"SlotWins", &"UpgradesBought", &"ItemsSold",
+	&"GoldOnHand", &"SlotSpins", &"SlotWins", &"ItemsSold",
 ]
 
 const _BLANK_HOLD := 0.35         # beat before Sir Fish fades in
@@ -462,7 +462,6 @@ func _row_values() -> Dictionary:
 		# spinning when the party wiped doesn't count.
 		&"IconsSpins": "%d icons hit in %d spins" % \
 			[int(stats["slot_icons_hit"]), int(stats["slot_spins_resolved"])],
-		&"UpgradesBought": str(int(stats["upgrades_bought"])),
 		# [party-wipe-consequences] What came home, not what was found - the ITEMS
 		# reel can halve or drop the haul, and "Items found 4" beside a LOSE is a
 		# straight contradiction. run_stats["items_found"] is left as the true

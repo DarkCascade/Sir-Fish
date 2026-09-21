@@ -267,8 +267,8 @@ func _on_enemy_died(e: Dictionary, hero: Dictionary) -> void:
 		GameState.expedition_xp += xp
 
 ## One slot spin's worth of resolution: rebuild the bag from currently
-## equipped gear, draw 9, resolve every DAMAGE / BOMB_ARROW / THUNDERBURST /
-## HEAL icon - the same shape as slot_machine._resolve_board(), minus the
+## equipped gear, draw 9, resolve every DAMAGE / BOMB_ARROW / THUNDERBURST
+## icon - the same shape as slot_machine._resolve_board(), minus the
 ## payline-triple double-resolve. [icons phase 2] BLEED (a DoT that ticks off
 ## an enemy's own action, which this coarse per-spin simulator does not model)
 ## and CLEAVE / RAIN (a cross-spin buff) are left unmodeled too - both are
@@ -292,9 +292,6 @@ func _resolve_spin(hero: Dictionary, enemies: Array, now: float) -> void:
 				for e: Dictionary in enemies:
 					if e["hp"] > 0:
 						e["hp"] -= _rolled(roll, mult)
-			SlotIcon.Kind.HEAL:
-				var amount: int = maxi(1, int(round(float(hero["max_hp"]) * float(roll) / 100.0)))
-				hero["hp"] = mini(hero["max_hp"], hero["hp"] + amount)
 			SlotIcon.Kind.BLOCK:
 				block += maxi(1, roll)
 	# [armor items] a spin's BLOCK icons grant temporary flat armor for

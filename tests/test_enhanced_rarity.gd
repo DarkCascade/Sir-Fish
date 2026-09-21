@@ -85,7 +85,10 @@ func _ready() -> void:
 		# The step-4 invariant (test_item_distribution.gd:68) must already hold
 		# for the widened array: a generated item's mod count still matches its
 		# rarity, and RARITY_MOD_COUNT[ENHANCED] never gets indexed here.
-		if it.modifiers.size() != int(Itemizer.RARITY_MOD_COUNT[it.rarity]):
+		# Capped by the type's pool: armor's is one id since slot_mend went.
+		var want: int = mini(int(Itemizer.RARITY_MOD_COUNT[it.rarity]),
+			Itemizer._modifiers_for_type(it.weapon_type).size())
+		if it.modifiers.size() != want:
 			mod_count_wrong += 1
 	t.check(enhanced_seen == 0, "generate_item() never rolls ENHANCED (%d/%d)" % [enhanced_seen, SAMPLE])
 	t.check(mod_count_wrong == 0,

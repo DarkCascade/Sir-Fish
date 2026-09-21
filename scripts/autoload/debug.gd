@@ -5,7 +5,7 @@ extends Node
 ## set_game_node_property can set a property but cannot call a function. So the
 ## harness exposes ONE string property whose setter parses and executes:
 ##
-##   set_game_node_property("/root/Debug", "command", "slot elem_fire bomb_arrow slot_mend")
+##   set_game_node_property("/root/Debug", "command", "slot elem_fire bomb_arrow armor_block")
 ##
 ## Every command writes exactly one "[DEBUG] ..." line to the output log, which
 ## get_output_log reads back. Inert in exported release builds.
@@ -174,8 +174,8 @@ func _cmd_kill(args: Array) -> void:
 ## Forces the next spin's 3x3 board. Each arg is an icon id, filled row-major:
 ##   slot <id0> [id1] ... [id8]
 ## Ids: elem_fire elem_ice elem_light bleed bomb_arrow lightning_blast
-##      armor_block slot_mend crit cleave rain thunderburst
-##      innate_dmg innate_heal   (blank / - / _ for an empty cell)
+##      armor_block crit cleave rain thunderburst
+##      innate_dmg   (blank / - / _ for an empty cell)
 ## Missing cells are blanks. `slot clear` drops the override.
 func _cmd_slot(args: Array) -> void:
 	if args.is_empty():
@@ -204,9 +204,6 @@ func _slot_icon_for(token: String) -> Dictionary:
 			# the hero's equipped weapon Power (GameState.hero_weapon_power()),
 			# which needs a hero class this token does not carry.
 			return { "id": SlotIcon.INNATE_DAMAGE, "roll": 6,
-				"enhanced": false, "innate": true }
-		"innate_heal":
-			return { "id": SlotIcon.INNATE_HEAL, "roll": Tuning.SLOT_INNATE_HEAL_PCT,
 				"enhanced": false, "innate": true }
 	if SlotIcon.KNOWN_MODIFIER_IDS.has(id):
 		# A mid roll for a forced icon - enough to see it land.
@@ -377,13 +374,14 @@ func _cmd_equip(args: Array) -> void:
 ## `town` verb.
 func _cmd_route(args: Array) -> void:
 	if args.is_empty():
-		_log("route -> needs <town|inn|blacksmith|mayor|quest>")
+		_log("route -> needs <town|inn|blacksmith|mayor|slotworks|quest>")
 		return
 	var places := {
 		"town": SceneRouter.Place.TOWN,
 		"inn": SceneRouter.Place.INN,
 		"blacksmith": SceneRouter.Place.BLACKSMITH,
 		"mayor": SceneRouter.Place.MAYOR,
+		"slotworks": SceneRouter.Place.SLOTWORKS,
 		"quest": SceneRouter.Place.QUEST,
 		"item-forge": SceneRouter.Place.ITEM_FORGE,
 	}

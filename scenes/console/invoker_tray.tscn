@@ -1,0 +1,51 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/console/invoker_tray.gd" id="1_tray"]
+[ext_resource type="PackedScene" path="res://scenes/console/special_invoker.tscn" id="2_inv"]
+[ext_resource type="Texture2D" path="res://assets/ui/invoker/invoker_bomb_arrow.png" id="3_ranger"]
+[ext_resource type="Texture2D" path="res://assets/ui/invoker/invoker_healing_aura.png" id="4_mage"]
+
+; [backlog P7 / decision 7.4] Three special invokers laid out like the party on the
+; field: ranger LEFT, warrior MIDDLE, mage RIGHT (see invoker_tray.gd for why the
+; order is fixed by class). 240-wide buttons with 90 between them and at either
+; edge is exactly 1080. Each differs from the others by hero_class and art only;
+; hero_class points the button's Meter child at the same hero. The warrior's
+; button keeps special_invoker.tscn's own art (the cleave render).
+;
+; y is imposed by the console at run time (invoker_tray.gd apply_height) so the
+; buttons centre in whatever band the slot leaves.
+
+[node name="InvokerTray" type="Control"]
+custom_minimum_size = Vector2(1080, 358)
+layout_mode = 3
+anchors_preset = 0
+offset_right = 1080.0
+offset_bottom = 358.0
+mouse_filter = 1
+script = ExtResource("1_tray")
+
+[node name="RangerInvoker" parent="." instance=ExtResource("2_inv")]
+layout_mode = 0
+offset_left = 90.0
+offset_top = 48.0
+offset_right = 330.0
+offset_bottom = 310.0
+hero_class = &"ranger"
+art = ExtResource("3_ranger")
+
+[node name="WarriorInvoker" parent="." instance=ExtResource("2_inv")]
+layout_mode = 0
+offset_left = 420.0
+offset_top = 48.0
+offset_right = 660.0
+offset_bottom = 310.0
+hero_class = &"warrior"
+
+[node name="MageInvoker" parent="." instance=ExtResource("2_inv")]
+layout_mode = 0
+offset_left = 750.0
+offset_top = 48.0
+offset_right = 990.0
+offset_bottom = 310.0
+hero_class = &"mage"
+art = ExtResource("4_mage")

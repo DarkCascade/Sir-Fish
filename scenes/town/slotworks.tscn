@@ -1,0 +1,126 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://scripts/town/slotworks.gd" id="1_slotworks"]
+[ext_resource type="PackedScene" path="res://scenes/console/upgrade_tray.tscn" id="2_tray"]
+[ext_resource type="Texture2D" path="res://assets/slotworks-bg.png" id="3_bg"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_tabs"]
+content_margin_top = 10.0
+bg_color = Color(0.6, 0.6, 0.6, 0)
+
+; [backlog P7 / decision 7.5] The Slotworks: where the cabinet is tuned. The three
+; slot upgrades were the console's bottom band, then a blacksmith tab; they are
+; PERMANENT purchases here (saved with the profile). The TabContainer is kept on
+; purpose - more tabs are expected. Tab titles are the child node names.
+;
+; Background: assets/slotworks-bg.png, a Meshy nano-banana-pro text-to-image
+; (2026-09-21, 9 credits) of a clockwork workshop where slot reels are built. Laid
+; out like blacksmith.tscn's: a covering TextureRect under a darkening Vignette.
+
+[node name="Slotworks" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_slotworks")
+
+[node name="Background" type="TextureRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = ExtResource("3_bg")
+expand_mode = 1
+stretch_mode = 6
+metadata/_edit_lock_ = true
+
+[node name="Vignette" type="ColorRect" parent="Background"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.043137, 0.031373, 0.023529, 0.55)
+
+[node name="Layout" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -510.0
+offset_top = -860.0
+offset_right = 510.0
+offset_bottom = 900.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 22
+
+[node name="Title" type="Label" parent="Layout"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 96
+text = "The Slotworks"
+horizontal_alignment = 1
+
+[node name="Flavour" type="Label" parent="Layout"]
+custom_minimum_size = Vector2(0, 70)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.611765, 0.686275, 0.643137, 1)
+theme_override_font_sizes/font_size = 54
+text = "Gears turn. The reels hum."
+horizontal_alignment = 1
+
+[node name="Spacer" type="Label" parent="Layout"]
+layout_mode = 2
+
+[node name="Tabs" type="TabContainer" parent="Layout"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/side_margin = 4
+theme_override_constants/tab_separation = 4
+theme_override_font_sizes/font_size = 64
+theme_override_styles/panel = SubResource("StyleBoxFlat_tabs")
+current_tab = 0
+
+[node name="Upgrades" type="VBoxContainer" parent="Layout/Tabs"]
+layout_mode = 2
+theme_override_constants/separation = 24
+metadata/_tab_index = 0
+
+[node name="UpgradesNote" type="Label" parent="Layout/Tabs/Upgrades"]
+custom_minimum_size = Vector2(0, 150)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.611765, 0.686275, 0.643137, 1)
+theme_override_font_sizes/font_size = 48
+text = "Tune the cabinet. These upgrades are permanent."
+horizontal_alignment = 1
+vertical_alignment = 1
+autowrap_mode = 3
+
+; The cards are the old console tray's own scene, unchanged. The tray is 1080
+; wide and the tab page is 1020, so the Shelf lets it overhang 30 px a side - the
+; screen is 1080 wide.
+[node name="Shelf" type="Control" parent="Layout/Tabs/Upgrades"]
+custom_minimum_size = Vector2(0, 358)
+layout_mode = 2
+
+[node name="UpgradeTray" parent="Layout/Tabs/Upgrades/Shelf" instance=ExtResource("2_tray")]
+layout_mode = 0
+offset_left = -30.0
+offset_right = 1050.0
+offset_bottom = 358.0
+custom_minimum_size = Vector2(1080, 358)
+
+[node name="BackButton" type="Button" parent="Layout"]
+custom_minimum_size = Vector2(0, 96)
+layout_mode = 2
+theme_override_font_sizes/font_size = 64
+text = "Back"

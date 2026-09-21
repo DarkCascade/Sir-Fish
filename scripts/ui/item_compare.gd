@@ -135,7 +135,7 @@ static func _rolls_by_id(item: Item) -> Dictionary:
 		out[id] = int(out.get(id, 0)) + int(mod.get("roll", 0))
 	return out
 
-## Sign-only, never a weighted score. Adding up damage, mend percent and block
+## Sign-only, never a weighted score. Adding up damage, block and bleed
 ## into one "item score" would mean inventing a weighting the combat model does
 ## not have; counting which way each row moved does not.
 static func verdict(candidate: Item) -> Verdict:

@@ -1,7 +1,8 @@
 extends Control
-## The upgrade tray (spec 17.6). Always visible and always interactive, in combat
-## and out - out-of-combat time is when the player spends, which is half of why
-## the slot's attract mode (16.6) exists.
+## The upgrade tray (spec 17.6). [backlog P7 / decision 7.5] No longer part of the
+## console: it lives on the Slotworks' Upgrades tab (town), where the three cards
+## are permanent purchases saved with the profile. Its boss-theme pair is now
+## uncalled (there is no boss in town) but kept working.
 ##
 ## [move-elements-to-editor] The cards are authored instances in
 ## upgrade_tray.tscn, not spawned here: their X positions, their top margin and

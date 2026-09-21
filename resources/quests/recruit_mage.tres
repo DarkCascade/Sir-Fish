@@ -19,4 +19,5 @@ boss_pool = Array[StringName]([&"skeleton_mage"])
 boss_drop_rarity_floor = 1
 guaranteed_boss_drop = ExtResource("4_relic")
 travel_durations = Array[float]([2.0, 3.0, 3.0, 3.0, 4.0])
-level_range = Vector2i(1, 5)
+level_range = Vector2i(5, 7)
+unlock_level = 5

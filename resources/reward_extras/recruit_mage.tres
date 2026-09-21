@@ -7,3 +7,4 @@ script = ExtResource("1_recruit")
 description = "The mage joins the party, heartstone in hand."
 hero_class = &"mage"
 token_weapon_type = &"heartstone"
+join_level = 5
