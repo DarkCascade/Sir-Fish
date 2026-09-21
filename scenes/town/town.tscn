@@ -53,6 +53,20 @@ theme_override_styles/pressed = SubResource("StyleBoxEmpty_hit")
 theme_override_styles/hover = SubResource("StyleBoxEmpty_hit")
 theme_override_styles/focus = SubResource("StyleBoxEmpty_hit")
 
+; [backlog P7] Invisible hit box over the Slotworks building and its sign, which
+; are painted into town-with-purple-mist.png (a Meshy image-to-image pass,
+; composited into the original painting) like the other three.
+[node name="SlotworksButton" type="Button" parent="." unique_id=1572585400]
+layout_mode = 0
+offset_left = 690.0
+offset_top = 1215.0
+offset_right = 985.0
+offset_bottom = 1640.0
+theme_override_styles/normal = SubResource("StyleBoxEmpty_hit")
+theme_override_styles/pressed = SubResource("StyleBoxEmpty_hit")
+theme_override_styles/hover = SubResource("StyleBoxEmpty_hit")
+theme_override_styles/focus = SubResource("StyleBoxEmpty_hit")
+
 [node name="ItemForgeButton" type="Button" parent="." unique_id=975102079]
 visible = false
 layout_mode = 0

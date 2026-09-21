@@ -1,6 +1,12 @@
 extends Control
-## The management console (spec 17). Three bands, one verb each: the resource
-## strip you read, the slot machine you watch, the upgrade tray you spend at.
+## The management console (spec 17). Three bands: the resource strip you read,
+## the slot machine you watch, and the special invokers you press.
+##
+## [backlog P7 / decision 7.4-7.5] The bottom band used to be the upgrade tray.
+## Those three cards moved to town (the Slotworks; permanent purchases, saved with
+## the profile) and the band now holds the special invokers - one per hero, ranger
+## left, warrior middle, mage right. TRAY_HEIGHT and BOTTOM_MARGIN are unchanged,
+## so the slot kept the exact size it had.
 ##
 ## [ui-project-longshot] Sir Fish's tank has left the status strip - the
 ## concept board puts DEPTH where the tank was, and there is no fish anywhere
@@ -41,7 +47,7 @@ const BOTTOM_MARGIN := 90.0
 ## the title-row experiment, then moved back in as the party-status column
 ## when the resource strip was split into gold/Sir Fish/party thirds).
 @onready var party_bars = $StatusPanel/Layout/ResourceRow/PartyBars
-@onready var upgrade_tray = $UpgradeTray
+@onready var invoker_tray = $InvokerTray
 
 func apply_height(h: float) -> void:
 	custom_minimum_size = Vector2(1080, h)
@@ -62,13 +68,14 @@ func apply_height(h: float) -> void:
 	slot_machine.position = Vector2(0, STRIP_HEIGHT)
 	slot_machine.apply_height(slot_h)
 
-	upgrade_tray.position = Vector2(0, STRIP_HEIGHT + slot_h)
-	upgrade_tray.apply_height(tray_h)
+	invoker_tray.position = Vector2(0, STRIP_HEIGHT + slot_h)
+	invoker_tray.apply_height(tray_h)
 
 ## Called by RunController once the director exists.
 func bind_director(director) -> void:
 	slot_machine.director = director
 	party_bars.director = director
+	invoker_tray.director = director
 
 ## [black-glass] Facade over both bands' own apply/clear pair - see
 ## slot_machine.gd's copy of the pair for the full contract. RunController
@@ -76,9 +83,7 @@ func bind_director(director) -> void:
 func apply_boss_theme() -> void:
 	status_panel.apply_boss_theme()
 	slot_machine.apply_boss_theme()
-	upgrade_tray.apply_boss_theme()
 
 func clear_boss_theme() -> void:
 	status_panel.clear_boss_theme()
 	slot_machine.clear_boss_theme()
-	upgrade_tray.clear_boss_theme()

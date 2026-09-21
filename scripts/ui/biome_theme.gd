@@ -34,6 +34,7 @@ const _PLACE_BIOME := {
 	SceneRouter.Place.INN:        &"town",
 	SceneRouter.Place.BLACKSMITH: &"town",
 	SceneRouter.Place.MAYOR:      &"town",
+	SceneRouter.Place.SLOTWORKS:  &"town",
 	SceneRouter.Place.QUEST:      &"expedition",
 }
 

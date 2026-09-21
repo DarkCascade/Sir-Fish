@@ -17,7 +17,7 @@ extends CombatantBarsBase
 ## a 2026-08-24 "just some fiddlin" editor pass narrowed the track in
 ## status_panel.tscn without touching this constant, so every hero's fill
 ## rendered ~56 px wider than its own background the moment their hp_fraction
-## got close to 1.0 (a full bar, or a slot mend icon healing one there) -
+## got close to 1.0 (a full bar, or a heal landing on one there) -
 ## invisible at partial health, where the absolute pixel overshoot is small
 ## enough to still land inside the track.
 ##

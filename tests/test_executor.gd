@@ -54,11 +54,11 @@ func _check_executor_ownership(t: TestSupport) -> void:
 	director.heroes = [mage, ranger, warrior]   # roster order: mage, ranger, warrior
 	t.check(machine._executor_for(SlotIcon.Kind.DAMAGE) == warrior,
 		"full party: DAMAGE resolves to warrior (the class that owns it), not the roster-first mage")
-	t.check(machine._executor_for(SlotIcon.Kind.HEAL) == mage,
-		"full party: HEAL resolves to mage")
+	t.check(machine._executor_for(SlotIcon.Kind.THUNDERBURST) == mage,
+		"full party: THUNDERBURST resolves to mage")
 	# [icons phase 2] BOMB_ARROW / RAIN (ranger), BLOCK / BLEED / CLEAVE
 	# (warrior) and THUNDERBURST (mage) each own exactly one class, same
-	# ownership rule as DAMAGE / HEAL above.
+	# ownership rule as DAMAGE above.
 	t.check(machine._executor_for(SlotIcon.Kind.BOMB_ARROW) == ranger,
 		"full party: BOMB_ARROW resolves to ranger")
 	t.check(machine._executor_for(SlotIcon.Kind.RAIN) == ranger,

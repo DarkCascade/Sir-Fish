@@ -24,9 +24,9 @@ need their own render. Required properties, all of which the cleave render satis
 - **Aspect 1201 × 1309** (≈ 0.917). The tab anchors are fractions of the image, so a
   different aspect moves the tab out from under the meter. If the new render's aspect
   differs, re-measure (below) rather than assuming.
-- **Glyph and label:** ranger → bomb arrow, "Bomb Arrow". Mage → a heal/mend glyph,
-  "Mend" or "Heal" (**the mage keeps her party heal — she does NOT get chain
-  lightning**, decision 7.4).
+- **Glyph and label:** ranger → bomb arrow, "Bomb Arrow". Mage → a heal glyph,
+  "Healing Aura" (**the mage keeps her party heal — she does NOT get chain
+  lightning**, decision 7.4; it is the party's only healing now, the slot heal is gone).
 - Palette: the cleave render came back already on-palette (its gold sampled `#D8A949`
   against the project's `C_GOLD` `#D8AF52`). Prompt the same neon-on-dark-glass style so
   the three read as a set.

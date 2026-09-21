@@ -170,7 +170,7 @@ func _test_enhanced_marker_and_rolls() -> void:
 				# [item power model] The enhanced icon is locked to the max
 				# bonus: FORGE_ICON_POWER_MAX of the item's Power for a
 				# damage-flavoured icon, or the top of the modifier's roll
-				# range for a HEAL icon.
+				# range for an icon with no Power basis.
 				var def: Dictionary = mods_by_id[last["id"]]
 				var kind: int = SlotIcon.kind_of(StringName(last["id"]))
 				var want: int

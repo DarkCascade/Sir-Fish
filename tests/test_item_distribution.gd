@@ -64,10 +64,11 @@ func _ready() -> void:
 	t.check(dupes == 0, "no item carries a duplicate modifier id (%d found)" % dupes)
 	t.check(missing_roll == 0, "every modifier stores its raw roll (%d missing)" % missing_roll)
 
-	# [icons phase 2] 12 entries: 4 warrior weapon + 1 ranger weapon + 1 mage
-	# weapon + 2 armor + 4 trinket. Each has a `slots` field;
+	# [icons phase 2] 11 entries: 4 warrior weapon + 1 ranger weapon + 1 mage
+	# weapon + 1 armor + 4 trinket. [backlog P7] slot_mend (the second armor
+	# modifier) is retired with the slot's heal. Each has a `slots` field;
 	# _modifiers_for_type filters on it (and `types`, where present).
-	t.check(Itemizer.MODIFIERS.size() == 12, "the modifier pool has 12 entries")
+	t.check(Itemizer.MODIFIERS.size() == 11, "the modifier pool has 11 entries")
 	for def: Dictionary in Itemizer.MODIFIERS:
 		t.check(def.has("slots") and not (def["slots"] as Array).is_empty(),
 			"modifier '%s' declares which slots may roll it" % def["id"])
@@ -77,12 +78,17 @@ func _ready() -> void:
 			has_purse = true
 	t.check(not has_purse, "slot_purse is no longer in the modifier pool")
 
+	# A rarity sets how many modifiers an item carries, capped by how many its type
+	# can roll: the generator never repeats a modifier, so a type with a one-id pool
+	# (armor, since slot_mend went - [backlog P7]) carries one however rare it is.
 	var wrong_count := 0
 	for item: Item in items:
-		if item.modifiers.size() != Itemizer.RARITY_MOD_COUNT[item.rarity]:
+		var want: int = mini(int(Itemizer.RARITY_MOD_COUNT[item.rarity]),
+			Itemizer._modifiers_for_type(item.weapon_type).size())
+		if item.modifiers.size() != want:
 			wrong_count += 1
 	t.check(wrong_count == 0,
-		"every item's modifier count matches its rarity (0/1/2/3) (%d wrong)" % wrong_count)
+		"every item's modifier count is its rarity's (0/1/2/3), capped by its type's pool (%d wrong)" % wrong_count)
 
 	# [v3, V9] Element ties resolve fire -> ice -> lightning, via
 	# GameState.party_bonuses()'s dictionary insertion order (spec 17.6). Hand-

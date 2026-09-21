@@ -50,9 +50,7 @@ var run_stats := {
 	"items_found": 0,
 	"items_sold": 0,
 	"items_dropped": 0,       # [drops] drop-only subset of items_found, for the summary
-	"upgrades_bought": 0,     # [v2]
-	# [town] forge uses (spec 5.4). The slot machine's three run-scoped upgrades
-	# stay counted by upgrades_bought - the forge is never an "upgrade".
+	# [town] forge uses (spec 5.4).
 	"items_forged": 0,
 	"run_time": 0.0,
 }
@@ -473,7 +471,7 @@ func party_bonuses() -> Dictionary:
 		# dmg_flat) hits no branch below and contributes nothing.
 		"elem_fire": 0, "elem_ice": 0, "elem_light": 0, "bleed": 0,
 		"bomb_arrow": 0, "lightning_blast": 0,
-		"armor_block": 0, "slot_mend": 0,
+		"armor_block": 0,
 		"crit": 0, "cleave": 0, "rain": 0, "thunderburst": 0,
 	}
 	# Elemental totals are kept apart rather than summed into one number, because
@@ -1053,6 +1051,7 @@ func new_profile() -> void:
 	# [backlog P1] A fresh profile has finished no one_shot quests.
 	completed_quest_ids.clear()
 	special_charges.clear()
+	Upgrades.reset()
 	active_party = [&"warrior"]
 	# [item power model] A fresh profile ships one weapon, already equipped.
 	# Since the combat loop redesign a hero's entire offense is its equipped
@@ -1103,7 +1102,8 @@ func start_expedition(q: QuestDef = null) -> void:
 	expedition_xp = 0
 	_expedition_inventory_mark = inventory.size()
 	drops_by_class.clear()
-	Upgrades.reset()
+	# [backlog P7] Slot upgrades are permanent profile state now (bought at the
+	# Slotworks, saved with the profile) - an expedition neither resets nor owns them.
 	# [specials] Momentum never crosses expeditions (see special_charges).
 	special_charges.clear()
 	level = build_level()

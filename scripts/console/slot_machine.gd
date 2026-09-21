@@ -13,7 +13,7 @@ extends Control
 ## swing by the front-line hero (Combatant.slot_attack), who plays the real
 ## attack animation - so three attack icons is one swing for ~3x one icon's
 ## roll. [icons phase 2] Bomb arrow / thunderburst (both hit-all-enemies) and
-## mend still resolve per-cell in place; cleave / rain arm a buff the next
+## still resolve per-cell in place; cleave / rain arm a buff the next
 ## swing consumes instead of resolving anything themselves.
 ##
 ## The payline survives only as a BONUS: three of the same icon on the centre
@@ -391,7 +391,6 @@ func _resolve_board(jackpot_id: StringName) -> void:
 	var mult := Upgrades.overcharge_mult()
 
 	var total_damage := 0
-	var total_heal := 0
 	# [combat loop redesign] Single-target attack icons no longer call down
 	# their own lightning. Their rolled magnitudes are summed here and dealt as
 	# a swing after the rest of the board resolves ("one swing, 3x damage").
@@ -400,7 +399,7 @@ func _resolve_board(jackpot_id: StringName) -> void:
 	# mage's gear animates them instead of feeding a warrior swing. Keyed by
 	# hero class, totals in board order. [armor items] BLOCK icons still
 	# aggregate into ONE party-wide temp-armor grant - it buffs every hero, so
-	# it has no meaningful owner. Bomb arrow / thunderburst / mend still resolve
+	# it has no meaningful owner. Bomb arrow / thunderburst still resolve
 	# per-cell, in place, staggered. Overcharge touches damage output only,
 	# never BLOCK.
 	var swings: Dictionary = {}
@@ -476,9 +475,7 @@ func _resolve_board(jackpot_id: StringName) -> void:
 						executor.slot_gesture()
 					_pending_rain = true
 			else:
-				var out := await _resolve_icon(ic, kind, mult, swinging)
-				total_damage += out.x
-				total_heal += out.y
+				total_damage += await _resolve_icon(ic, kind, mult, swinging)
 			await get_tree().create_timer(Tuning.AOE_STAGGER).timeout
 
 	if any_icon_resolved:
@@ -489,31 +486,29 @@ func _resolve_board(jackpot_id: StringName) -> void:
 	if block > 0:
 		_grant_block(block)
 
-	if total_damage > 0 or total_heal > 0 or block > 0:
+	if total_damage > 0 or block > 0:
 		GameState.run_stats["slot_wins"] = int(GameState.run_stats["slot_wins"]) + 1
 
 	# Sir Fish (and anything else) reads this: a jackpot makes him smug, any
 	# other paying spin makes him cheer (see sir_fish.gd).
 	if jackpot_id != &"":
-		EventBus.slot_payout.emit("jackpot", total_damage + total_heal)
-	elif total_damage >= total_heal and total_damage > 0:
+		EventBus.slot_payout.emit("jackpot", total_damage)
+	elif total_damage > 0:
 		EventBus.slot_payout.emit("damage", total_damage)
-	elif total_heal > 0:
-		EventBus.slot_payout.emit("heal", total_heal)
 	elif block > 0:
 		EventBus.slot_payout.emit("block", block)
 
 ## Resolves one board icon that is neither a single-target attack, a block
 ## grant, nor a pending-buff icon (those are all handled inline in
-## _resolve_board - see above). Returns Vector2i(damage_dealt, heal_done).
+## _resolve_board - see above). Returns the damage dealt.
 ##
 ## `swinging` is _resolve_board()'s pre-scan of every hero who will swing this
 ## board, threaded through so each fallback:false cosmetic gesture in here runs
 ## the same _should_gesture() check the inline CLEAVE/RAIN branches do.
 func _resolve_icon(ic: Dictionary, kind: int, mult: float,
-		swinging: Array[Combatant]) -> Vector2i:
+		swinging: Array[Combatant]) -> int:
 	if director == null:
-		return Vector2i.ZERO
+		return 0
 	var id := StringName(ic.get("id", &""))
 	var roll := int(ic.get("roll", 0))
 	match kind:
@@ -526,7 +521,7 @@ func _resolve_icon(ic: Dictionary, kind: int, mult: float,
 			var executor := _executor_for(kind, false)
 			if executor != null and _should_gesture(executor, swinging):
 				executor.slot_gesture()
-			return Vector2i(await _hit_all(id, roll, mult), 0)
+			return await _hit_all(id, roll, mult)
 		SlotIcon.Kind.BLEED:
 			# No immediate damage - applies/refreshes the DoT, which ticks off
 			# the target's own actions (BattleDirector._take_action).
@@ -536,13 +531,8 @@ func _resolve_icon(ic: Dictionary, kind: int, mult: float,
 			var target: Combatant = director.random_living_enemy()
 			if target != null:
 				target.apply_bleed(maxi(1, roll))
-			return Vector2i.ZERO
-		SlotIcon.Kind.HEAL:
-			var executor := _executor_for(SlotIcon.Kind.HEAL, false)
-			if executor != null and _should_gesture(executor, swinging):
-				executor.slot_gesture()
-			return Vector2i(0, _heal_lowest(roll))
-	return Vector2i.ZERO
+			return 0
+	return 0
 
 ## [combat loop redesign fix] Whether a fallback:false cosmetic gesture
 ## (Combatant.slot_gesture()) should actually play, or whether `executor` is
@@ -683,7 +673,7 @@ func _grant_block(amount: int) -> void:
 ## back to the first living hero in roster order when no living class owns it
 ## and `fallback` is true (the default) - a dead executor, or a party that
 ## rolled an icon kind nothing it owns can execute (a solo warrior's
-## `slot_mend`, per §2a) - so a class dying is never a lost turn, matching the
+## icon kind, per §2a) - so a class dying is never a lost turn, matching the
 ## existing rule that the party's turn is never simply lost (Combatant.
 ## slot_attack). Replaces _swinging_hero(); with a solo warrior this resolves
 ## identically to the old "first living hero" rule, since the warrior is both
@@ -742,15 +732,6 @@ func _strike(enemy: Combatant, id: StringName, roll: int, mult: float) -> int:
 	if overlay != null:
 		overlay.number_color_override = null
 	return rolled
-
-func _heal_lowest(pct: int) -> int:
-	var hero: Combatant = director.lowest_hp_living_hero()
-	if hero == null or not is_instance_valid(hero) or not hero.is_alive():
-		return 0
-	var amount := maxi(1, int(round(float(hero.max_hp) * float(pct) / 100.0)))
-	hero.heal(amount)
-	BattleVfx.heal_icon(hero, amount)
-	return amount
 
 ## Elemental icons tint their number; everything else uses the called-down
 ## strike's electric blue, exactly as slot lightning did before.

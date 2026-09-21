@@ -78,9 +78,14 @@ func _ready() -> void:
 	for it: Item in GameState.inventory:
 		want_items.append(it.to_dict())
 
+	# [backlog P7] Permanent slot upgrades ride the profile.
+	Upgrades.levels[&"quick_reels"] = 2
+	Upgrades.levels[&"polish"] = Tuning.UPGRADE_MAX_LEVEL
+
 	SaveGame.save_profile()
 
 	# Wipe live state, then load it back.
+	Upgrades.reset()
 	GameState.gold = 0
 	GameState.scrap = 0
 	GameState.inventory = []
@@ -90,6 +95,17 @@ func _ready() -> void:
 	t.check(SaveGame.load_profile(), "load_profile() returns true for a valid save")
 	t.check(GameState.gold == want_gold, "gold round-trips (got %d, want %d)" % [GameState.gold, want_gold])
 	t.check(GameState.scrap == want_scrap, "scrap round-trips (got %d, want %d)" % [GameState.scrap, want_scrap])
+	t.check(Upgrades.level(&"quick_reels") == 2 and Upgrades.level(&"polish") == Tuning.UPGRADE_MAX_LEVEL
+		and Upgrades.level(&"overcharge") == 0, "slot upgrade levels round-trip")
+
+	# A hand-edited level past the ceiling clamps on load; the file is then
+	# rewritten as it was so the checks below still read the same save.
+	Upgrades.levels[&"polish"] = 99
+	SaveGame.save_profile()
+	SaveGame.load_profile()
+	t.check(Upgrades.level(&"polish") == Tuning.UPGRADE_MAX_LEVEL,
+		"a level past the ceiling clamps on load (got %d)" % Upgrades.level(&"polish"))
+	SaveGame.save_profile()
 	t.check(GameState.active_party == want_party,
 		"active_party round-trips as StringNames (got %s)" % [GameState.active_party])
 
@@ -143,6 +159,24 @@ func _ready() -> void:
 						aliased = true
 					m["label"] = original_label
 	t.check(not aliased, "mutating a loaded item's modifier does not touch Itemizer.MODIFIERS")
+
+	# --- S3b: a retired modifier id is dropped on load -----------------------
+	# [backlog P7] slot_mend went with the slot's heal. A saved armor piece still
+	# carrying it must not advertise a stat that does nothing; the rest of the item
+	# loads as it was.
+	var old_mail := Item.from_dict({
+		"display_name": "Old Mail", "kind": Item.Kind.WEAPON, "rarity": Item.Rarity.RARE,
+		"weapon_type": &"mail", "level": 3, "value": 10,
+		"modifiers": [
+			{ "id": &"slot_mend", "label": "+5% Mend Power", "roll": 5, "enhanced": false },
+			{ "id": &"armor_block", "label": "+4 Block", "roll": 4, "enhanced": false },
+		],
+	})
+	t.check(old_mail.modifiers.size() == 1 and old_mail.modifiers[0]["id"] == &"armor_block",
+		"a saved slot_mend modifier is dropped on load, the item's other modifiers survive")
+	t.check(not (&"slot_mend" in SlotIcon.KNOWN_MODIFIER_IDS)
+		and SlotIcon.kind_of(&"slot_mend") == SlotIcon.Kind.BLANK,
+		"and slot_mend is no longer an icon id at all")
 
 	# --- S4: a version from the future is rejected ----------------------------
 	_write_raw(path, var_to_str({"version": 999, "gold": 1, "scrap": 1,

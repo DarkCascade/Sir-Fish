@@ -143,5 +143,5 @@ func _bag(n_icons: int, bag_size: int) -> Array:
 	return bag
 
 func _rotating_id(i: int) -> StringName:
-	var ids: Array[StringName] = [&"elem_fire", &"bomb_arrow", &"slot_mend", &"crit"]
+	var ids: Array[StringName] = [&"elem_fire", &"bomb_arrow", &"bleed", &"crit"]
 	return ids[i % ids.size()]

@@ -67,7 +67,8 @@ signal hero_levelled(hero_class: StringName, new_level: int)
 signal slot_spin_started()
 signal slot_spin_stopped(icon_ids: Array)       # [slot phase 2] the 9 board icon ids, row-major
 ## [slot phase 2] Redefined for per-icon resolution. `kind` is
-## "jackpot" | "damage" | "heal"; `magnitude` is the spin's total damage or heal.
+## "jackpot" | "damage" | "block"; `magnitude` is the spin's total damage (or the
+## block granted). [backlog P7] There is no "heal" any more: the slot no longer heals.
 ## Emitted once per paying spin. sir_fish.gd reacts off it (jackpot -> smug,
 ## anything else -> cheer).
 signal slot_payout(kind: String, magnitude: int)

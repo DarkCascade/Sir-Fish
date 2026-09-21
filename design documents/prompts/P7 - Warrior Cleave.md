@@ -12,8 +12,8 @@ and the invoker button (`5449e21`). This task supplies the ability that button f
 The warrior's special becomes **Cleave: hit every living enemy**. It currently is
 **Defend**, a self-buff granting 50% damage reduction for 4s.
 
-The ranger keeps bomb arrow (already correct). The mage **keeps her party heal** — do
-not touch it. Only two of the three specials are hit-all, deliberately (decision 7.4).
+The ranger keeps bomb arrow (already correct). The mage **keeps her party heal, Healing Aura** — do
+not touch it (it is the party's only healing now). Only two of the three specials are hit-all, deliberately (decision 7.4).
 
 ---
 

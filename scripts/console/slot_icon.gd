@@ -8,20 +8,22 @@ extends RefCounted
 ## element tint, its chip art) is DERIVED from `id` here, never stored twice.
 ##
 ## The id vocabulary IS Itemizer.MODIFIERS (one equipped modifier = one icon),
-## plus two innate ids with no item behind them (§2) and a blank. Any
+## plus one innate id with no item behind it (§2) and a blank. Any
 ## unrecognised id (a retired one from a pre-rework save) resolves to NO icon
 ## and must not crash — callers filter on KNOWN_MODIFIER_IDS before building an
 ## icon.
 
 ## Innate icons: one per living hero, magnitude fixed in Tuning (§2).
+## [backlog P7] Every hero's innate icon is damage now. The mage's used to be a
+## percent heal ("Mend"); healing is her invokable Healing Aura special, and the
+## slot no longer heals at all (see HEAL's removal from Kind).
 const INNATE_DAMAGE := &"innate_dmg"
-const INNATE_HEAL := &"innate_heal"
 const BLANK := &""
 
 ## [levels] One base icon per equipment slot, contributed by EVERY equipped
 ## item regardless of rarity (levels & stats spec §4.3) - the fix for a Common
 ## putting zero icons in the bag (RARITY_MOD_COUNT[COMMON] == 0). Slot-flavoured
-## rather than identical: a weapon strikes, armor wards (heals), a trinket
+## rather than identical: a weapon strikes, armor wards (blocks), a trinket
 ## carries the magic-flavoured strike, so the three slots still read
 ## differently on the board.
 const BASE_WEAPON := &"base_weapon"
@@ -30,15 +32,20 @@ const BASE_TRINKET := &"base_trinket"
 
 ## [icons phase 2] The full rollable-modifier vocabulary. Warrior weapons roll
 ## the three elements plus bleed; ranger weapons roll bomb_arrow; mage weapons
-## roll lightning_blast; armor rolls block/mend; trinkets roll crit plus one
+## roll lightning_blast; armor rolls block; trinkets roll crit plus one
 ## class-exclusive ultimate. See Itemizer.MODIFIERS for the pool/class filter.
 const KNOWN_MODIFIER_IDS: Array[StringName] = [
 	&"elem_fire", &"elem_ice", &"elem_light", &"bleed",
 	&"bomb_arrow", &"lightning_blast",
-	&"armor_block", &"slot_mend",
+	&"armor_block",
 	&"crit", &"cleave", &"rain", &"thunderburst",
 ]
 
+## [backlog P7] HEAL is gone: the slot no longer heals, the mage's invokable
+## Healing Aura is the party's healing (BattleDirector.invoke_hero_special). The
+## enum was RENUMBERED when it went - the ints below are raw in every ClassDef.tres
+## `executes` array, and all three were re-pointed with it.
+##
 ## [icons phase 2] BLOCK: an armor icon that grants the party a temporary flat
 ## damage reduction when it resolves (SlotMachine._grant_block). BLEED applies
 ## a damage-over-time debuff to one enemy rather than dealing damage itself.
@@ -50,7 +57,7 @@ const KNOWN_MODIFIER_IDS: Array[StringName] = [
 ## These are raw ints in every ClassDef.tres's `executes` array (Godot can't
 ## serialise a typed array of a nested enum) - re-point every .tres if this
 ## ordering ever changes.
-enum Kind { BLANK, DAMAGE, HEAL, BLOCK, BLEED, CLEAVE, RAIN, BOMB_ARROW, THUNDERBURST }
+enum Kind { BLANK, DAMAGE, BLOCK, BLEED, CLEAVE, RAIN, BOMB_ARROW, THUNDERBURST }
 
 ## The reliquary chip art, one PNG per modifier id (already on disk, drawn by the
 ## compare flyout's stat chips). The two innate ids borrow the closest chip.
@@ -71,8 +78,6 @@ static func kind_of(id: StringName) -> Kind:
 			return Kind.BOMB_ARROW
 		&"thunderburst":
 			return Kind.THUNDERBURST
-		&"slot_mend", INNATE_HEAL:
-			return Kind.HEAL
 		BASE_ARMOR, &"armor_block":
 			return Kind.BLOCK
 		_:
@@ -90,7 +95,7 @@ static func element_of(id: StringName) -> StringName:
 	return &""
 
 static func is_innate(id: StringName) -> bool:
-	return id == INNATE_DAMAGE or id == INNATE_HEAL
+	return id == INNATE_DAMAGE
 
 ## [levels] The base icon id `slot` contributes (spec §4.3).
 static func base_for(slot: Item.Slot) -> StringName:
@@ -124,7 +129,7 @@ static func from_item_base(item: Item) -> Dictionary:
 ## [item power model] The modifier's `roll` is already the final resolved
 ## magnitude - Itemizer._roll_icon_magnitude() baked it at generation / forge
 ## time (125-175% of the item's Power for a DAMAGE / DAMAGE_ALL icon, its own
-## percent for HEAL / MULT). `_item` is no longer read; the signature stays
+## magnitude for a BLOCK / BLEED icon). `_item` is no longer read; the signature stays
 ## two-arg for the call sites and for the day a per-icon recompute returns.
 static func from_modifier(mod: Dictionary, _item: Item = null) -> Dictionary:
 	var id := StringName(mod.get("id", &""))
@@ -145,8 +150,7 @@ static func from_modifier(mod: Dictionary, _item: Item = null) -> Dictionary:
 ## [item power model] `weapon_power` is 100% of the hero's EQUIPPED weapon
 ## Power (GameState.hero_weapon_power(hero_class)), precomputed by the caller -
 ## the hero's own stats no longer feed combat. 0 when the hero is unarmed
-## (handled later). Only the DAMAGE branch uses it; a HEAL innate keeps its
-## flat SLOT_INNATE_HEAL_PCT.
+## (handled later).
 ## [owner swings] `owner` is the hero whose action this icon becomes when it
 ## resolves - SlotMachine sums each owner's DAMAGE icons into that hero's OWN
 ## swing, so a ranger's bow icons are swung by the ranger. Every icon in the bag
@@ -156,8 +160,7 @@ static func from_modifier(mod: Dictionary, _item: Item = null) -> Dictionary:
 static func innate(hero_class: StringName, weapon_power: int = 0) -> Dictionary:
 	var cdef := GameState.get_class_def(hero_class)
 	var id: StringName = cdef.innate_icon if cdef != null and cdef.innate_icon != &"" else INNATE_DAMAGE
-	var roll: int = weapon_power if id == INNATE_DAMAGE else Tuning.SLOT_INNATE_HEAL_PCT
-	return { "id": id, "roll": roll, "enhanced": false, "innate": true, "owner": hero_class }
+	return { "id": id, "roll": weapon_power, "enhanced": false, "innate": true, "owner": hero_class }
 
 static func blank() -> Dictionary:
 	return { "id": BLANK, "roll": 0, "enhanced": false }
@@ -180,8 +183,6 @@ static func chip_path(id: StringName) -> String:
 	# "damage" and "magic strike" look until the new icons get their own art.
 	if id == INNATE_DAMAGE or id == BASE_WEAPON:
 		key = &"dmg_flat"
-	elif id == INNATE_HEAL:
-		key = &"slot_mend"
 	elif id == BASE_TRINKET:
 		key = &"elem_light"
 	if key == BLANK:
@@ -209,7 +210,6 @@ static func board_glyph_path(id: StringName) -> String:
 	var key := id
 	match id:
 		INNATE_DAMAGE, BASE_WEAPON: key = &"dmg_flat"
-		INNATE_HEAL: key = &"slot_mend"
 		BASE_ARMOR: key = &"armor_block"
 	if key == BLANK:
 		return ""
@@ -231,7 +231,6 @@ static func short_label(id: StringName) -> String:
 		&"bleed": return "Bleed"
 		&"bomb_arrow": return "Bomb Arrow"
 		&"lightning_blast": return "Lightning Blast"
-		&"slot_mend", INNATE_HEAL: return "Mend"
 		BASE_WEAPON: return "Strike"
 		BASE_ARMOR, &"armor_block": return "Block"
 		BASE_TRINKET: return "Focus"
@@ -242,7 +241,9 @@ static func short_label(id: StringName) -> String:
 	return ""
 
 ## Percent-magnitude icons render their roll as "+N%"; the rest as "+N".
-## [icons phase 2] slot_mend is the only remaining percent icon - everything
-## else (damage, block, bleed, the trinket ultimates) is a flat magnitude.
-static func is_percent(id: StringName) -> bool:
-	return id == &"slot_mend" or id == INNATE_HEAL
+## [backlog P7] slot_mend was the last percent icon and is gone - every icon
+## (damage, block, bleed, the trinket ultimates) is a flat magnitude now. Kept as a
+## function so the callers that format a roll (GameState.icon_roll_text) need no
+## special case the day a percent icon returns.
+static func is_percent(_id: StringName) -> bool:
+	return false

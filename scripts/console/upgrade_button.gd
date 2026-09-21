@@ -227,9 +227,8 @@ func _kill_pulse() -> void:
 
 # --- boss theme ---------------------------------------------------------------
 
-## Called by UpgradeTray.apply_boss_theme(), itself called from
-## Console.apply_boss_theme() - the same facade status_panel.gd and
-## slot_machine.gd answer to. Just the rim swap (P5): unlike the cabinet and
+## Called by UpgradeTray.apply_boss_theme(). [backlog P7] Nothing calls it
+## now the cards live in town; the Console facade no longer reaches them. Just the rim swap (P5): unlike the cabinet and
 ## the resource strip, the card face itself stays plum - there is no boss
 ## variant of its own to tween to.
 func apply_boss_theme() -> void:
@@ -243,6 +242,8 @@ func clear_boss_theme() -> void:
 func _on_pressed() -> void:
 	if not Upgrades.buy(id):
 		return
+	# Permanent now: persist the purchase (and the gold it cost) straight away.
+	SaveGame.save_profile()
 	pivot_offset = size * 0.5
 	var punch := create_tween()
 	punch.tween_property(self, "scale", Vector2(1.06, 1.06), 0.125) \

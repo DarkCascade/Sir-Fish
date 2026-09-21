@@ -126,7 +126,7 @@ const ITEM_VALUE_PER_LEVEL := 0.35
 ## item's Power - stronger than the base icon. The Enhanced step's own added
 ## icon is locked at the max; the others on an Enhanced item keep their rolled
 ## fraction. Damage-flavoured icons only (see Itemizer._roll_icon_magnitude) -
-## HEAL (mend) keeps its own percent roll from Itemizer.MODIFIERS.
+## anything else keeps its own roll range from Itemizer.MODIFIERS.
 const FORGE_ICON_POWER_MIN := 1.25
 const FORGE_ICON_POWER_MAX := 1.75
 
@@ -350,7 +350,7 @@ const FORGE_COSTS := [
 ## [item power model] The final rung's added icon carries an `enhanced: true`
 ## marker the UI tints, and its magnitude is locked to the maximum bonus:
 ## FORGE_ICON_POWER_MAX of the item's Power for a DAMAGE / DAMAGE_ALL icon, or
-## the top of the modifier's roll range for a HEAL / MULT icon. Only that one
+## the top of the modifier's roll range for an icon with no Power basis. Only that one
 ## icon is maxed - the other rungs on an Enhanced item keep their rolls.
 
 # --- [town] Combat pickups (spec 9) ----------------------------------------------
@@ -468,9 +468,10 @@ const SLOT_ATTACK_ICON_FLOOR := 7
 ## composition to the slot and guarantees the bag is never empty of icons.
 ##
 ## [item power model] The innate DAMAGE icon is 100% of the hero's equipped
-## weapon Power (GameState.hero_weapon_power(id) -> Item.power()); only the
-## innate HEAL icon (the mage) still uses a fixed constant, this one.
-const SLOT_INNATE_HEAL_PCT := 8         # percent of max hp to the lowest-hp hero
+## weapon Power (GameState.hero_weapon_power(id) -> Item.power()), for every
+## hero. [backlog P7] The mage's innate icon was a fixed percent heal
+## (SLOT_INNATE_HEAL_PCT); it is damage now, and her healing is the invokable
+## Healing Aura.
 ## [v2] Attract mode (spec 16.6 / Q17): out of combat the reels drift instead of
 ## stopping. "Does nothing" means nothing that affects the game - not dead air.
 const SLOT_ATTRACT_SPEED := 0.15          # fraction of spin speed while drifting

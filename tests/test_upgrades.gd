@@ -107,7 +107,6 @@ func _ready() -> void:
 	t.check(Upgrades.level(&"quick_reels") == 1, "the level advanced to 1")
 	t.check(GameState.gold == 0, "the gold was spent")
 	t.check(int(GameState.run_stats["gold_spent"]) >= 60, "gold_spent tracked the purchase")
-	t.check(int(GameState.run_stats["upgrades_bought"]) == 1, "upgrades_bought incremented")
 
 	Upgrades.levels[&"overcharge"] = Tuning.UPGRADE_MAX_LEVEL
 	GameState.gold = 9999
@@ -124,4 +123,45 @@ func _ready() -> void:
 			all_zero = false
 	t.check(all_zero, "reset() puts every level back to 0")
 
+	_check_permanence(t)
+
 	t.finish(get_tree(), "test_upgrades")
+
+## [backlog P7 / decision 7.5, revised] The upgrades are PERMANENT slot upgrades,
+## bought at the Slotworks. Nothing about an expedition - departing, winning or
+## wiping - touches them; only a brand-new profile starts at zero.
+func _check_permanence(t: TestSupport) -> void:
+	var quest: QuestDef = load("res://resources/quests/easy.tres")
+
+	GameState.new_profile()
+	GameState.gold = 500
+	t.check(Upgrades.buy(&"polish") and Upgrades.buy(&"overcharge"),
+		"two upgrades are bought in town")
+	t.check(not GameState.run_stats.has("upgrades_bought"),
+		"the expedition stats no longer track upgrades bought")
+
+	GameState.start_expedition(quest)
+	t.check(Upgrades.level(&"polish") == 1 and Upgrades.level(&"overcharge") == 1,
+		"departing keeps them")
+	GameState.recover_after_expedition(true)
+	t.check(Upgrades.level(&"polish") == 1 and Upgrades.level(&"overcharge") == 1,
+		"a victory keeps them")
+	GameState.start_expedition(quest)
+	GameState.recover_after_expedition(false)
+	t.check(Upgrades.level(&"polish") == 1 and Upgrades.level(&"overcharge") == 1,
+		"a wipe keeps them")
+	GameState.start_expedition(quest)
+	t.check(Upgrades.level(&"polish") == 1, "the next expedition still has them")
+
+	# A fresh profile owns none, whatever the previous one held.
+	GameState.new_profile()
+	t.check(_all_zero(), "new_profile() starts with no upgrades")
+
+	GameState.quest = null
+	GameState.completed_quest = null
+
+func _all_zero() -> bool:
+	for id: StringName in Upgrades.DEFS.keys():
+		if Upgrades.level(id) != 0:
+			return false
+	return true

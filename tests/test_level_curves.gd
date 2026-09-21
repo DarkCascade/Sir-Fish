@@ -117,6 +117,15 @@ const _TYPE_FOR_SLOT := {
 func _make_geared_item(slot: Item.Slot, rarity: int, level: int,
 		type_id: StringName = &"", hero: StringName = &"warrior") -> Item:
 	var type_used: StringName = type_id if type_id != &"" else _TYPE_FOR_SLOT[slot]
+	# [backlog P7] Each geared item rolls from its OWN seed, derived from what it is,
+	# not from wherever the shared stream happens to have got to. The stream used to
+	# be one long sequence, so changing how many draws an unrelated item consumes
+	# (removing armor's second modifier did exactly that) re-rolled every later
+	# band's weapon - and a band whose sword happened to draw `bleed`, which this
+	# damage model does not credit, lost half its dps for no reason connected to
+	# what changed. Still deterministic; no longer coupled across slots and bands.
+	RNG.set_seed(20260910 + level * 1009 + int(slot) * 101 + rarity * 13
+		+ String(type_used).hash() % 997 + String(hero).hash() % 991)
 	var item := Item.new()
 	item.kind = Item.Kind.WEAPON
 	item.weapon_type = type_used
@@ -160,7 +169,7 @@ func _warrior_loadout(level: int) -> Array[Item]:
 	var rarity: int = int(GEAR_RARITY_AT_LEVEL.get(level, Item.Rarity.COMMON))
 	var geared := {}
 	# [balance pass] A brand-new profile ships a Magic sword and a plain COMMON
-	# shield (a heal icon, no damage) and no trinket. Model just the weapon at
+	# shield (a block icon, no damage) and no trinket. Model just the weapon at
 	# L1 - the shield's only board contribution is sustain, which this
 	# damage-only model does not credit, and treating it as Magic armor here
 	# would wrongly hand it a damage modifier. L5+ assumes drops fill all three.
@@ -203,8 +212,8 @@ func _hero_icons(hero_class: StringName, items: Array[Item]) -> Array:
 ## against one target ([icons phase 2] dmg_pct/MULT is gone, so there is no
 ## per-spin multiplier to fold in any more - a solo warrior's bag never
 ## contains BOMB_ARROW/THUNDERBURST either, both ranger/mage exclusive).
-## Ignores the payline-triple double-resolve (§ file header), crit's x2 chance,
-## and HEAL icons (irrelevant to enemy TTK) - all conservative underestimates.
+## Ignores the payline-triple double-resolve (§ file header) and crit's x2
+## chance - both conservative underestimates.
 func _mean_spin_damage(bag: Array, samples: int = 12000) -> float:
 	var total := 0.0
 	for _i: int in range(samples):
@@ -316,16 +325,16 @@ func _case_underlevelled_party_loses() -> void:
 
 ## [icons phase 2] Exactly the sword's (a warrior weapon's) real modifier pool
 ## - _make_damage_item() below always builds a `sword`, so this is also
-## implicitly the type filter, not just an id filter. slot_mend/armor_block
-## are excluded so this table's "total magnitude" means one thing (a percent
-## HEAL is a different unit; BLOCK isn't rollable on a weapon anyway).
+## implicitly the type filter, not just an id filter. armor_block is excluded
+## so this table's "total magnitude" means one thing (BLOCK isn't rollable on a
+## weapon anyway).
 const _DAMAGE_MOD_IDS: Array[StringName] = [
 	&"elem_fire", &"elem_ice", &"elem_light", &"bleed",
 ]
 
 ## An item rolling only from _DAMAGE_MOD_IDS, so its board contribution is a
 ## well-defined single number - the crossover claim is about damage output,
-## and a random slot_mend roll would make this table non-reproducible across
+## and a random non-damage roll would make this table non-reproducible across
 ## runs for no reason connected to what it is testing.
 func _make_damage_item(slot: Item.Slot, rarity: int, level: int) -> Item:
 	var item := Item.new()
@@ -423,7 +432,8 @@ func _case_crossover_table() -> void:
 #   - BOMB_ARROW / THUNDERBURST: hit every enemy, so once per enemy in the group.
 #   - RAIN / CLEAVE: the buffed swing also lands on the other enemies
 #     (approximated as the same spin's swing; rain hits all, cleave up to two).
-#   - HEAL icons: reported as regen, never asserted on.
+#   (The slot no longer heals - healing is the mage's invokable Healing Aura,
+#   which this model does not credit, so party life is HP alone.)
 # Left out, as the solo model leaves them out: crit doubling, bleed ticks,
 # payline double-resolves, BLOCK's temporary armor, the trinket ultimates' 25%
 # per-spin drop, and a hero dying mid-fight (its icons leave the bag).
@@ -436,7 +446,6 @@ func _case_crossover_table() -> void:
 #   ttd         time for the group to kill the whole party (total party HP over
 #               group dps, per-hit reduced by each hero's own armor, all
 #               heroes equally likely to be hit).
-#   regen       HP/s the party's HEAL icons restore (NOT subtracted from ttd).
 
 ## The authored relic each recruitment quest hands over - what the recruit is
 ## actually wearing the moment they join (RecruitRewardExtra.grant()).
@@ -481,7 +490,6 @@ func _geared_entry(hero_class: StringName, level: int) -> Dictionary:
 func _spin_stats(bag: Array, group: int, samples: int = 8000) -> Dictionary:
 	var single := 0.0
 	var group_total := 0.0
-	var heal_pct := 0.0
 	for _i: int in range(samples):
 		var swing := 0.0
 		var aoe := 0.0
@@ -499,8 +507,6 @@ func _spin_stats(bag: Array, group: int, samples: int = 8000) -> Dictionary:
 					rain = true
 				SlotIcon.Kind.CLEAVE:
 					cleave = true
-				SlotIcon.Kind.HEAL:
-					heal_pct += float(ic.get("roll", 0))
 		var extra_targets := 0
 		if swing > 0.0:
 			extra_targets = (group - 1) if rain else (mini(2, group - 1) if cleave else 0)
@@ -509,7 +515,6 @@ func _spin_stats(bag: Array, group: int, samples: int = 8000) -> Dictionary:
 	return {
 		"single": single / float(samples),
 		"group": group_total / float(samples),
-		"heal_pct": heal_pct / float(samples),
 	}
 
 ## The six figures the party cases read, for `party` against regular enemies of
@@ -537,12 +542,11 @@ func _party_metrics(party: Array, enemy_level: int) -> Dictionary:
 		"ttk_group": enemy_hp * float(ENEMY_GROUP_SIZE) / (float(spin["group"]) / _SPIN_CYCLE),
 		"ttd": float(party_hp) / group_dps,
 		"party_hp": party_hp,
-		"regen": float(spin["heal_pct"]) / 100.0 * (float(party_hp) / float(party.size())) / _SPIN_CYCLE,
 	}
 
 func _print_party(label: String, m: Dictionary) -> void:
-	print("  %-34s ttk %.1fs single / %.1fs group | ttd %.1fs (party hp %d) | regen %.1f hp/s"
-		% [label, m["ttk_single"], m["ttk_group"], m["ttd"], m["party_hp"], m["regen"]])
+	print("  %-34s ttk %.1fs single / %.1fs group | ttd %.1fs (party hp %d)"
+		% [label, m["ttk_single"], m["ttk_group"], m["ttd"], m["party_hp"]])
 
 ## Recruits are meant to make the early game easier: at the levels the recruit
 ## quests open, every recruit must shorten the fight and lengthen the party's
@@ -591,8 +595,8 @@ func _case_recruit_ease() -> void:
 	_t.check(ranger_late["ttk_group"] < solo5["ttk_group"] and ranger_late["ttd"] > solo5["ttd"],
 		"L5: a just-joined level-%d ranger still helps a level-5 warrior (%.1fs -> %.1fs, %.1fs -> %.1fs)"
 			% [ranger_join, solo5["ttk_group"], ranger_late["ttk_group"], solo5["ttd"], ranger_late["ttd"]])
-	# The mage's whole contribution is HP and regen; her damage is inside the noise
-	# of an 8,000-board sample, so assert the fight is no slower rather than faster.
+	# The mage adds HP and, now that her innate icon is a staff strike, some
+	# damage; assert the fight is no slower rather than pinning her damage.
 	_t.check(trio5["ttd"] > ranger5["ttd"],
 		"L5: the mage recruit lengthens the party's life (%.1fs -> %.1fs)" % [ranger5["ttd"], trio5["ttd"]])
 	_t.check(trio5["ttk_group"] <= ranger5["ttk_group"] * 1.03,

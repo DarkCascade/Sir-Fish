@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bl3eltyqhas1e"
-path="res://.godot/imported/chip_slot_mend.png-1b7513c6ad8e762a5cf1bc21793b8607.ctex"
+uid="uid://dv2qmfq6ist73"
+path="res://.godot/imported/invoker_healing_aura.png-8d3a502405ef144f4b75aafdc927c797.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/ui/reliquary/chip_slot_mend.png"
-dest_files=["res://.godot/imported/chip_slot_mend.png-1b7513c6ad8e762a5cf1bc21793b8607.ctex"]
+source_file="res://assets/ui/invoker/invoker_healing_aura.png"
+dest_files=["res://.godot/imported/invoker_healing_aura.png-8d3a502405ef144f4b75aafdc927c797.ctex"]
 
 [params]
 

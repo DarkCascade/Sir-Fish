@@ -5,9 +5,14 @@ extends Node
 ## Upgrades change how OFTEN spins happen, how MUCH a damage icon pays, and how
 ## DENSE the board is. They never invent icons or touch how one resolves.
 ##
-## Run-scoped: reset() is called from GameState.start_expedition(), which
-## today is only ever reached through reset_run(). No meta-progression - spec
-## 5.4 is explicit that these are NOT the forge.
+## [backlog P7 / decision 7.5, revised] PERMANENT slot upgrades, bought in town at
+## the Slotworks and saved with the profile (SaveGame "upgrades"). They started life
+## run-scoped and bought mid-fight; they are neither now. Nothing about an
+## expedition touches them, so reset() is only for a brand-new profile
+## (GameState.new_profile()) and tests. Still not the forge - spec 5.4.
+##
+## Saving is the caller's job (upgrade_button.gd saves after a successful buy):
+## buy() itself stays memory-only so the tests never write a user file.
 
 const DEFS := {
 	&"quick_reels": {
@@ -31,9 +36,10 @@ const DEFS := {
 	},
 }
 
-## The tray's three buttons, in display order.
+## The three cards' display order.
 const ORDER: Array[StringName] = [&"quick_reels", &"overcharge", &"polish"]
 
+## Saved with the profile - see SaveGame.
 var levels := { &"quick_reels": 0, &"overcharge": 0, &"polish": 0 }
 
 func level(id: StringName) -> int:
@@ -55,7 +61,6 @@ func buy(id: StringName) -> bool:
 	if not GameState.spend_gold(price):
 		return false
 	levels[id] = level(id) + 1
-	GameState.run_stats["upgrades_bought"] = int(GameState.run_stats["upgrades_bought"]) + 1
 	EventBus.upgrade_purchased.emit(id, level(id))
 	return true
 

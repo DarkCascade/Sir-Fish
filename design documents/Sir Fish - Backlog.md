@@ -38,7 +38,7 @@
 | **P4** | Prompt → Meshy → Blender → glb character skill | Medium | M | nothing: the trial character proved the route (§4) | What remains is packaging `rig_bandit_officer.py` as a skill and building 4.3's shared clip source |
 | **P5** | Small polish pass: post-expedition summary, chest presentation, slot upgrade UI, party modal info, shadow monster rework | Low–Medium | S (each item) | nothing | Queued during a later session; not yet scoped against P1–P4 |
 | **P6** | Make the headless suite a real gate: one full green-bar run, then CI on push | — (dev) | S | nothing | The first full green bar is recorded (2026-09-20: 31 suites, 0 failing - §6.1). What remains is CI: nothing runs the suites automatically. `tools/run_tests.py` (2026-09-19) exits non-zero on failure precisely so it can gate |
-| **P7** | Slot-first combat: owner swings, invokable specials, player decisions in a fight | High | M | nothing | **Pivot decided and two pieces built 2026-09-20 (§7).** Damage splits by icon owner (`66298b9`) and specials are invokable off a charge meter (`e7f8298`). Remaining: the tray rewire, the warrior's cleave, moving the upgrades to town. Hold-and-respin is deferred behind the specials |
+| **P7** | Slot-first combat: owner swings, invokable specials, player decisions in a fight | High | M | nothing | **Pivot decided and two pieces built 2026-09-20 (§7).** Damage splits by icon owner (`66298b9`) and specials are invokable off a charge meter (`e7f8298`). Upgrades moved to town (the Slotworks) and made permanent 2026-09-21. The invoker tray is built with all three buttons. Remaining: the warrior's cleave (his button already says Cleave and fires Defend until it lands). Hold-and-respin is deferred behind the specials |
 
 ```mermaid
 flowchart LR
@@ -190,8 +190,8 @@ weapon's Power (45), and the warbow's base strike (also 45). Every `DAMAGE` icon
 as the party's one summed swing, by the first living hero whose class executes `DAMAGE`,
 and that is the warrior. So a fresh ranger supplies most of the party's damage
 (see "Balance check") while the screen shows the warrior swinging for it and her standing
-idle. The mage is better off: her innate icon is a `HEAL`, so she animates whenever mend
-lands, though her heartstone's base strike is likewise swung by the warrior.
+idle. (The mage was better off then: her innate icon was a `HEAL`, so she animated
+whenever it landed. That icon is gone - see "Done: the slot no longer heals", §7.)
 
 The warbow stays as it is. A future effort is planned around slot icons generally, and
 the fix belongs there (who animates for which icon) rather than in a one-off modifier
@@ -406,7 +406,7 @@ found the two P1 regressions this same commit introduced (§1 "Found and fixed")
   `test_quest_generator` pins the board at levels 1, 3, 4 and 5.
 - **Three heroes is a bigger step than two - covered on both axes.** *Animation:* P1's
   `slot_gesture()` fix (§1, "Fixed 2026-09-14") is generic over `_executor_for(kind,
-  false)`, so the mage's `HEAL` icon already animates her. *Balance:* `test_level_curves`
+  false)`, so the mage's own icons animate her. *Balance:* `test_level_curves`
   now models warrior + ranger + mage (§1 "Balance check"). The mage adds almost no
   damage (group clear 6.1s -> 6.0s at level 5) but a lot of survivability (party life
   20.6s -> 26.6s, regen 1.6 -> 4.8 HP/s); nearly all of the recruits' early-game lift is
@@ -452,7 +452,7 @@ Common 0, Magic 1, Rare 2, Enhanced 3 (`RARITY_MOD_COUNT`). The pools:
 | axe, sword | `elem_fire`, `elem_ice`, `elem_light`, `bleed` | 4 |
 | bow, dagger | `bomb_arrow` | 1 |
 | staff | `lightning_blast` | 1 |
-| helm, mail, shield | `armor_block`, `slot_mend` | 2 |
+| helm, mail, shield | `armor_block` (`slot_mend` retired 2026-09-21) | 1 |
 | idol, ring, amulet | `crit`, plus `cleave`, `rain` or `thunderburst` respectively | 2 |
 
 As a result:
@@ -563,7 +563,7 @@ the old id and change only the nouns and the mesh.
   `_modifier_pool_excluding()` can never run dry, so its repeat-a-roll branch can be
   deleted. (It is live today: see "Where it stands".)
 - **The ceiling rises.** The strongest possible damage-kind icon goes from 175% of Power to
-  about 262% (1.75 × 1.5), and a boosted `slot_mend` from 9% to about 13%. Re-run
+  about 262% (1.75 × 1.5). Re-run
   `test_level_curves`, which now models a full party, and the forge economy checks.
 - **Saved items are grandfathered.** Existing items may carry modifiers outside their
   type's new set, and existing Enhanced items still have the old locked icon.
@@ -578,11 +578,11 @@ the old id and change only the nouns and the mesh.
 - **Pick kinds the item can scale.** `DAMAGE`, `BLEED`, `BOMB_ARROW`, `THUNDERBURST`,
   `CLEAVE` and `RAIN` icons roll 125–175% of `power()`, which is 0 on armor; on armor they
   fall back to the def's own flat `roll` range, which never grows with level. `BLOCK`
-  scales off `armor_value()`, which is 0 on weapons and trinkets. `HEAL` (`slot_mend`)
-  keeps its own percent roll, so it fits any slot.
+  scales off `armor_value()`, which is 0 on weapons and trinkets. (`HEAL` / `slot_mend`, the
+  one icon that fit any slot, was retired 2026-09-21.)
 - **Lean toward the kinds the owning class executes.** The warrior executes `DAMAGE`,
-  `BLOCK`, `BLEED` and `CLEAVE`; the ranger `BOMB_ARROW` and `RAIN`; the mage `HEAL` and
-  `THUNDERBURST`. An icon no living hero executes falls back to the first living hero,
+  `BLOCK`, `BLEED` and `CLEAVE`; the ranger `BOMB_ARROW` and `RAIN`; the mage `THUNDERBURST`
+  (her heal is the invokable Healing Aura). An icon no living hero executes falls back to the first living hero,
   so misaligned gear still works but reads wrong. Note that every `DAMAGE` icon, whoever
   owns the item, resolves as the party's one summed swing by the first living hero whose
   class executes `DAMAGE`, which is always the warrior (§1, "Still open").
@@ -598,7 +598,6 @@ the rollable ones):
 | `THUNDERBURST` | `thunderburst` (amulet) | Power | mage |
 | `CLEAVE` | `cleave` (idol) | Power, though resolution only reads that it rolled | warrior |
 | `RAIN` | `rain` (ring) | Power, likewise | ranger |
-| `HEAL` | `slot_mend` (any armor) | its own percent roll | mage |
 | `BLOCK` | `armor_block` (any armor) | armor | warrior |
 
 **The gaps.** Four per type exposes how thin the roster is. Against the current pools:
@@ -611,10 +610,10 @@ the rollable ones):
 | crossbow, heavy crossbow (planned, 3.6) | none named | 4 |
 | staff | `lightning_blast`; `staff_bolt` (named) | 2 |
 | wand (planned) | `wand_bolt`, `wand_lightning` (named) | 2 |
-| helm, mail, tome, and each shield | `armor_block`, `slot_mend`; per-shield ids to be named (3.7) | 2 |
+| helm, mail, tome, and each shield | `armor_block`; per-shield ids to be named (3.7) | 3 |
 | idol, ring, amulet | `crit` and one ultimate each | 2 |
 
-- **Armor is the worst case:** every armor type rolls the identical two ids, so telling
+- **Armor is the worst case:** every armor type rolls the one identical id (`armor_block`; `slot_mend` was retired 2026-09-21), so telling
   the four shields and the tome apart needs new armor modifiers, for example thorns on
   the spiked shield or a heavier block on the tower shield.
 - **The ranger and mage own one weapon id each**, so their weapons lean on their own kind
@@ -1226,6 +1225,121 @@ prototype kept at `design documents/reference/special_invoker/`.
 - The button holds no rules: pressing asks `invoke_hero_special()`, which refuses and
   spends nothing when it cannot fire. It dims rather than disables while charging.
 
+### Done: the slot no longer heals; Healing Aura is the party's healing (2026-09-21)
+
+Decision: the mage's invokable **Healing Aura** is the party's primary source of healing, so
+the slot heal is removed. Two things on the board healed, and both are gone:
+
+- **`slot_mend`**, the armor modifier ("+N% Mend Power"). Removed from `Itemizer.MODIFIERS`,
+  `KNOWN_MODIFIER_IDS` and the bonus buckets. A saved item still carrying it has the modifier
+  dropped on load (`Itemizer.RETIRED_MODIFIER_IDS`, `Item.from_dict`) rather than showing a
+  stat that does nothing. Its chip and board glyph art are deleted.
+- **`innate_heal`**, the mage's innate icon (also labelled "Mend"). Her innate icon is now
+  `innate_dmg`, scaled by her equipped staff's Power like the warrior's and ranger's. She
+  is the executor of `THUNDERBURST` only.
+- **`SlotIcon.Kind.HEAL` is removed and the enum renumbered**, so every `ClassDef.executes`
+  array was re-pointed (warrior `[1,2,3,4]`, ranger `[5,6]`, mage `[7]`).
+  `SlotMachine._heal_lowest()`, the heal branch of `_resolve_icon()`, the "heal" slot payout,
+  `Tuning.SLOT_INNATE_HEAL_PCT`, and the sim tools' heal models went with them. `_resolve_icon()`
+  now returns damage as an int rather than a (damage, heal) pair.
+- **The mage's ability is "Healing Aura" everywhere it was called Mend**: the icon label and
+  chip key are gone with the icon, and the invoker art already reads Healing Aura.
+
+**Consequences worth knowing:**
+
+- **A solo warrior now has no healing at all**, outside the inn and meals. The slot was his only
+  in-run sustain (a Magic-or-better armor could roll `slot_mend`). Healing arrives when the
+  mage joins at level 5 (quest gated at 5), so the early game is decided by the recruit
+  quests and the inn. Playtest before assuming the 3-9s bands mean what they did.
+- **Armor now has a one-id pool (`armor_block`)**, so a Rare or Enhanced armor carries ONE
+  modifier: the generator never repeats a modifier, and forging repeats it. This widens
+  the P3 "armor is the worst case" gap (§3), which now needs new armor modifiers most
+  urgently. `test_item_distribution` and `test_enhanced_rarity` now assert the rarity's count
+  capped by the type's pool.
+- **`test_level_curves` was rewritten to be seed-stable.** It built all gear from one shared
+  stream, so removing one armor draw re-rolled every later band; band 10's sword drew
+  `bleed`, which the damage model does not credit, and its dps halved. Each geared item now
+  seeds from its own identity. Figures moved (the recruit/party tables shifted by a few
+  tenths of a second) and the harness lost its heal regen column; every assertion holds.
+  The mage now adds a little damage (group fight 8.1s -> 7.7s at level 5) as well as HP.
+- **The harness does not credit Healing Aura** (an invocable, once or twice a fight), so party
+  life is HP alone until a model for it exists.
+
+### Done: the invoker tray - ranger and mage buttons, and the console band (2026-09-21)
+
+The bottom band the upgrades left now holds three special invokers, **ranger left, warrior
+middle, mage right**, in `scenes/console/invoker_tray.tscn` (`InvokerTray`, bound to the
+director from `Console.bind_director`). The order is fixed by class, not read from the party
+(`Tuning.PARTY_FORMATION` follows recruitment order): a hero not in the party has no button
+and the slot stays empty rather than collapsing, so a recruit never shifts a learned layout.
+
+- **Art:** the two supplied renders, `invoker_bomb_arrow.png` and `invoker_healing_aura.png`
+  (the mage's says "Healing Aura", not "Mend"). Both matched the cleave's frame: the tab
+  measured 0.201-0.795 in x and 0.81-0.90 in y against the cleave's 0.202-0.799, under a
+  pixel at button size, so `TAB_*` and `ART_ASPECT` are shared. They came with a black ground
+  (ranger) and an existing alpha (mage), each with a **wide dim-amber halo** the cleave does not
+  have, which showed as a brown box on the dark console grounds. The cleave's flat-threshold
+  flood fill did not remove it, so both were re-keyed by brightness (flood from the corners
+  through pixels no brighter than 130, alpha ramped 40-130), leaving the outline glow and
+  losing the halo. Checked over all four console grounds.
+- **One scene, two fields.** `SpecialInvoker` gained `class_name` and `@export var art`;
+  `hero_class` already points the meter child at the same hero, so an instance sets
+  `hero_class` and `art` and nothing else.
+- **The mage's wounded-ally case:** `BattleDirector.can_invoke_hero_special(c, ignore_busy)`
+  is now the one guard chain, and `invoke_hero_special()` calls it, so the button and the press
+  cannot disagree. A full mage meter at full party HP leaves her button **dark**, not
+  lit-and-dead; it lights when anyone is hurt. She aims at no opponent, so she stays usable
+  as the last enemy dies; the ranger's button goes dark with nothing to shoot. `ignore_busy`
+  keeps buttons from blinking dark for the half-second a hero animates. Buttons poll the
+  director each frame (three bools), since HP changes have no single signal.
+- **Tests:** `test_specials` 59 -> 77: slot order, hero on button and meter, distinct renders
+  and aspect, solo/full-party visibility, the mage dark/lit/fires, last-enemy-dying, the
+  ranger's press draining her meter, the no-director fallback.
+- **Rendered and looked at**, three buttons across charge 0/3/6/10, and in the real console.
+
+**Known wrinkle, unresolved: the warrior's button says "Cleave" and fires Defend.** The cleave
+`AbilityDef` and its animation clip are the separate warrior-cleave piece, still unbuilt.
+
+### Done: the three slot upgrades moved to town, and made permanent (2026-09-21)
+
+Decision 7.5 built, then revised the same day: the upgrades are **permanent slot upgrades**,
+not run-scoped. Moving them to town is "phase 0" of a larger effort, and the Slotworks is
+where that effort will grow.
+
+- **Permanent, and saved.** `Upgrades.reset()` no longer runs from `start_expedition()` or
+  `recover_after_expedition()`; only `new_profile()` calls it. `SaveGame` gained an additive
+  `upgrades` key (no version bump; absent on an old save reads as none bought), rebuilt per
+  known id and clamped to `UPGRADE_MAX_LEVEL` on load. `UpgradeButton` saves the profile after
+  every successful buy, so the levels and the gold they cost persist together - which also
+  closes the "quit after buying" hole. `Upgrades.buy()` stays memory-only, so the suites
+  never write a user file. `test_upgrades` pins buy -> depart -> victory -> wipe -> next
+  expedition all keeping the levels; `test_profile_save` pins the round trip and the clamp.
+- **No expedition tracker, and no stats row.** `buy()` no longer touches
+  `run_stats.upgrades_bought`, and the key is gone, along with the "Upgrades bought" row
+  (`UpgradesBought` in `quest_result.tscn`, its value mapping, and its `_RETIRED_ROWS`
+  entry - it was already hidden on both result screens).
+- **A new town area, `Place.SLOTWORKS`.** `scenes/town/slotworks.tscn` + `slotworks.gd`, a
+  `TabContainer` with one tab, Upgrades (the tab interface is kept because more tabs are
+  expected). The cards are the console tray's own scene, moved wholesale out of the blacksmith,
+  which is back to its four tabs. Wired into `SceneRouter` (`PATHS`, `test_scene_router`),
+  `biome_theme.gd` (town frames), and the debug `route slotworks` verb.
+- **Background: Meshy, 9 credits** (nano-banana-pro text-to-image, 9:16, `assets/slotworks-bg.png`): a clockwork workshop with a reel drum on the bench, brass gears, amber lanterns and violet crystals in mist.
+- **The town painting has a Slotworks building** (Meshy image-to-image, nano-banana-pro,
+  9 credits). The model returned a 1024x1024 image with the surroundings stripped and the
+  Mayor's sign dropped, so it could not replace the painting. Its building and sign were
+  instead **composited into the original** `town-with-purple-mist.png` (same 1080x1920) over
+  the empty lot, at the other signs' scale, with the Mayor's market tarp restored from the
+  original. `SlotworksButton` is an invisible hit box over building and sign, like the others.
+  Known seam: a faintly darker halo of the render's flat ground around the building. The
+  pre-edit painting is in git history.
+- **The console's bottom band is empty, not collapsed** (`TRAY_HEIGHT` / `BOTTOM_MARGIN`
+  untouched), reserved for the invokers at `y = STRIP_HEIGHT + slot_h`.
+- Looked at in the running game: town button -> Slotworks -> a purchase, and the save file.
+
+**Add-on efforts, not part of this change:** `tools/sim_reviewers.gd` still models buying
+mid-fight, so its in-combat-input metric is stale; and pacing now that gold funds permanent
+tuning rather than a per-run spend.
+
 ### Decided, not built
 
 **Three written-up prompts live in `design documents/prompts/`**, each with the code
@@ -1245,7 +1359,7 @@ references, the traps and the acceptance criteria for an implementing model:
 2. **One special per class, and only two of them are hit-all.**
    - **Warrior: cleave**, hitting all enemies - *replaces* Defend.
    - **Ranger: bomb arrow** - already exists, zero work.
-   - **Mage: keeps her party heal** rather than gaining chain lightning. This was a
+   - **Mage: keeps her party heal, as Healing Aura** rather than gaining chain lightning. This was a
      deliberate trim of the original three-hit-alls plan: it keeps a heal source and leaves
      only two specials doing the same thing.
    - Known cost: the warrior loses Defend, the party's only damage-reduction special. His
@@ -1254,11 +1368,10 @@ references, the traps and the acceptance criteria for an implementing model:
      `test_animation_clips` pins. There is also **no hit-all `AbilityDef` yet** - the four
      that exist are `MeleeStrikeAbility`, `ProjectileAbility`, `SelfBuffAbility` and
      `HealAllyAbility` - so cleave needs a new one.
-3. **The three upgrades (`quick_reels`, `overcharge`, `polish`) move to town**, freeing the
-   tray. This keeps both the run-scoped gold sink and `polish`, which is the board-density
-   lever `test_level_curves` reads. **One trap found while reading:** `Upgrades.reset()` is
-   called from `GameState.start_expedition()`, so buying them in town and *then* departing
-   would wipe the purchase. The reset has to move to the end of a run.
+3. **(Built 2026-09-21, and revised to permanent - see above.) The three upgrades
+   (`quick_reels`, `overcharge`, `polish`) move to town**, freeing the tray. `polish` is the
+   board-density lever `test_level_curves` reads. The reset trap this item once described
+   (`start_expedition()` wiping a town purchase) is gone with the reset itself.
 
 ### Discussed, deferred: hold-and-respin
 
@@ -1372,7 +1485,7 @@ The review found these, which any revived version has to answer:
 | 7.1 | Slot or party as the main character | **Decided 2026-09-20** | Slot mechanically, party emotionally: player decisions live on the slot, the party expresses them (§7) |
 | 7.2 | Does slot damage split by owner? | **Decided, built** | Yes - each hero swings for the icons their own gear put on the board (`66298b9`) |
 | 7.3 | What gates a special invoke | **Decided, built** | A charge meter, filled by every icon that hero owns. `SPECIAL_CHARGE_COST` is 10, which lands at ~3 spins; 3 would have fired every spin (§7) |
-| 7.4 | One special per class, which ones | **Decided, part built** | Warrior cleave (replaces Defend, unbuilt), ranger bomb arrow (already exists), mage keeps her party heal - only two hit-alls, and a heal source survives |
-| 7.5 | What happens to the three slot upgrades | **Decided, not built** | They move to town. `Upgrades.reset()` must move off `start_expedition()` first, or departing wipes the purchase |
+| 7.4 | One special per class, which ones | **Decided, part built** | Warrior cleave (replaces Defend, unbuilt), ranger bomb arrow (already exists), mage keeps her party heal as **Healing Aura**, now the party's ONLY heal (the slot heal is gone) - only two hit-alls |
+| 7.5 | What happens to the three slot upgrades | **Decided, built 2026-09-21; revised** | They move to town (the Slotworks) and become **permanent**, saved with the profile. No reset at all but a new profile |
 | 7.6 | Hold-and-respin | Deferred | A good verb, but it needs the specials layer first to have anything worth deciding about, and three questions are unanswered (§7) |
 | 7.7 | Should fights be longer? | Open | Slot-first wants more, smaller spins; fights are 2-6 spins today. Reopens the harness's 3-9s time-to-kill band (§7) |

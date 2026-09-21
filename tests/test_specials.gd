@@ -69,6 +69,7 @@ func _ready() -> void:
 	await _check_board_charges_its_owner()
 	_check_authored_specials()
 	_check_invoke_guards()
+	_check_invoker_tray()
 	_check_charge_meter()
 	_t.finish(get_tree(), "test_specials")
 
@@ -263,6 +264,106 @@ func _check_invoke_guards() -> void:
 	ranger.state = Combatant.State.DEAD
 	_t.check(not d.invoke_hero_special(ranger), "a dead hero refuses the invoke")
 	_t.check(GameState.special_ready(&"ranger"), "and keeps her meter")
+
+# --- the invoker buttons ------------------------------------------------------
+
+const INVOKER_TRAY := preload("res://scenes/console/invoker_tray.tscn")
+
+## The tray's three buttons against a REAL director: who is on which slot, that
+## the right hero and the right art reach both the button and its meter, that the
+## mage's button reads honestly (dark at a full meter and a full-HP party, lit
+## once somebody is hurt), and that a press does what invoke_hero_special does.
+func _check_invoker_tray() -> void:
+	print("--- invoker tray ---")
+	GameState.new_profile()
+	var d := BattleDirector.new()
+	add_child(d)
+	var warrior := _spawn(&"warrior", -3.0, d)
+	var enemy := _spawn(&"shadow_monster", 2.0, d)
+	d.heroes = [warrior]
+	d.enemies = [enemy]
+
+	var tray := INVOKER_TRAY.instantiate()
+	add_child(tray)
+	tray.director = d
+	var ranger_b: SpecialInvoker = tray.get_node("RangerInvoker")
+	var warrior_b: SpecialInvoker = tray.get_node("WarriorInvoker")
+	var mage_b: SpecialInvoker = tray.get_node("MageInvoker")
+
+	# Formation: ranger left, warrior middle, mage right - a fixed slot per class.
+	_t.check(ranger_b.position.x < warrior_b.position.x and warrior_b.position.x < mage_b.position.x,
+		"the tray reads ranger, warrior, mage from left to right")
+
+	# The hero reaches BOTH the button and its Meter child (one field to set).
+	for pair: Array in [[ranger_b, &"ranger"], [warrior_b, &"warrior"], [mage_b, &"mage"]]:
+		var b: SpecialInvoker = pair[0]
+		_t.check(b.hero_class == pair[1] and (b.get_node("Meter") as ChargeMeter).hero_class == pair[1],
+			"%s's button and its meter both track %s" % [pair[1], pair[1]])
+
+	# Each hero has their own render.
+	_t.check(ranger_b.get_node("Art").texture != warrior_b.get_node("Art").texture
+		and mage_b.get_node("Art").texture != warrior_b.get_node("Art").texture
+		and ranger_b.get_node("Art").texture != mage_b.get_node("Art").texture,
+		"the three buttons carry three different renders")
+	for b: SpecialInvoker in [ranger_b, mage_b]:
+		var sz := (b.get_node("Art").texture as Texture2D).get_size()
+		var aspect := sz.x / sz.y
+		_t.check(absf(aspect - SpecialInvoker.ART_ASPECT) < 0.005,
+			"%s's render keeps the cleave's aspect, so the shared tab anchors hold (%.4f vs %.4f)"
+				% [b.hero_class, aspect, SpecialInvoker.ART_ASPECT])
+
+	# A hero not in the party has no button; the solo start is just the warrior.
+	_t.check(warrior_b.visible and not ranger_b.visible and not mage_b.visible,
+		"a solo warrior shows only his own button")
+	GameState.active_party = [&"warrior", &"ranger", &"mage"] as Array[StringName]
+	EventBus.run_started.emit()
+	_t.check(ranger_b.visible and warrior_b.visible and mage_b.visible,
+		"a full party shows all three")
+
+	# The mage: full meter, full-HP party -> dark and refuses; hurt -> lit and fires.
+	var mage := _spawn(&"mage", -1.0, d)
+	var ranger := _spawn(&"ranger", -2.0, d)
+	d.heroes = [warrior, mage, ranger]
+	_fill(&"mage")
+	mage_b._refresh()
+	_t.check(mage_b.modulate == SpecialInvoker.DIM,
+		"a FULL mage meter at full party HP leaves her button dark, not lit-and-dead")
+	mage_b._on_pressed()
+	_t.check(GameState.special_ready(&"mage"), "and pressing it spends nothing")
+	warrior.current_hp = maxi(1, warrior.max_hp - 5)
+	mage_b._refresh()
+	_t.check(mage_b.modulate == Color.WHITE, "it lights the moment someone is hurt")
+	mage_b._on_pressed()
+	_t.check(GameState.special_charge(&"mage") == 0, "and pressing it fires and drains her meter")
+
+	# She aims at no opponent, so she stays usable as the last enemy dies.
+	warrior.current_hp = maxi(1, warrior.max_hp - 5)
+	enemy.current_hp = 0
+	enemy.state = Combatant.State.DEAD
+	_fill(&"mage")
+	mage.state = Combatant.State.IDLE
+	mage_b._refresh()
+	_t.check(mage_b.modulate == Color.WHITE, "the mage's button stays lit with no enemy left alive")
+
+	# The ranger's special needs a target: no enemy -> dark; it stays a meter question
+	# otherwise. Bring an enemy back and her button lights with a full meter.
+	_fill(&"ranger")
+	ranger_b._refresh()
+	_t.check(ranger_b.modulate == SpecialInvoker.DIM, "the ranger's button is dark with no enemy to aim at")
+	var enemy2 := _spawn(&"shadow_monster", 3.0, d)
+	d.enemies = [enemy2]
+	ranger_b._refresh()
+	_t.check(ranger_b.modulate == Color.WHITE, "and lights once there is something to shoot")
+	ranger_b._on_pressed()
+	_t.check(GameState.special_charge(&"ranger") == 0,
+		"pressing the ranger's button fires the bomb arrow and drains her meter")
+
+	# Out of combat (no director) it falls back to the meter alone.
+	tray.director = null
+	warrior_b._refresh()
+	_t.check(warrior_b.modulate == SpecialInvoker.DIM, "with no director an empty meter reads dark")
+
+	tray.queue_free()
 
 # --- the charge meter ---------------------------------------------------------
 
