@@ -37,6 +37,32 @@ func _ready() -> void:
 	t.check(GameState.inventory.has(found_equipped), "equipped loot survives a failed quest")
 	t.check(not GameState.inventory.has(found_loose), "loose expedition loot is discarded")
 
+	# --- issue #116: selling a pre-quest item keeps the mark accurate ---
+	# Selling an unequipped pre-quest item at the quest's shop used to leave
+	# _expedition_inventory_mark one too high (remove_item() shifted every later
+	# index down but never adjusted the mark), so one loose found item dodged
+	# the wipe discard.
+	GameState.new_profile()                             # ships a starting weapon at index 0
+	var town_item_a := Itemizer.generate_item()
+	var town_item_b := Itemizer.generate_item()
+	GameState.inventory.append(town_item_a)
+	GameState.inventory.append(town_item_b)
+	GameState.start_expedition(q)
+	var mark_at_start: int = GameState._expedition_inventory_mark
+
+	var found_item := Itemizer.generate_item_with_rarity(Item.Rarity.COMMON)
+	GameState.inventory.append(found_item)              # found this trip, index >= mark
+
+	GameState.remove_item(town_item_b)                  # sold at the quest's shop
+	t.check(GameState._expedition_inventory_mark == mark_at_start - 1,
+		"remove_item() before the mark decrements it (got %d, want %d)"
+			% [GameState._expedition_inventory_mark, mark_at_start - 1])
+
+	GameState.discard_expedition_loot()
+	t.check(not GameState.inventory.has(found_item),
+		"found loot is still discarded after a pre-quest item was sold")
+	t.check(GameState.inventory.has(town_item_a), "the untouched pre-quest item survives")
+
 	GameState.quest = null
 	GameState.completed_quest = null
 	t.finish(get_tree(), "test_quest_flow")

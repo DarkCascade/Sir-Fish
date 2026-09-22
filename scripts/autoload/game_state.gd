@@ -377,6 +377,8 @@ func remove_item(item: Item) -> void:
 	var index := inventory.find(item)
 	if index < 0:
 		return
+	if index < _expedition_inventory_mark:
+		_expedition_inventory_mark -= 1
 	inventory.remove_at(index)
 	EventBus.item_removed.emit(item)
 	EventBus.party_bonuses_changed.emit(party_bonuses())
