@@ -70,3 +70,25 @@ another bug later, but not part of this fix.
    backlog doc entry is needed unless this fix changes a documented rule (it doesn't; the
    Town/Forge/Quest spec's "index >= mark = found this trip" invariant is being *restored*, not
    changed).
+
+## Optional: Jev sanity-check gate
+
+[Jev](https://docs.typesafe.ai) (TypeSafe's "System One" model) isn't used anywhere else in this
+project yet, and this bug has no place for it in the actual code change — the fix is a
+deterministic off-by-one on an array index, not a judgment call, so it doesn't need a
+probabilistic model to make it. Noting it here only because it was asked for; treat it as an
+optional extra gate before opening the PR, never a substitute for step 2's regression test.
+
+Jev's own guidance is to keep questions atomic (`Choice` / `Score` / `Noul`) and compose them in
+application code rather than asking one compound question. The one place that fits is a `Noul`
+(yes/no, 0–1) pre-merge check on the diff, run alongside `tools/run_tests.py`:
+
+> **Noul**: "Does this diff keep `_expedition_inventory_mark` equal to the number of inventory
+> entries that existed before `start_expedition()` was called, after any `remove_item()` call?"
+> — state: the diff to `remove_item()` plus the surrounding `game_state.gd` context.
+
+A low/uncertain score would be a signal to re-read the diff by hand, not a merge blocker — this
+project has no Jev API wiring (no SDK, no credentials, no CI step) today, so this is a sketch, not
+a ready-to-run script. Standing this up for real means deciding on a client library and where the
+call lives (a `tools/` script vs. a CI step), which is a separate decision from this bug fix and
+shouldn't block it.
