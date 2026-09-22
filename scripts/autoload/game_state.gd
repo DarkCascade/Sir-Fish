@@ -584,10 +584,10 @@ func hero_level(id: StringName = &"") -> int:
 ## [specials] Adds one charge to `hero_class`'s special meter, capped at the cost
 ## so a long fight cannot bank several activations. Silent no-op for an empty
 ## class id (an icon with no owner charges nobody).
-func add_special_charge(hero_class: StringName) -> void:
+func add_special_charge(hero_class: StringName, amount: int = 1) -> void:
 	if hero_class == &"":
 		return
-	var now: int = mini(special_charge(hero_class) + 1, Tuning.SPECIAL_CHARGE_COST)
+	var now: int = mini(special_charge(hero_class) + amount, Tuning.SPECIAL_CHARGE_COST)
 	if now == special_charge(hero_class):
 		return
 	special_charges[hero_class] = now
@@ -628,6 +628,40 @@ func default_item_level() -> int:
 func hero_weapon_power(id: StringName) -> int:
 	var w := equipped_item(id, Item.Slot.WEAPON)
 	return 0 if w == null else w.power()
+
+## [slot vocabulary] `id`'s equipped weapon type (&"" unarmed) - what that
+## hero's strike icons draw as on the board (SlotIcon._with_weapon).
+func hero_weapon_type(id: StringName) -> StringName:
+	var w := equipped_item(id, Item.Slot.WEAPON)
+	return &"" if w == null else w.weapon_type
+
+## [slot vocabulary] The chance (0..1) that any attack `id` makes deals double:
+## the sum of every `crit` modifier on their gear, each read as a percent and
+## clamped to its def's roll range (an item saved before crit became a stat
+## carries a Power-scaled roll that would otherwise read as, say, 30%), then
+## capped at Tuning.CRIT_CHANCE_CAP. Applied in Combatant.take_damage.
+func hero_crit_chance(id: StringName) -> float:
+	var cap := Itemizer.modifier_roll_max(&"crit")
+	var pct := 0
+	for it: Item in equipped_set(id):
+		for mod: Dictionary in it.modifiers:
+			if StringName(mod.get("id", &"")) == &"crit":
+				pct += clampi(int(mod.get("roll", 0)), 0, cap)
+	return minf(float(pct) / 100.0, Tuning.CRIT_CHANCE_CAP)
+
+## [slot vocabulary] The bleed `id`'s weapon opens on a swing, or 0 if it has no
+## `bleed` modifier: the largest bleed roll on the equipped weapon, as the
+## bleed's per-tick damage. Each swing opens it with Tuning.BLEED_PROC_CHANCE
+## (SlotMachine._swing_for).
+func hero_bleed(id: StringName) -> int:
+	var w := equipped_item(id, Item.Slot.WEAPON)
+	if w == null:
+		return 0
+	var best := 0
+	for mod: Dictionary in w.modifiers:
+		if StringName(mod.get("id", &"")) == &"bleed":
+			best = maxi(best, int(mod.get("roll", 0)))
+	return best
 
 ## [armor items] Flat damage reduction from `id`'s equipped armor - the passive
 ## half of Combatant.armor (the temporary half comes from BLOCK icons).
@@ -761,6 +795,8 @@ func hero_reel_icons(hero_class: StringName) -> Dictionary:
 			var ic := SlotIcon.from_modifier(mod, it)
 			if ic.is_empty():
 				continue
+			# [slot vocabulary] A charge coin draws its owner's profile.
+			ic["owner"] = hero_class
 			ic["label"] = _reel_icon_label(ic)
 			icons.append(ic)
 	return { "icons": icons, "count": icons.size() }
@@ -768,6 +804,9 @@ func hero_reel_icons(hero_class: StringName) -> Dictionary:
 func _reel_icon_label(ic: Dictionary) -> String:
 	var id := StringName(ic.get("id", &""))
 	var roll := int(ic.get("roll", 0))
+	# [slot vocabulary] A charge coin's roll is its fixed charge, not a magnitude.
+	if SlotIcon.kind_of(id) == SlotIcon.Kind.CHARGE:
+		return "+%d charge" % Tuning.SLOT_CHARGE_ICON_CHARGE
 	return ("+%d%%" % roll) if SlotIcon.is_percent(id) else ("+%d" % roll)
 
 # --- run lifecycle ----------------------------------------------------------

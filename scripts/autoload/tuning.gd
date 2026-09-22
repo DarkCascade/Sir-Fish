@@ -136,11 +136,11 @@ const FORGE_ICON_POWER_MAX := 1.75
 const BLOCK_DURATION := 5.0
 
 # --- icons phase 2 -----------------------------------------------------------
-## The crit trinket icon's chance to double its own contribution to the swing
-## (SlotMachine._resolve_board). Flat and global for now - kept as its own
-## constant, not baked into the modifier roll, so a future balance pass can
-## tune it without touching every existing item.
-const CRIT_CHANCE := 0.10
+## [slot vocabulary] Crit is a wearer stat now, not a board icon: each `crit`
+## modifier adds its roll as a percent chance for ALL of the wearer's attacks
+## to deal double (GameState.hero_crit_chance, Combatant.take_damage). This caps
+## the summed chance, so three stacked trinkets cannot make every hit a crit.
+const CRIT_CHANCE_CAP := 0.5
 ## How long a bleed DoT lasts on an enemy (Combatant.apply_bleed) - refreshed,
 ## not stacked, exactly like BLOCK_DURATION above. Ticks off the enemy's own
 ## actions (BattleDirector._take_action), not a per-frame timer.
@@ -148,10 +148,16 @@ const BLEED_DURATION := 8.0
 ## Flat per-tick floor on a bleed hit, mirroring SLOT_ATTACK_ICON_FLOOR's floor
 ## on a swing icon.
 const BLEED_TICK_FLOOR := 2
-## Trinket ultimate icons (crit, cleave, rain, thunderburst) are rolled into
-## the bag with only this chance each spin - their extra power is offset by
-## showing up less often (SlotMachine._rebuild_bag).
-const TRINKET_ICON_INCLUDE_CHANCE := 0.75
+## [slot vocabulary] Bleed is a weapon stat now, not a board icon: each swing a
+## hero with a `bleed` weapon makes opens (or refreshes) a bleed on its target
+## with this chance (SlotMachine._swing_for, GameState.hero_bleed).
+const BLEED_PROC_CHANCE := 0.35
+## [slot vocabulary] What landing a special-charge icon (the gold coin carrying
+## its owner's profile) adds to that owner's meter, out of SPECIAL_CHARGE_COST.
+## Every other icon adds 1. A charge icon does nothing else - it replaced the
+## on-board bomb arrow / thunderburst / cleave / rain effects outright, so the
+## special itself is the payoff.
+const SLOT_CHARGE_ICON_CHARGE := 3
 
 # --- 5.3c Overworld field [overworld prototype] -----------------------------
 ## The battle is laid out on the XZ ground plane under an overhead camera, not
@@ -441,6 +447,19 @@ const SLOT_SWING_STAGGER := 0.12
 ## reels (offsets -1 / 0 / +1 from the payline). _cells[0] / _cells[4] are
 ## scroll bleed and are never scored.
 const SLOT_BOARD_CELLS := 9
+
+## [slot vocabulary] The lines a jackpot can land on, as row-major board indices
+## (0 1 2 / 3 4 5 / 6 7 8). Three of one CATEGORY along any of them makes those
+## cells resolve twice (SlotMachine.winning_lines). The target is 1-2 jackpots
+## per battle; test_level_curves' _case_jackpots_per_battle measures it. All
+## eight lines is the most any 3x3 board can offer, and it still only reaches
+## ~1 per battle for a geared party of three and near zero for an early solo
+## warrior (whose board is two thirds blank) - see the backlog doc §3.9.
+const SLOT_PAYLINES := [
+	[0, 1, 2], [3, 4, 5], [6, 7, 8],   # rows
+	[0, 3, 6], [1, 4, 7], [2, 5, 8],   # columns (one reel each)
+	[0, 4, 8], [6, 4, 2],              # diagonals
+]
 
 ## Blanks mixed into the bag. Starts high so a fresh party's board is mostly
 ## empty; the `polish` upgrade (§6) buys it down toward the floor, two blanks a

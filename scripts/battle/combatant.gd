@@ -31,6 +31,10 @@ var action_count: int = 0
 ## [v2] Q9. A special that was due but had no valid target stays pending, so the
 ## action counter keeps its rhythm through healthy stretches instead of freezing.
 var special_pending: bool = false
+## [slot vocabulary] The chance any attack this combatant makes deals double
+## (take_damage). Heroes read it from their gear (GameState.hero_crit_chance)
+## in apply_party_bonuses; enemies leave it at 0.
+var crit_chance: float = 0.0
 var damage_multiplier: float = 1.0        # party damage buff + item dmg_pct
 var damage_reduction: float = 0.0         # warrior defend lives here (a fraction)
 var bonus_flat_damage: int = 0            # [v2] item dmg_flat + elemental (spec 13.5)
@@ -155,6 +159,8 @@ func apply_party_bonuses() -> void:
 	damage_multiplier = GameState.meal_multiplier() * _item_pct_multiplier
 	# [armor items] Passive flat damage reduction from equipped armor.
 	armor = GameState.hero_armor(stats.id)
+	# [slot vocabulary] Crit is a wearer stat from trinket `crit` modifiers.
+	crit_chance = GameState.hero_crit_chance(stats.id)
 	# [armor items] Max hp = the runtime figure GameState keeps (hero level plus
 	# the armor_life percent), not the level-1 stats base setup() seeded. A
 	# raise adds its delta to current_hp so a full hero stays full; a drop
@@ -310,7 +316,7 @@ func slot_attack(enemy: Combatant, amount: int) -> void:
 
 ## [combat loop redesign] A purely cosmetic swing for a hero whose OWN icon
 ## kind resolved (DAMAGE_ALL's chain bolt) but whose damage is already applied
-## elsewhere (SlotMachine._hit_all()) - without this, only whichever class executes DAMAGE ever
+## elsewhere - without this, only whichever class executes DAMAGE ever
 ## animates at all (SlotMachine._hero_swing()), which reads as "the ranger/
 ## mage never do anything in combat" the moment a second hero exists (only
 ## visible once the party is no longer a solo warrior).
@@ -362,6 +368,12 @@ func compute_damage(school: int = -1) -> int:
 func take_damage(amount: int, source: Combatant) -> void:
 	if not is_alive():
 		return
+	# [slot vocabulary] Crit lives here, on the one path every attack takes, so a
+	# slot swing, a projectile and a special all roll it alike. Sourceless damage
+	# (a bleed tick) never crits.
+	if source != null and is_instance_valid(source) and source.crit_chance > 0.0 \
+			and RNG.randf() < source.crit_chance:
+		amount *= 2
 	var reduction := clampf(damage_reduction, 0.0, 0.9)
 	# [armor items] percent cut first (Defend), then flat armor, floored at 1.
 	var final := maxi(1, int(round(float(amount) * (1.0 - reduction))) - armor - _temp_armor)

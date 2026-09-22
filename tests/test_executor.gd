@@ -54,21 +54,13 @@ func _check_executor_ownership(t: TestSupport) -> void:
 	director.heroes = [mage, ranger, warrior]   # roster order: mage, ranger, warrior
 	t.check(machine._executor_for(SlotIcon.Kind.DAMAGE) == warrior,
 		"full party: DAMAGE resolves to warrior (the class that owns it), not the roster-first mage")
-	t.check(machine._executor_for(SlotIcon.Kind.THUNDERBURST) == mage,
-		"full party: THUNDERBURST resolves to mage")
-	# [icons phase 2] BOMB_ARROW / RAIN (ranger), BLOCK / BLEED / CLEAVE
-	# (warrior) and THUNDERBURST (mage) each own exactly one class, same
-	# ownership rule as DAMAGE above.
-	t.check(machine._executor_for(SlotIcon.Kind.BOMB_ARROW) == ranger,
-		"full party: BOMB_ARROW resolves to ranger")
-	t.check(machine._executor_for(SlotIcon.Kind.RAIN) == ranger,
-		"full party: RAIN resolves to ranger")
-	t.check(machine._executor_for(SlotIcon.Kind.BLEED) == warrior,
-		"full party: BLEED resolves to warrior")
-	t.check(machine._executor_for(SlotIcon.Kind.CLEAVE) == warrior,
-		"full party: CLEAVE resolves to warrior")
-	t.check(machine._executor_for(SlotIcon.Kind.THUNDERBURST) == mage,
-		"full party: THUNDERBURST resolves to mage")
+	# [slot vocabulary] BLOCK is the warrior's too. CHARGE belongs to no class:
+	# a charge coin fills its OWNER's meter and never goes through an executor,
+	# so asking for one without the fallback finds nobody.
+	t.check(machine._executor_for(SlotIcon.Kind.BLOCK) == warrior,
+		"full party: BLOCK resolves to warrior")
+	t.check(machine._executor_for(SlotIcon.Kind.CHARGE, false) == null,
+		"full party: no class executes CHARGE - the icon's owner does")
 
 	# --- orphaned icons: with the DAMAGE owner dead, the icon falls back to
 	# the first living hero in roster order rather than fizzling (§2a). ---

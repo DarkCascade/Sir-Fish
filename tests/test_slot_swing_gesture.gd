@@ -1,6 +1,7 @@
 extends Node
-## Regression: a board that rolls both a DAMAGE icon and a CLEAVE or BLEED icon
-## used to silently eat the warrior's real swing.
+## Regression: a board that rolls both a DAMAGE icon and a gesture icon (then
+## CLEAVE or BLEED, [slot vocabulary] now a charge coin) used to silently eat
+## the warrior's real swing.
 ##
 ## Playtest report: "sword icons were hit and the warrior played his attack
 ## animation but the enemy did not react and no floating damage number
@@ -19,9 +20,8 @@ extends Node
 ## since that real swing already carries the visual.
 ##
 ## [owner swings] Still the right regression even though damage is banked per
-## owner now: the warrior owns DAMAGE, BLEED and CLEAVE at once (warrior.tres),
-## so he is exactly the hero whose own gear can arm a gesture and a real swing
-## on the same board.
+## owner now: a hero whose own charge coin and strike land on the same board
+## gets a gesture and a real swing at once.
 ##
 ##     godot --headless --path "C:/Projects/Godot/Sir Fish" res://tests/test_slot_swing_gesture.tscn
 
@@ -164,11 +164,12 @@ func _test_swing_owner_routing() -> void:
 	_t.check(machine._swing_hero_for({"owner": &"ranger"}) == warrior,
 		"a dead owner's icon falls back rather than dropping its damage")
 
-## The reported case: a solo warrior, one enemy, a board with a CLEAVE icon
+## The reported case: a solo warrior, one enemy, a board with a gesture icon
 ## ahead of a DAMAGE icon. Before the fix, the enemy never took the swing's
-## damage - the cosmetic CLEAVE gesture ate it.
+## damage - the cosmetic gesture ate it. [slot vocabulary] The gesture icon is
+## a warrior-owned charge coin now (cleave used to arm a buff; it only charges).
 func _case_cleave_plus_damage() -> void:
-	print("--- board: CLEAVE + DAMAGE, solo warrior ---")
+	print("--- board: CHARGE + DAMAGE, solo warrior ---")
 	var d := FakeDirector.new()
 	add_child(d)
 	add_child(d.world)
@@ -178,18 +179,25 @@ func _case_cleave_plus_damage() -> void:
 	d.enemies = [enemy]
 	var machine := _make_machine(d)
 	machine._board = _rigged_board(&"cleave", SlotIcon.BASE_WEAPON)
+	var saved_charges: Dictionary = GameState.special_charges.duplicate()
+	GameState.special_charges[&"warrior"] = 0
 
 	var before := enemy.current_hp
-	await machine._resolve_board(&"")
+	await machine._resolve_board([])
 	_t.check(enemy.current_hp < before,
-		"the real swing landed despite the CLEAVE icon resolving first (got hp %d, was %d)"
+		"the real swing landed despite the charge coin resolving first (got hp %d, was %d)"
 			% [enemy.current_hp, before])
-	_t.check(not machine._pending_cleave,
-		"CLEAVE's own buff still armed-and-consumed normally (unaffected by the gesture fix)")
+	# The rigged strike has no owner, so it charges nobody; the coin is the lot.
+	_t.check(GameState.special_charge(&"warrior") == Tuning.SLOT_CHARGE_ICON_CHARGE,
+		"the coin charged its owner SLOT_CHARGE_ICON_CHARGE (got %d)"
+			% GameState.special_charge(&"warrior"))
+	GameState.special_charges = saved_charges
 
-## Same collision, BLEED's side: BLEED shares the warrior's executes list too.
+## [slot vocabulary] Bleed is a weapon stat, not an icon: a warrior whose sword
+## carries `bleed` opens a bleed off his swings at Tuning.BLEED_PROC_CHANCE, and
+## a sword without it never does.
 func _case_bleed_plus_damage() -> void:
-	print("--- board: BLEED + DAMAGE, solo warrior ---")
+	print("--- bleed as a weapon stat, solo warrior ---")
 	var d := FakeDirector.new()
 	add_child(d)
 	add_child(d.world)
@@ -198,14 +206,21 @@ func _case_bleed_plus_damage() -> void:
 	d.heroes = [warrior]
 	d.enemies = [enemy]
 	var machine := _make_machine(d)
-	machine._board = _rigged_board(&"bleed", SlotIcon.BASE_WEAPON)
 
-	var before := enemy.current_hp
-	await machine._resolve_board(&"")
-	_t.check(enemy.current_hp < before,
-		"the real swing landed despite the BLEED icon resolving first (got hp %d, was %d)"
-			% [enemy.current_hp, before])
-	_t.check(enemy.is_bleeding(), "BLEED's own effect still applied (unaffected by the gesture fix)")
+	var saved_inventory: Array[Item] = GameState.inventory.duplicate()
+	var sword := Itemizer.generate_typed_item(&"sword", Item.Rarity.COMMON, 1)
+	sword.equipped_by = &"warrior"
+	GameState.inventory = [sword]
+	for _i: int in range(30):
+		machine._swing_for(warrior, 5, enemy)
+	_t.check(not enemy.is_bleeding(), "a sword with no bleed modifier never opens a bleed")
+
+	sword.modifiers = [{ "id": &"bleed", "roll": 6 }]
+	# 30 swings at BLEED_PROC_CHANCE: missing every one is ~0.65^30, never.
+	for _i: int in range(30):
+		machine._swing_for(warrior, 5, enemy)
+	_t.check(enemy.is_bleeding(), "a bleed sword opens a bleed off its swings")
+	GameState.inventory = saved_inventory
 
 ## [owner swings] A board whose damage is owned entirely by the ranger and the
 ## mage. Before the split every DAMAGE icon fed one warrior swing, so those two
@@ -236,7 +251,7 @@ func _case_owned_icons_swing_their_own_hero() -> void:
 	machine._board = board
 
 	var before := enemy.current_hp
-	await machine._resolve_board(&"")
+	await machine._resolve_board([])
 	_t.check(ranger.state == Combatant.State.ATTACKING, "the ranger plays her own swing")
 	_t.check(mage.state == Combatant.State.ATTACKING, "the mage plays his own swing")
 	_t.check(warrior.state != Combatant.State.ATTACKING,
@@ -294,7 +309,7 @@ func _case_absent_owner_still_lands() -> void:
 	machine._board = board
 
 	var before := enemy.current_hp
-	await machine._resolve_board(&"")
+	await machine._resolve_board([])
 	_t.check(enemy.current_hp < before,
 		"a ranger-owned icon with no ranger on the field still lands, via the warrior (got hp %d, was %d)"
 			% [enemy.current_hp, before])
@@ -305,6 +320,6 @@ func _rigged_board(first_id: StringName, damage_id: StringName) -> Array:
 	var board: Array = []
 	for i: int in range(9):
 		board.append(SlotIcon.blank())
-	board[0] = {"id": first_id, "roll": 6, "enhanced": false}
+	board[0] = {"id": first_id, "roll": 6, "enhanced": false, "owner": &"warrior"}
 	board[8] = {"id": damage_id, "roll": 12, "enhanced": false}
 	return board
