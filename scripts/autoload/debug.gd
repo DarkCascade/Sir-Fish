@@ -173,9 +173,13 @@ func _cmd_kill(args: Array) -> void:
 
 ## Forces the next spin's 3x3 board. Each arg is an icon id, filled row-major:
 ##   slot <id0> [id1] ... [id8]
-## Ids: elem_fire elem_ice elem_light bleed bomb_arrow lightning_blast
-##      armor_block crit cleave rain thunderburst
+## Ids: elem_fire elem_ice elem_light bomb_arrow lightning_blast
+##      armor_block cleave rain thunderburst base_weapon base_armor base_trinket
 ##      innate_dmg   (blank / - / _ for an empty cell)
+## [slot vocabulary] Suffix `@<hero>` to give an icon an owner - a strike then
+## draws as that hero's weapon and a charge coin carries their profile, e.g.
+## `slot base_weapon@ranger cleave@warrior elem_fire@warrior`. Without one the
+## icon is unowned: a generic sword, a blank coin.
 ## Missing cells are blanks. `slot clear` drops the override.
 func _cmd_slot(args: Array) -> void:
 	if args.is_empty():
@@ -195,6 +199,16 @@ func _cmd_slot(args: Array) -> void:
 		func(ic: Dictionary) -> StringName: return StringName(ic.get("id", &"")))))
 
 func _slot_icon_for(token: String) -> Dictionary:
+	var parts := token.split("@")
+	var icon := _slot_icon_for_id(parts[0])
+	if parts.size() > 1 and not SlotIcon.is_blank(icon):
+		var owner_class := StringName(parts[1])
+		icon["owner"] = owner_class
+		if SlotIcon.category_of(StringName(icon["id"])) == SlotIcon.CAT_DAMAGE:
+			icon["weapon"] = GameState.hero_weapon_type(owner_class)
+	return icon
+
+func _slot_icon_for_id(token: String) -> Dictionary:
 	var id := StringName(token)
 	match token:
 		"blank", "-", "_", "":
@@ -205,7 +219,7 @@ func _slot_icon_for(token: String) -> Dictionary:
 			# which needs a hero class this token does not carry.
 			return { "id": SlotIcon.INNATE_DAMAGE, "roll": 6,
 				"enhanced": false, "innate": true }
-	if SlotIcon.KNOWN_MODIFIER_IDS.has(id):
+	if SlotIcon.KNOWN_MODIFIER_IDS.has(id) or SlotIcon.is_base(id):
 		# A mid roll for a forced icon - enough to see it land.
 		return { "id": id, "roll": 6, "enhanced": false }
 	_log("slot -> unknown icon id '%s', using blank" % token)

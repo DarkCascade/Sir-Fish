@@ -17,7 +17,20 @@ var _t := TestSupport.new()
 func _ready() -> void:
 	_check_all_stats()
 	_check_quests()
+	_check_charge_modifiers()
 	_t.finish(get_tree(), "test_content_registry")
+
+## [slot vocabulary] The four special-charge modifiers carry a literal roll in
+## Itemizer.MODIFIERS (a const cannot read Tuning there), so pin it to the one
+## the slot actually charges by - or a card would print a charge the coin does
+## not give.
+func _check_charge_modifiers() -> void:
+	for def: Dictionary in Itemizer.MODIFIERS:
+		if SlotIcon.kind_of(StringName(def["id"])) != SlotIcon.Kind.CHARGE:
+			continue
+		_t.check(int(def["roll"][0]) == Tuning.SLOT_CHARGE_ICON_CHARGE
+			and int(def["roll"][1]) == Tuning.SLOT_CHARGE_ICON_CHARGE,
+			"%s: its roll is Tuning.SLOT_CHARGE_ICON_CHARGE" % def["id"])
 
 # --- CombatantStats (checks 1-7) --------------------------------------------
 
@@ -98,8 +111,10 @@ func _check_stats(stats: CombatantStats) -> void:
 		if _t.check(stats.class_def != null, "%s: class_def is set" % id):
 			_t.check(SlotIcon.kind_of(stats.class_def.innate_icon) != SlotIcon.Kind.BLANK,
 				"%s: class_def.innate_icon resolves to a real icon kind" % id)
-			_t.check(not stats.class_def.executes.is_empty(),
-				"%s: class_def.executes owns at least one icon kind" % id)
+			# [slot vocabulary] No "executes at least one kind" check any more:
+			# only DAMAGE and BLOCK route through an executor, both the
+			# warrior's, and a charge coin goes straight to its owner - so the
+			# ranger's and mage's lists are legitimately empty.
 
 	c.queue_free()
 

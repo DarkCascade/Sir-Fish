@@ -306,8 +306,14 @@ func _reel_chip(ic: Dictionary) -> Control:
 	# the tile's size govern.
 	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var glyph := SlotIcon.board_glyph_texture(id)
-	if glyph != null:
+	# [slot vocabulary] The same vocabulary the board draws: a strike as its
+	# owner's weapon, a charge as its owner's profile (the tile stands in for
+	# the board's gold coin here).
+	var glyph := SlotIcon.board_glyph_texture_for(ic)
+	var portrait := SlotIcon.charge_portrait_path(ic)
+	if SlotIcon.kind_of(id) == SlotIcon.Kind.CHARGE and portrait != "":
+		icon.texture = load(portrait) as Texture2D
+	elif glyph != null:
 		# Board glyphs carry their own colour - never element-tinted.
 		icon.texture = glyph
 	else:

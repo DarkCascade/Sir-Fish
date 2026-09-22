@@ -288,10 +288,6 @@ func _resolve_spin(hero: Dictionary, enemies: Array, now: float) -> void:
 				var target = _random_living(enemies)
 				if target != null:
 					target["hp"] -= _rolled(roll, mult)
-			SlotIcon.Kind.BOMB_ARROW, SlotIcon.Kind.THUNDERBURST:
-				for e: Dictionary in enemies:
-					if e["hp"] > 0:
-						e["hp"] -= _rolled(roll, mult)
 			SlotIcon.Kind.BLOCK:
 				block += maxi(1, roll)
 	# [armor items] a spin's BLOCK icons grant temporary flat armor for

@@ -103,7 +103,11 @@ static func from_dict(data: Dictionary) -> Item:
 		# dead stat - the item simply has one modifier fewer than its rarity implies.
 		if Itemizer.RETIRED_MODIFIER_IDS.has(StringName(m.get("id", &""))):
 			continue
-		mods.append((m as Dictionary).duplicate(true))
+		var mod := (m as Dictionary).duplicate(true)
+		# [slot vocabulary] crit and the charge ids changed meaning - re-render
+		# a pre-change roll and label rather than print a stale number.
+		Itemizer.refresh_saved_modifier(mod)
+		mods.append(mod)
 	item.modifiers = mods
 	item.value = int(data.get("value", 0))
 	item.equipped_by = StringName(data.get("equipped_by", &""))

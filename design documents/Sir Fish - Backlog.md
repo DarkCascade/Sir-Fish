@@ -691,6 +691,69 @@ the ids closes the question of *which* ids exist, not yet of what they do.
   what it scales off, and which class executes and animates it. See the gaps table for
   what is still short of four after these ids.
 
+**3.9 Slot vocabulary: decided and built 2026-09-21** ([#114](https://github.com/DarkCascade/Sir-Fish/issues/114)).
+
+*Why.* With four modifiers per type, a geared party of three put ~29 distinct icons in the
+bag and showed 7.8 distinct icons out of 8.3 on each board. Nearly every icon on the board
+was unique, so it read as a receipt rather than a pattern. The set size was not the cause:
+any set of three or more gives each item its own ids. The fix is to separate *item*
+variety (cards) from *board* vocabulary.
+
+*The six board categories* (`SlotIcon.category_of`):
+
+| Category | Drawn as | Number on the tile | Ids |
+|---|---|---|---|
+| Strike | the owner's weapon (sword, axe, bow, dagger, staff) | damage it adds | `innate_dmg`, `base_weapon`, `base_trinket` |
+| Fire / Ice / Lightning | its element glyph | damage it adds | `elem_fire`, `elem_ice`, `elem_light`, `lightning_blast` |
+| Block | the shield | flat reduction | `base_armor`, `armor_block` |
+| Special charge | a solid gold coin with the owner's side-on profile | none | `bomb_arrow`, `cleave`, `rain`, `thunderburst` |
+
+*What changed mechanically.*
+- **Charge coins only charge.** Bomb arrow and thunderburst no longer hit every enemy on the
+  board, and cleave and rain no longer arm a next-swing buff. A coin fills its owner's meter
+  by `Tuning.SLOT_CHARGE_ICON_CHARGE` (3 of 10; every other icon adds 1), and the invokable
+  special is the payoff. The trinket frequency damper (`TRINKET_ICON_INCLUDE_CHANCE`) went
+  with the effects it offset.
+- **Bleed is a weapon stat**: each swing of a `bleed` weapon opens the DoT with
+  `BLEED_PROC_CHANCE` (35%), at the modifier's Power-scaled roll.
+- **Crit is a wearer stat**: each `crit` modifier adds 4-10% chance for *all* the wearer's
+  attacks to deal double (`Combatant.take_damage`), capped at `CRIT_CHANCE_CAP` (50%).
+- **Saved items are refreshed on load** (`Itemizer.refresh_saved_modifier`): an old crit or
+  charge modifier's Power-scaled roll is clamped into its new range and relabelled.
+- **The payline matches on category** along every line in `Tuning.SLOT_PAYLINES`; every cell
+  on a winning line resolves twice. `Kind` shrank to BLANK / DAMAGE / BLOCK / CHARGE and was
+  renumbered; the three `ClassDef.executes` arrays were re-pointed (ranger and mage now own
+  no executor kind: a coin goes straight to its owner).
+
+*Jackpots, still open* ([#115](https://github.com/DarkCascade/Sir-Fish/issues/115)). The
+target is 1-2 per battle, and a battle is only ~5 spins. Measured with category matching
+(`test_level_curves`, `_case_jackpots_per_battle`):
+
+| Party | Centre row | 3 rows | Rows + diagonals | All 8 lines (shipped) |
+|---|---|---|---|---|
+| L1 solo warrior | 0.00 | 0.00 | 0.00 | 0.00 |
+| L5 solo warrior | 0.01 | 0.03 | 0.06 | 0.11 |
+| L5 warrior + ranger | 0.06 | 0.16 | 0.30 | 0.47 |
+| L10 geared trio | 0.15 | 0.45 | 0.69 | 1.03 |
+| L30 geared trio | 0.16 | 0.42 | 0.72 | 1.13 |
+
+All eight lines ships, holding the geared party at ~1 per battle (asserted, 0.6-2.0). No line
+rule reaches the early game: a level-1 solo board is two thirds blank and holds two strikes,
+so three of a category cannot land. Merging elements into strikes for matching, a scatter
+rule, and a density-independent nudge or pity meter are the options #115 lays out.
+
+*Art.* The weapon glyphs are placeholders keyed out of the item-card icons
+(`tools/slot_art/weapon_glyphs.py`); the staff is the weakest. They fall under the approved
+slot-glyph Meshy exception, pending a credit confirmation. The portraits are Workbench
+renders of the shipped hero glbs (`tools/slot_art/render_portraits.py`, then
+`finish_portraits.py`), so they follow any model change for free.
+
+*What it means for 3.7.* Every new modifier id now has to land in one of the six
+categories, which answers most of "what does it do" by construction: a new weapon id is a
+strike or an element, a new shield id is block, and a new trinket id is a charge. What
+stays open is only whether an id differs from its category-mates by anything beyond its
+number and its card.
+
 ---
 
 ## 4. P4 — Prompt → Meshy → Blender → glb character skill
@@ -1471,6 +1534,8 @@ The review found these, which any revived version has to answer:
 | 3.5 | Off-hand weapons and `Throwable` | **Decided 2026-09-20: defer** | Ignored until a few equipment meshes are done |
 | 3.8 | Does the item-modifier rework replace decision 3.1? | Open | Proposed and reviewed 2026-09-20, not decided - §7 records the proposal and the eight findings against it |
 | 3.6 | Axe and bow | Recommended | Meshes are in Adventurers 2.0 (downloaded); keep `axe` and a true `bow`, and add crossbows as further ranger types |
+| 3.9 | Slot board vocabulary | **Decided, built 2026-09-21** | Six categories (strike as owner's weapon, fire, ice, lightning, block, charge coin with the owner's profile); charge coins only charge; bleed and crit are stats; payline matches category ([#114](https://github.com/DarkCascade/Sir-Fish/issues/114)) |
+| 3.10 | Jackpot rule for the early game | Open | All eight lines ships (~1/battle geared, ~0 early solo); options in [#115](https://github.com/DarkCascade/Sir-Fish/issues/115) |
 | 3.7 | New modifier ids | **Partly decided 2026-09-20** | Weapon ids named (`bow_shoot`, `dagger_stab`, `dagger_throw`, `staff_bolt`, `wand_bolt`, `wand_lightning`). Shield ids pending. What each id does is undecided |
 | 4.1 | Standard skeleton | **Decided** | `Rig_Medium`; S1 confirmed the shipped `Rig` is identical |
 | 4.2 | Clip source | **Decided** | KayKit Character Animations: 132 `Rig_Medium` clips, CC0, verified |

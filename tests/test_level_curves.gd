@@ -93,6 +93,7 @@ func _ready() -> void:
 	# seeded RNG, so putting them last leaves each solo figure exactly as it was.
 	_case_recruit_ease()
 	_case_full_party_bands()
+	_case_jackpots_per_battle()
 	_t.finish(get_tree(), "test_level_curves")
 
 # --- gear model (spec §5.1's table, made concrete) --------------------------
@@ -329,7 +330,7 @@ func _case_underlevelled_party_loses() -> void:
 ## so this table's "total magnitude" means one thing (BLOCK isn't rollable on a
 ## weapon anyway).
 const _DAMAGE_MOD_IDS: Array[StringName] = [
-	&"elem_fire", &"elem_ice", &"elem_light", &"bleed",
+	&"elem_fire", &"elem_ice", &"elem_light",
 ]
 
 ## An item rolling only from _DAMAGE_MOD_IDS, so its board contribution is a
@@ -487,34 +488,19 @@ func _geared_entry(hero_class: StringName, level: int) -> Dictionary:
 	return { "class": hero_class, "level": level, "items": items }
 
 ## Mean per-spin output of `bag` against a group of `group` enemies.
-func _spin_stats(bag: Array, group: int, samples: int = 8000) -> Dictionary:
+## [slot vocabulary] Only strikes and elements deal damage now: a charge coin
+## fills a meter and the old on-board AoE / cleave / rain effects are gone, so
+## `group` damage is single-target damage (the specials those coins fund are
+## player-invoked and not modelled here, same as before).
+func _spin_stats(bag: Array, _group: int, samples: int = 8000) -> Dictionary:
 	var single := 0.0
-	var group_total := 0.0
 	for _i: int in range(samples):
-		var swing := 0.0
-		var aoe := 0.0
-		var rain := false
-		var cleave := false
 		for ic: Dictionary in SlotMachineScript.draw_nine(bag):
-			var kind: int = SlotIcon.kind_of(StringName(ic.get("id", &"")))
-			var hit := float(ic.get("roll", 0)) + float(Tuning.SLOT_ATTACK_ICON_FLOOR)
-			match kind:
-				SlotIcon.Kind.DAMAGE:
-					swing += hit
-				SlotIcon.Kind.BOMB_ARROW, SlotIcon.Kind.THUNDERBURST:
-					aoe += hit
-				SlotIcon.Kind.RAIN:
-					rain = true
-				SlotIcon.Kind.CLEAVE:
-					cleave = true
-		var extra_targets := 0
-		if swing > 0.0:
-			extra_targets = (group - 1) if rain else (mini(2, group - 1) if cleave else 0)
-		single += swing + aoe
-		group_total += swing * float(1 + extra_targets) + aoe * float(group)
+			if SlotIcon.kind_of(StringName(ic.get("id", &""))) == SlotIcon.Kind.DAMAGE:
+				single += float(ic.get("roll", 0)) + float(Tuning.SLOT_ATTACK_ICON_FLOOR)
 	return {
 		"single": single / float(samples),
-		"group": group_total / float(samples),
+		"group": single / float(samples),
 	}
 
 ## The six figures the party cases read, for `party` against regular enemies of
@@ -623,3 +609,67 @@ func _case_full_party_bands() -> void:
 		_t.check(trio["ttd"] > solo["ttd"],
 			"L%d: a full geared party outlasts the solo warrior (%.1fs vs %.1fs)"
 				% [level, trio["ttd"], solo["ttd"]])
+
+# --- [slot vocabulary] jackpots per battle -------------------------------------
+
+## Candidate payline sets, for the printed comparison. Row-major board indices.
+const _LINE_SETS := {
+	"centre row": [[3, 4, 5]],
+	"3 rows": [[0, 1, 2], [3, 4, 5], [6, 7, 8]],
+	"3 rows + 2 diagonals": [[0, 1, 2], [3, 4, 5], [6, 7, 8], [0, 4, 8], [6, 4, 2]],
+	"all 8 lines": [[0, 1, 2], [3, 4, 5], [6, 7, 8], [0, 3, 6], [1, 4, 7], [2, 5, 8], [0, 4, 8], [6, 4, 2]],
+}
+
+## One party's bag exactly as _party_metrics builds it (innate + gear + the
+## full blank pad), for the jackpot odds.
+func _party_bag(party: Array) -> Array:
+	var bag: Array = []
+	for h: Dictionary in party:
+		bag.append_array(_hero_icons(h["class"], h["items"]))
+	for _i: int in range(Tuning.SLOT_BLANK_PAD_START):
+		bag.append(SlotIcon.blank())
+	return bag
+
+## The chance one spin of `bag` lands at least one winning line of `lines`.
+func _jackpot_rate(bag: Array, lines: Array, samples: int = 20000) -> float:
+	var hits := 0
+	for _i: int in range(samples):
+		if not SlotMachineScript.winning_lines(SlotMachineScript.draw_nine(bag), lines).is_empty():
+			hits += 1
+	return float(hits) / float(samples)
+
+## Spins to clear one encounter (ENEMY_GROUP_SIZE regular enemies at `level`):
+## the group's hp over the party's mean single-target damage per spin.
+func _spins_per_battle(bag: Array, level: int) -> float:
+	var e := GameState.get_stats(ENEMY_ID)
+	var per_spin: float = float(_spin_stats(bag, ENEMY_GROUP_SIZE)["single"])
+	return float(e.hp_at(level)) * float(ENEMY_GROUP_SIZE) / maxf(per_spin, 0.001)
+
+## The target is 1-2 jackpots per battle (a battle = one encounter group) with
+## the SHIPPED Tuning.SLOT_PAYLINES, across the gear curve. Prints every
+## candidate line set beside it so a retune can see the whole trade.
+func _case_jackpots_per_battle() -> void:
+	print("--- [slot vocabulary] jackpots per battle ---")
+	var rows: Array = [
+		["L1 solo warrior", [_warrior_entry(1)], 1],
+		["L5 solo warrior", [_warrior_entry(5)], 5],
+		["L5 warrior + ranger", [_warrior_entry(5), _relic_entry(&"ranger", 5)], 5],
+		["L10 geared trio", [_warrior_entry(10), _geared_entry(&"ranger", 10), _geared_entry(&"mage", 10)], 10],
+		["L20 geared trio", [_warrior_entry(20), _geared_entry(&"ranger", 20), _geared_entry(&"mage", 20)], 20],
+		["L30 geared trio", [_warrior_entry(30), _geared_entry(&"ranger", 30), _geared_entry(&"mage", 30)], 30],
+	]
+	for row: Array in rows:
+		var bag := _party_bag(row[1])
+		var spins := _spins_per_battle(bag, int(row[2]))
+		var shipped := _jackpot_rate(bag, Tuning.SLOT_PAYLINES) * spins
+		var line := "  %-22s bag %2d, %4.1f spins/battle, SHIPPED %.2f/battle |" 			% [row[0], bag.size(), spins, shipped]
+		for label: String in _LINE_SETS:
+			var rate := _jackpot_rate(bag, _LINE_SETS[label], 6000)
+			line += " %s %.2f |" % [label, rate * spins]
+		print(line)
+		# Only the geared party is held to a band. The early solo board is two
+		# thirds blank, and no line rule can make three of a category land on
+		# it - that gap is recorded, not asserted (backlog doc §3.9).
+		if String(row[0]).ends_with("trio"):
+			_t.check_between(shipped, 0.6, 2.0,
+				"%s: roughly one jackpot per battle with the shipped paylines" % row[0])

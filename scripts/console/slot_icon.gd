@@ -30,34 +30,46 @@ const BASE_WEAPON := &"base_weapon"
 const BASE_ARMOR := &"base_armor"
 const BASE_TRINKET := &"base_trinket"
 
-## [icons phase 2] The full rollable-modifier vocabulary. Warrior weapons roll
-## the three elements plus bleed; ranger weapons roll bomb_arrow; mage weapons
-## roll lightning_blast; armor rolls block; trinkets roll crit plus one
-## class-exclusive ultimate. See Itemizer.MODIFIERS for the pool/class filter.
+## [icons phase 2] The modifier ids that put an icon on the board. Warrior
+## weapons roll the three elements; ranger weapons roll bomb_arrow; mage
+## weapons roll lightning_blast; armor rolls block; each trinket rolls its
+## class's special charge. See Itemizer.MODIFIERS for the pool/class filter.
+##
+## [slot vocabulary] bleed and crit are item modifiers but NOT board icons any
+## more - they are wearer stats (STAT_MODIFIER_IDS below), so from_modifier()
+## drops them and they never reach the bag.
 const KNOWN_MODIFIER_IDS: Array[StringName] = [
-	&"elem_fire", &"elem_ice", &"elem_light", &"bleed",
+	&"elem_fire", &"elem_ice", &"elem_light",
 	&"bomb_arrow", &"lightning_blast",
 	&"armor_block",
-	&"crit", &"cleave", &"rain", &"thunderburst",
+	&"cleave", &"rain", &"thunderburst",
 ]
 
-## [backlog P7] HEAL is gone: the slot no longer heals, the mage's invokable
-## Healing Aura is the party's healing (BattleDirector.invoke_hero_special). The
-## enum was RENUMBERED when it went - the ints below are raw in every ClassDef.tres
-## `executes` array, and all three were re-pointed with it.
-##
-## [icons phase 2] BLOCK: an armor icon that grants the party a temporary flat
-## damage reduction when it resolves (SlotMachine._grant_block). BLEED applies
-## a damage-over-time debuff to one enemy rather than dealing damage itself.
-## CLEAVE / RAIN set a pending "next attack" buff rather than resolving
-## anything immediately (SlotMachine._pending_cleave / _pending_rain).
-## BOMB_ARROW / THUNDERBURST are both hit-all-enemies AoEs, kept as separate
-## Kinds (rather than one shared DAMAGE_ALL, which no icon uses any more) purely
-## so each has its own single-class executor - see class_def.gd's `executes`.
-## These are raw ints in every ClassDef.tres's `executes` array (Godot can't
-## serialise a typed array of a nested enum) - re-point every .tres if this
-## ordering ever changes.
-enum Kind { BLANK, DAMAGE, BLOCK, BLEED, CLEAVE, RAIN, BOMB_ARROW, THUNDERBURST }
+## [slot vocabulary] Modifiers that change the wearer rather than the board:
+## `bleed` is a chance for the wearer's swings to open a bleed
+## (GameState.hero_bleed), `crit` a percent chance for all of the wearer's
+## attacks to deal double (GameState.hero_crit_chance).
+const STAT_MODIFIER_IDS: Array[StringName] = [&"bleed", &"crit"]
+
+## [slot vocabulary] The board speaks six categories, and only six: a weapon
+## strike (drawn as the owner's weapon), the three elements, block, and a
+## special charge (drawn as the owner's profile on a gold coin). Every icon id
+## maps onto one of them, and the payline matches on the CATEGORY, not the id -
+## a sword strike, a bow strike and a staff strike are three of a kind.
+const CAT_DAMAGE := &"damage"
+const CAT_FIRE := &"fire"
+const CAT_ICE := &"ice"
+const CAT_LIGHTNING := &"lightning"
+const CAT_BLOCK := &"block"
+const CAT_CHARGE := &"charge"
+
+## [slot vocabulary] Four kinds now, from eight. BLEED is a wearer stat, and
+## CLEAVE / RAIN / BOMB_ARROW / THUNDERBURST all became CHARGE: landing one only
+## fills its owner's special meter (Tuning.SLOT_CHARGE_ICON_CHARGE), and the
+## special itself is the payoff. The enum was RENUMBERED again - these are raw
+## ints in every ClassDef.tres `executes` array (Godot can't serialise a typed
+## array of a nested enum), and all three were re-pointed with it.
+enum Kind { BLANK, DAMAGE, BLOCK, CHARGE }
 
 ## The reliquary chip art, one PNG per modifier id (already on disk, drawn by the
 ## compare flyout's stat chips). The two innate ids borrow the closest chip.
@@ -65,19 +77,11 @@ const _CHIP_DIR := "res://assets/ui/reliquary/"
 
 static func kind_of(id: StringName) -> Kind:
 	match id:
-		&"elem_fire", &"elem_ice", &"elem_light", &"lightning_blast", &"crit", \
+		&"elem_fire", &"elem_ice", &"elem_light", &"lightning_blast", \
 		INNATE_DAMAGE, BASE_WEAPON, BASE_TRINKET:
 			return Kind.DAMAGE
-		&"bleed":
-			return Kind.BLEED
-		&"cleave":
-			return Kind.CLEAVE
-		&"rain":
-			return Kind.RAIN
-		&"bomb_arrow":
-			return Kind.BOMB_ARROW
-		&"thunderburst":
-			return Kind.THUNDERBURST
+		&"cleave", &"rain", &"bomb_arrow", &"thunderburst":
+			return Kind.CHARGE
 		BASE_ARMOR, &"armor_block":
 			return Kind.BLOCK
 		_:
@@ -85,14 +89,32 @@ static func kind_of(id: StringName) -> Kind:
 
 ## "" for a non-elemental icon, else "fire" / "ice" / "light" — the key
 ## GameState.element_color() and the battle overlay already speak.
-## `lightning_blast` and `thunderburst` tint as lightning too - both are
-## lightning-flavoured, stronger variants of elem_light.
+## `lightning_blast` tints as lightning too - a lightning-flavoured, stronger
+## variant of elem_light.
 static func element_of(id: StringName) -> StringName:
 	match id:
 		&"elem_fire": return &"fire"
 		&"elem_ice": return &"ice"
-		&"elem_light", &"lightning_blast", &"thunderburst": return &"light"
+		&"elem_light", &"lightning_blast": return &"light"
 	return &""
+
+## [slot vocabulary] Which of the six board categories `id` shows as, or "" for
+## a blank. What the payline matches on.
+static func category_of(id: StringName) -> StringName:
+	match element_of(id):
+		&"fire": return CAT_FIRE
+		&"ice": return CAT_ICE
+		&"light": return CAT_LIGHTNING
+	match kind_of(id):
+		Kind.DAMAGE: return CAT_DAMAGE
+		Kind.BLOCK: return CAT_BLOCK
+		Kind.CHARGE: return CAT_CHARGE
+	return &""
+
+## [slot vocabulary] The weapon-glyph key for an item type: the authored relic
+## bow draws as a bow.
+static func weapon_glyph_key(weapon_type: StringName) -> StringName:
+	return &"bow" if weapon_type == &"warbow" else weapon_type
 
 static func is_innate(id: StringName) -> bool:
 	return id == INNATE_DAMAGE
@@ -121,7 +143,8 @@ static func _base_icon_roll(item: Item, kind: Kind) -> int:
 ## whole fix for a Common contributing nothing.
 static func from_item_base(item: Item) -> Dictionary:
 	var id := base_for(item.slot())
-	return { "id": id, "roll": _base_icon_roll(item, kind_of(id)), "enhanced": false }
+	return _with_weapon({ "id": id, "roll": _base_icon_roll(item, kind_of(id)), "enhanced": false },
+		item.equipped_by)
 
 ## An icon dict from an equipped modifier entry (see Itemizer.MODIFIERS).
 ## Returns an empty dict for an id with no board icon — callers skip those.
@@ -129,17 +152,26 @@ static func from_item_base(item: Item) -> Dictionary:
 ## [item power model] The modifier's `roll` is already the final resolved
 ## magnitude - Itemizer._roll_icon_magnitude() baked it at generation / forge
 ## time (125-175% of the item's Power for a DAMAGE / DAMAGE_ALL icon, its own
-## magnitude for a BLOCK / BLEED icon). `_item` is no longer read; the signature stays
-## two-arg for the call sites and for the day a per-icon recompute returns.
-static func from_modifier(mod: Dictionary, _item: Item = null) -> Dictionary:
+## magnitude for a BLOCK icon). `item` is read only for who wears it, which
+## decides the weapon a strike draws as ([slot vocabulary] _with_weapon).
+## A stat modifier (bleed, crit) returns an empty dict too: it is not a board icon.
+static func from_modifier(mod: Dictionary, item: Item = null) -> Dictionary:
 	var id := StringName(mod.get("id", &""))
 	if not KNOWN_MODIFIER_IDS.has(id):
 		return {}
-	return {
+	return _with_weapon({
 		"id": id,
 		"roll": int(mod.get("roll", 0)),
 		"enhanced": bool(mod.get("enhanced", false)),
-	}
+	}, item.equipped_by if item != null else &"")
+
+## [slot vocabulary] Stamps `weapon` - the wearer's equipped weapon type - onto
+## a plain strike, so the board can draw it as that weapon. Elements, block and
+## charge draw the same whoever owns them and are left alone.
+static func _with_weapon(icon: Dictionary, wearer: StringName) -> Dictionary:
+	if wearer != &"" and category_of(StringName(icon.get("id", &""))) == CAT_DAMAGE:
+		icon["weapon"] = GameState.hero_weapon_type(wearer)
+	return icon
 
 ## An innate icon dict for a hero class: one per living hero, the floor that
 ## keeps the bag from ever being empty of icons. [content phase 1] The icon id
@@ -160,7 +192,8 @@ static func from_modifier(mod: Dictionary, _item: Item = null) -> Dictionary:
 static func innate(hero_class: StringName, weapon_power: int = 0) -> Dictionary:
 	var cdef := GameState.get_class_def(hero_class)
 	var id: StringName = cdef.innate_icon if cdef != null and cdef.innate_icon != &"" else INNATE_DAMAGE
-	return { "id": id, "roll": weapon_power, "enhanced": false, "innate": true, "owner": hero_class }
+	return _with_weapon({ "id": id, "roll": weapon_power, "enhanced": false, "innate": true,
+		"owner": hero_class }, hero_class)
 
 static func blank() -> Dictionary:
 	return { "id": BLANK, "roll": 0, "enhanced": false }
@@ -220,6 +253,69 @@ static func board_glyph_texture(id: StringName) -> Texture2D:
 	if path == "" or not ResourceLoader.exists(path):
 		return null
 	return load(path) as Texture2D
+
+## [slot vocabulary] The glyph a DEALT icon draws, which depends on more than
+## its id: a strike draws its owner's weapon (`weapon`, stamped by
+## SlotMachine._stamp_board_fields), an element its element, block the shield.
+## A charge icon has no glyph - SlotSymbol draws it as a gold coin carrying
+## charge_portrait_path() - so this returns "" for it. A strike whose owner
+## holds no weapon (or whose weapon has no glyph yet) falls back to the generic
+## gold sword.
+static func board_glyph_path_for(icon: Dictionary) -> String:
+	var id := StringName(icon.get("id", &""))
+	match category_of(id):
+		CAT_DAMAGE:
+			var weapon := weapon_glyph_key(StringName(icon.get("weapon", &"")))
+			var path := "%sglyph_weapon_%s.png" % [_GLYPH_DIR, weapon]
+			if weapon != &"" and ResourceLoader.exists(path):
+				return path
+			return "%sglyph_dmg_flat.png" % _GLYPH_DIR
+		CAT_FIRE: return "%sglyph_elem_fire.png" % _GLYPH_DIR
+		CAT_ICE: return "%sglyph_elem_ice.png" % _GLYPH_DIR
+		CAT_LIGHTNING: return "%sglyph_elem_light.png" % _GLYPH_DIR
+		CAT_BLOCK: return "%sglyph_armor_block.png" % _GLYPH_DIR
+	return ""
+
+static func board_glyph_texture_for(icon: Dictionary) -> Texture2D:
+	var path := board_glyph_path_for(icon)
+	if path == "" or not ResourceLoader.exists(path):
+		return null
+	return load(path) as Texture2D
+
+## [slot vocabulary] The owner's side-on profile a charge coin carries, or "" if
+## the icon has no owner (a rigged test board) or the portrait is not on disk.
+static func charge_portrait_path(icon: Dictionary) -> String:
+	var owner_class := StringName(icon.get("owner", &""))
+	if owner_class == &"":
+		return ""
+	var path := "%sportrait_%s.png" % [_GLYPH_DIR, owner_class]
+	return path if ResourceLoader.exists(path) else ""
+
+## [slot vocabulary] The number printed on a dealt icon's tile: what it will
+## actually add when it resolves. A strike or an element shows its share of
+## the swing (roll, Overcharge, plus the per-icon floor - the same sum
+## SlotMachine._resolve_board banks), block its flat reduction. A charge icon
+## prints nothing (-1): its owner's portrait already says what it does.
+static func board_value(icon: Dictionary, mult: float = 1.0) -> int:
+	var id := StringName(icon.get("id", &""))
+	var roll := int(icon.get("roll", 0))
+	match kind_of(id):
+		Kind.DAMAGE:
+			return maxi(1, int(round(float(roll) * mult))) + Tuning.SLOT_ATTACK_ICON_FLOOR
+		Kind.BLOCK:
+			return maxi(1, roll)
+	return -1
+
+## [slot vocabulary] The jackpot banner's word for a category.
+static func category_label(category: StringName) -> String:
+	match category:
+		CAT_DAMAGE: return "Strike"
+		CAT_FIRE: return "Fire"
+		CAT_ICE: return "Ice"
+		CAT_LIGHTNING: return "Lightning"
+		CAT_BLOCK: return "Block"
+		CAT_CHARGE: return "Charge"
+	return ""
 
 ## Short label for the win banner / readouts.
 static func short_label(id: StringName) -> String:
