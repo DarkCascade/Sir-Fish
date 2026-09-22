@@ -169,6 +169,22 @@ Always start by running `--help` to discover available commands. Use the CLI whe
 
 ## Project Notes
 
+### Task tracking: the GitHub board is the source of truth
+
+Task state lives on the **Sir Fish** GitHub Project (https://github.com/users/DarkCascade/projects/3),
+backed by the issues in `DarkCascade/Sir-Fish`. `design documents/Sir Fish - Backlog.md` is design
+rationale and history: it explains why something was decided, not whether it is done.
+
+- Before starting work, check the board (`gh issue list`, `gh project item-list 3 --owner DarkCascade`)
+  rather than reading the backlog doc for status. New work gets an issue, not a new doc bullet.
+- Columns: Backlog (blocked), Needs decision, Ready, In progress, In review, Done. Move the card as work
+  moves; a PR that says `Closes #N` closes the issue.
+- Epics P3-P7 are parent issues, and blocked-by links are real dependencies. Decisions carry the
+  `decision` label; anything that spends Meshy credits carries `needs-meshy` and still needs an explicit
+  credit confirmation.
+- When a decision is made or a task ships, record the *why* in the backlog doc and link the issue, so the
+  doc stays a rationale record and the board stays the status record.
+
 ### Combat: real-time vs turn-based
 
 `BattleDirector` (`scripts/battle/battle_director.gd`) supports two combat modes via the `turn_based_combat` export (default `true`), a dev-only toggle not exposed to the player in any UI:
