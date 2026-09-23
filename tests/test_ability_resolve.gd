@@ -150,14 +150,24 @@ func _case_mage_primary() -> void:
 	_t.check(d.world.projectile_root.get_child_count() == 1,
 		"mage's primary launched exactly one projectile (the magic bolt)")
 
+## [P7 7.4] Defend replaced by Cleave. CleaveAbility.resolve() stages each
+## target Tuning.AOE_STAGGER apart and is never awaited by its call site
+## (Ability.resolve() fires it and moves on, same as every other ability), so
+## only the FIRST target - the one resolved before that stagger's await
+## suspends it - is checked here. The hit-every-enemy behaviour itself belongs
+## to test_specials.gd's _check_cleave_special(), which can actually wait out
+## the stagger.
 func _case_warrior_special() -> void:
-	print("--- warrior special: SelfBuffAbility (Defend) ---")
+	print("--- warrior special: CleaveAbility ---")
 	var d := FakeDirector.new()
 	add_child(d)
 	var warrior := _spawn(&"warrior", -3.0)
+	var enemy := _spawn(&"shadow_monster", 2.0)
 	warrior.director = d
+	d.enemies = [enemy]
+	var before := enemy.current_hp
 	Ability.make(warrior, true, null, d).resolve(warrior)
-	_t.check(warrior.is_defending(), "warrior's special applies Defend")
+	_t.check(enemy.current_hp < before, "warrior's special (Cleave) damaged the enemy")
 
 func _case_mage_special() -> void:
 	print("--- mage special: HealAllyAbility ---")

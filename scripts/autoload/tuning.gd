@@ -52,9 +52,20 @@ const AOE_STAGGER := 0.06                 # [v2] gap between per-target resoluti
 const DAMAGE_NUMBER_SPREAD := 46.0        # [v2] px offset per concurrent number (spec 11.4)
 
 # --- 5.3 Ability tuning -----------------------------------------------------
+## [P7 decision 7.4] Unused by any shipped content now that warrior_special.tres
+## points at CleaveAbility instead of SelfBuffAbility - left in place, along
+## with Combatant.apply_defend()/is_defending()/damage_reduction and
+## BattleVfx.defend_icon(), since damage_reduction is still read by
+## Combatant.take_damage() and a future ability may want Defend back.
 const WARRIOR_DEFEND_REDUCTION := 0.50    # incoming damage x (1 - 0.50)
 const WARRIOR_DEFEND_DURATION := 4.0
 const RANGER_BOMB_AOE_MULT := 0.75        # bomb arrow hits every enemy for weapon_power x 0.75
+## Cleave fires every 3 actions (warrior special_every_n_actions) versus the
+## ranger's bomb every 4, so its per-target share is set a little below the
+## ranger's 0.75 to land near the same AoE damage budget per action cycle
+## (0.6/3 ~= 0.75/4) rather than simply matching the ranger's number. A first
+## cut, to be tuned once the party plays with it (see issue #97).
+const WARRIOR_CLEAVE_MULT := 0.6          # cleave hits every enemy for weapon_power x 0.6
 const MAGE_HEAL_MULT := 1.0               # heal = mage current damage x 1.0
 ## [overworld prototype] Off. Spec 9.3's darkening pass existed to sell a bolt
 ## called down out of the sky - the sky dims, then the bolt lands. The mage's

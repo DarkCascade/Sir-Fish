@@ -28,7 +28,7 @@ extends EditorScenePostImport
 ## A .glb whose stem is absent here is passed through untouched, so attaching
 ## this script to an unrelated model is a no-op rather than a wipe.
 const KEEP := {
-	"knight": ["Idle", "Running_A", "1H_Melee_Attack_Chop", "Block", "Hit_A", "Death_A"],
+	"knight": ["Idle", "Running_A", "1H_Melee_Attack_Chop", "1H_Melee_Attack_Slice_Horizontal", "Hit_A", "Death_A"],
 	"mage": ["Idle", "Running_A", "Spellcast_Shoot", "Hit_A", "Death_A"],
 	"rogue": ["Idle", "Running_A", "1H_Ranged_Shoot", "Hit_A", "Death_A"],
 	"skeleton_mage": ["Idle", "Running_A", "Spellcast_Shoot", "Hit_A", "Death_A"],
