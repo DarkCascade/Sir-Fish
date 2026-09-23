@@ -47,8 +47,15 @@ func launch(source: Combatant, target: Combatant, director, bomb: bool,
 		_damage = fixed_damage
 	else:
 		_damage = source.compute_damage()
+		# [item power model] The bomb special is invoked, so fixed_damage is
+		# always -1 here (only Ability.make_slot_strike() sets it) - and
+		# source.power() reads CombatantStats.weapon_power/magic_power, which
+		# is 0 on every hero now that equipped item Power drives damage. That
+		# silently made every bomb arrow deal 1 damage per enemy regardless of
+		# gear - the same fallback-to-1 bug CleaveAbility's own brief flagged
+		# for the warrior. GameState.hero_weapon_power() is the correct read.
 		if is_bomb:
-			_damage = maxi(1, int(round(float(source.power(Combatant.School.WEAPON))
+			_damage = maxi(1, int(round(float(GameState.hero_weapon_power(source.stats.id))
 				* source.damage_multiplier * Tuning.RANGER_BOMB_AOE_MULT)))
 	_start = source.hand_world_position()
 	# [overworld prototype] The fallback aim is down the run axis, not +X: the

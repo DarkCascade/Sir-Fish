@@ -66,7 +66,7 @@ const RANGER_BOMB_AOE_MULT := 0.75        # bomb arrow hits every enemy for weap
 ## (0.6/3 ~= 0.75/4) rather than simply matching the ranger's number. A first
 ## cut, to be tuned once the party plays with it (see issue #97).
 const WARRIOR_CLEAVE_MULT := 0.6          # cleave hits every enemy for weapon_power x 0.6
-const MAGE_HEAL_MULT := 1.0               # heal = mage current damage x 1.0
+const MAGE_HEAL_MULT := 1.0               # heal = mage's equipped weapon Power x 1.0
 ## [overworld prototype] Off. Spec 9.3's darkening pass existed to sell a bolt
 ## called down out of the sky - the sky dims, then the bolt lands. The mage's
 ## primary is an aimed MagicBolt thrown from its hand now, so there is no sky
