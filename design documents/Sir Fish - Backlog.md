@@ -441,6 +441,20 @@ found the two P1 regressions this same commit introduced (§1 "Found and fixed")
     bleed, cleave and rain, payline double-resolves and mid-run loot. Treat the easy
     quest's row as the calibration: whatever level a live player really clears easy at,
     the other rows shift by the same amount.
+- **Re-banded 2026-09-22: ranger 3-5 -> 3-3, mage 5-7 -> 5-9.** The calibration held:
+  a first `easy` clear at level 5 matches live play with the starter quests, so the sim's
+  absolute numbers are taken at face value.
+  - **Ranger 3-3** puts the boss at level 4. A solo level-3 warrior wins a first attempt
+    about 35% of the time and a level-4 one 99.8%: a real fight at the gate, not a wall.
+    `x` stays at 3, so `unlock_level`, `join_level` (3) and the level-5 board order are
+    unchanged. 2-3 scored almost the same and was passed over to keep `x` equal to the
+    gate.
+  - **Mage 5-9** puts the boss at level 10. At level 5 the party wins 52% with a
+    just-joined ranger and 91% with a geared one, and 97-100% a level later. 5-8 (84% /
+    99%) was the gentler fallback. The band now sits inside `medium`'s 6-14, but the
+    board sorts on `x`, so the order is unaffected.
+  - The prior note in this section that the mage's band was "the harder of the two" was
+    a guess; the sim showed the reverse, which is what this re-band corrects.
 
 ---
 
@@ -1482,7 +1496,7 @@ The review found these, which any revived version has to answer:
 | 1.6 | Should enemies scale with party size? | **Decided 2026-09-20: no** | Nothing scales enemies with the party, and nothing will. A full party outlasts the solo warrior about 2.3x at every late band (§1 "Balance check"); that is the intended shape |
 | 1.7 | Should the ranger's starting kit animate her? | **Decided 2026-09-20: leave it** | The warbow is not changed. A future slot-icon effort owns who animates for which icon (§1) |
 | 2.1 | Gate the mage quest at level 5? | **Decided, built 2026-09-20** | `recruit_mage.tres` has `unlock_level = 5`; the mage joins at level 5 |
-| 2.2 | Quest difficulty bands for the recruit quests | **Simulated 2026-09-22, re-band pending** | Ranger 3-5 (gate 3) is as hard as `easy.tres` with the same boss, which is too hard for the level it is offered at. Mage 5-7 (gate 5) is near-trivial (99-100%). The boss level (y + 1) drives nearly all of the difficulty (§2, issue #105) |
+| 2.2 | Quest difficulty bands for the recruit quests | **Re-banded 2026-09-22** | Ranger `level_range` 3-3 (gate 3, boss L4, ~35% first attempt at the gate), mage 5-9 (gate 5, boss L10, 52-91%). Set by `tools/sim_recruit_bands.gd`, calibrated against a first `easy` clear at level 5 (§2, issue #105) |
 | 3.1 | Modifier rule | **Decided** | Four per type, dealt in random order (Magic 1 / Rare 2 / Enhanced 3); Enhanced then boosts one of its three by 1.5× |
 | 3.2 | Does equipping change the model? | **Decided** | Hand items first; head and chest props stay cosmetic |
 | 3.3 | Tower shield mesh | **Decided** | `Rectangle_Shield` |

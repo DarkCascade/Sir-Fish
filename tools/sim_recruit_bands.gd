@@ -1,7 +1,7 @@
 extends Node
 ## Monte Carlo playtest of the two recruit quests' difficulty bands
-## (backlog decision 2.2, issue #105 - "playtest-unverified" since the
-## 2026-09-20 re-band to ranger_recruit 3-5 / recruit_mage 5-7).
+## (backlog decision 2.2, issue #105). Its sweep set the 2026-09-22 re-band:
+## ranger_recruit 3-5 -> 3-3, recruit_mage 5-7 -> 5-9.
 ##
 ##     godot --headless --path "C:/Projects/Godot/Sir Fish" res://tools/sim_recruit_bands.tscn
 ##
@@ -57,8 +57,9 @@ const _WARRIOR_RANGER_GEARED := [
 
 ## Each sweep runs every candidate level_range against every party level, on a
 ## copy of the real quest with only level_range swapped. The first candidate is
-## the shipped band. Party levels start at the quest's unlock_level: the mayor
-## never offers it lower.
+## the pre-2026-09-22 band; the row marked * is whatever the .tres ships now.
+## Party levels start at the quest's unlock_level: the mayor never offers it
+## lower.
 const SWEEPS := [
 	# Calibration, not a candidate: easy.tres has the ranger quest's layout, pool
 	# and an identically-statted boss, and it has been played live. If the level
