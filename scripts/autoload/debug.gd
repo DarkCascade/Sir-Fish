@@ -59,6 +59,7 @@ func _run(line: String) -> void:
 		"lightning": _cmd_lightning()
 		"bone": _cmd_bone(args)
 		"state": _cmd_state()
+		"viewer": _cmd_viewer(args)
 		_: _log("unknown command: %s" % verb)
 
 # --- lookup helpers ---------------------------------------------------------
@@ -69,12 +70,27 @@ func _director():
 		return null
 	return controller.get("director")
 
+## [backlog P4] scenes/debug/character_viewer.tscn (issue #84) has no
+## BattleDirector, so _find() falls back to whatever it's currently showing -
+## still gated on the token matching that combatant's own stats.id, so a typo'd
+## id fails the same way it would against a real director rather than silently
+## hitting whatever happens to be on screen.
+func _viewer_combatant(token: String) -> Combatant:
+	var v := get_tree().get_first_node_in_group("character_viewer")
+	if v == null or not v.has_method("current_combatant"):
+		return null
+	var c := v.call("current_combatant") as Combatant
+	if c == null or c.stats == null:
+		return null
+	var want := token.split(":")[0]   # strip an index suffix; the viewer only ever holds one
+	return c if String(c.stats.id) == want else null
+
 ## Resolves against stats.id. Two live combatants can share an id (two shadow
 ## monsters), so an explicit index is accepted as "shadow_monster:1".
 func _find(token: String) -> Combatant:
 	var d = _director()   # BattleDirector (untyped: custom API)
 	if d == null:
-		return null
+		return _viewer_combatant(token)
 	var want := token
 	var want_index := 0
 	if token.contains(":"):
@@ -173,9 +189,13 @@ func _cmd_kill(args: Array) -> void:
 
 ## Forces the next spin's 3x3 board. Each arg is an icon id, filled row-major:
 ##   slot <id0> [id1] ... [id8]
-## Ids: elem_fire elem_ice elem_light bleed bomb_arrow lightning_blast
-##      armor_block crit cleave rain thunderburst
+## Ids: elem_fire elem_ice elem_light bomb_arrow lightning_blast
+##      armor_block cleave rain thunderburst base_weapon base_armor base_trinket
 ##      innate_dmg   (blank / - / _ for an empty cell)
+## [slot vocabulary] Suffix `@<hero>` to give an icon an owner - a strike then
+## draws as that hero's weapon and a charge coin carries their profile, e.g.
+## `slot base_weapon@ranger cleave@warrior elem_fire@warrior`. Without one the
+## icon is unowned: a generic sword, a blank coin.
 ## Missing cells are blanks. `slot clear` drops the override.
 func _cmd_slot(args: Array) -> void:
 	if args.is_empty():
@@ -195,6 +215,16 @@ func _cmd_slot(args: Array) -> void:
 		func(ic: Dictionary) -> StringName: return StringName(ic.get("id", &"")))))
 
 func _slot_icon_for(token: String) -> Dictionary:
+	var parts := token.split("@")
+	var icon := _slot_icon_for_id(parts[0])
+	if parts.size() > 1 and not SlotIcon.is_blank(icon):
+		var owner_class := StringName(parts[1])
+		icon["owner"] = owner_class
+		if SlotIcon.category_of(StringName(icon["id"])) == SlotIcon.CAT_DAMAGE:
+			icon["weapon"] = GameState.hero_weapon_type(owner_class)
+	return icon
+
+func _slot_icon_for_id(token: String) -> Dictionary:
 	var id := StringName(token)
 	match token:
 		"blank", "-", "_", "":
@@ -205,7 +235,7 @@ func _slot_icon_for(token: String) -> Dictionary:
 			# which needs a hero class this token does not carry.
 			return { "id": SlotIcon.INNATE_DAMAGE, "roll": 6,
 				"enhanced": false, "innate": true }
-	if SlotIcon.KNOWN_MODIFIER_IDS.has(id):
+	if SlotIcon.KNOWN_MODIFIER_IDS.has(id) or SlotIcon.is_base(id):
 		# A mid roll for a forced icon - enough to see it land.
 		return { "id": id, "roll": 6, "enhanced": false }
 	_log("slot -> unknown icon id '%s', using blank" % token)
@@ -414,9 +444,11 @@ func _cmd_quest(args: Array) -> void:
 		key, q.encounter_types.size(), q.gold_reward])
 
 ## [town] spec 13.4. Deletes the save and starts a fresh profile. Meaningful
-## from step 5 on: this is the first step where a launch reads
-## user://profile.save, so a stale dev save now actually changes what a run
-## looks like. reset_run() is, from this step, a dev path that wipes the profile.
+## from step 5 on: this is the first step where a launch reads SaveGame.PATH
+## (profile.dev.save in a debug build - see save_game.gd's dev save isolation,
+## issue #84 - or profile.save in a release one), so a stale save now actually
+## changes what a run looks like. reset_run() is, from this step, a dev path
+## that wipes whichever one is active.
 func _cmd_wipe() -> void:
 	if FileAccess.file_exists(SaveGame.PATH):
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(SaveGame.PATH))
@@ -496,6 +528,27 @@ func _find_skeleton_under(node: Node) -> Skeleton3D:
 		if found != null:
 			return found
 	return null
+
+## [backlog P4] Swaps the character viewer's combatant (issue #84). A no-op
+## with a clear log line unless the current scene IS
+## scenes/debug/character_viewer.tscn - `route`'s five Places don't cover it,
+## so get to it with `scene play --path res://scenes/debug/character_viewer.tscn`
+## (or play_scene) first. `anim`/`bone`/`sethp`/`damage`/`kill` all resolve
+## against the result via _find()'s viewer fallback above, unchanged.
+func _cmd_viewer(args: Array) -> void:
+	if args.is_empty():
+		_log("viewer -> needs <stats_id>")
+		return
+	var id := StringName(String(args[0]))
+	if GameState.get_stats(id) == null:
+		_log("viewer -> unknown stats id '%s'" % args[0])
+		return
+	var v := get_tree().get_first_node_in_group("character_viewer")
+	if v == null or not v.has_method("show_character"):
+		_log("viewer -> no character viewer in this scene (play res://scenes/debug/character_viewer.tscn first)")
+		return
+	v.call("show_character", id)
+	_log("viewer -> showing %s" % id)
 
 func _cmd_state() -> void:
 	var d = _director()   # BattleDirector (untyped: custom API)

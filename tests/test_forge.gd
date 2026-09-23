@@ -174,9 +174,9 @@ func _test_enhanced_marker_and_rolls() -> void:
 				var def: Dictionary = mods_by_id[last["id"]]
 				var kind: int = SlotIcon.kind_of(StringName(last["id"]))
 				var want: int
-				if kind == SlotIcon.Kind.DAMAGE or kind == SlotIcon.Kind.BLEED \
-						or kind == SlotIcon.Kind.BOMB_ARROW or kind == SlotIcon.Kind.THUNDERBURST \
-						or kind == SlotIcon.Kind.CLEAVE or kind == SlotIcon.Kind.RAIN:
+				# [slot vocabulary] bleed is a Power-scaled stat; charge and crit
+				# take their flat range.
+				if kind == SlotIcon.Kind.DAMAGE or StringName(last["id"]) == &"bleed":
 					want = maxi(1, int(round(float(item.power()) * Tuning.FORGE_ICON_POWER_MAX)))
 				elif kind == SlotIcon.Kind.BLOCK:
 					# [armor items] block scales off armor_value, like damage off Power.

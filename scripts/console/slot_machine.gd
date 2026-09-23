@@ -12,12 +12,18 @@ extends Control
 ## Single-target attack icons are summed across the board and delivered as one
 ## swing by the front-line hero (Combatant.slot_attack), who plays the real
 ## attack animation - so three attack icons is one swing for ~3x one icon's
-## roll. [icons phase 2] Bomb arrow / thunderburst (both hit-all-enemies) and
-## still resolve per-cell in place; cleave / rain arm a buff the next
-## swing consumes instead of resolving anything themselves.
+## roll.
 ##
-## The payline survives only as a BONUS: three of the same icon on the centre
-## row (the old jackpot) makes those three resolve twice, and keeps the banner,
+## [slot vocabulary] The board speaks six categories (SlotIcon.category_of):
+## a strike drawn as its owner's weapon, fire, ice, lightning, block, and a
+## special charge drawn as its owner's profile on a gold coin. A charge icon
+## only fills its owner's special meter - the old on-board bomb arrow,
+## thunderburst, cleave and rain effects are gone, and the special is the
+## payoff. Bleed and crit are wearer stats, not icons (_swing_for,
+## Combatant.take_damage).
+##
+## The payline is a BONUS: three of the same CATEGORY along any line in
+## Tuning.SLOT_PAYLINES makes those cells resolve twice, and keeps the banner,
 ## the confetti and the cabinet shake. Slot gold is gone entirely (§5).
 ##
 ## Upgrades change how OFTEN spins happen (Quick Reels), how MUCH a damage icon
@@ -37,16 +43,6 @@ var _home_position: Vector2
 var _bag: Array = []
 ## The nine icons dealt this spin, row-major: [r0c0, r0c1, r0c2, r1c0, ...].
 var _board: Array = []
-
-## [icons phase 2] CLEAVE / RAIN set these when their icon resolves and
-## _hero_swing() consumes them on the next combined swing - which may be a
-## later spin, if no DAMAGE icon also rolled this one ("the warrior's/ranger's
-## next attack", not necessarily this spin's). Party-wide rather than per-hero,
-## matching how BLOCK is already granted to the whole party rather than one
-## wearer. If both are pending on the same swing, rain wins (hits everyone) -
-## an unspec'd edge case, fine for a first draft.
-var _pending_cleave: bool = false
-var _pending_rain: bool = false
 
 ## [ui-project-longshot] Cabinet layout constants - unchanged by slot phase 2,
 ## which does no cabinet, layout or texture work.
@@ -167,8 +163,6 @@ func _tween_cabinet_colors(face: Color, window: Color) -> void:
 
 func _on_combat_started(_heroes: Array, _enemies: Array) -> void:
 	_should_spin = true
-	_pending_cleave = false
-	_pending_rain = false
 	_leave_attract()
 	if not _running:
 		_spin_loop()
@@ -241,13 +235,6 @@ func _rebuild_bag() -> void:
 			if icon.is_empty():
 				continue
 			icon["owner"] = item.equipped_by
-			# [icons phase 2] Trinket ultimates (crit/cleave/rain/thunderburst)
-			# show up 25% less often than every other icon - their extra power
-			# is offset by rarity of appearance, rolled fresh each spin rather
-			# than baked into the bag once.
-			if _is_trinket_ultimate(StringName(icon.get("id", &""))) \
-					and RNG.randf() >= Tuning.TRINKET_ICON_INCLUDE_CHANCE:
-				continue
 			_bag.append(icon)
 	# Never empty of icons (§2): if a wiped party somehow leaves nothing, drop in
 	# a single damage icon so the board can still do something.
@@ -270,12 +257,6 @@ func _living_hero_classes() -> Array[StringName]:
 			if bool(e.get("alive", false)):
 				out.append(e["stats_id"])
 	return out
-
-## [icons phase 2] The trinket-only ability ids the frequency damper applies
-## to. `crit` is universal, the rest are one per class - all four share the
-## same "powerful but rarer" treatment.
-static func _is_trinket_ultimate(id: StringName) -> bool:
-	return id == &"crit" or id == &"cleave" or id == &"rain" or id == &"thunderburst"
 
 func _icon_count() -> int:
 	var n := 0
@@ -344,10 +325,10 @@ func _one_spin() -> void:
 	EventBus.slot_spin_stopped.emit(_board.map(func(ic: Dictionary) -> StringName:
 		return StringName(ic.get("id", &""))))
 
-	var jackpot_id := _payline_triple()
-	if jackpot_id != &"":
-		_celebrate(jackpot_id)
-	await _resolve_board(jackpot_id)
+	var wins := _winning_lines()
+	if not wins.is_empty():
+		_celebrate(wins)
+	await _resolve_board(wins)
 
 	await get_tree().create_timer(Tuning.SLOT_RESULT_HOLD * q).timeout
 
@@ -361,34 +342,48 @@ func _shake_cabinet() -> void:
 		_home_position + Vector2(0, SHAKE_PIXELS), 0.05)
 	tw.tween_property(self, "position", _home_position, 0.08)
 
-## The centre row's icon id if all three of _cells[2] show the same non-blank
-## icon, else &"". This is the whole of what the payline means now (§3).
-func _payline_triple() -> StringName:
-	var result := evaluate([_board[3], _board[4], _board[5]])
-	return StringName(result["id"])
+## [slot vocabulary] Every payline that won this board - see winning_lines().
+func _winning_lines() -> Array:
+	return winning_lines(_board)
 
-## Kept per §3. `center_row` is the three centre-row icon dicts; returns
-## { id, count } naming the majority icon, or { id: &"", count: 0 }.
-static func evaluate(center_row: Array) -> Dictionary:
-	var counts := {}
-	for ic: Dictionary in center_row:
-		var id := StringName(ic.get("id", &""))
-		if SlotIcon.kind_of(id) == SlotIcon.Kind.BLANK:
+## [slot vocabulary] The lines in `lines` (row-major board indices, default
+## Tuning.SLOT_PAYLINES) whose three cells all show the same non-blank
+## CATEGORY - a sword strike, a bow strike and a staff strike match, as do any
+## three charge coins whoever they belong to. Each win is { cells, category }.
+## Static so the balance harness (test_slot_jackpots) scores the real rule.
+static func winning_lines(board: Array, lines: Array = Tuning.SLOT_PAYLINES) -> Array:
+	var wins: Array = []
+	for line: Array in lines:
+		var category := SlotIcon.category_of(StringName((board[line[0]] as Dictionary).get("id", &"")))
+		if category == &"":
 			continue
-		counts[id] = int(counts.get(id, 0)) + 1
-	for id: Variant in counts.keys():
-		if int(counts[id]) >= 3:
-			return { "id": id, "count": int(counts[id]) }
-	return { "id": &"", "count": 0 }
+		var all_match := true
+		for idx: int in line:
+			if SlotIcon.category_of(StringName((board[idx] as Dictionary).get("id", &""))) != category:
+				all_match = false
+				break
+		if all_match:
+			wins.append({ "cells": line, "category": category })
+	return wins
+
+## [slot vocabulary] The board cells a set of winning lines covers - each
+## resolves twice. A cell on two winning lines still resolves only twice.
+static func jackpot_cells(wins: Array) -> Dictionary:
+	var cells := {}
+	for win: Dictionary in wins:
+		for idx: int in win["cells"]:
+			cells[idx] = true
+	return cells
 
 # --- resolution (§3) -----------------------------------------------------------
 
 ## Resolves every non-blank cell, independently, left-to-right and top-to-bottom,
 ## staggered by Tuning.AOE_STAGGER so the board reads as a sequence.
-func _resolve_board(jackpot_id: StringName) -> void:
+func _resolve_board(wins: Array) -> void:
 	# [icons phase 2] dmg_pct is gone - Overcharge is the only remaining lift on
 	# damage icons.
 	var mult := Upgrades.overcharge_mult()
+	var doubled := jackpot_cells(wins)
 
 	var total_damage := 0
 	# [combat loop redesign] Single-target attack icons no longer call down
@@ -430,8 +425,8 @@ func _resolve_board(jackpot_id: StringName) -> void:
 		var kind: int = SlotIcon.kind_of(id)
 		if kind == SlotIcon.Kind.BLANK:
 			continue
-		# Centre row (indices 3-5) resolves twice on a payline triple (§3).
-		var repeats := 2 if (jackpot_id != &"" and idx >= 3 and idx <= 5) else 1
+		# A cell on a winning payline resolves twice (§3).
+		var repeats := 2 if doubled.has(idx) else 1
 		for _r: int in range(repeats):
 			_pulse_cell(idx)
 			any_icon_resolved = true
@@ -440,18 +435,14 @@ func _resolve_board(jackpot_id: StringName) -> void:
 			# owner, not _swing_hero_for() - its DAMAGE-executor fallback exists so
 			# damage is never dropped, and crediting the warrior for an unowned icon
 			# would charge his meter off other heroes' gear. A payline triple charges
-			# twice, same as it resolves twice.
-			GameState.add_special_charge(StringName(ic.get("owner", &"")))
+			# twice, same as it resolves twice. [slot vocabulary] A charge coin adds
+			# SLOT_CHARGE_ICON_CHARGE instead of 1 - it is the only thing it does.
+			var charge := Tuning.SLOT_CHARGE_ICON_CHARGE if kind == SlotIcon.Kind.CHARGE else 1
+			GameState.add_special_charge(StringName(ic.get("owner", &"")), charge)
 			if kind == SlotIcon.Kind.DAMAGE:
 				# [balance pass] Flat per-icon floor on top of the rolled value.
-				var contribution := maxi(1, int(round(float(int(ic.get("roll", 0))) * mult))) \
-					+ Tuning.SLOT_ATTACK_ICON_FLOOR
-				# [icons phase 2] Crit: "the character performs a regular attack
-				# with only the resultant damage amount possibly changing" - a
-				# flat per-icon chance to double just THIS icon's own share of
-				# the swing, rolled independently of every other icon here.
-				if id == &"crit" and RNG.randf() < Tuning.CRIT_CHANCE:
-					contribution *= 2
+				# [slot vocabulary] The same figure the tile prints (board_value).
+				var contribution := SlotIcon.board_value(ic, mult)
 				# [owner swings] Banked against this icon's owner rather than one
 				# pooled total. An unowned icon resolves to the DAMAGE executor,
 				# so no damage is ever dropped.
@@ -460,22 +451,12 @@ func _resolve_board(jackpot_id: StringName) -> void:
 				swings[key] = int(swings.get(key, 0)) + contribution
 			elif kind == SlotIcon.Kind.BLOCK:
 				block += maxi(1, int(ic.get("roll", 0)))
-			elif kind == SlotIcon.Kind.CLEAVE:
-				# [icons phase 2] No immediate effect - just arms the buff the
-				# next swing consumes (_deliver_swings).
-				var executor := _executor_for(SlotIcon.Kind.CLEAVE, false)
-				if executor != null:
-					if _should_gesture(executor, swinging):
-						executor.slot_gesture()
-					_pending_cleave = true
-			elif kind == SlotIcon.Kind.RAIN:
-				var executor := _executor_for(SlotIcon.Kind.RAIN, false)
-				if executor != null:
-					if _should_gesture(executor, swinging):
-						executor.slot_gesture()
-					_pending_rain = true
-			else:
-				total_damage += await _resolve_icon(ic, kind, mult, swinging)
+			elif kind == SlotIcon.Kind.CHARGE:
+				# [slot vocabulary] The charge itself was added above; this is
+				# only the owner's nod, so the player sees whose meter moved.
+				var owner_hero := _living_hero(StringName(ic.get("owner", &"")))
+				if owner_hero != null and _should_gesture(owner_hero, swinging):
+					owner_hero.slot_gesture()
 			await get_tree().create_timer(Tuning.AOE_STAGGER).timeout
 
 	if any_icon_resolved:
@@ -491,48 +472,12 @@ func _resolve_board(jackpot_id: StringName) -> void:
 
 	# Sir Fish (and anything else) reads this: a jackpot makes him smug, any
 	# other paying spin makes him cheer (see sir_fish.gd).
-	if jackpot_id != &"":
+	if not wins.is_empty():
 		EventBus.slot_payout.emit("jackpot", total_damage)
 	elif total_damage > 0:
 		EventBus.slot_payout.emit("damage", total_damage)
 	elif block > 0:
 		EventBus.slot_payout.emit("block", block)
-
-## Resolves one board icon that is neither a single-target attack, a block
-## grant, nor a pending-buff icon (those are all handled inline in
-## _resolve_board - see above). Returns the damage dealt.
-##
-## `swinging` is _resolve_board()'s pre-scan of every hero who will swing this
-## board, threaded through so each fallback:false cosmetic gesture in here runs
-## the same _should_gesture() check the inline CLEAVE/RAIN branches do.
-func _resolve_icon(ic: Dictionary, kind: int, mult: float,
-		swinging: Array[Combatant]) -> int:
-	if director == null:
-		return 0
-	var id := StringName(ic.get("id", &""))
-	var roll := int(ic.get("roll", 0))
-	match kind:
-		SlotIcon.Kind.BOMB_ARROW, SlotIcon.Kind.THUNDERBURST:
-			# [icons phase 2] Two distinct Kinds sharing one AoE resolution
-			# path (the ranger's bomb arrow, the mage's thunderburst) - only
-			# the class that actually owns this Kind gets the cosmetic swing
-			# (no fallback), same reasoning the old DAMAGE_ALL comment gave:
-			# the fallback hero already has a real swing via _hero_swing().
-			var executor := _executor_for(kind, false)
-			if executor != null and _should_gesture(executor, swinging):
-				executor.slot_gesture()
-			return await _hit_all(id, roll, mult)
-		SlotIcon.Kind.BLEED:
-			# No immediate damage - applies/refreshes the DoT, which ticks off
-			# the target's own actions (BattleDirector._take_action).
-			var executor := _executor_for(SlotIcon.Kind.BLEED, false)
-			if executor != null and _should_gesture(executor, swinging):
-				executor.slot_gesture()
-			var target: Combatant = director.random_living_enemy()
-			if target != null:
-				target.apply_bleed(maxi(1, roll))
-			return 0
-	return 0
 
 ## [combat loop redesign fix] Whether a fallback:false cosmetic gesture
 ## (Combatant.slot_gesture()) should actually play, or whether `executor` is
@@ -559,12 +504,17 @@ func _should_gesture(executor: Combatant, swinging: Array[Combatant]) -> bool:
 func _swing_hero_for(ic: Dictionary) -> Combatant:
 	if director == null:
 		return null
-	var owner := StringName(ic.get("owner", &""))
-	if owner != &"":
-		for h: Combatant in director.living_heroes():
-			if h.stats != null and h.stats.id == owner:
-				return h
-	return _executor_for(SlotIcon.Kind.DAMAGE)
+	var owner_hero := _living_hero(StringName(ic.get("owner", &"")))
+	return owner_hero if owner_hero != null else _executor_for(SlotIcon.Kind.DAMAGE)
+
+## The living hero of class `hero_class` on the field, or null.
+func _living_hero(hero_class: StringName) -> Combatant:
+	if director == null or hero_class == &"":
+		return null
+	for h: Combatant in director.living_heroes():
+		if h.stats != null and h.stats.id == hero_class:
+			return h
+	return null
 
 ## [combat loop redesign] The board's summed attack-icon damage, delivered as
 ## real swings by the heroes who own the icons. One variance roll per hero's
@@ -578,10 +528,6 @@ func _swing_hero_for(ic: Dictionary) -> Combatant:
 ## is what keeps test_level_curves' bands honest - spreading it per hero would
 ## quietly nerf the party by splitting damage across the group.
 ##
-## [icons phase 2] A pending cleave/rain buff is consumed by the FIRST swing of
-## the spin, whoever makes it - the buff was always party-wide (see
-## _pending_cleave's own note) and stays that way here. Attributing it to the
-## hero whose trinket armed it is a reasonable follow-up, not this change.
 func _deliver_swings(swings: Dictionary) -> int:
 	if director == null:
 		return 0
@@ -605,58 +551,30 @@ func _deliver_swings(swings: Dictionary) -> int:
 		banked[hero] = int(banked.get(hero, 0)) + int(swings[key])
 
 	var total := 0
-	var first := true
 	for hero: Combatant in director.living_heroes():
 		if not banked.has(hero):
 			continue
-		total += _swing_for(hero, int(banked[hero]), primary, first)
-		first = false
+		total += _swing_for(hero, int(banked[hero]), primary)
 		await get_tree().create_timer(Tuning.SLOT_SWING_STAGGER).timeout
 	# slot_attack lands on the animation's impact beat - hold here so the hits
 	# and their numbers resolve inside SLOT_RESULT_HOLD, not over the next spin.
 	await get_tree().create_timer(Tuning.SLOT_SWING_SETTLE).timeout
 	return total
 
-## One hero's swing for `amount` at `primary`. `consume_buffs` is true for the
-## first swing of the spin only - see _deliver_swings' note on cleave/rain.
+## One hero's swing for `amount` at `primary`.
 ##
-## [icons phase 2] Rain hits every living enemy, cleave the target plus its
-## neighbours by board x-position. The extra targets land via _strike() (the
-## same flat, no-per-target-animation hit AoE icons already use) rather than a
-## second hero animation - only the primary target gets the real swing anim.
-func _swing_for(hero: Combatant, amount: int, primary: Combatant, consume_buffs: bool) -> int:
+## [slot vocabulary] Bleed is a weapon stat now: a hero whose weapon carries a
+## `bleed` modifier opens (or refreshes) a bleed on the target with
+## Tuning.BLEED_PROC_CHANCE per swing. Crit doubles in Combatant.take_damage,
+## where it covers every attack the hero makes, not just this one.
+func _swing_for(hero: Combatant, amount: int, primary: Combatant) -> int:
 	var dealt := maxi(1, int(round(float(amount) * RNG.randf_range(
 		1.0 - Tuning.DAMAGE_VARIANCE, 1.0 + Tuning.DAMAGE_VARIANCE))))
 	hero.slot_attack(primary, dealt)
-	var total := dealt
-	if consume_buffs and _pending_rain:
-		_pending_rain = false
-		for enemy: Combatant in director.living_enemies():
-			if enemy == primary or not is_instance_valid(enemy) or not enemy.is_alive():
-				continue
-			total += _strike(enemy, SlotIcon.BASE_WEAPON, amount, 1.0)
-	elif consume_buffs and _pending_cleave:
-		_pending_cleave = false
-		for enemy: Combatant in _adjacent_enemies(primary):
-			total += _strike(enemy, SlotIcon.BASE_WEAPON, amount, 1.0)
-	return total
-
-## The living enemies immediately left/right of `primary` by board x-position -
-## cleave's "surrounding targets". Excludes `primary` itself, which the caller
-## already hits via the real swing.
-func _adjacent_enemies(primary: Combatant) -> Array[Combatant]:
-	var living: Array[Combatant] = director.living_enemies()
-	living.sort_custom(func(a: Combatant, b: Combatant) -> bool:
-		return a.global_position.x < b.global_position.x)
-	var idx: int = living.find(primary)
-	var out: Array[Combatant] = []
-	if idx < 0:
-		return out
-	if idx > 0:
-		out.append(living[idx - 1])
-	if idx < living.size() - 1:
-		out.append(living[idx + 1])
-	return out
+	var bleed := GameState.hero_bleed(hero.stats.id)
+	if bleed > 0 and RNG.randf() < Tuning.BLEED_PROC_CHANCE:
+		primary.apply_bleed(bleed)
+	return dealt
 
 ## [armor items] The board's summed BLOCK value, granted as temporary flat
 ## armor to every living hero for Tuning.BLOCK_DURATION (Combatant.add_temp_armor).
@@ -700,48 +618,6 @@ func _executor_for(kind: SlotIcon.Kind, fallback: bool = true) -> Combatant:
 			return h
 	return living[0] if fallback else null
 
-func _hit_all(id: StringName, roll: int, mult: float) -> int:
-	var targets: Array[Combatant] = director.living_enemies()
-	if targets.is_empty():
-		return 0
-	targets.sort_custom(func(a: Combatant, b: Combatant) -> bool:
-		return a.global_position.x < b.global_position.x)
-	var total := 0
-	for enemy: Combatant in targets:
-		if not is_instance_valid(enemy) or not enemy.is_alive():
-			continue
-		total += _strike(enemy, id, roll, mult)
-		await get_tree().create_timer(Tuning.AOE_STAGGER).timeout
-	return total
-
-## One damage application, VFX and floating number included. `source` is null on
-## purpose: slot damage is never attributed to a hero.
-func _strike(enemy: Combatant, id: StringName, roll: int, mult: float) -> int:
-	if not is_instance_valid(enemy) or not enemy.is_alive():
-		return 0
-	var tint := _element_tint(id)
-	var overlay: Variant = get_tree().get_first_node_in_group("battle_overlay")
-	if overlay != null:
-		overlay.number_color_override = tint
-	BattleVfx.lightning_bolt(director, enemy, tint)
-	# [balance pass] SLOT_ATTACK_ICON_FLOOR applies to chain-bolt hits too.
-	var base := maxi(1, int(round(float(roll) * mult))) + Tuning.SLOT_ATTACK_ICON_FLOOR
-	var rolled := maxi(1, int(round(float(base) * RNG.randf_range(
-		1.0 - Tuning.DAMAGE_VARIANCE, 1.0 + Tuning.DAMAGE_VARIANCE))))
-	enemy.take_damage(rolled, null)
-	if overlay != null:
-		overlay.number_color_override = null
-	return rolled
-
-## Elemental icons tint their number; everything else uses the called-down
-## strike's electric blue, exactly as slot lightning did before.
-func _element_tint(id: StringName) -> Color:
-	match SlotIcon.element_of(id):
-		&"fire": return Tuning.C_FIRE
-		&"ice": return Tuning.C_ICE
-		&"light": return Tuning.C_LIGHTNING
-	return Tuning.C_LIGHTNING
-
 # --- presentation (spec 16.4) --------------------------------------------------
 
 ## A quick scale pop on the scoring cell an icon just resolved from - the
@@ -761,13 +637,38 @@ func _pulse_cell(board_index: int) -> void:
 		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	tw.tween_property(cell, "scale", rest, 0.12)
 
-## The jackpot celebration: the centre row pulses hard, the payline flashes, the
+## [slot vocabulary] One payline segment per winning line, in the payline's
+## local space: from half a cell beyond the line's first cell centre to half a
+## cell beyond its last, so a row spans the window as it always did and a
+## diagonal runs corner to corner.
+func _win_segments(wins: Array) -> Array[PackedVector2Array]:
+	var out: Array[PackedVector2Array] = []
+	var to_local: Transform2D = payline.get_global_transform().affine_inverse()
+	for win: Dictionary in wins:
+		var cells: Array = win["cells"]
+		var first := _cell_centre(int(cells[0]))
+		var last := _cell_centre(int(cells[cells.size() - 1]))
+		var reach := (last - first) * 0.25
+		out.append(PackedVector2Array([to_local * (first - reach), to_local * (last + reach)]))
+	return out
+
+## A scoring cell's centre in canvas space.
+func _cell_centre(board_index: int) -> Vector2:
+	@warning_ignore("integer_division")
+	var cell: Control = _reels[board_index % 3].scoring_cell(board_index / 3)
+	return cell.get_global_rect().get_center() if cell != null else Vector2.ZERO
+
+## The jackpot celebration: the winning cells pulse hard, the payline flashes, the
 ## banner and its frame fade in and out, and (always, since a triple is the only
 ## trigger now) the confetti falls and the cabinet punches.
-func _celebrate(jackpot_id: StringName) -> void:
+func _celebrate(wins: Array) -> void:
 	var rest := Vector2.ONE * Tuning.SLOT_CABINET_SCALE
-	for reel: Variant in _reels:
-		var cell: Variant = reel.payline_cell()
+	# [slot vocabulary] Every cell on a winning line pops, whichever lines won.
+	for idx: int in jackpot_cells(wins):
+		@warning_ignore("integer_division")
+		var cell: Variant = _reels[idx % 3].scoring_cell(idx / 3)
+		if cell == null:
+			continue
 		cell.pivot_offset = cell.size * 0.5
 		var tw: Tween = cell.create_tween()
 		tw.tween_property(cell, "scale", rest * 1.30, 0.175) \
@@ -777,6 +678,7 @@ func _celebrate(jackpot_id: StringName) -> void:
 	# [slot ui phase 3] The payline is not drawn at rest any more (slot_machine.tscn
 	# authors it at alpha 0). It appears only for the jackpot, fading in and out
 	# with the banner so the line reads as part of the win, not as furniture.
+	payline.segments = _win_segments(wins)
 	payline.modulate.a = 0.0
 	var ptw := create_tween()
 	ptw.tween_property(payline, "modulate:a", 1.0, 0.12)
@@ -787,7 +689,9 @@ func _celebrate(jackpot_id: StringName) -> void:
 	flash.tween_property(payline, "glow_color", Color.WHITE, 0.09)
 	flash.tween_property(payline, "glow_color", Tuning.C_GOLD_BRIGHT, 0.09)
 
-	banner.text = "%s x3" % SlotIcon.short_label(jackpot_id)
+	var category: StringName = (wins[0] as Dictionary)["category"]
+	banner.text = "%s x3" % SlotIcon.category_label(category) if wins.size() == 1 \
+		else "%d lines!" % wins.size()
 	banner.modulate.a = 0.0
 	var btw := create_tween()
 	btw.tween_property(banner, "modulate:a", 1.0, 0.12)

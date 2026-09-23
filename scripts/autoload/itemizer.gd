@@ -77,21 +77,31 @@ const RETIRED_MODIFIER_IDS: Array[StringName] = [&"slot_mend"]
 
 const MODIFIERS := [
 	# --- warrior weapons (axe, sword): elements + the physical bleed DoT ---
+	# [slot vocabulary] bleed is a weapon STAT, not a board icon: its roll is the
+	# per-tick damage of the bleed a swing opens with Tuning.BLEED_PROC_CHANCE.
 	{ "id": &"elem_fire",  "label": "+%d Fire Damage",   "caption": "Fire Damage",   "pct": false, "roll": [3, 11], "value_mult": [0.35, 0.70], "slots": [Item.Slot.WEAPON], "types": [&"axe", &"sword"] },
 	{ "id": &"elem_ice",   "label": "+%d Ice Damage",    "caption": "Ice Damage",    "pct": false, "roll": [3, 11], "value_mult": [0.35, 0.70], "slots": [Item.Slot.WEAPON], "types": [&"axe", &"sword"] },
 	{ "id": &"elem_light", "label": "+%d Lightning Dmg", "caption": "Lightning Dmg", "pct": false, "roll": [3, 11], "value_mult": [0.35, 0.70], "slots": [Item.Slot.WEAPON], "types": [&"axe", &"sword"] },
-	{ "id": &"bleed",      "label": "+%d Bleed",         "caption": "Bleed",         "pct": false, "roll": [3, 11], "value_mult": [0.35, 0.70], "slots": [Item.Slot.WEAPON], "types": [&"axe", &"sword"] },
-	# --- ranger weapons (bow, dagger): the AoE special ---
-	{ "id": &"bomb_arrow", "label": "+%d Bomb Arrow",    "caption": "Bomb Arrow",    "pct": false, "roll": [2, 8],  "value_mult": [0.40, 0.75], "slots": [Item.Slot.WEAPON], "types": [&"bow", &"dagger"] },
+	{ "id": &"bleed",      "label": "+%d Bleed on Hit",  "caption": "Bleed on Hit",         "pct": false, "roll": [3, 11], "value_mult": [0.35, 0.70], "slots": [Item.Slot.WEAPON], "types": [&"axe", &"sword"] },
+	# --- ranger weapons (bow, dagger): a charge for the ranger's special ---
+	# [slot vocabulary] The four special-charge ids (bomb_arrow, cleave, rain,
+	# thunderburst) only fill their owner's meter when they land, by a fixed
+	# Tuning.SLOT_CHARGE_ICON_CHARGE - so their roll is pinned to it, never
+	# Power-scaled (_roll_icon_magnitude), and the card reads "+3 ... Charge".
+	# A literal [3, 3], because a const cannot read an autoload's constant in
+	# the editor; test_content_registry fails if the two drift apart.
+	{ "id": &"bomb_arrow", "label": "+%d Bomb Arrow Charge", "caption": "Bomb Arrow Charge", "pct": false, "roll": [3, 3],  "value_mult": [0.40, 0.75], "slots": [Item.Slot.WEAPON], "types": [&"bow", &"dagger"] },
 	# --- mage weapons (staff): the stronger single-target bolt ---
 	{ "id": &"lightning_blast", "label": "+%d Lightning Blast", "caption": "Lightning Blast", "pct": false, "roll": [4, 14], "value_mult": [0.55, 0.90], "slots": [Item.Slot.WEAPON], "types": [&"staff"] },
 	# --- armor (helm, mail, shield): shared pool, any class ---
 	{ "id": &"armor_block", "label": "+%d Block",        "caption": "Block",         "pct": false, "roll": [3, 9],  "value_mult": [0.35, 0.70], "slots": [Item.Slot.ARMOR] },
 	# --- trinkets (ring, amulet, idol): crit is universal, the rest exclusive ---
-	{ "id": &"crit",         "label": "+%d Crit Damage",  "caption": "Crit Damage",  "pct": false, "roll": [3, 11], "value_mult": [0.35, 0.70], "slots": [Item.Slot.TRINKET] },
-	{ "id": &"cleave",       "label": "+%d Cleave",       "caption": "Cleave",       "pct": false, "roll": [3, 11], "value_mult": [0.40, 0.75], "slots": [Item.Slot.TRINKET], "types": [&"idol"] },
-	{ "id": &"rain",         "label": "+%d Rain of Arrows", "caption": "Rain of Arrows", "pct": false, "roll": [2, 8], "value_mult": [0.40, 0.75], "slots": [Item.Slot.TRINKET], "types": [&"ring"] },
-	{ "id": &"thunderburst", "label": "+%d Thunderburst", "caption": "Thunderburst", "pct": false, "roll": [2, 8],  "value_mult": [0.40, 0.75], "slots": [Item.Slot.TRINKET], "types": [&"amulet"] },
+	# [slot vocabulary] crit is a wearer STAT: its roll is a flat percent chance
+	# for all the wearer's attacks to deal double (GameState.hero_crit_chance).
+	{ "id": &"crit",         "label": "+%d%% Crit Chance", "caption": "Crit Chance", "pct": true, "roll": [4, 10], "value_mult": [0.35, 0.70], "slots": [Item.Slot.TRINKET] },
+	{ "id": &"cleave",       "label": "+%d Cleave Charge", "caption": "Cleave Charge", "pct": false, "roll": [3, 3], "value_mult": [0.40, 0.75], "slots": [Item.Slot.TRINKET], "types": [&"idol"] },
+	{ "id": &"rain",         "label": "+%d Rain Charge",  "caption": "Rain Charge",  "pct": false, "roll": [3, 3], "value_mult": [0.40, 0.75], "slots": [Item.Slot.TRINKET], "types": [&"ring"] },
+	{ "id": &"thunderburst", "label": "+%d Thunderburst Charge", "caption": "Thunderburst Charge", "pct": false, "roll": [3, 3],  "value_mult": [0.40, 0.75], "slots": [Item.Slot.TRINKET], "types": [&"amulet"] },
 ]
 
 # 13.2 Rarity: weight, modifier count, value multiplier range.
@@ -227,7 +237,7 @@ func forge(item: Item) -> bool:
 		return false
 	var pool := _modifier_pool_excluding(item)
 	if pool.is_empty():
-		return false                       # unreachable: 7 modifiers, 4 slots
+		return false                       # unreachable: the pool falls back to repeats
 	if not GameState.spend_scrap(int(cost[0])):
 		return false
 	if not GameState.spend_gold(int(cost[1])):
@@ -283,20 +293,18 @@ func _modifiers_for_type(wtype: StringName) -> Array:
 
 ## [item power model] One rarity icon's magnitude, shared by generation and
 ## forge() so a found item and a forged item of the same rarity roll their
-## icons identically. DAMAGE-flavoured icons (DAMAGE, BLEED, BOMB_ARROW,
-## THUNDERBURST) scale off the item's Power (125-175%, locked to 175% for the
-## enhanced icon); CLEAVE/RAIN scale the same way too, as a value/pricing
-## figure - the resolution itself (SlotMachine) doesn't currently read it, only
-## whether the icon rolled at all, so it's a balance knob reserved for later.
-## A kind with no scaling basis (an armor item with no armor value, say) falls
-## back to the def's own flat roll range (enhanced -> the top of that range).
+## icons identically. DAMAGE icons and the bleed stat scale off the item's
+## Power (125-175%, locked to 175% for the enhanced icon), BLOCK off its armor.
+## [slot vocabulary] A CHARGE icon and the crit stat have no scaling basis, nor
+## does an armor item with no armor value: they fall back to the def's own flat
+## roll range (enhanced -> the top of that range).
 func _roll_icon_magnitude(def: Dictionary, item: Item, enhanced: bool) -> int:
 	var kind: int = SlotIcon.kind_of(StringName(def["id"]))
 	# [armor items] BLOCK scales off armor_value the way DAMAGE scales off Power.
 	var basis: int = 0
-	if kind == SlotIcon.Kind.DAMAGE or kind == SlotIcon.Kind.BLEED \
-			or kind == SlotIcon.Kind.BOMB_ARROW or kind == SlotIcon.Kind.THUNDERBURST \
-			or kind == SlotIcon.Kind.CLEAVE or kind == SlotIcon.Kind.RAIN:
+	# [slot vocabulary] bleed scales off Power as a stat (it is no board kind);
+	# CHARGE and crit have no basis and take their def's flat range.
+	if kind == SlotIcon.Kind.DAMAGE or def["id"] == &"bleed":
 		basis = item.power()
 	elif kind == SlotIcon.Kind.BLOCK:
 		basis = item.armor_value()
@@ -338,6 +346,37 @@ func force_modifier(item: Item, idx: int, id: StringName) -> void:
 			item.modifiers[idx] = _build_modifier(
 				def, item, bool(item.modifiers[idx].get("enhanced", false)))
 			return
+
+## [slot vocabulary] The MODIFIERS def for `id`, or an empty dict.
+func modifier_def(id: StringName) -> Dictionary:
+	for def: Dictionary in MODIFIERS:
+		if def["id"] == id:
+			return def
+	return {}
+
+## [slot vocabulary] The top of `id`'s flat roll range (0 for an unknown id).
+func modifier_roll_max(id: StringName) -> int:
+	var def := modifier_def(id)
+	return int(def["roll"][1]) if not def.is_empty() else 0
+
+## [slot vocabulary] Brings a SAVED modifier in line with what its id means now,
+## called by Item.from_dict. Crit became a percent stat and the four charge ids
+## a fixed charge, so an item saved before that carries a Power-scaled roll
+## ("+30 Crit Damage", "+14 Cleave") its card would still print. The roll is
+## clamped into the def's current flat range and the label re-rendered; every
+## other id passes through untouched, so no roll the game still reads changes.
+func refresh_saved_modifier(mod: Dictionary) -> void:
+	var id := StringName(mod.get("id", &""))
+	if id != &"crit" and SlotIcon.kind_of(id) != SlotIcon.Kind.CHARGE:
+		return
+	var def := modifier_def(id)
+	if def.is_empty():
+		return
+	var roll := clampi(int(mod.get("roll", 0)), int(def["roll"][0]), int(def["roll"][1]))
+	mod["roll"] = roll
+	mod["label"] = (def["label"] as String) % roll
+	mod["caption"] = def["caption"]
+	mod["pct"] = def["pct"]
 
 # --- class-first generation (enemy drops) -----------------------------------
 

@@ -30,13 +30,14 @@ extends Node
 ## gets its own attack_cooldown-paced clock (jittered exactly as
 ## BattleDirector._roll_initial_cooldown does) and the party gets one clock per
 ## slot spin cycle. It models the CURRENT slot rules: all DAMAGE icons on a
-## board sum into ONE combined swing (slot_machine._resolve_board), the centre
-## row double-resolves on a payline triple, crit doubles its own icon's share,
-## BLOCK is max-not-sum for BLOCK_DURATION, and AoE icons resolve per-cell.
+## board sum into ONE combined swing (slot_machine._resolve_board), every cell
+## on a winning payline (SlotMachine.winning_lines, [slot vocabulary]) double-
+## resolves, and BLOCK is max-not-sum for BLOCK_DURATION.
 ##
 ## Known unmodelled, all of them small and all of them CONSERVATIVE (they make
-## the party slightly weaker than the real game): BLEED's damage-over-time,
-## CLEAVE/RAIN's cross-spin buff, and per-target animation timing.
+## the party slightly weaker than the real game): crit, the bleed stat's
+## damage-over-time, the specials that charge coins fund, and per-target
+## animation timing.
 ##
 ## The honest caveat, same as sim_easy_attempts.gd's: the town/gear/quest
 ## DECISIONS are a stated heuristic per archetype, not the real game. A real
@@ -505,7 +506,7 @@ func _resolve_spin(log: Dictionary, party: Array, enemies: Array, now: float) ->
 	var bag := _build_bag(party)
 	var board: Array = SlotMachineScript.draw_nine(bag)
 	var mult := Upgrades.overcharge_mult()
-	var jackpot := _payline_triple(board)
+	var doubled := SlotMachineScript.jackpot_cells(SlotMachineScript.winning_lines(board))
 
 	var swing := 0
 	var block := 0
@@ -515,22 +516,14 @@ func _resolve_spin(log: Dictionary, party: Array, enemies: Array, now: float) ->
 		var kind: int = SlotIcon.kind_of(id)
 		if kind == SlotIcon.Kind.BLANK:
 			continue
-		var repeats: int = 2 if (jackpot and idx >= 3 and idx <= 5) else 1
+		var repeats: int = 2 if doubled.has(idx) else 1
 		for _r: int in range(repeats):
 			var roll := int(ic.get("roll", 0))
 			match kind:
 				SlotIcon.Kind.DAMAGE:
-					var contribution: int = maxi(1, int(round(float(roll) * mult))) \
-						+ Tuning.SLOT_ATTACK_ICON_FLOOR
-					if id == &"crit" and RNG.randf() < Tuning.CRIT_CHANCE:
-						contribution *= 2
-					swing += contribution
+					swing += SlotIcon.board_value(ic, mult)
 				SlotIcon.Kind.BLOCK:
 					block += maxi(1, roll)
-				SlotIcon.Kind.BOMB_ARROW, SlotIcon.Kind.THUNDERBURST:
-					for e: Dictionary in enemies:
-						if e["hp"] > 0:
-							e["hp"] = int(e["hp"]) - _rolled(roll, mult)
 				_:
 					pass
 
@@ -548,23 +541,9 @@ func _resolve_spin(log: Dictionary, party: Array, enemies: Array, now: float) ->
 			h["block"] = maxi(carried, block)
 			h["block_until"] = now + Tuning.BLOCK_DURATION
 
-## The centre row (indices 3-5) being three of the same non-blank icon.
-func _payline_triple(board: Array) -> bool:
-	var a := StringName((board[3] as Dictionary).get("id", &""))
-	var b := StringName((board[4] as Dictionary).get("id", &""))
-	var c := StringName((board[5] as Dictionary).get("id", &""))
-	if a == &"" or SlotIcon.is_blank(board[3] as Dictionary):
-		return false
-	return a == b and b == c
-
-func _rolled(roll: int, mult: float) -> int:
-	var base := maxi(1, int(round(float(roll) * mult))) + Tuning.SLOT_ATTACK_ICON_FLOOR
-	return maxi(1, int(round(float(base) * RNG.randf_range(
-		1.0 - Tuning.DAMAGE_VARIANCE, 1.0 + Tuning.DAMAGE_VARIANCE))))
-
 ## The live slot bag, exactly as slot_machine._rebuild_bag() builds it: one
 ## innate icon per LIVING party member, then every equipped item's base icon and
-## its modifier icons (trinket ultimates damped by TRINKET_ICON_INCLUDE_CHANCE),
+## its modifier icons,
 ## then the blank pad less whatever Polish has bought off.
 func _build_bag(party: Array) -> Array:
 	var bag: Array = []
@@ -581,11 +560,6 @@ func _build_bag(party: Array) -> Array:
 		for mod: Dictionary in item.modifiers:
 			var ic := SlotIcon.from_modifier(mod, item)
 			if ic.is_empty():
-				continue
-			var iid := StringName(ic.get("id", &""))
-			var is_ult: bool = iid == &"crit" or iid == &"cleave" \
-				or iid == &"rain" or iid == &"thunderburst"
-			if is_ult and RNG.randf() >= Tuning.TRINKET_ICON_INCLUDE_CHANCE:
 				continue
 			bag.append(ic)
 	var pad: int = maxi(Tuning.SLOT_BLANK_PAD_START - Upgrades.polish_blanks_removed(),

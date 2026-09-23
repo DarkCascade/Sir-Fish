@@ -29,13 +29,28 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	resized.connect(queue_redraw)
 
+## [slot vocabulary] The winning lines to draw, each a pair of points in this
+## Control's local space. SlotMachine._celebrate sets one per winning payline -
+## a row, a column or a diagonal - so the line can leave this band. Empty draws
+## the centre row across the band, as it always did.
+var segments: Array[PackedVector2Array] = []:
+	set(value):
+		segments = value
+		queue_redraw()
+
 func _draw() -> void:
 	if size.x <= 0.0:
 		return
-	var y := size.y * 0.5
-	var a := Vector2(0.0, y)
-	var b := Vector2(size.x, y)
+	if segments.is_empty():
+		var y := size.y * 0.5
+		_draw_segment(Vector2(0.0, y), Vector2(size.x, y))
+		return
+	for seg: PackedVector2Array in segments:
+		_draw_segment(seg[0], seg[1])
 
+## One glowing line from `a` to `b`, sparkled at both ends and at the two cell
+## boundaries between them.
+func _draw_segment(a: Vector2, b: Vector2) -> void:
 	# Three passes: a wide dim halo, a mid glow, then the hot core. Stacking
 	# translucent lines is how every other glyph in this console fakes a bloom
 	# (see slot_symbol.gd's _draw_gem) - one blur shader for one line would be
@@ -46,7 +61,7 @@ func _draw() -> void:
 
 	# Ends, plus the two cell boundaries the lattice already marks.
 	for i: int in range(4):
-		_sparkle(Vector2(size.x * float(i) / 3.0, y))
+		_sparkle(a.lerp(b, float(i) / 3.0))
 
 ## A four-point star: two crossed slivers plus a bright core. Drawn as
 ## polygons rather than lines so the points actually taper - a star made of
