@@ -12,7 +12,26 @@ extends Node
 ##
 ##     godot --headless --path "C:/Projects/Godot/Sir Fish" res://tests/test_profile_save.tscn
 
-const PATH := "user://profile.save"
+const REAL_PATH := "user://profile.save"
+## [backlog P4] Dev save isolation (issue #84, pipeline review recommendation
+## 2). A debug build - the editor Play button, `godot --headless`, an MCP
+## `play_scene` session - writes here instead of REAL_PATH, so a character
+## check or a Debug harness command never overwrites the player's actual
+## profile. The old workaround was a manual backup before every session
+## (CLAUDE.md's KayKit section); this makes the isolation the default instead
+## of something a dev has to remember.
+const DEV_PATH := "user://profile.dev.save"
+
+## Computed once at load, exactly like Debug.enabled's own gate (same debug
+## flag it reads: `sir_fish/debug/harness`, this setting is
+## `sir_fish/debug/isolate_save`, default true). An exported release build is
+## not a debug build, so REAL_PATH is the only path it can ever reach -
+## nothing here can touch a player's save. Every caller already reads this as
+## `SaveGame.PATH` rather than the literal string (test_support.gd's
+## guard_user_file() included), so redirecting it needed no other change.
+var PATH: String = DEV_PATH if (OS.is_debug_build() \
+	and bool(ProjectSettings.get_setting("sir_fish/debug/isolate_save", true))) \
+	else REAL_PATH
 
 ## Bumped 1 -> 2 at spec 4.5, which changed what `active_party` MEANS: it was
 ## "the authored three-hero roster", it is now "the solo warrior". That is

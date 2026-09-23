@@ -1,0 +1,58 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/debug/character_viewer.gd" id="1_viewer"]
+
+[sub_resource type="ProceduralSkyMaterial" id="sky_mat"]
+sky_top_color = Color(0.035, 0.098, 0.243, 1)
+sky_horizon_color = Color(0.192, 0.545, 0.663, 1)
+sky_curve = 0.09
+ground_bottom_color = Color(0.027, 0.078, 0.114, 1)
+ground_horizon_color = Color(0.114, 0.365, 0.494, 1)
+sun_angle_max = 24.0
+sun_curve = 0.12
+
+[sub_resource type="Sky" id="sky"]
+sky_material = SubResource("sky_mat")
+
+[sub_resource type="Environment" id="env"]
+background_mode = 2
+sky = SubResource("sky")
+ambient_light_source = 3
+ambient_light_energy = 0.85
+tonemap_mode = 2
+tonemap_white = 2.2
+
+[node name="CharacterViewer" type="Node3D"]
+script = ExtResource("1_viewer")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("env")
+
+[node name="KeyLight" type="DirectionalLight3D" parent="."]
+transform = Transform3D(-0.7623, -0.4657, 0.4496, 0, 0.6946, 0.7194, -0.6473, 0.5484, -0.5295, 0, 4, 0)
+light_color = Color(0.545, 0.784, 0.941, 1)
+light_energy = 0.85
+shadow_enabled = true
+
+[node name="FillLight" type="DirectionalLight3D" parent="."]
+transform = Transform3D(-0.819152, 0, -0.573576, -0.196175, 0.939693, 0.280166, 0.538986, 0.34202, -0.769751, 0, 2, 0)
+light_color = Color(0.267, 0.478, 0.902, 1)
+light_energy = 0.9
+
+[node name="Camera3D" type="Camera3D" parent="."]
+current = true
+fov = 45.0
+near = 0.1
+far = 100.0
+
+[node name="CombatantRoot" type="Node3D" parent="."]
+
+[node name="UI" type="CanvasLayer" parent="."]
+
+[node name="Label" type="Label" parent="UI"]
+offset_left = 20.0
+offset_top = 150.0
+offset_right = 1000.0
+offset_bottom = 224.0
+theme_override_font_sizes/font_size = 22
+text = "(loading)"
