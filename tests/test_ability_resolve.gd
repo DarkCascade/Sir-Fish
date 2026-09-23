@@ -67,6 +67,7 @@ func _ready() -> void:
 	_case_ranger_primary()
 	_case_mage_primary()
 	_case_warrior_special()
+	_case_ranger_special()
 	_case_mage_special()
 	_t.finish(get_tree(), "test_ability_resolve")
 
@@ -169,6 +170,33 @@ func _case_warrior_special() -> void:
 	Ability.make(warrior, true, null, d).resolve(warrior)
 	_t.check(enemy.current_hp < before, "warrior's special (Cleave) damaged the enemy")
 
+## [item power model regression] Both this and _case_mage_special() equip a
+## known weapon and assert the resulting magnitude is well above 1, not just
+## "some positive effect" - a bare `> before` check is exactly what let the
+## ranger's bomb arrow and the mage's heal silently fall back to
+## compute_damage()'s floor of 1 for months (found live-verifying #97): a heal
+## from 1 HP to 2 HP still satisfies "> before" too.
+func _case_ranger_special() -> void:
+	print("--- ranger special: ProjectileAbility (bomb arrow) ---")
+	var d := FakeDirector.new()
+	add_child(d)
+	var ranger := _spawn(&"ranger", -3.0)
+	var enemy := _spawn(&"shadow_monster", 2.0)
+	ranger.director = d
+	d.enemies = [enemy]
+
+	var bow := Itemizer.generate_typed_item(&"bow", Item.Rarity.RARE, 10)
+	GameState.inventory.append(bow)
+	GameState.equip_item(bow, &"ranger")
+
+	Ability.make(ranger, true, enemy, d).resolve(ranger)
+	_t.check(d.world.projectile_root.get_child_count() == 1,
+		"ranger's special launched exactly one projectile (the bomb arrow)")
+	var proj: Projectile = d.world.projectile_root.get_child(0)
+	_t.check(proj.is_bomb, "and it is flagged as the bomb payload")
+	_t.check(proj._damage > 1,
+		"its damage scales off equipped weapon Power, not compute_damage()'s floor of 1 (got %d)" % proj._damage)
+
 func _case_mage_special() -> void:
 	print("--- mage special: HealAllyAbility ---")
 	var d := FakeDirector.new()
@@ -178,5 +206,12 @@ func _case_mage_special() -> void:
 	mage.director = d
 	d.heroes = [mage, ally]
 	ally.current_hp = 1
+
+	var staff := Itemizer.generate_typed_item(&"staff", Item.Rarity.RARE, 10)
+	GameState.inventory.append(staff)
+	GameState.equip_item(staff, &"mage")
+
 	Ability.make(mage, true, null, d).resolve(mage)
-	_t.check(ally.current_hp > 1, "mage's special heals the lowest-hp living ally")
+	_t.check(ally.current_hp > 10,
+		"mage's special heals the lowest-hp living ally for well above compute_damage()'s floor of 1 (got %d)"
+			% ally.current_hp)
