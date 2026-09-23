@@ -418,10 +418,30 @@ found the two P1 regressions this same commit introduced (§1 "Found and fixed")
   warrior in live testing." The quest first shipped at `level_range = Vector2i(1, 5)`, a
   band chosen for a level-1 party. **Re-banded 2026-09-20 to 5-7** to match its level-5
   gate (a gated quest is only ever seen by a party of level 5 or more), and the ranger's
-  from 3-7 to **3-5** the same day. The mage's is the harder band of the two; both are
-  playtest-unverified. With them no two authored quests share a `level_range.x` (1, 3, 5,
-  6 and 15), so `test_quest_generator` asserts the exact board order at level 5:
-  easy, ranger, mage, medium, hard. Decision 2.2.
+  from 3-7 to **3-5** the same day. With them no two authored quests share a
+  `level_range.x` (1, 3, 5, 6 and 15), so `test_quest_generator` asserts the exact board
+  order at level 5: easy, ranger, mage, medium, hard. Decision 2.2.
+- **Playtest-verified 2026-09-22 (issue #105) - the two bands are backwards from what
+  §2's own note above claimed.** `tools/sim_recruit_bands.gd` (a Monte Carlo harness,
+  same discrete-event resolver as `tools/sim_easy_attempts.gd` and the party-bag model
+  `test_level_curves.gd`'s recruit cases use, but fighting the quest's OWN
+  `enemy_pool`/`boss_pool`/`encounter_types`/`level_range` instead of a generic
+  `skeleton_warrior` stand-in) ran 300 single-attempt trials per level, per quest:
+  - **`ranger_recruit` (3-5) is unwinnable at its own unlock level.** A solo warrior at
+    exactly level 3 - the first moment the mayor's board offers the quest, and the level
+    it stays at for the whole attempt, since XP only banks and applies at expedition end
+    (`GameState.apply_expedition_xp()`) - loses to the `bandit_officer` boss (level 6 at
+    `level_range.y + Tuning.BOSS_LEVEL_BONUS`, x3.5 HP) **300/300 times**, always on the
+    boss encounter. One level higher fixes it completely: level 4 and level 5 both clear
+    **300/300**. The cliff is that sharp - there is no partial-win level in between.
+  - **`recruit_mage` (5-7) is trivial across its whole band.** Warrior + ranger clears
+    **300/300** at levels 5, 6 and 7 alike, whether the ranger is still wearing only her
+    guaranteed relic (the just-joined state) or a full generated loadout. Not one loss in
+    1200 trials across both gear states and all three levels.
+  - Net: the mage quest is not "the harder of the two" as previously guessed - it is the
+    one with slack to spare, while the ranger quest cannot be completed by the exact party
+    it is offered to. Both bands need a real number change, not just re-verification; this
+    playtest establishes the facts, the actual re-band is a separate decision.
 
 ---
 
@@ -1463,7 +1483,7 @@ The review found these, which any revived version has to answer:
 | 1.6 | Should enemies scale with party size? | **Decided 2026-09-20: no** | Nothing scales enemies with the party, and nothing will. A full party outlasts the solo warrior about 2.3x at every late band (§1 "Balance check"); that is the intended shape |
 | 1.7 | Should the ranger's starting kit animate her? | **Decided 2026-09-20: leave it** | The warbow is not changed. A future slot-icon effort owns who animates for which icon (§1) |
 | 2.1 | Gate the mage quest at level 5? | **Decided, built 2026-09-20** | `recruit_mage.tres` has `unlock_level = 5`; the mage joins at level 5 |
-| 2.2 | Quest difficulty bands for the recruit quests | **Decided, built 2026-09-20** | Ranger `level_range` 3-5 (gate 3), mage 5-7 (gate 5). Playtest-unverified, so the numbers may move (§2) |
+| 2.2 | Quest difficulty bands for the recruit quests | **Playtest-verified 2026-09-22: broken** | Ranger `level_range` 3-5 (gate 3) is unwinnable at its own gate (0/300 at L3, 300/300 at L4+); mage 5-7 (gate 5) is trivial across its whole band (300/300 at every level tried). Needs a re-band, not just re-verification (§2, issue #105) |
 | 3.1 | Modifier rule | **Decided** | Four per type, dealt in random order (Magic 1 / Rare 2 / Enhanced 3); Enhanced then boosts one of its three by 1.5× |
 | 3.2 | Does equipping change the model? | **Decided** | Hand items first; head and chest props stay cosmetic |
 | 3.3 | Tower shield mesh | **Decided** | `Rectangle_Shield` |
