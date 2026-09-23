@@ -17,13 +17,15 @@
 > recruits join at their quest's level (ranger 3, mage 5), enemies do **not** scale with
 > party size, and the warbow is left alone pending a future slot-icon effort.
 >
-> **A slot-first pivot landed 2026-09-20 (§7), and it is now the active work.** The slot is
+> **A slot-first pivot landed 2026-09-20 (§7), and it shipped 2026-09-23.** The slot is
 > the main character mechanically and the party emotionally: slot damage splits by icon owner
 > so each hero swings for their own gear (`66298b9`), and hero specials - finished content
-> that nothing could reach - became invokable off a charge meter (`e7f8298`). Both are
-> headless-tested only, never yet seen in a running game. Decided but unbuilt: the upgrade
-> tray becomes three special invokers, the warrior trades Defend for cleave, and the three
-> slot upgrades move to town. §8 collects every decision with its status.
+> that nothing could reach - became invokable off a charge meter (`e7f8298`). The upgrade
+> tray is now three special invokers, the warrior trades Defend for cleave (issue #96), and
+> the three slot upgrades moved to town. Live-verified in a running game, not just
+> headless-tested (issue #97) - which is also how the ranger's bomb arrow and the mage's
+> heal were found silently dealing/healing 1 regardless of gear (issue #137, fixed in #138).
+> §8 collects every decision with its status.
 
 ---
 
@@ -1295,8 +1297,9 @@ Charging off every owned icon is far richer:
 | one hero of a geared trio, Enhanced | 13 | 42 | ~2.8 | ~3.6 |
 
 A fight is 2-6 spins, so ~3 spins per special is the once-or-twice-per-fight cadence 3 was
-chosen for. At 3 a special would fire every single spin. `Tuning.SPECIAL_CHARGE_COST` is one
-number to re-tune after a playtest, and the arithmetic is in its comment.
+chosen for. At 3 a special would fire every single spin. **Playtested 2026-09-23 (issue
+#97) - see "Done: live-verified the P7 pieces" below.** The theoretical estimate held: 10
+lands at 3.7-3.9 spins to full across all three heroes. No retune.
 
 ### Done: the meter UI and the invoker button (`2b41ed9`, `9dca4b3`, `5449e21`)
 
@@ -1393,8 +1396,8 @@ and the slot stays empty rather than collapsing, so a recruit never shifts a lea
   ranger's press draining her meter, the no-director fallback.
 - **Rendered and looked at**, three buttons across charge 0/3/6/10, and in the real console.
 
-**Known wrinkle, unresolved: the warrior's button says "Cleave" and fires Defend.** The cleave
-`AbilityDef` and its animation clip are the separate warrior-cleave piece, still unbuilt.
+**Resolved 2026-09-23 (issue #96) - see "Done: Cleave replaces Defend" below.** The warrior's
+button now fires Cleave, matching its own label.
 
 ### Done: the three slot upgrades moved to town, and made permanent (2026-09-21)
 
@@ -1436,6 +1439,82 @@ where that effort will grow.
 mid-fight, so its in-combat-input metric is stale; and pacing now that gold funds permanent
 tuning rather than a per-run spend.
 
+### Done: Cleave replaces Defend (issue #96, 2026-09-23)
+
+Decision 7.4's last unbuilt piece. `CleaveAbility` (`scripts/battle/abilities/cleave_ability.gd`)
+is the first `AbilityDef` that hits every living enemy, mirroring `Projectile._explode()`'s
+staggered AoE (left-to-right by world X, `Tuning.AOE_STAGGER` apart, `Tuning.DAMAGE_VARIANCE`
+rolled per target) rather than reusing `SlotMachine._hit_all()`, which resolves off the slot
+bag and is not reusable for an invoked special.
+
+- **Damage comes from the warrior's equipped weapon Power**
+  (`GameState.hero_weapon_power`), scaled by a new `Tuning.WARRIOR_CLEAVE_MULT` (0.6) - not
+  `source.compute_damage()`, which returns 1 for every hero now that item Power drives
+  combat damage. `WARRIOR_CLEAVE_MULT` is sized to land near the ranger bomb arrow's own AoE
+  budget per action cycle (cleave fires every 3 actions vs. bomb's 4), a first cut left for
+  issue #97's own retune pass.
+- **The special clip moved from `Block` (a defensive pose, wrong for a sweep) to
+  `1H_Melee_Attack_Slice_Horizontal`**, with `strip_unused_animations.gd`'s knight `KEEP`
+  list updated to match and the model reimported. Confirmed in the editor (a slowed-down
+  `character_viewer` capture) that the sword actually sweeps rather than guards.
+- **`SelfBuffAbility`/Defend's machinery is left in place but unused** -
+  `Tuning.WARRIOR_DEFEND_REDUCTION`/`WARRIOR_DEFEND_DURATION`,
+  `Combatant.apply_defend()`/`is_defending()`/`damage_reduction`, `BattleVfx.defend_icon()` -
+  since `damage_reduction` is still read by `Combatant.take_damage()` and a future ability
+  may want it back. **The party's only remaining mitigation is armor BLOCK icons**, the
+  accepted cost of decision 7.4.
+- **Tests:** `test_specials.gd` gained `_check_cleave_special()` (hits every living enemy,
+  spends the meter, enters `ATTACKING`, per-target damage well above `compute_damage()`'s
+  floor of 1 against a known equipped weapon) and `_check_authored_specials()` now asserts
+  the warrior's special `is CleaveAbility`.
+- PR [#136](https://github.com/DarkCascade/Sir-Fish/pull/136).
+
+### Done: fixed the ranger's bomb arrow and the mage's heal (found live-verifying #97, 2026-09-23)
+
+Not part of decision 7.4 itself, but the same root cause, found while live-verifying it:
+`ProjectileAbility`'s bomb-arrow branch and `HealAllyAbility` both computed their magnitude
+from `source.compute_damage()` / `source.power(Combatant.School.WEAPON)`, which read
+`CombatantStats.weapon_power`/`magic_power` directly - 0 on every hero under the item power
+model, and neither special ever carries `Ability.fixed_damage` (only
+`Ability.make_slot_strike()` sets that). Both silently floored to 1 regardless of the hero's
+gear - the ranger's bomb arrow hit every enemy for 1, and Healing Aura healed for 1 HP. This
+is the exact fallback-to-1 regression the Cleave brief flagged and fixed for the warrior;
+nobody had revisited the ranger's and mage's own specials to match.
+
+Both now read `GameState.hero_weapon_power(source.stats.id)`, same as `CleaveAbility`.
+`test_ability_resolve.gd`'s special-case checks previously only asserted "some positive
+effect" - a heal from 1 HP to 2 HP satisfies `> before` too - which is exactly how this
+slipped through; they now equip a known weapon and assert a magnitude well above the old
+floor. Tracked as issue [#137](https://github.com/DarkCascade/Sir-Fish/issues/137), fixed in
+PR [#138](https://github.com/DarkCascade/Sir-Fish/pull/138).
+
+### Done: live-verified the P7 pieces (issue #97, 2026-09-23)
+
+Everything in this section had only ever been headless-tested. Checked in a running game:
+
+- **The ranger and mage fire a projectile off every board they own icons on** - confirmed
+  visually (arrow/bolt icons resolving into real `Projectile`/`MagicBolt` launches, damage
+  numbers landing) and is what surfaced the bomb-arrow/heal bug above.
+- **The ranger animates for her own icons** (decision 1.7's follow-on, the owner split from
+  `66298b9`) - confirmed via her own pose change and gesture icon appearing on the board
+  mid-fight, not just the mage/warrior swinging for her damage.
+- **The invoker tray and the Slotworks flow** both render and function correctly in the
+  running game: three buttons (Bomb Arrow / Cleave / Healing Aura) light and drain on
+  invoke, and town -> Slotworks -> Upgrades shows its three cards with live gold-gated buys.
+- **The charge meter cadence, measured rather than eyeballed.** `scratch/
+  special_charge_cadence.gd` (gitignored, kept locally) drove the real
+  `SlotMachine._one_spin()` - actual reel timers, no hand-built boards - for 30 independent
+  trials against a fully-geared three-hero party (weapon + armor + trinket, RARE, matching
+  the "13 of 42" bag estimate `SPECIAL_CHARGE_COST`'s own comment assumes, not a
+  weapon-only hero). At `SPECIAL_CHARGE_COST = 10`: warrior averaged 3.83 spins to full
+  (median 4), ranger 3.87 (median 4), mage 3.70 (median 4) - all three land right on the
+  ~3-spin cadence the constant was picked for, evenly, with no per-hero lag. **No retune
+  warranted**; left at 10. (An earlier pass of the same probe, before it set
+  `GameState.active_party`, showed the ranger and mage never charging at all - a probe bug,
+  not a game bug: a fresh profile's `active_party` defaults to solo warrior, so their icons
+  never entered the bag.)
+- PR [#139](https://github.com/DarkCascade/Sir-Fish/pull/139).
+
 ### Decided, not built
 
 **Three written-up prompts live in `design documents/prompts/`**, each with the code
@@ -1452,18 +1531,13 @@ references, the traps and the acceptance criteria for an implementing model:
    The comment there used to claim a fixed "0 mage, 1 ranger, 2 warrior", which has not
    matched the real recruitment order since the party became a solo warrior; corrected in
    `66298b9`. Each button also needs a charge meter on it, and there is no charge UI today.
-2. **One special per class, and only two of them are hit-all.**
+2. **(Built 2026-09-23, issue #96 - see "Done: Cleave replaces Defend" below.) One special
+   per class, and only two of them are hit-all.**
    - **Warrior: cleave**, hitting all enemies - *replaces* Defend.
    - **Ranger: bomb arrow** - already exists, zero work.
    - **Mage: keeps her party heal, as Healing Aura** rather than gaining chain lightning. This was a
      deliberate trim of the original three-hit-alls plan: it keeps a heal source and leaves
      only two specials doing the same thing.
-   - Known cost: the warrior loses Defend, the party's only damage-reduction special. His
-     `special` clip is also "Block", wrong for a sweep, and a replacement clip has to be
-     added to `tools/strip_unused_animations.gd`'s `KEEP` table, which
-     `test_animation_clips` pins. There is also **no hit-all `AbilityDef` yet** - the four
-     that exist are `MeleeStrikeAbility`, `ProjectileAbility`, `SelfBuffAbility` and
-     `HealAllyAbility` - so cleave needs a new one.
 3. **(Built 2026-09-21, and revised to permanent - see above.) The three upgrades
    (`quick_reels`, `overcharge`, `polish`) move to town**, freeing the tray. `polish` is the
    board-density lever `test_level_curves` reads. The reset trap this item once described
@@ -1542,8 +1616,6 @@ The review found these, which any revived version has to answer:
   harness is tuned to, and it is the real price of this pivot.
 - **Whether the item-modifier proposal above is revived**, and how it reconciles with
   decision 3.1.
-- **Live verification of everything in this section.** Both commits are headless-tested
-  only; the ranger and mage firing projectiles off every board has never been looked at.
 
 ---
 
@@ -1582,8 +1654,8 @@ The review found these, which any revived version has to answer:
 | 6.2 | Does a red suite block the Pages deploy? | Open | `deploy-pages.yml` publishes on every push to `main` today with nothing gating it |
 | 7.1 | Slot or party as the main character | **Decided 2026-09-20** | Slot mechanically, party emotionally: player decisions live on the slot, the party expresses them (§7) |
 | 7.2 | Does slot damage split by owner? | **Decided, built** | Yes - each hero swings for the icons their own gear put on the board (`66298b9`) |
-| 7.3 | What gates a special invoke | **Decided, built** | A charge meter, filled by every icon that hero owns. `SPECIAL_CHARGE_COST` is 10, which lands at ~3 spins; 3 would have fired every spin (§7) |
-| 7.4 | One special per class, which ones | **Decided, part built** | Warrior cleave (replaces Defend, unbuilt), ranger bomb arrow (already exists), mage keeps her party heal as **Healing Aura**, now the party's ONLY heal (the slot heal is gone) - only two hit-alls |
+| 7.3 | What gates a special invoke | **Decided, built, live-verified 2026-09-23** | A charge meter, filled by every icon that hero owns. `SPECIAL_CHARGE_COST` is 10; a 30-trial headless probe against a fully-geared party (issue #97) measured 3.7-3.9 spins to full per hero, matching the ~3-spin target - no retune (§7) |
+| 7.4 | One special per class, which ones | **Decided, built 2026-09-23 (issue #96)** | Warrior cleave (replaces Defend), ranger bomb arrow (already existed), mage keeps her party heal as **Healing Aura**, the party's ONLY heal (the slot heal is gone) - only two hit-alls |
 | 7.5 | What happens to the three slot upgrades | **Decided, built 2026-09-21; revised** | They move to town (the Slotworks) and become **permanent**, saved with the profile. No reset at all but a new profile |
 | 7.6 | Hold-and-respin | Deferred | A good verb, but it needs the specials layer first to have anything worth deciding about, and three questions are unanswered (§7) |
 | 7.7 | Should fights be longer? | Open | Slot-first wants more, smaller spins; fights are 2-6 spins today. Reopens the harness's 3-9s time-to-kill band (§7) |
