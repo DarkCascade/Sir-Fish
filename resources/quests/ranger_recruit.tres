@@ -19,6 +19,6 @@ boss_pool = Array[StringName]([&"bandit_officer"])
 boss_drop_rarity_floor = 0
 guaranteed_boss_drop = ExtResource("4_relic")
 travel_durations = Array[float]([2.0, 3.0, 3.0, 3.0, 4.0])
-level_range = Vector2i(3, 5)
+level_range = Vector2i(3, 3)
 unlock_level = 3
 one_shot = true
