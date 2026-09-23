@@ -1,10 +1,8 @@
-[gd_resource type="Resource" script_class="SelfBuffAbility" format=3]
+[gd_resource type="Resource" script_class="CleaveAbility" format=3]
 
-[ext_resource type="Script" path="res://scripts/battle/abilities/self_buff_ability.gd" id="1_selfbuff"]
+[ext_resource type="Script" path="res://scripts/battle/abilities/cleave_ability.gd" id="1_cleave"]
 
 [resource]
-script = ExtResource("1_selfbuff")
-special_targets_opponent = false
-flash_color = Color(0.85098, 0.658824, 0.145098, 1)
-damage_reduction = 0.5
-duration = 4.0
+script = ExtResource("1_cleave")
+special_targets_opponent = true
+flash_color = Color(0.8509804, 0.65882355, 0.14509805, 1)

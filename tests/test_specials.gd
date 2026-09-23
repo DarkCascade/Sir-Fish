@@ -69,6 +69,7 @@ func _ready() -> void:
 	await _check_board_charges_its_owner()
 	_check_authored_specials()
 	_check_invoke_guards()
+	await _check_cleave_special()
 	_check_invoker_tray()
 	_check_charge_meter()
 	_t.finish(get_tree(), "test_specials")
@@ -190,8 +191,7 @@ func _check_board_charges_its_owner() -> void:
 # --- the authored specials ---------------------------------------------------
 
 ## What each hero's special actually is, so a resource swap cannot quietly leave
-## a hero with no special to invoke. Cleave replacing the warrior's Defend is
-## still to come; this records what ships today.
+## a hero with no special to invoke.
 func _check_authored_specials() -> void:
 	print("--- authored hero specials ---")
 	for id: StringName in [&"warrior", &"ranger", &"mage"]:
@@ -211,6 +211,11 @@ func _check_authored_specials() -> void:
 	var ranger := GameState.get_stats(&"ranger")
 	_t.check(ranger.special is ProjectileAbility and (ranger.special as ProjectileAbility).bomb_payload,
 		"the ranger's special is already the bomb arrow")
+	# [P7 7.4] Defend replaced by Cleave - see _check_cleave_special() for the
+	# hit-all/weapon-Power behaviour itself.
+	var warrior := GameState.get_stats(&"warrior")
+	_t.check(warrior.special is CleaveAbility,
+		"the warrior's special is now Cleave, not Defend")
 
 # --- the invoke ---------------------------------------------------------------
 
@@ -220,8 +225,9 @@ func _fill(hero_class: StringName) -> void:
 
 ## BattleDirector.invoke_hero_special() against a REAL director - it extends Node
 ## with no @onready, so it stands up bare with heroes/enemies assigned. The
-## warrior is the subject on purpose: his special is a SelfBuffAbility (Defend),
-## which needs neither a target nor a BattleWorld to resolve.
+## warrior is the subject on purpose: Cleave's special_targets_opponent is
+## true, so this also exercises the invoke's opponent-required guard, which a
+## purely self-targeted special (Defend, before P7 7.4) never touched.
 func _check_invoke_guards() -> void:
 	print("--- invoke guards ---")
 	GameState.new_profile()
@@ -264,6 +270,54 @@ func _check_invoke_guards() -> void:
 	ranger.state = Combatant.State.DEAD
 	_t.check(not d.invoke_hero_special(ranger), "a dead hero refuses the invoke")
 	_t.check(GameState.special_ready(&"ranger"), "and keeps her meter")
+
+# --- cleave (the warrior's special) -------------------------------------------
+
+## [P7 7.4] Cleave hits every living enemy, scaled off the warrior's equipped
+## weapon Power rather than source.compute_damage() - every hero's
+## weapon_power/magic_power is 0 now that item Power drives combat damage (see
+## resources/stats/warrior.tres), and a special that quietly fell back to
+## compute_damage() is the regression that bit ProjectileAbility once already
+## (66298b9). Forces resolution via _anim_impact() directly - the same call
+## the special clip's own impact call track fires - instead of waiting on real
+## animation timing.
+func _check_cleave_special() -> void:
+	print("--- cleave: the warrior's special ---")
+	GameState.new_profile()
+	var d := BattleDirector.new()
+	add_child(d)
+	var warrior := _spawn(&"warrior", -3.0, d)
+	var enemy_a := _spawn(&"shadow_monster", 2.0, d)
+	var enemy_b := _spawn(&"shadow_monster", 3.0, d)
+	d.heroes = [warrior]
+	d.enemies = [enemy_a, enemy_b]
+
+	# A known weapon so per-target damage can be checked against
+	# compute_damage()'s floor of 1, not just "some positive number".
+	# equipped_item()/hero_weapon_power() read GameState.inventory, not just an
+	# item's own equipped_by flag, so it has to be appended there too (see
+	# test_forge.gd's _test_emits_party_bonuses_changed for the same two-step).
+	var axe := Itemizer.generate_typed_item(&"axe", Item.Rarity.RARE, 10)
+	GameState.inventory.append(axe)
+	GameState.equip_item(axe, &"warrior")
+
+	_fill(&"warrior")
+	var before_a := enemy_a.current_hp
+	var before_b := enemy_b.current_hp
+	_t.check(d.invoke_hero_special(warrior), "cleave invokes with a full meter")
+	_t.check(GameState.special_charge(&"warrior") == 0, "and spends the meter")
+	_t.check(warrior.state == Combatant.State.ATTACKING, "and the warrior enters ATTACKING")
+
+	warrior._anim_impact()
+	# CleaveAbility.resolve() stages one target per Tuning.AOE_STAGGER; give
+	# both targets time to resolve before checking either.
+	await get_tree().create_timer(Tuning.AOE_STAGGER * 4.0).timeout
+
+	_t.check(enemy_a.current_hp < before_a, "cleave damaged the first enemy")
+	_t.check(enemy_b.current_hp < before_b, "cleave damaged the second enemy too, not just one")
+	var dealt: int = before_a - enemy_a.current_hp
+	_t.check(dealt > 1,
+		"per-target damage scales off equipped weapon Power, not compute_damage()'s floor of 1 (got %d)" % dealt)
 
 # --- the invoker buttons ------------------------------------------------------
 
