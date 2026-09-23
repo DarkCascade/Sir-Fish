@@ -37,7 +37,7 @@ static func headline_unit(item: Item) -> String:
 		Item.Slot.ARMOR:
 			return "ARMOR"
 		Item.Slot.TRINKET:
-			return "POWER"
+			return "ATK POWER"
 		_:
 			return "DAMAGE"
 
@@ -49,7 +49,7 @@ static func base_caption(item: Item) -> String:
 		Item.Slot.ARMOR:
 			return "Armor"
 		Item.Slot.TRINKET:
-			return "Focus Power"
+			return "Focus Attack Power"
 		_:
 			return "Weapon Damage"
 
