@@ -106,7 +106,7 @@ func _roll_drop(c: Combatant) -> void:
 	var is_boss_unit: bool = _boss_fight and not enemies.is_empty() and c == enemies[0]
 	if is_boss_unit and GameState.quest != null and GameState.quest.guaranteed_boss_drop != null:
 		var relic: Item = GameState.quest.guaranteed_boss_drop.duplicate(true)
-		pending_drops.append({ "item": relic, "position": c.hit_world_position() })
+		pending_drops.append({ "item": relic, "position": c.hit_world_position(), "is_relic": true })
 		return
 	if stats.drop_chance <= 0.0:
 		return

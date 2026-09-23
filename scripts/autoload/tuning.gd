@@ -400,6 +400,10 @@ const DROP_BOSS_TARGETS_HUNGRIEST := true
 const DROP_LABEL_STAGGER := 0.25
 ## Height above the recorded corpse position that a drop glyph pops at.
 const DROP_LABEL_LIFT := 1.2
+## [recruitment] Longer than DROP_LABEL_STAGGER - a quest's guaranteed_boss_drop
+## gets its own golden burst (RunController._award_drops(), issue #94) and needs
+## a beat to read before the glyph pops on top of it.
+const RELIC_DROP_STAGGER := 0.5
 
 # --- 5.5 Slot machine — the icon bag [slot phase 2] -----------------------
 ## The reel is a BAG rebuilt from the party, not a fixed 27-stop strip: one
