@@ -252,12 +252,20 @@ func _run_loot(def: EncounterDef) -> void:
 func _award_drops() -> void:
 	for entry: Dictionary in director.pending_drops:
 		var item: Item = entry["item"]
+		var pos: Vector3 = entry["position"]
 		GameState.add_item(item)
 		GameState.run_stats["items_found"] = int(GameState.run_stats["items_found"]) + 1
 		GameState.run_stats["items_dropped"] = int(GameState.run_stats["items_dropped"]) + 1
-		overlay.spawn_world_glyph(
-			(entry["position"] as Vector3) + Vector3(0, Tuning.DROP_LABEL_LIFT, 0), item)
-		await get_tree().create_timer(Tuning.DROP_LABEL_STAGGER).timeout
+		# [recruitment] A quest's guaranteed_boss_drop is the one-of-a-kind relic
+		# the whole quest was chasing, not just another drop - a golden burst at
+		# the corpse marks the moment distinctly before its glyph pops, same as
+		# every other drop gets (issue #94).
+		var is_relic: bool = bool(entry.get("is_relic", false))
+		if is_relic:
+			BattleVfx.magic_burst(pos, Tuning.C_GOLD_BRIGHT)
+		overlay.spawn_world_glyph(pos + Vector3(0, Tuning.DROP_LABEL_LIFT, 0), item)
+		await get_tree().create_timer(
+			Tuning.RELIC_DROP_STAGGER if is_relic else Tuning.DROP_LABEL_STAGGER).timeout
 	director.pending_drops.clear()
 
 # --- SHOP (spec 14.3) -------------------------------------------------------

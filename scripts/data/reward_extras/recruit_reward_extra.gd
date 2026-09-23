@@ -43,7 +43,13 @@ func grant() -> void:
 			GameState.equip_item(item, hero_class)
 			break
 
+## [issue #94] `description` is authored per quest (recruit_ranger.tres:
+## "The ranger joins the party, bow recovered.") specifically to name the
+## relic on the result screen and the mayor's quest notice - describe() used
+## to ignore it and return this generic fallback unconditionally.
 func describe() -> String:
+	if not description.is_empty():
+		return description
 	return "%s joins the party" % String(hero_class).capitalize()
 
 func kind() -> StringName:

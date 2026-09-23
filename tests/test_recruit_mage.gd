@@ -65,6 +65,9 @@ func _check_authored_quest_consistency(t: TestSupport) -> void:
 	t.check(GameState.get_class_def(extra.hero_class) != null,
 		"the recruited class has a registered ClassDef")
 	t.check(q.unlock_level == 5, "recruit_mage.tres unlocks at level 5")
+	t.check(not extra.description.is_empty() and extra.describe() == extra.description,
+		"describe() returns the authored description naming the relic (issue #94), got %s"
+		% extra.describe())
 	t.check(extra.join_level == 5 and extra.join_level == q.unlock_level,
 		"the mage joins at her quest's own level (got join_level %d, unlock_level %d)"
 			% [extra.join_level, q.unlock_level])
