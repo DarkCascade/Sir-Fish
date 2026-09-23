@@ -1076,10 +1076,10 @@ or sequenced against P1–P4.
 
 - **Post-expedition stats summary view** needs another design pass; priorities not yet
   defined.
-- **Expedition chest redo:**
-  - move the chest above the party on screen, so it's actually visible;
-  - replace the text loot list with glyph-pop animations — item-type and rarity glyphs
-    spawning visibly out of the chest instead of text.
+- **Expedition chest redo** — done (issues #87, #88; commit `1110694`, 2026-09-15):
+  chest moved out to the same up-run band as the shop building so the party no longer
+  occludes it, and text loot popups replaced with `loot_glyph.tscn`/`.gd` glyph-pop
+  animations wrapping `item_glyph.gd`'s rarity ring.
 - **Apply the same popped-glyph pattern to battle loot**, for consistency with the
   chest.
 - **Slot upgrade boxes**: transition their styling to the boss frame along with the
@@ -1093,11 +1093,8 @@ or sequenced against P1–P4.
   unblocked (currently on hold pending design lock; see [`sir-fish-meshy-on-hold`
   memory]).
 
-**Party modal**
-
-- Add **party levels and experience** information to the display.
-- Move glyph labels from **below** each glyph to **above** it, reading "innate" and
-  "forged".
+**Party modal** — done (issues #92, #93; commit `ca58e38`): level/XP display added
+per hero, and the innate/forged glyph tag moved above its tile instead of below.
 
 **Town / blacksmith**
 
