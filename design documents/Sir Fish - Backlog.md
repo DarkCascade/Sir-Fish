@@ -811,11 +811,12 @@ The project has two character pipelines, and they do not share a skeleton.
 named `Rig`, they were exported with Blender glTF I/O 1.7.33, and the clips are baked
 in. S1 below shows the skeleton underneath is nonetheless `Rig_Medium`.
 
-`design documents/character_generation_workflow.docx` is an early, generic draft of
-this skill, and it contradicts what building the sporecap taught. The skill should
-supersede it:
+`design documents/character_generation_workflow.docx` was an early, generic draft of
+this skill that contradicted what building the sporecap taught. Retired 2026-09-23
+(issue #85) now that CLAUDE.md and the `new-character` skill are the real pipeline
+docs:
 
-| The docx says | What the project learned (CLAUDE.md) |
+| The docx said | What the project learned (CLAUDE.md) |
 |---|---|
 | `meshy-6` | `smart-topology` (meshy-t2): half the price, returns separated parts |
 | T-pose or A-pose | Depends on the rig; see decision 4.7 |
@@ -1058,9 +1059,11 @@ CLAUDE.md's KayKit section is now a pointer to it.
   character, to save 9 credits.
 - **Build 4.3's shared clip source** once several characters share clips. Baking stays
   fine until then.
-- **Build the dev character viewer and dev save isolation** (recommendation 2 of the
-  pipeline review), so in-game checks stop touching the real profile.
-- **Retire the old draft.** Treat `character_generation_workflow.docx` as superseded.
+- **Build the dev character viewer and dev save isolation** — done (issue #84): a
+  `character_viewer` debug scene plus dev save isolation, so in-game checks stop
+  touching the real profile.
+- **Retire the old draft** — done (issue #85): `character_generation_workflow.docx`
+  removed; see §4's comparison table above for what superseded it.
 
 ---
 
