@@ -421,27 +421,26 @@ found the two P1 regressions this same commit introduced (§1 "Found and fixed")
   from 3-7 to **3-5** the same day. With them no two authored quests share a
   `level_range.x` (1, 3, 5, 6 and 15), so `test_quest_generator` asserts the exact board
   order at level 5: easy, ranger, mage, medium, hard. Decision 2.2.
-- **Playtest-verified 2026-09-22 (issue #105) - the two bands are backwards from what
-  §2's own note above claimed.** `tools/sim_recruit_bands.gd` (a Monte Carlo harness,
-  same discrete-event resolver as `tools/sim_easy_attempts.gd` and the party-bag model
-  `test_level_curves.gd`'s recruit cases use, but fighting the quest's OWN
-  `enemy_pool`/`boss_pool`/`encounter_types`/`level_range` instead of a generic
-  `skeleton_warrior` stand-in) ran 300 single-attempt trials per level, per quest:
-  - **`ranger_recruit` (3-5) is unwinnable at its own unlock level.** A solo warrior at
-    exactly level 3 - the first moment the mayor's board offers the quest, and the level
-    it stays at for the whole attempt, since XP only banks and applies at expedition end
-    (`GameState.apply_expedition_xp()`) - loses to the `bandit_officer` boss (level 6 at
-    `level_range.y + Tuning.BOSS_LEVEL_BONUS`, x3.5 HP) **300/300 times**, always on the
-    boss encounter. One level higher fixes it completely: level 4 and level 5 both clear
-    **300/300**. The cliff is that sharp - there is no partial-win level in between.
-  - **`recruit_mage` (5-7) is trivial across its whole band.** Warrior + ranger clears
-    **300/300** at levels 5, 6 and 7 alike, whether the ranger is still wearing only her
-    guaranteed relic (the just-joined state) or a full generated loadout. Not one loss in
-    1200 trials across both gear states and all three levels.
-  - Net: the mage quest is not "the harder of the two" as previously guessed - it is the
-    one with slack to spare, while the ranger quest cannot be completed by the exact party
-    it is offered to. Both bands need a real number change, not just re-verification; this
-    playtest establishes the facts, the actual re-band is a separate decision.
+- **Simulated 2026-09-22 (issue #105).** `tools/sim_recruit_bands.gd` is a Monte Carlo
+  harness. It uses the discrete-event resolver from `tools/sim_easy_attempts.gd` and the
+  party-bag model from `test_level_curves.gd`, but fights each quest's own pools, layout
+  and `level_range`. It runs 400 single-attempt trials per cell and re-rolls gear, enemy
+  picks and combat every trial. (A first version reseeded inside gear generation, so
+  every "trial" was the same fight. Its 0/300-then-300/300 cliff was an artifact of that
+  bug.) Win rates at the party level the quest is offered, then one and two levels up:
+  - **`ranger_recruit` 3-5, solo warrior: 0% / 13% / 95%.** This is the same difficulty
+    as `easy.tres` (0% / 22% / 96%). The two quests share a layout and a pool, and their
+    level-6 bosses have identical stats (`bandit_officer` copies `skeleton_warrior`).
+    Only the ranger quest's early fights are harder.
+  - **`recruit_mage` 5-7, warrior + ranger: 99-100% / 100% / 100%,** whether the ranger
+    wears only her relic or a full loadout. It is near-trivial the moment it is offered.
+  - **The boss is almost the whole difficulty.** Lowering `level_range.x` barely moves
+    the result (3-4 and 2-4 differ by under 10 points), while each step of
+    `level_range.y` (the boss sits at y + `BOSS_LEVEL_BONUS`) swings it by 30-80 points.
+  - **The absolute numbers are pessimistic.** The harness leaves out specials, crits,
+    bleed, cleave and rain, payline double-resolves and mid-run loot. Treat the easy
+    quest's row as the calibration: whatever level a live player really clears easy at,
+    the other rows shift by the same amount.
 
 ---
 
@@ -1483,7 +1482,7 @@ The review found these, which any revived version has to answer:
 | 1.6 | Should enemies scale with party size? | **Decided 2026-09-20: no** | Nothing scales enemies with the party, and nothing will. A full party outlasts the solo warrior about 2.3x at every late band (§1 "Balance check"); that is the intended shape |
 | 1.7 | Should the ranger's starting kit animate her? | **Decided 2026-09-20: leave it** | The warbow is not changed. A future slot-icon effort owns who animates for which icon (§1) |
 | 2.1 | Gate the mage quest at level 5? | **Decided, built 2026-09-20** | `recruit_mage.tres` has `unlock_level = 5`; the mage joins at level 5 |
-| 2.2 | Quest difficulty bands for the recruit quests | **Playtest-verified 2026-09-22: broken** | Ranger `level_range` 3-5 (gate 3) is unwinnable at its own gate (0/300 at L3, 300/300 at L4+); mage 5-7 (gate 5) is trivial across its whole band (300/300 at every level tried). Needs a re-band, not just re-verification (§2, issue #105) |
+| 2.2 | Quest difficulty bands for the recruit quests | **Simulated 2026-09-22, re-band pending** | Ranger 3-5 (gate 3) is as hard as `easy.tres` with the same boss, which is too hard for the level it is offered at. Mage 5-7 (gate 5) is near-trivial (99-100%). The boss level (y + 1) drives nearly all of the difficulty (§2, issue #105) |
 | 3.1 | Modifier rule | **Decided** | Four per type, dealt in random order (Magic 1 / Rare 2 / Enhanced 3); Enhanced then boosts one of its three by 1.5× |
 | 3.2 | Does equipping change the model? | **Decided** | Hand items first; head and chest props stay cosmetic |
 | 3.3 | Tower shield mesh | **Decided** | `Rectangle_Shield` |

@@ -19,19 +19,24 @@ extends Node
 ## per actor, the real slot bag/board math (SlotIcon, SlotMachine.draw_nine())
 ## for party output, extended to N heroes / N enemies. Same conservative
 ## omissions as sim_easy_attempts.gd (payline double-resolve, crit doubling,
-## bleed ticks, mid-fight leveling), plus: LOOT/SHOP encounters are no-ops
-## here (no items generated or bought mid-run) and HP does not carry a heal
-## between quests - both slightly UNDERSTATE a live player's real odds.
+## bleed ticks, cleave/rain, class specials), plus LOOT/SHOP encounters are
+## no-ops (no items gained mid-run). All of these UNDERSTATE a live player's
+## odds, so read the tables relative to the easy.tres calibration row rather
+## than as absolute win rates.
 
 const SlotMachineScript := preload("res://scripts/console/slot_machine.gd")
 
-const NUM_TRIALS := 300
+const NUM_TRIALS := 400
 const ENEMY_ATTACK_CLIP := 0.8
 const _SPIN_CYCLE := Tuning.SLOT_SPIN_DURATION + Tuning.SLOT_REEL_STAGGER * 2.0 + Tuning.SLOT_RESULT_HOLD
 
 ## [levels] Mirrors test_level_curves.gd's GEAR_RARITY_AT_LEVEL - "what gear is
 ## this level's player plausibly wearing" per spec §5.1, not simulated drops.
+## Only the rarity is fixed; the modifiers are rolled fresh every trial.
+## L1-2 are generous: a fresh profile really has a Magic sword, a Common shield
+## and no trinket.
 const GEAR_RARITY_AT_LEVEL := {
+	1: Item.Rarity.MAGIC, 2: Item.Rarity.MAGIC,
 	3: Item.Rarity.MAGIC, 4: Item.Rarity.MAGIC, 5: Item.Rarity.MAGIC,
 	6: Item.Rarity.MAGIC, 7: Item.Rarity.MAGIC,
 }
@@ -41,58 +46,47 @@ const _GEAR_TYPES := {
 	&"ranger": {Item.Slot.WEAPON: &"bow", Item.Slot.ARMOR: &"helm", Item.Slot.TRINKET: &"ring"},
 }
 
-## One case per quest: the party attempting it right when the mayor first
-## offers it. "relic_only" models the ranger fresh off her own quest, wearing
-## only the guaranteed warbow (spec's actual join state) - the conservative,
-## worst-case gear read; "geared" (run second, printed alongside) gives her a
-## full plausible loadout instead, the more typical few-quests-later state.
-const CASES := [
+const _SOLO_WARRIOR := [{"class": &"warrior", "geared": true}]
+## The ranger as she joins: the guaranteed warbow and nothing else.
+const _WARRIOR_RANGER_FRESH := [
+	{"class": &"warrior", "geared": true}, {"class": &"ranger", "geared": false},
+]
+const _WARRIOR_RANGER_GEARED := [
+	{"class": &"warrior", "geared": true}, {"class": &"ranger", "geared": true},
+]
+
+## Each sweep runs every candidate level_range against every party level, on a
+## copy of the real quest with only level_range swapped. The first candidate is
+## the shipped band. Party levels start at the quest's unlock_level: the mayor
+## never offers it lower.
+const SWEEPS := [
+	# Calibration, not a candidate: easy.tres has the ranger quest's layout, pool
+	# and an identically-statted boss, and it has been played live. If the level
+	# this table says a solo warrior first clears easy at disagrees with real
+	# play, every other table here is off by the same amount.
 	{
-		"quest": "res://resources/quests/ranger_recruit.tres",
-		"party_level": 3,
-		"members": [{"class": &"warrior", "geared": true}],
+		"quest": "res://resources/quests/easy.tres",
+		"party": _SOLO_WARRIOR,
+		"party_levels": [2, 3, 4, 5],
+		"ranges": [Vector2i(1, 5)],
 	},
 	{
 		"quest": "res://resources/quests/ranger_recruit.tres",
-		"party_level": 4,
-		"members": [{"class": &"warrior", "geared": true}],
-	},
-	{
-		"quest": "res://resources/quests/ranger_recruit.tres",
-		"party_level": 5,
-		"members": [{"class": &"warrior", "geared": true}],
+		"party": _SOLO_WARRIOR,
+		"party_levels": [3, 4, 5],
+		"ranges": [Vector2i(3, 5), Vector2i(3, 4), Vector2i(2, 4), Vector2i(3, 3), Vector2i(2, 3)],
 	},
 	{
 		"quest": "res://resources/quests/recruit_mage.tres",
-		"party_level": 5,
-		"members": [
-			{"class": &"warrior", "geared": true},
-			{"class": &"ranger", "geared": false},
-		],
+		"party": _WARRIOR_RANGER_FRESH,
+		"party_levels": [5, 6, 7],
+		"ranges": [Vector2i(5, 7), Vector2i(5, 8), Vector2i(5, 9), Vector2i(5, 10)],
 	},
 	{
 		"quest": "res://resources/quests/recruit_mage.tres",
-		"party_level": 5,
-		"members": [
-			{"class": &"warrior", "geared": true},
-			{"class": &"ranger", "geared": true},
-		],
-	},
-	{
-		"quest": "res://resources/quests/recruit_mage.tres",
-		"party_level": 6,
-		"members": [
-			{"class": &"warrior", "geared": true},
-			{"class": &"ranger", "geared": true},
-		],
-	},
-	{
-		"quest": "res://resources/quests/recruit_mage.tres",
-		"party_level": 7,
-		"members": [
-			{"class": &"warrior", "geared": true},
-			{"class": &"ranger", "geared": true},
-		],
+		"party": _WARRIOR_RANGER_GEARED,
+		"party_levels": [5, 6, 7],
+		"ranges": [Vector2i(5, 7), Vector2i(5, 8), Vector2i(5, 9), Vector2i(5, 10)],
 	},
 ]
 
@@ -101,38 +95,65 @@ const _RELIC_ITEM := {
 	&"mage": "res://resources/items/mage_heartstone.tres",
 }
 
+var _last_combat_secs := 0.0
+
 func _ready() -> void:
-	for c: Dictionary in CASES:
-		_run_case(c)
+	for s: Dictionary in SWEEPS:
+		_run_sweep(s)
 	get_tree().quit()
 
 # =============================================================================
-# One case: NUM_TRIALS single-attempt expeditions at a fixed party level.
+# Sweeps: one table per quest and party, a row per candidate level_range.
 # =============================================================================
 
-func _run_case(c: Dictionary) -> void:
-	var quest: QuestDef = load(c["quest"])
-	var label := "%s (party L%d, %s)" % [quest.id, int(c["party_level"]),
-		", ".join((c["members"] as Array).map(func(m: Dictionary) -> String:
-			return "%s%s" % [m["class"], "" if m["geared"] else " relic-only"]))]
-	print("\n=== %s | level_range %s, unlock %d ===" % [label, quest.level_range, quest.unlock_level])
+func _run_sweep(s: Dictionary) -> void:
+	var base: QuestDef = load(s["quest"])
+	var members: Array = s["party"]
+	var party_desc := ", ".join(members.map(func(m: Dictionary) -> String:
+		return "%s%s" % [m["class"], "" if m["geared"] else " (relic only)"]))
+	print("\n=== %s | party: %s | unlock %d | %d trials per cell ===" % [
+		base.id, party_desc, base.unlock_level, NUM_TRIALS])
+	print("  cell = win%% / mean HP left on a win / mean boss fight length")
+	var header := "  %-8s" % "range"
+	for lvl: int in s["party_levels"]:
+		header += " | %-24s" % ("party L%d" % lvl)
+	print(header)
+	for r: Vector2i in s["ranges"]:
+		var quest := base.duplicate() as QuestDef
+		quest.level_range = r
+		var row := "  %-8s" % ("%d-%d%s" % [r.x, r.y, "*" if r == base.level_range else ""])
+		for lvl: int in s["party_levels"]:
+			var st := _run_cell(quest, members, lvl)
+			row += " | %5.1f%% / %3.0f%% / %4.1fs " % [st["win_pct"], st["hp_left_pct"], st["boss_secs"]]
+		print(row)
+	print("  (* = shipped band)")
 
+## NUM_TRIALS single-attempt expeditions. The trial seed is set ONCE, before
+## the party is built, so the gear rolls, the enemy picks and the combat all
+## differ trial to trial.
+func _run_cell(quest: QuestDef, members: Array, party_level: int) -> Dictionary:
 	var wins := 0
-	var deaths_at: Dictionary = {}
+	var hp_left := 0.0
+	var boss_secs := 0.0
 	for trial: int in range(NUM_TRIALS):
-		RNG.set_seed(hash("%s|%d" % [label, trial]))
-		var party := _build_party(c["members"], int(c["party_level"]))
+		RNG.set_seed(hash("%s|%s|%d|%d" % [quest.id, quest.level_range, party_level, trial])
+			+ members.size())
+		var party := _build_party(members, party_level)
 		var outcome := _run_quest(quest, party)
+		boss_secs += float(outcome["boss_secs"])
 		if outcome["won"]:
 			wins += 1
-		else:
-			var idx: int = outcome["died_at"]
-			deaths_at[idx] = int(deaths_at.get(idx, 0)) + 1
-
-	var rate := float(wins) / float(NUM_TRIALS) * 100.0
-	print("  win rate: %.1f%% (%d/%d)" % [rate, wins, NUM_TRIALS])
-	if wins < NUM_TRIALS:
-		print("  wipes by combat encounter index: %s" % str(deaths_at))
+			var hp := 0.0
+			var max_hp := 0.0
+			for h: Dictionary in party:
+				hp += maxf(0.0, float(h["hp"]))
+				max_hp += float(h["max_hp"])
+			hp_left += hp / max_hp
+	return {
+		"win_pct": float(wins) / float(NUM_TRIALS) * 100.0,
+		"hp_left_pct": (hp_left / float(wins) * 100.0) if wins > 0 else 0.0,
+		"boss_secs": boss_secs / float(NUM_TRIALS),
+	}
 
 # =============================================================================
 # Party / gear construction
@@ -181,10 +202,11 @@ func _relic_loadout(hero_class: StringName) -> Array[Item]:
 ## Mirrors test_level_curves.gd's _make_geared_item(): a real generated item
 ## with real rolled modifiers from Itemizer's own pool/roll ranges, so this
 ## gear is exactly as strong as an actually-generated item of the same
-## rarity/level.
+## rarity/level. Unlike that harness it does NOT reseed: it draws from the
+## trial's stream, so gear luck varies across trials instead of every trial
+## wearing one fixed roll.
 func _make_geared_item(slot: Item.Slot, rarity: int, level: int,
 		type_id: StringName, hero: StringName) -> Item:
-	RNG.set_seed(hash("gear|%s|%d|%d|%s|%s" % [hero, level, int(slot), type_id, rarity]))
 	var item := Item.new()
 	item.kind = Item.Kind.WEAPON
 	item.weapon_type = type_id
@@ -246,10 +268,14 @@ func _run_quest(quest: QuestDef, party: Array) -> Dictionary:
 		var level: int = _interpolated_level(quest.level_range, i, n)
 		var is_last := i == n - 1
 		var enemies := _spawn_enemies(quest, level, is_last)
-		if not _run_combat(enemies, party):
-			return {"won": false, "died_at": combat_index}
+		var won := _run_combat(enemies, party)
+		if not won:
+			return {"won": false, "died_at": combat_index,
+				"boss_secs": _last_combat_secs if is_last else 0.0}
+		if is_last:
+			return {"won": true, "died_at": -1, "boss_secs": _last_combat_secs}
 		combat_index += 1
-	return {"won": true, "died_at": -1}
+	return {"won": true, "died_at": -1, "boss_secs": 0.0}
 
 func _interpolated_level(band: Vector2i, index: int, count: int) -> int:
 	var t: float = float(index) / float(maxi(count - 1, 1))
@@ -257,13 +283,13 @@ func _interpolated_level(band: Vector2i, index: int, count: int) -> int:
 
 func _spawn_enemies(quest: QuestDef, level: int, is_boss_encounter: bool) -> Array:
 	var ids: Array[StringName] = []
+	var count: int = RNG.randi_range(quest.enemy_count.x, quest.enemy_count.y)
 	if is_boss_encounter:
 		ids.append(RNG.pick(quest.boss_pool) as StringName)
-		for i: int in range(maxi(quest.enemy_count.x - 1, 0)):
+		for i: int in range(clampi(count - 1, 0, Tuning.MAX_ENEMIES - 1)):
 			ids.append(RNG.pick(quest.enemy_pool) as StringName)
 	else:
-		var count: int = RNG.randi_range(quest.enemy_count.x, quest.enemy_count.y)
-		for i: int in range(count):
+		for i: int in range(clampi(count, 1, Tuning.MAX_ENEMIES)):
 			ids.append(RNG.pick(quest.enemy_pool) as StringName)
 
 	var out: Array = []
@@ -290,8 +316,14 @@ func _spawn_enemies(quest: QuestDef, level: int, is_boss_encounter: bool) -> Arr
 ## `party` is mutated in place (hp, block/block_until). Returns true iff every
 ## enemy dies before the whole party's hp reaches 0.
 func _run_combat(enemies: Array, party: Array) -> bool:
+	_last_combat_secs = 0.0
 	if enemies.is_empty():
 		return true
+	# Each fight's clock starts at 0, so a block granted late in the last fight
+	# must not read as still active here.
+	for h: Dictionary in party:
+		h.erase("block")
+		h.erase("block_until")
 	var t := 0.0
 	var party_next_spin: float = _SPIN_CYCLE
 	var guard := 0
@@ -317,10 +349,7 @@ func _run_combat(enemies: Array, party: Array) -> bool:
 			party_next_spin = t + _SPIN_CYCLE
 			_resolve_spin(party, enemies, t)
 
-		for e: Dictionary in enemies:
-			if e["hp"] <= 0 and not e.get("_counted", false):
-				e["_counted"] = true
-
+	_last_combat_secs = t
 	return _living_heroes(party).size() > 0
 
 func _living(enemies: Array) -> bool:
