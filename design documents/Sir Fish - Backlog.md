@@ -1093,11 +1093,8 @@ or sequenced against P1–P4.
   unblocked (currently on hold pending design lock; see [`sir-fish-meshy-on-hold`
   memory]).
 
-**Party modal**
-
-- Add **party levels and experience** information to the display.
-- Move glyph labels from **below** each glyph to **above** it, reading "innate" and
-  "forged".
+**Party modal** — done (issues #92, #93; commit `ca58e38`): level/XP display added
+per hero, and the innate/forged glyph tag moved above its tile instead of below.
 
 **Town / blacksmith**
 
