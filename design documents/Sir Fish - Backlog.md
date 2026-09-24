@@ -645,7 +645,7 @@ the rollable ones):
 | crossbow, heavy crossbow (planned, 3.6) | none named; same approach applies once built | 4 |
 | staff | `lightning_blast`; fills out the same way, per 3.7 | 2 |
 | wand (planned) | none yet; same approach applies once built | 2 |
-| helm, mail, tome, and each shield | `armor_block`; each shield gets a distinct new Block mechanic, per 3.7 | 3 |
+| helm, mail, tome, and each shield | `armor_block`; each of the four shields gets a distinct new Block mechanic, per 3.7; helm/mail/tome fill out in #76 | 3 |
 | idol, ring, amulet | `crit` and one ultimate each | 2 |
 
 - **Armor is the worst case:** every armor type rolls the one identical id (`armor_block`; `slot_mend` was retired 2026-09-21), so telling
@@ -719,7 +719,10 @@ leftovers from the system §3.9 retired.
   set-drafting pass, not decided here.
 - **Shield ids: get distinct Block mechanics**, not just numeric variance - matching the
   thorns-on-spiked / heavier-block-on-tower flavor already suggested below. One per shield,
-  to tell them apart. The available shields:
+  to tell them apart; confirmed as its own card 2026-09-23
+  ([issue #72](https://github.com/DarkCascade/Sir-Fish/issues/72)). Every such id is Block
+  on the §3.9 board by construction, so the open part is only the mechanic. The available
+  shields:
 
   | Mesh on `knight.glb` | Pack file (Adventurers 2.0) | Working name (decided, §3) |
   |---|---|---|
@@ -727,12 +730,20 @@ leftovers from the system §3.9 retired.
   | `Badge_Shield` | `shield_badge` | kite shield |
   | `Rectangle_Shield` | `shield_square` | tower shield |
   | `Spike_Shield` | `shield_spikes` | spiked shield |
-  | none on the knight | `shield_round_barbarian` | unnamed: a fifth shield the pack ships |
+  | none on the knight | `shield_round_barbarian` | **left out for now** (#72): not an item type |
 
   The pack has `_color` variants of `round`, `badge`, `spikes` and `square` (not
   `round_barbarian`). The knight-to-pack pairing above is by name and unverified. The
   older `warrior.glb` also carries a shield (`W_ShieldFace`, `W_ShieldRim`), but as part
   of that model, not a prop. The specific mechanic per shield is left to P3a.
+- **The fifth shield stays out (#72).** `shield_round_barbarian` is not an item type for
+  now, which keeps the roster at four shields - the same "a few equipment meshes first"
+  call as 3.5. It can come back as its own type once the four have mechanics.
+- **Helm, mail and tome are not covered by the per-shield rule (#72).** They are each
+  still three short of four, and they have no shield silhouette to hang a distinct Block
+  mechanic on. Whether they get their own Block variants or draw from shared pools
+  (`crit`, the elements) is left to the set-drafting pass
+  ([issue #76](https://github.com/DarkCascade/Sir-Fish/issues/76)).
 - **Trinkets:** `crit` has no `types` restriction, so **all three trinket types can roll
   it** (idol, ring and amulet). Each also rolls its own class ultimate (`cleave`, `rain`,
   `thunderburst`), and that is the whole pool of two. The authored relics (`heartstone`,
@@ -1663,7 +1674,7 @@ The review found these, which any revived version has to answer:
 | 3.6 | Axe and bow | **Decided 2026-09-23** | Meshes are in Adventurers 2.0 (downloaded); keep `axe` and a true `bow`, and add `crossbow`/`heavy crossbow` as further ranger types - additive, no `SaveGame` migration ([#70](https://github.com/DarkCascade/Sir-Fish/issues/70)) |
 | 3.9 | Slot board vocabulary | **Decided, built 2026-09-21** | Six categories (strike as owner's weapon, fire, ice, lightning, block, charge coin with the owner's profile); charge coins only charge; bleed and crit are stats; payline matches category ([#114](https://github.com/DarkCascade/Sir-Fish/issues/114)) |
 | 3.10 | Jackpot rule for the early game | Open | All eight lines ships (~1/battle geared, ~0 early solo); options in [#115](https://github.com/DarkCascade/Sir-Fish/issues/115) |
-| 3.7 | New modifier ids | **Approach decided 2026-09-23** | Weapon ids fill out via universal elements + one new weapon-specific stat per type (the 2026-09-20 named action-ids retired); shields get distinct Block mechanics per shield. Exact new ids left to P3a's drafting pass ([#71](https://github.com/DarkCascade/Sir-Fish/issues/71)) |
+| 3.7 | New modifier ids | **Approach decided 2026-09-23** | Weapon ids fill out via universal elements + one new weapon-specific stat per type (the 2026-09-20 named action-ids retired); shields get distinct Block mechanics per shield ([#72](https://github.com/DarkCascade/Sir-Fish/issues/72): four shields, the barbarian shield left out; helm/mail/tome fill out in #76). Exact new ids left to P3a's drafting pass ([#71](https://github.com/DarkCascade/Sir-Fish/issues/71)) |
 | 4.1 | Standard skeleton | **Decided** | `Rig_Medium`; S1 confirmed the shipped `Rig` is identical |
 | 4.2 | Clip source | **Decided** | KayKit Character Animations: 132 `Rig_Medium` clips, CC0, verified |
 | 4.3 | Bake clips or share them | Recommended | One shared library; needs a second clip source on `RigProfile` |
