@@ -1746,11 +1746,23 @@ The review found these, which any revived version has to answer:
   tinting system and silently drop icons from every saved item, since an unknown id resolves
   to no icon. `new_profile()` also force-rolls `elem_fire` on the starter sword.
 
+### Decided: fights stay the length they are (2026-09-23)
+
+[Issue #99](https://github.com/DarkCascade/Sir-Fish/issues/99), decision 7.7. The question
+was whether slot-as-protagonist should push toward more, smaller spins than today's 2-6 at
+2.22s a spin. That would have reopened the 3-9s time-to-kill band the whole harness is tuned
+to, the real price of this pivot.
+
+- **The answer is no, for now.** The last couple of playtests have had very satisfying fight
+  times, so there is nothing to fix.
+- **The 3-9s band stands.** It was borrowed from the solo bands rather than designed
+  (decision 1.5), but play now backs it, and `test_level_curves` keeps holding it.
+- **What would reopen it:** playtests where fights start to feel short or long. So would a
+  change that moves spins per fight on its own, such as a retune of `SPECIAL_CHARGE_COST`
+  (decision 7.3) or the item-modifier proposal above.
+
 ### Still open
 
-- **Whether fights should get longer.** Slot-as-protagonist wants more, smaller spins -
-  currently 2-6 spins at 2.22s a spin. That reopens the 3-9s time-to-kill band the whole
-  harness is tuned to, and it is the real price of this pivot.
 - **Whether the item-modifier proposal above is revived**, and how it reconciles with
   decision 3.1.
 
@@ -1795,4 +1807,4 @@ The review found these, which any revived version has to answer:
 | 7.4 | One special per class, which ones | **Decided, built 2026-09-23 (issue #96)** | Warrior cleave (replaces Defend), ranger bomb arrow (already existed), mage keeps her party heal as **Healing Aura**, the party's ONLY heal (the slot heal is gone) - only two hit-alls |
 | 7.5 | What happens to the three slot upgrades | **Decided, built 2026-09-21; revised** | They move to town (the Slotworks) and become **permanent**, saved with the profile. No reset at all but a new profile |
 | 7.6 | Hold-and-respin | Deferred | A good verb, but it needs the specials layer first to have anything worth deciding about, and three questions are unanswered (§7) |
-| 7.7 | Should fights be longer? | Open | Slot-first wants more, smaller spins; fights are 2-6 spins today. Reopens the harness's 3-9s time-to-kill band (§7) |
+| 7.7 | Should fights be longer? | **Decided 2026-09-23: no, for now** | Recent playtests found fight times very satisfying, so fights stay 2-6 spins and the harness keeps its 3-9s time-to-kill band. Revisit if playtests say otherwise (§7, [#99](https://github.com/DarkCascade/Sir-Fish/issues/99)) |
