@@ -1378,6 +1378,30 @@ therefore about 2-3 minutes.
 
 The build is [issue #62](https://github.com/DarkCascade/Sir-Fish/issues/62).
 
+### Closed 2026-09-24: no gdUnit4 scene runner
+
+[Issue #119](https://github.com/DarkCascade/Sir-Fish/issues/119), a spike filed 2026-09-22
+to try gdUnit4's scene runner (frame-stepping, simulated input, awaiting signals) for new
+UI and timing suites. It was closed without running, because its premise had moved on.
+
+- **The P7 pieces are no longer headless-only.** #97 live-verified them the next day.
+- **Its example case is already tested.** `test_specials` builds the real invoker tray and
+  checks the mage's button going dark, lighting when someone is hurt, and draining on press.
+- **The harness already steps frames.** Six suites await real frames or timers. Stepping N
+  frames and awaiting a signal with a timeout are each a small `test_support.gd` helper if
+  they are ever needed.
+- **What #97 caught was not a frame or input bug.** The bomb arrow and heal flooring to 1
+  were wrong data behind weak `> before` assertions.
+- **It would not fix late screenshots.** The scene runner is headless, so it renders
+  nothing, and it drives its own scene rather than the one `play_scene` launched. For a
+  capture that fires too late, pause the running game from a one-shot on the triggering
+  signal (`get_tree().paused = true`), lower `Engine.time_scale`, or use `capture_frames`.
+  If that keeps recurring, a `freeze on <signal>` verb in the `Debug` autoload is the
+  lasting fix. It has no issue.
+- **The narrow real gap is routed input**: a click passing through actual GUI hit-testing,
+  which calling `_on_pressed()` skips. If a bug ever gets through that only a real click
+  would catch, try a `get_viewport().push_input()` helper in the existing harness first.
+
 ---
 
 ## 7. P7 — Slot-first combat: owner swings and invokable specials
