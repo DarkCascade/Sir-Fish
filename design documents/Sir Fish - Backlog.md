@@ -1209,6 +1209,12 @@ or sequenced against P1–P4.
     `C_DANGER`, `C_TEXT_DIM`), and moving it to three theme variations would copy the palette
     into `theme.tres` while `Tuning` stays its source of truth. `_plain_line()`'s single
     fallback label stays too.
+- **Authoring the bonus strip's six entries: closed 2026-09-24 as superseded**
+  ([issue #108](https://github.com/DarkCascade/Sir-Fish/issues/108)). The strip no longer
+  exists. Slot phase 2 (`1c23f25`) retired it when item effects became slot icons, and its
+  job, showing what the inventory is doing, moved to the party modal's per-hero
+  `_reel_strip`. The shop's copy went too. The party modal is itself mostly code-built, but
+  moving it to the editor is left alone for now and has no issue.
 
 **Character & animation**
 
