@@ -36,7 +36,7 @@
 | **P1** | ~~Ranger recruitment quest, offered from level 3~~ | High | M | nothing | **Built 2026-09-14; regressions fixed, balance measured, join level set 2026-09-20.** Unlock gate, one-shot tracking, relic-based `CollectObjective`, `RecruitRewardExtra` (joins at level 3), the quest and its warbow relic, all tested. The live playtest caught and fixed a real combat-loop bug (§1) |
 | **P2** | ~~Mage recruitment quest, offered from level 5~~ | High | S | nothing | **Built 2026-09-14, the same day as P1; recorded here 2026-09-20, gated at level 5 the same day.** Deviated from the plan: one authored RELIC (the heartstone, a trinket) via `QuestDef.guaranteed_boss_drop`, not a staff. Its own `_load_authored_quests()` rewrite is what caused P1's regressions |
 | **S1** | ~~Spike: does KayKit's `Rig_Medium` match the shipped rig?~~ | — | XS | — | **Done 2026-09-13: it matches** (§4) |
-| **P3** | Modifier sets per item type; item types for every shipped hand mesh | Medium | M data + M visible props | 3.7 / 3.8, and P7 for what an icon does | P1–P2 unblocked it (a full party can be tuned now, §1's balance check). What blocks it is design: the new slot-icon ids are named but nobody has said what they DO (3.7), and the item-modifier rework may replace decision 3.1 entirely (3.8, §7) |
+| **P3** | Modifier sets per item type; item types for every shipped hand mesh | Medium | M data + M visible props | 3.8 | P1–P2 unblocked it (a full party can be tuned now, §1's balance check). 3.7's approach is decided (issue #71); what still blocks it is 3.8 - the item-modifier rework may replace decision 3.1 entirely (§7) |
 | **P4** | Prompt → Meshy → Blender → glb character skill | Medium | M | nothing: the trial character proved the route (§4) | What remains is packaging `rig_bandit_officer.py` as a skill and building 4.3's shared clip source |
 | **P5** | Small polish pass: post-expedition summary, chest presentation, slot upgrade UI, party modal info, shadow monster rework | Low–Medium | S (each item) | nothing | Queued during a later session; not yet scoped against P1–P4 |
 | **P6** | Make the headless suite a real gate: one full green-bar run, then CI on push | — (dev) | S | nothing | The first full green bar is recorded (2026-09-20: 31 suites, 0 failing - §6.1). What remains is CI: nothing runs the suites automatically. `tools/run_tests.py` (2026-09-19) exits non-zero on failure precisely so it can gate |
@@ -640,12 +640,12 @@ the rollable ones):
 | Types | Have | Short by |
 |---|---|---|
 | axe, sword | `elem_fire`, `elem_ice`, `elem_light`, `bleed` | 0 |
-| bow | `bomb_arrow`; `bow_shoot` (named 2026-09-20, not built) | 2 |
-| dagger | `bomb_arrow`; `dagger_stab`, `dagger_throw` (named) | 1 |
-| crossbow, heavy crossbow (planned, 3.6) | none named | 4 |
-| staff | `lightning_blast`; `staff_bolt` (named) | 2 |
-| wand (planned) | `wand_bolt`, `wand_lightning` (named) | 2 |
-| helm, mail, tome, and each shield | `armor_block`; per-shield ids to be named (3.7) | 3 |
+| bow | `bomb_arrow`; fills out via `elem_fire`/`elem_ice`/`elem_light` and/or a new bow stat, per 3.7 | 2 |
+| dagger | `bomb_arrow`; fills out the same way, per 3.7 | 1 |
+| crossbow, heavy crossbow (planned, 3.6) | none named; same approach applies once built | 4 |
+| staff | `lightning_blast`; fills out the same way, per 3.7 | 2 |
+| wand (planned) | none yet; same approach applies once built | 2 |
+| helm, mail, tome, and each shield | `armor_block`; each shield gets a distinct new Block mechanic, per 3.7 | 3 |
 | idol, ring, amulet | `crit` and one ultimate each | 2 |
 
 - **Armor is the worst case:** every armor type rolls the one identical id (`armor_block`; `slot_mend` was retired 2026-09-21), so telling
@@ -701,12 +701,25 @@ That adds two types to the table above and avoids renaming the `bow` id - no `Sa
 migration needed. Not yet built: `ITEM_TYPES` entries, nouns, ability ids (see the
 weapon-ability coverage table) and the class roster for the two new types.
 
-**3.7 New modifier ids: partly decided 2026-09-20.** This is the slot-icon work; naming
-the ids closes the question of *which* ids exist, not yet of what they do.
+**3.7 New modifier ids: approach decided 2026-09-23 ([issue #71](https://github.com/DarkCascade/Sir-Fish/issues/71)); exact new ids still to be named.**
+Naming `bow_shoot`/`dagger_stab`/`dagger_throw`/`staff_bolt`/`wand_bolt`/`wand_lightning` on
+2026-09-20 closed *which ids exist*, not *what they do* - and it turned out to be the wrong
+question, asked before the §3.9 slot-vocabulary rebuild (below) replaced the old
+per-executor `Kind` (`DAMAGE`/`BOMB_ARROW`/`THUNDERBURST`/...) with six board categories.
+Under that system every new id is a Strike-clone, an element, a Block, or a Charge coin by
+construction - so "what Kind is it" is mostly pre-answered, and those six named ids read as
+leftovers from the system §3.9 retired.
 
-- **Weapon ids, named:** bow `bow_shoot`; dagger `dagger_stab` and `dagger_throw`; staff
-  `staff_bolt`; wand (a new type) `wand_bolt` and `wand_lightning`. None is built yet.
-- **Shield ids, pending:** one per shield, to tell them apart. The available shields:
+- **Weapon ids: retired as distinct mechanics.** Bow, dagger, staff and wand (a new type)
+  fill out to four modifiers the same way axe/sword already do: the three universal
+  elements (`elem_fire`/`elem_ice`/`elem_light`, reusing the existing mechanic and art)
+  plus **one new weapon-specific stat modifier per type**, parallel to `bleed`. `bow_shoot`,
+  `dagger_stab`, `dagger_throw`, `staff_bolt`, `wand_bolt` and `wand_lightning` are dropped;
+  the actual new stat per type (a bow's own DoT/proc, a dagger's, etc.) is left to P3a's
+  set-drafting pass, not decided here.
+- **Shield ids: get distinct Block mechanics**, not just numeric variance - matching the
+  thorns-on-spiked / heavier-block-on-tower flavor already suggested below. One per shield,
+  to tell them apart. The available shields:
 
   | Mesh on `knight.glb` | Pack file (Adventurers 2.0) | Working name (decided, §3) |
   |---|---|---|
@@ -719,14 +732,14 @@ the ids closes the question of *which* ids exist, not yet of what they do.
   The pack has `_color` variants of `round`, `badge`, `spikes` and `square` (not
   `round_barbarian`). The knight-to-pack pairing above is by name and unverified. The
   older `warrior.glb` also carries a shield (`W_ShieldFace`, `W_ShieldRim`), but as part
-  of that model, not a prop.
+  of that model, not a prop. The specific mechanic per shield is left to P3a.
 - **Trinkets:** `crit` has no `types` restriction, so **all three trinket types can roll
   it** (idol, ring and amulet). Each also rolls its own class ultimate (`cleave`, `rain`,
   `thunderburst`), and that is the whole pool of two. The authored relics (`heartstone`,
   `warbow`) roll nothing.
-- **Still undecided, and blocking the set drafts:** what each new id *does*: its `Kind`,
-  what it scales off, and which class executes and animates it. See the gaps table for
-  what is still short of four after these ids.
+- **This unblocks P3a's set-drafting task** (backlog §3: "Drafting all 17 sets is P3a's
+  first task, after decision 3.7 says which new ids exist") - the approach is settled, the
+  exact new stat/shield mechanics still need naming during that pass.
 
 **3.9 Slot vocabulary: decided and built 2026-09-21** ([#114](https://github.com/DarkCascade/Sir-Fish/issues/114)).
 
@@ -1609,10 +1622,6 @@ The review found these, which any revived version has to answer:
 
 ### Still open
 
-- **What each new slot-icon id does** (§3.7): its `Kind`, what it scales off, and which
-  class executes and animates it. Naming the ids did not answer this, and it blocks the
-  per-type sets.
-- **Per-shield ids** (§3.7), for which the available meshes are now listed.
 - **Whether fights should get longer.** Slot-as-protagonist wants more, smaller spins -
   currently 2-6 spins at 2.22s a spin. That reopens the 3-9s time-to-kill band the whole
   harness is tuned to, and it is the real price of this pivot.
@@ -1643,7 +1652,7 @@ The review found these, which any revived version has to answer:
 | 3.6 | Axe and bow | **Decided 2026-09-23** | Meshes are in Adventurers 2.0 (downloaded); keep `axe` and a true `bow`, and add `crossbow`/`heavy crossbow` as further ranger types - additive, no `SaveGame` migration ([#70](https://github.com/DarkCascade/Sir-Fish/issues/70)) |
 | 3.9 | Slot board vocabulary | **Decided, built 2026-09-21** | Six categories (strike as owner's weapon, fire, ice, lightning, block, charge coin with the owner's profile); charge coins only charge; bleed and crit are stats; payline matches category ([#114](https://github.com/DarkCascade/Sir-Fish/issues/114)) |
 | 3.10 | Jackpot rule for the early game | Open | All eight lines ships (~1/battle geared, ~0 early solo); options in [#115](https://github.com/DarkCascade/Sir-Fish/issues/115) |
-| 3.7 | New modifier ids | **Partly decided 2026-09-20** | Weapon ids named (`bow_shoot`, `dagger_stab`, `dagger_throw`, `staff_bolt`, `wand_bolt`, `wand_lightning`). Shield ids pending. What each id does is undecided |
+| 3.7 | New modifier ids | **Approach decided 2026-09-23** | Weapon ids fill out via universal elements + one new weapon-specific stat per type (the 2026-09-20 named action-ids retired); shields get distinct Block mechanics per shield. Exact new ids left to P3a's drafting pass ([#71](https://github.com/DarkCascade/Sir-Fish/issues/71)) |
 | 4.1 | Standard skeleton | **Decided** | `Rig_Medium`; S1 confirmed the shipped `Rig` is identical |
 | 4.2 | Clip source | **Decided** | KayKit Character Animations: 132 `Rig_Medium` clips, CC0, verified |
 | 4.3 | Bake clips or share them | Recommended | One shared library; needs a second clip source on `RigProfile` |
