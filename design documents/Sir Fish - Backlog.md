@@ -1197,6 +1197,36 @@ or sequenced against P1–P4.
   - **The Sell tab stays runtime-built**, since the inventory can be any length.
   - The item came from an editor-migration notes file that is not in the repo; this entry
     and the issue are its only record. #107-#109 come from the same notes.
+- **Modifier lines: a shared scene or a theme type variation? Closed 2026-09-24 as
+  superseded** ([issue #107](https://github.com/DarkCascade/Sir-Fish/issues/107)). The notes
+  item named font sizes (28 on the buy card, 26 on the compare panel) that no longer exist,
+  and both surfaces it was about are already editor-authored.
+  - **The `item_row` strip** shows modifiers as authored pips, and the code reveals the
+    first `modifiers.size()` of them.
+  - **The compare flyout** duplicates an authored `row_template`, which is the shared-line
+    option in all but name. Theme variations (`DisplayLabel`, `PlateLabel`) are already in use.
+  - **The delta colour stays in code.** It is picked per row at runtime (`C_HEAL`,
+    `C_DANGER`, `C_TEXT_DIM`), and moving it to three theme variations would copy the palette
+    into `theme.tres` while `Tuning` stays its source of truth. `_plain_line()`'s single
+    fallback label stays too.
+- **Authoring the bonus strip's six entries: closed 2026-09-24 as superseded**
+  ([issue #108](https://github.com/DarkCascade/Sir-Fish/issues/108)). The strip no longer
+  exists. Slot phase 2 (`1c23f25`) retired it when item effects became slot icons, and its
+  job, showing what the inventory is doing, moved to the party modal's per-hero
+  `_reel_strip`. The shop's copy went too. The party modal is itself mostly code-built, but
+  moving it to the editor is left alone for now and has no issue.
+- **The console's three bands in a VBoxContainer: closed 2026-09-24 as won't do**
+  ([issue #109](https://github.com/DarkCascade/Sir-Fish/issues/109)). `Console.apply_height()`
+  is about 15 lines, and its squeeze order is deliberate: on a short screen the cabinet gives
+  way first (floor 400 px), then the tray (floor 120 px). A VBox only shares out spare space
+  and overflows when short, so matching that needs a custom `Container`, the same logic in
+  another file. The slot machine and tray would still need their own `apply_height()`.
+  - **The layout facts moved to the cabinet-art issue**
+    ([#140](https://github.com/DarkCascade/Sir-Fish/issues/140)). The cabinet's own bottom
+    below the reels is only about 36 px. Most of the bare space is the 358 px invoker band
+    (no background, three 240 x 262 buttons) and the 90 px margin under it. `TRAY_HEIGHT` was
+    sized for the old upgrade cards and may be more than the invokers need, which is an art
+    and layout question for #140 rather than a container one.
 
 **Character & animation**
 
