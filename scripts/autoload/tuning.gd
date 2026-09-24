@@ -447,7 +447,16 @@ const SLOT_RESULT_HOLD := 0.65            # pause after reel 3 stops before the 
 ## per spin; a fully-geared hero in a three-hero party owns 13 of 42 and lands
 ## ~2.8. Both put a special at roughly 3 spins, and a fight is 2-6 - which is the
 ## once-or-twice-per-fight cadence 3 was picked for. At 3 a special would fire
-## every single spin. One number to re-tune after a playtest.
+## every single spin.
+##
+## [issue #97] Playtested rather than re-derived on paper: scratch/
+## special_charge_cadence.gd drove the real SlotMachine._one_spin() (reel
+## timers included, no hand-built boards) for 30 independent trials against a
+## fully-geared three-hero party (weapon+armor+trinket, RARE, matching the
+## "13 of 42" estimate above rather than a weapon-only hero). Result at 10:
+## warrior avg 3.83 spins to full (median 4), ranger 3.87 (median 4), mage 3.70
+## (median 4) - all three land right on the ~3-spin target this constant was
+## picked for, evenly, with no per-hero lag. Left at 10; no retune warranted.
 const SPECIAL_CHARGE_COST := 10
 
 const SLOT_SWING_SETTLE := 0.45
