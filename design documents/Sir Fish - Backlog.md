@@ -550,11 +550,11 @@ should sit on the same `handslot` bones. That part is untested.
 
 | Class | Weapon | Armor | Trinket |
 |---|---|---|---|
-| Warrior | sword, greatsword *(new)*; axe open (3.6) | mail, round shield, kite shield, tower shield, spiked shield | idol |
-| Ranger | dagger, crossbow *(replaces bow; 3.6)*, heavy crossbow *(new)* | helm | ring |
+| Warrior | sword, greatsword *(new)*, axe *(kept; 3.6)* | mail, round shield, kite shield, tower shield, spiked shield | idol |
+| Ranger | dagger, bow *(kept; 3.6)*, crossbow *(new; 3.6)*, heavy crossbow *(new; 3.6)* | helm | ring |
 | Mage | staff, wand *(new)* | tome | amulet |
 
-That is 17 types, 12 of them with a visible mesh (18 if `axe` is kept).
+That is 19 types, 12 of them with a visible mesh.
 
 | Mesh | Ships on | Attaches to | Type | Slot | Class | Status |
 |---|---|---|---|---|---|---|
@@ -689,15 +689,17 @@ now.* The focus is a few equipment meshes first; the off-hand weapons and `Throw
 stay hidden and are not item types until that is done. (`Throwable` shares the weapon
 hand, so it is probably an ability prop rather than an item when it comes back.)
 
-**3.6 Axe and bow:** the meshes now exist in the Adventurers 2.0 pack (`axe_1handed`,
-`axe_2handed`, `bow`, `bow_withString`), so this is a design question, not an art one.
-*Recommend:*
+**3.6 Axe and bow: Decided 2026-09-23 ([issue #70](https://github.com/DarkCascade/Sir-Fish/issues/70)), as recommended.** The meshes exist in
+the Adventurers 2.0 pack (`axe_1handed`, `axe_2handed`, `bow`, `bow_withString`), so this
+was a design question, not an art one.
 - keep `axe` for the warrior;
 - keep a true `bow` for the ranger, which the animation pack's `Ranged_Bow_*` clips
   support;
 - add `crossbow` and `heavy crossbow` as further ranger types.
 
-That adds two types to the table above and avoids renaming the `bow` id.
+That adds two types to the table above and avoids renaming the `bow` id - no `SaveGame`
+migration needed. Not yet built: `ITEM_TYPES` entries, nouns, ability ids (see the
+weapon-ability coverage table) and the class roster for the two new types.
 
 **3.7 New modifier ids: partly decided 2026-09-20.** This is the slot-icon work; naming
 the ids closes the question of *which* ids exist, not yet of what they do.
@@ -1638,7 +1640,7 @@ The review found these, which any revived version has to answer:
 | 3.4 | Shield ownership | **Decided** | Shields go to the warrior; the tome is the mage's armor |
 | 3.5 | Off-hand weapons and `Throwable` | **Decided 2026-09-20: defer** | Ignored until a few equipment meshes are done |
 | 3.8 | Does the item-modifier rework replace decision 3.1? | Open | Proposed and reviewed 2026-09-20, not decided - §7 records the proposal and the eight findings against it |
-| 3.6 | Axe and bow | Recommended | Meshes are in Adventurers 2.0 (downloaded); keep `axe` and a true `bow`, and add crossbows as further ranger types |
+| 3.6 | Axe and bow | **Decided 2026-09-23** | Meshes are in Adventurers 2.0 (downloaded); keep `axe` and a true `bow`, and add `crossbow`/`heavy crossbow` as further ranger types - additive, no `SaveGame` migration ([#70](https://github.com/DarkCascade/Sir-Fish/issues/70)) |
 | 3.9 | Slot board vocabulary | **Decided, built 2026-09-21** | Six categories (strike as owner's weapon, fire, ice, lightning, block, charge coin with the owner's profile); charge coins only charge; bleed and crit are stats; payline matches category ([#114](https://github.com/DarkCascade/Sir-Fish/issues/114)) |
 | 3.10 | Jackpot rule for the early game | Open | All eight lines ships (~1/battle geared, ~0 early solo); options in [#115](https://github.com/DarkCascade/Sir-Fish/issues/115) |
 | 3.7 | New modifier ids | **Partly decided 2026-09-20** | Weapon ids named (`bow_shoot`, `dagger_stab`, `dagger_throw`, `staff_bolt`, `wand_bolt`, `wand_lightning`). Shield ids pending. What each id does is undecided |
