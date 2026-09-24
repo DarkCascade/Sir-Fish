@@ -1155,6 +1155,17 @@ happened) and ERROR (died on load, reporting the engine's parse error) as failur
 rather than letting them read as blank; and it exits non-zero unless every selected
 suite passed, which is the whole point for CI. CLAUDE.md documents it.
 
+**SCRIPT_ERROR (2026-09-23).** A fourth failure verdict: a suite that prints `RESULT PASS`
+but has a `SCRIPT ERROR:` line anywhere in its output. A GDScript runtime error aborts
+only the function it fires in, so the caller carries on, `t.finish()` still runs, and
+the suite passes with that function's checks silently missing from the count.
+`test_specials.gd`'s `_check_board_charges_its_owner()` lost four assertions this way
+after `_resolve_board()` changed from a `StringName` to an `Array` parameter, and nothing
+flagged it. The runner now lists each distinct error with its `at:` location under the
+table, folding repeats into `(xN)`. `WARNING:` lines, `push_error()` and engine `ERROR:`
+lines (leaked RIDs at exit, for instance) do not count. When it landed, the full run
+(32 suites, 1089 checks) had no script errors left, so no other suite was exposed.
+
 Before it, the only way to run everything was a shell loop pasted into "Sir Fish - Web
 Performance Acceptance Testing Spec.md" §0.4 that spelled out each name. That loop is
 left alone deliberately: it is an accurate record of what that pass ran, not a live list.

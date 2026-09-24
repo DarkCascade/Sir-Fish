@@ -273,7 +273,10 @@ known install paths, then `PATH`; on Windows it wants `Godot_console.exe`, since
 `Godot.exe` writes nothing to a redirected stdout. A suite that hangs (a missing
 `t.finish()` does this) is cut off by `--timeout` and reported as TIMEOUT rather than
 blocking the run, and one that dies on load is reported as ERROR with the parse error
-that killed it.
+that killed it. A suite that prints `RESULT PASS` with any `SCRIPT ERROR:` line in its
+output is reported as SCRIPT_ERROR, with each error and its `at:` location listed under
+the table. A runtime error aborts only its own function, so without this the rest of the
+suite would still pass, just with those checks missing.
 
 One caveat on `execute_editor_script`: its file-write guard is a substring match
 over five write APIs, and its own error text says it is an accident guard, not a

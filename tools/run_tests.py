@@ -24,7 +24,7 @@ install locations, then PATH - the same shape as `BLENDER_PATH` in
 `Godot.exe` is a GUI-subsystem binary that does not write to a redirected
 stdout, so a run through it produces no output to parse.
 
-Three things are reported as failures beyond an honest `RESULT FAIL`:
+Four things are reported as failures beyond an honest `RESULT FAIL`:
 
 * **TIMEOUT** - the suite never quit. This is a real failure mode here, not a
   hypothetical: a draft of `test_autoload_safety.gd` once omitted its
@@ -35,6 +35,13 @@ Three things are reported as failures beyond an honest `RESULT FAIL`:
   `grep RESULT | head -1` printed an empty cell for this and read as "fine".
 * **a RESULT PASS that still exited non-zero**, which means the scene quit
   through some path other than `finish()`.
+* **SCRIPT_ERROR** - a RESULT PASS with a `SCRIPT ERROR:` line anywhere in the
+  output. A GDScript runtime error aborts only the function it fires in; the
+  caller carries on, `finish()` still runs, and the suite passes with that
+  function's checks silently missing from the count. `test_specials.gd` lost
+  four assertions this way when `_resolve_board()` changed signature under
+  it. Every such error is listed, with its `at:` location, under the table.
+  WARNING lines are not failures.
 
 Exits 0 only when every selected suite passed.
 """
@@ -61,6 +68,9 @@ DEFAULT_TIMEOUT = 300
 
 SUMMARY_RE = re.compile(r"^--- (?P<title>.+): (?P<checks>\d+) checks, (?P<failures>\d+) failures ---$")
 ERROR_RE = re.compile(r"^\s*(?:USER )?(?:SCRIPT )?ERROR:", re.IGNORECASE)
+# Only GDScript runtime errors: not push_error()'s "USER ERROR:", not engine
+# "ERROR:" lines, and never "WARNING:".
+SCRIPT_ERROR_RE = re.compile(r"^\s*SCRIPT ERROR:")
 
 
 # --- locating Godot ---------------------------------------------------------------
@@ -111,13 +121,15 @@ def discover(filters: list[str]) -> list[str]:
 
 class Result:
     def __init__(self, name: str, verdict: str, checks: int, failures: int,
-                 seconds: float, note: str = "") -> None:
+                 seconds: float, note: str = "",
+                 script_errors: list[str] | None = None) -> None:
         self.name = name
         self.verdict = verdict
         self.checks = checks
         self.failures = failures
         self.seconds = seconds
         self.note = note
+        self.script_errors = script_errors or []
 
     @property
     def ok(self) -> bool:
@@ -154,16 +166,48 @@ def run_one(godot: Path, name: str, timeout: int, verbose: bool) -> Result:
             checks = int(match.group("checks"))
             failures = int(match.group("failures"))
 
+    script_errors, script_error_total = _script_errors(lines)
+
     if "RESULT FAIL" in lines:
-        return Result(name, "FAIL", checks, failures, elapsed)
+        return Result(name, "FAIL", checks, failures, elapsed,
+                      script_errors=script_errors)
     if "RESULT PASS" in lines:
         if proc.returncode != 0:
             return Result(name, "ERROR", checks, failures, elapsed,
-                          f"reported PASS but exited {proc.returncode}")
+                          f"reported PASS but exited {proc.returncode}",
+                          script_errors)
+        if script_errors:
+            plural = "" if script_error_total == 1 else "s"
+            return Result(name, "SCRIPT_ERROR", checks, failures, elapsed,
+                          f"{script_error_total} script error{plural}; checks may be missing",
+                          script_errors)
         return Result(name, "PASS", checks, failures, elapsed)
 
     return Result(name, "ERROR", checks, failures, elapsed,
-                  _error_note(lines, proc.returncode))
+                  _error_note(lines, proc.returncode), script_errors)
+
+
+def _with_location(lines: list[str], i: int) -> str:
+    """Line i, joined with the "at: ..." line Godot puts the file:line on."""
+    detail = lines[i].strip()
+    if i + 1 < len(lines) and lines[i + 1].strip().startswith("at:"):
+        detail = f"{detail} {lines[i + 1].strip()}"
+    return detail
+
+
+def _script_errors(lines: list[str]) -> tuple[list[str], int]:
+    """Every distinct SCRIPT ERROR with its location, and the total fired.
+
+    An error inside a loop fires once per iteration, so identical ones are
+    folded into a single "(xN)" entry rather than flooding the summary.
+    """
+    counts: dict[str, int] = {}
+    for i, line in enumerate(lines):
+        if SCRIPT_ERROR_RE.match(line):
+            detail = _with_location(lines, i)
+            counts[detail] = counts.get(detail, 0) + 1
+    entries = [d if n == 1 else f"{d} (x{n})" for d, n in counts.items()]
+    return entries, sum(counts.values())
 
 
 def _error_note(lines: list[str], returncode: int) -> str:
@@ -175,11 +219,7 @@ def _error_note(lines: list[str], returncode: int) -> str:
     """
     for i, line in enumerate(lines):
         if ERROR_RE.match(line):
-            detail = line.strip()
-            # Godot puts the file:line on the follow-up "at: ..." line.
-            if i + 1 < len(lines) and lines[i + 1].strip().startswith("at:"):
-                detail = f"{detail} {lines[i + 1].strip()}"
-            return detail[:160]
+            return _with_location(lines, i)[:160]
     return f"no RESULT line; exited {returncode}"
 
 
@@ -187,13 +227,23 @@ def _error_note(lines: list[str], returncode: int) -> str:
 
 def report(results: list[Result]) -> int:
     width = max((len(r.name) for r in results), default=4)
+    verdict_width = max((len(r.verdict) for r in results), default=7)
     print()
     for r in results:
         counts = f"{r.checks - r.failures}/{r.checks} checks" if r.checks else ""
-        line = f"  {r.name:<{width}}  {r.verdict:<7} {counts:>16}  {r.seconds:6.1f}s"
+        line = f"  {r.name:<{width}}  {r.verdict:<{verdict_width}} {counts:>16}  {r.seconds:6.1f}s"
         if r.note:
             line += f"  {r.note}"
         print(line)
+
+    erroring = [r for r in results if r.script_errors]
+    if erroring:
+        print()
+        print("  script errors:")
+        for r in erroring:
+            print(f"    {r.name}")
+            for detail in r.script_errors:
+                print(f"      {detail}")
 
     failed = [r for r in results if not r.ok]
     total_checks = sum(r.checks for r in results)
