@@ -176,7 +176,12 @@ func _check_board_charges_its_owner() -> void:
 	board[2] = {"id": SlotIcon.BASE_TRINKET, "roll": 4, "enhanced": false, "owner": &"ranger"}
 	board[3] = {"id": SlotIcon.BASE_WEAPON, "roll": 4, "enhanced": false}
 	machine._board = board
-	await machine._resolve_board(&"")
+	# Scored the way the real spin scores it. The counts below assume no payline
+	# doubles a cell, so pin that rather than letting a vocabulary change quietly
+	# turn a single charge into two.
+	var wins: Array = machine._winning_lines()
+	_t.check(wins.is_empty(), "the hand-built board wins no payline (got %d)" % wins.size())
+	await machine._resolve_board(wins)
 
 	_t.check(GameState.special_charge(&"warrior") == 2,
 		"the warrior's two icons charged him twice (got %d)" % GameState.special_charge(&"warrior"))
