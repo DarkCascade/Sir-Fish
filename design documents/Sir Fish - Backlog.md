@@ -1197,6 +1197,18 @@ or sequenced against P1–P4.
   - **The Sell tab stays runtime-built**, since the inventory can be any length.
   - The item came from an editor-migration notes file that is not in the repo; this entry
     and the issue are its only record. #107-#109 come from the same notes.
+- **Modifier lines: a shared scene or a theme type variation? Closed 2026-09-24 as
+  superseded** ([issue #107](https://github.com/DarkCascade/Sir-Fish/issues/107)). The notes
+  item named font sizes (28 on the buy card, 26 on the compare panel) that no longer exist,
+  and both surfaces it was about are already editor-authored.
+  - **The `item_row` strip** shows modifiers as authored pips, and the code reveals the
+    first `modifiers.size()` of them.
+  - **The compare flyout** duplicates an authored `row_template`, which is the shared-line
+    option in all but name. Theme variations (`DisplayLabel`, `PlateLabel`) are already in use.
+  - **The delta colour stays in code.** It is picked per row at runtime (`C_HEAL`,
+    `C_DANGER`, `C_TEXT_DIM`), and moving it to three theme variations would copy the palette
+    into `theme.tres` while `Tuning` stays its source of truth. `_plain_line()`'s single
+    fallback label stays too.
 
 **Character & animation**
 
