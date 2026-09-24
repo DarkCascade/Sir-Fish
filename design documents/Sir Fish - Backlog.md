@@ -1854,7 +1854,7 @@ to, the real price of this pivot.
 | # | Decision | Status | Answer or recommendation |
 |---|---|---|---|
 | 1.1 | Is the retrieved item a real `Item` mid-run? | **Superseded, built** | Yes, as of the P2 commit: a real `Item.Kind.RELIC`, guaranteed off the boss (`QuestDef.guaranteed_boss_drop`) - see §1 decision 1.1 for the original (now-superseded) answer |
-| 1.2 | Recruit's starting kit | **Built, narrower than planned** | The authored relic and nothing else: no armor, no trinket, no modifiers. The relic keeps its own level (warbow 9, heartstone 7) whatever the party's level |
+| 1.2 | Recruit's starting kit | **Built, narrower than planned** | The authored relic and nothing else: no armor, no trinket, no modifiers. The relic keeps its own level (warbow 9, heartstone 7) whatever the party's level. **To be replaced** by 9.3's recovered kit when the tutorial arc is built |
 | 1.3 | Recruit's starting level | **Decided, built 2026-09-20** | At their quest's level: ranger 3, mage 5 (`RecruitRewardExtra.join_level`). Not level 1, not the party's best |
 | 1.4 | When the recruit joins | **Decided, built** | On victory; in the party from the next expedition (outline §5.3) |
 | 1.5 | Balance target for recruits | **Decided 2026-09-20, asserted** | Recruits make the early game easier (the design call). "Not trivial" is pinned to the solo bands' 3-9s time-to-kill window, a bound the harness borrowed rather than a designed one. `test_level_curves` checks both |
@@ -1891,6 +1891,7 @@ to, the real price of this pivot.
 | 7.7 | Should fights be longer? | **Decided 2026-09-23: no, for now** | Recent playtests found fight times very satisfying, so fights stay 2-6 spins and the harness keeps its 3-9s time-to-kill band. Revisit if playtests say otherwise (§7, [#99](https://github.com/DarkCascade/Sir-Fish/issues/99)) |
 | 9.1 | The tutorial narrative | **Adopted 2026-09-24, not scheduled** | The bandit-camps arc is the entire tutorial: a solo warrior in a town with no services, to a three-person party in a staffed town. Camp layout and which other services start closed are left for when it is scheduled (§9, [#129](https://github.com/DarkCascade/Sir-Fish/issues/129)) |
 | 9.2 | The stagecoach's name | **Decided 2026-09-24** | **The Gilded Guppy**; the warrior calls it **the Guppy** (§9, [#130](https://github.com/DarkCascade/Sir-Fish/issues/130)) |
+| 9.3 | The quest relic | **Decided 2026-09-24, builds with the arc** | The relic becomes the recruit's recovered kit: freed captives collect their confiscated weapon, armor and trinket, authored as their own (answers #126's generated-vs-authored). Replaces decision 1.2's relic-only join (§9, [#127](https://github.com/DarkCascade/Sir-Fish/issues/127)) |
 
 ---
 
@@ -1942,6 +1943,34 @@ tutorial copy and probably on the cabinet art.
 - **Also considered:** *The Gilded Carp*, *The Carp & Coin*, *The Carp Rampant*,
   *The Crowned Carp*, *The Copper Carp* (as a tutorial-start name upgrading to gilded).
 
+### The relic becomes the recruit's recovered kit (decided 2026-09-24)
+
+[Issue #127](https://github.com/DarkCascade/Sir-Fish/issues/127), which also answers part
+of [#126](https://github.com/DarkCascade/Sir-Fish/issues/126). Today the story item is an
+equippable relic (the ranger's warbow, the mage's heartstone): the boss always drops it,
+the quest completes when it reaches the inventory, and `RecruitRewardExtra.grant()` equips
+it. Because it is story and gear at once, it caps what the recruit can join with
+(decision 1.2).
+
+**In the arc, the recruit is a captive, so the bandits took all their gear, not one
+treasured item.** When freed, they recover their confiscated weapon, armor and trinket
+from the camp, and that recovery is the story beat, told in dialogue (#120). The bow and
+the heartstone can stay the named pieces of each kit.
+
+- **The objective changes with the arc anyway.** "Free the captive" (beat the lieutenant)
+  replaces collecting the relic, so the `collect_ranger_bow` and `collect_mage_heartstone`
+  objectives, `guaranteed_boss_drop` on those quests, and `token_weapon_type` go.
+- **#126's "generated or authored" is answered: authored.** The kit is the recruit's own
+  gear, so each piece is authored to read as theirs. Its rarity and level, and the
+  `sim_recruit_bands` re-check, are still settled while building it.
+- **Built with the arc, not before.** Authoring a kit now and recasting it as recovered gear
+  later would do the work twice.
+- **Not chosen:** a non-equippable keepsake token (a new item kind for little payoff, once
+  the objective is "free the captive"), and a story-only beat with no item (it loses "her
+  bow").
+- **Existing saves need no migration.** The warbow and heartstone are ordinary `Item`s, and
+  profiles that have them keep them as normal gear.
+
 ### Still open, for when it is scheduled
 
 - **The camps:** how many, their levels, and how they sit against `easy.tres` (1-5) and the
@@ -1955,8 +1984,10 @@ tutorial copy and probably on the cabinet art.
 
 - **#120, a dialogue system**, is blocked by this. Once the arc is scheduled, adopting one
   is its first build step.
-- **#126, #127 and #128** (the recruit's kit, the relic as a story beat, the recruit in
-  their own boss fight) all fit inside the arc and stay separate decisions.
+- **#126 and #127, the recruit's kit and the relic**, are decided and built with the arc
+  (below).
+- **#128, the recruit in their own boss fight**, fits inside the arc and stays a separate
+  decision.
 - **New bandit enemies** (more lieutenants and variants, and the captain) go through the
   `new-character` pipeline and cost Meshy credits. `bandit_officer` can anchor the
   lieutenants.
