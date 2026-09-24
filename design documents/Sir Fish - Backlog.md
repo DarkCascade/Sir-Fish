@@ -37,7 +37,7 @@
 | **P2** | ~~Mage recruitment quest, offered from level 5~~ | High | S | nothing | **Built 2026-09-14, the same day as P1; recorded here 2026-09-20, gated at level 5 the same day.** Deviated from the plan: one authored RELIC (the heartstone, a trinket) via `QuestDef.guaranteed_boss_drop`, not a staff. Its own `_load_authored_quests()` rewrite is what caused P1's regressions |
 | **S1** | ~~Spike: does KayKit's `Rig_Medium` match the shipped rig?~~ | — | XS | — | **Done 2026-09-13: it matches** (§4) |
 | **P3** | Modifier sets per item type; item types for every shipped hand mesh | Medium | M data + M visible props | 3.8 | P1–P2 unblocked it (a full party can be tuned now, §1's balance check). 3.7's approach is decided (issue #71); what still blocks it is 3.8 - the item-modifier rework may replace decision 3.1 entirely (§7) |
-| **P4** | Prompt → Meshy → Blender → glb character skill | Medium | M | nothing: the trial character proved the route (§4) | What remains is packaging `rig_bandit_officer.py` as a skill and building 4.3's shared clip source |
+| **P4** | Prompt → Meshy → Blender → glb character skill | Medium | M | nothing: the trial character proved the route (§4) | What remains is packaging `rig_bandit_officer.py` as a skill and building 4.3's shared clip source, which lands with #78 or #81 (decided 2026-09-23, #79) |
 | **P5** | Small polish pass: post-expedition summary, chest presentation, slot upgrade UI, party modal info, shadow monster rework | Low–Medium | S (each item) | nothing | Queued during a later session; not yet scoped against P1–P4 |
 | **P6** | Make the headless suite a real gate: one full green-bar run, then CI on push | — (dev) | S | nothing | The first full green bar is recorded (2026-09-20: 31 suites, 0 failing - §6.1). What remains is CI: nothing runs the suites automatically. `tools/run_tests.py` (2026-09-19) exits non-zero on failure precisely so it can gate |
 | **P7** | Slot-first combat: owner swings, invokable specials, player decisions in a fight | High | M | nothing | **Pivot decided and two pieces built 2026-09-20 (§7).** Damage splits by icon owner (`66298b9`) and specials are invokable off a charge meter (`e7f8298`). Upgrades moved to town (the Slotworks) and made permanent 2026-09-21. The invoker tray is built with all three buttons. Remaining: the warrior's cleave (his button already says Cleave and fires Defend until it lands). Hold-and-respin is deferred behind the specials |
@@ -945,10 +945,11 @@ import-time retargeting can strip position tracks; this project has not tried it
 **4.2 Clip source: KayKit Character Animations** (*decided; downloaded and verified*).
 132 `Rig_Medium` clips.
 
-**4.3 Bake clips into every glb, or share one library?** *Recommend sharing.* Each
-shipped KayKit glb is already 3.6–4.9 MB with 76–95 clips baked in, and the web-delivery
-work already strips unused clips at import because of that weight. S1 turned up three
-concrete integration points:
+**4.3 Bake clips into every glb, or share one library?** *Decided 2026-09-23: share,
+built with #78 or #81* ([issue #79](https://github.com/DarkCascade/Sir-Fish/issues/79)).
+The original case was weight: each shipped KayKit glb is 3.6–4.9 MB with 76–95 clips
+baked in, and the web-delivery work already strips unused clips at import because of that
+weight. S1 turned up three concrete integration points:
 
 - **A second clip source.** `CombatantBakedAnimations.build()` reads clips only from the
   `AnimationPlayer` inside the character's own glb. A shared library needs a second
@@ -958,6 +959,24 @@ concrete integration points:
   mapping there, or renaming when the pack is imported.
 - **Stripping.** `strip_unused_animations.gd`'s `KEEP` table is keyed by glb file stem,
   so the eight pack files need entries, and `test_animation_clips.gd` pins that table.
+
+Why share, and why not yet (#79):
+- **Weight no longer decides it.** The pipeline bakes only the clips a character's
+  `RigProfile` plays (the bandit officer is 0.6 MB with five clips, mostly texture), and
+  the shipped glbs are already stripped at import. Baking costs a new character nothing.
+- **Sharing is decided by reach.** #78 needs pack clips no shipped glb carries
+  (`Ranged_Bow_Draw/Release`, `Running_HoldingBow`), and #81 moves the shipped
+  characters onto the pack's motions. Baking would mean pushing seven shipped glbs back
+  through Blender for each, and again for every clip added later; a shared source makes
+  that a `RigProfile` edit.
+- **Built by whichever of #78 and #81 is picked up first**, not before. Today the only
+  pipeline character is the bandit, which works baked, so building it now would leave the
+  three integration points above with nothing to exercise them. New characters keep
+  baking until then; migrating them to the library is part of that build.
+- **Suggested shape, not decided:** rather than importing the eight raw pack glbs, the
+  pipeline could export one small `Rig`-rooted clip glb holding only the clips some
+  `RigProfile` references. That handles the root name and the stripping at export, and
+  leaves only the second source on `RigProfile`.
 
 **4.4 One project or every project?** *Recommend user-level*, beside
 `new-godot-project` in `~/.claude/skills/`, with palette, rig source and output paths
@@ -1085,8 +1104,9 @@ CLAUDE.md's KayKit section is now a pointer to it.
 
 - **Try the single-pass concept** (restyle straight from the template) on the next
   character, to save 9 credits.
-- **Build 4.3's shared clip source** once several characters share clips. Baking stays
-  fine until then.
+- **Build 4.3's shared clip source** with #78 or #81, whichever comes first (decided
+  2026-09-23, [issue #79](https://github.com/DarkCascade/Sir-Fish/issues/79)). Baking
+  stays fine until then.
 - **Build the dev character viewer and dev save isolation** — done (issue #84): a
   `character_viewer` debug scene plus dev save isolation, so in-game checks stop
   touching the real profile.
@@ -1677,7 +1697,7 @@ The review found these, which any revived version has to answer:
 | 3.7 | New modifier ids | **Approach decided 2026-09-23** | Weapon ids fill out via universal elements + one new weapon-specific stat per type (the 2026-09-20 named action-ids retired); shields get distinct Block mechanics per shield ([#72](https://github.com/DarkCascade/Sir-Fish/issues/72): four shields, the barbarian shield left out; helm/mail/tome fill out in #76). Exact new ids left to P3a's drafting pass ([#71](https://github.com/DarkCascade/Sir-Fish/issues/71)) |
 | 4.1 | Standard skeleton | **Decided** | `Rig_Medium`; S1 confirmed the shipped `Rig` is identical |
 | 4.2 | Clip source | **Decided** | KayKit Character Animations: 132 `Rig_Medium` clips, CC0, verified |
-| 4.3 | Bake clips or share them | Recommended | One shared library; needs a second clip source on `RigProfile` |
+| 4.3 | Bake clips or share them | **Decided 2026-09-23** | Share one library, built with #78 or #81 (whichever is picked up first); new characters bake until then. Needs a second clip source on `RigProfile` ([#79](https://github.com/DarkCascade/Sir-Fish/issues/79)) |
 | 4.4 | Skill scope | Recommended | User-level, built around `rig_bandit_officer.py` |
 | 4.5 | Meshy credits for P4 | **Done** | Trial approved; the bandit officer cost 33 credits |
 | 4.6 | Move current characters to pack clips | Recommended | Not yet; do it with 4.3 as one visual pass |
