@@ -38,7 +38,7 @@
 | **S1** | ~~Spike: does KayKit's `Rig_Medium` match the shipped rig?~~ | — | XS | — | **Done 2026-09-13: it matches** (§4) |
 | **P3** | Modifier sets per item type; item types for every shipped hand mesh | Medium | M data + M visible props | 3.8 | P1–P2 unblocked it (a full party can be tuned now, §1's balance check). 3.7's approach is decided (issue #71); what still blocks it is 3.8 - the item-modifier rework may replace decision 3.1 entirely (§7) |
 | **P4** | Prompt → Meshy → Blender → glb character skill | Medium | M | nothing: the trial character proved the route (§4) | Packaged as the project skill `new-character` and `tools/character_pipeline/` (2026-09-14), kept project-level (4.4, #82). What remains is 4.3's shared clip source, which lands with #78 or #81 (decided 2026-09-23, #79) |
-| **P5** | Small polish pass: post-expedition summary, chest presentation, invoker tray boss theme (was slot upgrade UI, #90), party modal info, shadow monster rework | Low–Medium | S (each item) | nothing | Queued during a later session; not yet scoped against P1–P4 |
+| **P5** | Small polish pass: post-expedition summary (a settlement receipt, #86/#153), chest presentation, invoker tray boss theme (was slot upgrade UI, #90), party modal info, shadow monster rework | Low–Medium | S (each item) | nothing | Queued during a later session; not yet scoped against P1–P4 |
 | **P6** | Make the headless suite a real gate: one full green-bar run, then CI on push | — (dev) | S | nothing | The first full green bar is recorded (2026-09-20: 31 suites, 0 failing - §6.1). What remains is CI: nothing runs the suites automatically. `tools/run_tests.py` (2026-09-19) exits non-zero on failure precisely so it can gate |
 | **P7** | Slot-first combat: owner swings, invokable specials, player decisions in a fight | High | M | nothing | **Pivot decided and two pieces built 2026-09-20 (§7).** Damage splits by icon owner (`66298b9`) and specials are invokable off a charge meter (`e7f8298`). Upgrades moved to town (the Slotworks) and made permanent 2026-09-21. The invoker tray is built with all three buttons. Remaining: the warrior's cleave (his button already says Cleave and fires Defend until it lands). Hold-and-respin is deferred behind the specials |
 
@@ -1138,8 +1138,25 @@ or sequenced against P1–P4.
 
 **UI & visuals**
 
-- **Post-expedition stats summary view** needs another design pass; priorities not yet
-  defined.
+- **Post-expedition stats summary: decided 2026-09-23, it is a settlement receipt**
+  ([issue #86](https://github.com/DarkCascade/Sir-Fish/issues/86); built in
+  [#153](https://github.com/DarkCascade/Sir-Fish/issues/153)). The bullet predated the
+  2026-09-17 redesign, which made this screen where the run is settled: the four spoils
+  reels (XP, Items, Gold, Scrap) keep, halve, double or lose what the expedition carried,
+  and `GameState.apply_spoils()` runs there. Its job is therefore to answer "what did I
+  walk away with, and what did the reels do to it".
+  - **Rows are one per reel, in reel order**, with the quest reward leading on a win. Each
+    row changes in place as its reel lands.
+  - **XP gets a row, with level-up callouts.** It was the only reel with no number beside
+    it, so a reel that doubled or wiped the XP went unexplained.
+  - **Encounters cleared and run time move into the subtitle.**
+  - **Damage dealt/taken, icons/spins and the seven retired rows are cut.** These were
+    performance stats diluting the settlement numbers, and none of them reflected P7's
+    slot-first combat.
+  - **Not chosen: a run recap** (MVP hero, specials fired, best spin). It needs new
+    `run_stats` tracking and would compete with the reels for the same moment. Worth
+    revisiting once P7's combat settles which stats are worth showing off.
+  - **Item glyphs** in place of the item count go with the popped-glyph bullet below.
 - **Expedition chest redo** — done (issues #87, #88; commit `1110694`, 2026-09-15):
   chest moved out to the same up-run band as the shop building so the party no longer
   occludes it, and text loot popups replaced with `loot_glyph.tscn`/`.gd` glyph-pop
