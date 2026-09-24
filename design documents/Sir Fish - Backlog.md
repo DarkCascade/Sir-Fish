@@ -1182,7 +1182,7 @@ or sequenced against P1–P4.
   - *Was: slot upgrades, another pass.* **Dropped for now.** That would now mean polishing the
     Slotworks Upgrades tab. It is "phase 0" with more tabs expected, and #100 (economy
     pacing) may still change the costs and levels the cards show, so card polish now would
-    likely be redone. Revisit when the Slotworks gets its next tab or #100 settles.
+    likely be redone. Revisit with the Slotworks design pass (#157), which #100 now waits on.
 
 **Character & animation**
 
@@ -1579,6 +1579,15 @@ where that effort will grow.
 **Add-on efforts, not part of this change:** `tools/sim_reviewers.gd` still models buying
 mid-fight, so its in-combat-input metric is stale; and pacing now that gold funds permanent
 tuning rather than a per-run spend.
+
+- **Economy pacing is deferred behind a Slotworks design pass** (2026-09-24,
+  [issue #100](https://github.com/DarkCascade/Sir-Fish/issues/100), now blocked by
+  [#157](https://github.com/DarkCascade/Sir-Fish/issues/157)). The Slotworks has grown past
+  its one-tab phase 0, and the whole thing gets a design pass before anything in it is
+  balanced. That pass may change what the Slotworks sells, so pricing today's three
+  upgrades first would likely be thrown away. For reference, maxing all three costs about
+  2,400 gold at current prices (803 + 936 + 668), against quest rewards of 150-600 and
+  enemy drops of 22-40.
 
 ### Done: Cleave replaces Defend (issue #96, 2026-09-23)
 
