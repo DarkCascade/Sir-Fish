@@ -1215,6 +1215,18 @@ or sequenced against P1–P4.
   job, showing what the inventory is doing, moved to the party modal's per-hero
   `_reel_strip`. The shop's copy went too. The party modal is itself mostly code-built, but
   moving it to the editor is left alone for now and has no issue.
+- **The console's three bands in a VBoxContainer: closed 2026-09-24 as won't do**
+  ([issue #109](https://github.com/DarkCascade/Sir-Fish/issues/109)). `Console.apply_height()`
+  is about 15 lines, and its squeeze order is deliberate: on a short screen the cabinet gives
+  way first (floor 400 px), then the tray (floor 120 px). A VBox only shares out spare space
+  and overflows when short, so matching that needs a custom `Container`, the same logic in
+  another file. The slot machine and tray would still need their own `apply_height()`.
+  - **The layout facts moved to the cabinet-art issue**
+    ([#140](https://github.com/DarkCascade/Sir-Fish/issues/140)). The cabinet's own bottom
+    below the reels is only about 36 px. Most of the bare space is the 358 px invoker band
+    (no background, three 240 x 262 buttons) and the 90 px margin under it. `TRAY_HEIGHT` was
+    sized for the old upgrade cards and may be more than the invokers need, which is an art
+    and layout question for #140 rather than a container one.
 
 **Character & animation**
 
