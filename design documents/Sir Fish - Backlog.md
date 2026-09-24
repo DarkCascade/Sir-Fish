@@ -1183,6 +1183,20 @@ or sequenced against P1–P4.
     Slotworks Upgrades tab. It is "phase 0" with more tabs expected, and #100 (economy
     pacing) may still change the costs and levels the cards show, so card polish now would
     likely be redone. Revisit with the Slotworks design pass (#157), which #100 now waits on.
+- **The shop Buy tab's cards: decided 2026-09-24, author them in the editor**
+  ([issue #106](https://github.com/DarkCascade/Sir-Fish/issues/106); build in
+  [#159](https://github.com/DarkCascade/Sir-Fish/issues/159)). The Buy tab is already a fixed
+  three slots: `Itemizer.generate_shop_stock()` pads and trims to `SHOP_ITEMS_FOR_SALE`, and
+  a bought card stays in place marked "Sold". So its three `item_row` cards become authored
+  placeholders in `shop_modal.tscn` that `_build_buy()` fills, and the tab can be laid out
+  in the editor without running the game.
+  - **The count now lives in two places**, the constant and the scene, so a check fails when
+    they disagree.
+  - **`EncounterDef.shop_item_count` goes.** It is set in three places and read in none;
+    the stock size has only ever come from the constant.
+  - **The Sell tab stays runtime-built**, since the inventory can be any length.
+  - The item came from an editor-migration notes file that is not in the repo; this entry
+    and the issue are its only record. #107-#109 come from the same notes.
 
 **Character & animation**
 
