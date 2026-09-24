@@ -305,7 +305,8 @@ Facts the tooling depends on, worth knowing before changing it:
 - **A clothed humanoid gets a palette-snapped texture**, not per-part flat materials.
   Skin, clothes and boots weld into one part, and the eyes exist only in the texture.
 - **Clips are baked into each glb,** because `CombatantBakedAnimations.build()` reads
-  clips only from the character's own glb. A shared library is backlog decision 4.3.
+  clips only from the character's own glb. Backlog decision 4.3 (issue #79) moves to a
+  shared library, built with #78 or #81; until then new characters keep baking.
 - **Blender 5.2 runs headless** through `BLENDER_PATH`.
   - Assigning an action also needs `action_slot` set.
   - Clearing an armature's animation data orphans its clips, and Blender drops orphans
