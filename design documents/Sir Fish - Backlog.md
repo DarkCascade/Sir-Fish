@@ -1892,6 +1892,7 @@ to, the real price of this pivot.
 | 9.1 | The tutorial narrative | **Adopted 2026-09-24, not scheduled** | The bandit-camps arc is the entire tutorial: a solo warrior in a town with no services, to a three-person party in a staffed town. Camp layout and which other services start closed are left for when it is scheduled (§9, [#129](https://github.com/DarkCascade/Sir-Fish/issues/129)) |
 | 9.2 | The stagecoach's name | **Decided 2026-09-24** | **The Gilded Guppy**; the warrior calls it **the Guppy** (§9, [#130](https://github.com/DarkCascade/Sir-Fish/issues/130)) |
 | 9.3 | The quest relic | **Decided 2026-09-24, builds with the arc** | The relic becomes the recruit's recovered kit: freed captives collect their confiscated weapon, armor and trinket, authored as their own (answers #126's generated-vs-authored). Replaces decision 1.2's relic-only join (§9, [#127](https://github.com/DarkCascade/Sir-Fish/issues/127)) |
+| 9.4 | Does the recruit fight in their own boss battle? | **Decided 2026-09-24: no** | Join-on-victory stays (decision 1.4). A mid-fight join (off-screen entry, kit grabbed on joining, guest until victory) is recorded as the alternative (§9, [#128](https://github.com/DarkCascade/Sir-Fish/issues/128)) |
 
 ---
 
@@ -1971,6 +1972,43 @@ the heartstone can stay the named pieces of each kit.
 - **Existing saves need no migration.** The warbow and heartstone are ordinary `Item`s, and
   profiles that have them keep them as normal gear.
 
+### The recruit still joins on victory (decided 2026-09-24)
+
+[Issue #128](https://github.com/DarkCascade/Sir-Fish/issues/128). Decision 1.4 stands:
+the freed captive joins the party once the lieutenant is beaten, and is in the party from
+the next expedition. They do not fight in their own boss battle. The arc answers the
+question #128 raised, who posts a quest for a captive: the village posts a job against the
+lieutenant, and the captive is freed along the way. The kit recovery from #127 happens
+after the fight, as that decision describes.
+
+**The alternative, considered and not chosen: the recruit joins mid-fight.** Recorded in
+full in case the lieutenant fights ever want a bigger moment.
+
+- **The shape it would have taken:**
+  - **Way in:** an off-screen join when the boss fight starts, the party's arrival letting
+    them break free. A wooden cage the party breaks open was the other option, but it
+    needs targetable non-combatant objects and a break state, so it is much bigger.
+  - **Gear:** they grab their confiscated kit as they join, so they are not fighting on
+    their innate icon alone. #127's recovery beat would move to the start of the fight.
+  - **On a loss:** a guest until victory. A loss sends them back into captivity and the
+    quest can be retried, which keeps decision 1.4's join-on-victory and its save logic.
+  - **Balance:** folded into the camp-levels pass, since the #105 bands were tuned without
+    the recruit in the fight and having them there makes both bosses easier.
+  - **Also needed:** dialogue during the battle (#120), a visible change on the slot as
+    their icons enter the bag, and a transition as their special button appears.
+- **What it would cost in code:**
+  - **The slot mostly handles itself.** `SlotMachine._rebuild_bag()` builds the bag from
+    the living heroes, so a hero added mid-fight feeds it on the next rebuild. The visible
+    change would be presentation only.
+  - **Spawning is the real work.** `BattleDirector.spawn_party()` places heroes once per
+    run, in fixed formation slots by index, so a join needs a way to spawn one hero into a
+    battle already running.
+  - **The invoker tray** only refreshes its buttons on `run_started`, so it would need a
+    party-changed signal.
+- **Why not:** join-on-victory is far cheaper and changes nothing that already works. The
+  cost of saying no is that the lieutenant fights lose what would have been their best
+  moment.
+
 ### Still open, for when it is scheduled
 
 - **The camps:** how many, their levels, and how they sit against `easy.tres` (1-5) and the
@@ -1986,8 +2024,8 @@ the heartstone can stay the named pieces of each kit.
   is its first build step.
 - **#126 and #127, the recruit's kit and the relic**, are decided and built with the arc
   (below).
-- **#128, the recruit in their own boss fight**, fits inside the arc and stays a separate
-  decision.
+- **#128, the recruit in their own boss fight**, is decided: they still join on victory
+  (below).
 - **New bandit enemies** (more lieutenants and variants, and the captain) go through the
   `new-character` pipeline and cost Meshy credits. `bandit_officer` can anchor the
   lieutenants.
