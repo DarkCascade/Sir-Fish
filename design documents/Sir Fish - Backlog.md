@@ -39,7 +39,7 @@
 | **P3** | Modifier sets per item type; item types for every shipped hand mesh | Medium | M data + M visible props | 3.8 | P1–P2 unblocked it (a full party can be tuned now, §1's balance check). 3.7's approach is decided (issue #71); what still blocks it is 3.8 - the item-modifier rework may replace decision 3.1 entirely (§7) |
 | **P4** | Prompt → Meshy → Blender → glb character skill | Medium | M | nothing: the trial character proved the route (§4) | Packaged as the project skill `new-character` and `tools/character_pipeline/` (2026-09-14), kept project-level (4.4, #82). What remains is 4.3's shared clip source, which lands with #78 or #81 (decided 2026-09-23, #79) |
 | **P5** | Small polish pass: post-expedition summary (a settlement receipt, #86/#153), chest presentation, invoker tray boss theme (was slot upgrade UI, #90), party modal info, shadow monster rework | Low–Medium | S (each item) | nothing | Queued during a later session; not yet scoped against P1–P4 |
-| **P6** | Make the headless suite a real gate: one full green-bar run, then CI on push | — (dev) | S | nothing | The first full green bar is recorded (2026-09-20: 31 suites, 0 failing - §6.1). What remains is CI: nothing runs the suites automatically. `tools/run_tests.py` (2026-09-19) exits non-zero on failure precisely so it can gate |
+| **P6** | Make the headless suite a real gate: one full green-bar run, then CI on push | — (dev) | S | nothing | The first full green bar is recorded (2026-09-20: 31 suites, 0 failing - §6.1). What remains is CI: nothing runs the suites automatically. How it runs is decided (6.1/6.2, 2026-09-23: every PR and push, gating the Pages deploy, a required PR check); the build is #62. `tools/run_tests.py` (2026-09-19) exits non-zero on failure precisely so it can gate |
 | **P7** | Slot-first combat: owner swings, invokable specials, player decisions in a fight | High | M | nothing | **Pivot decided and two pieces built 2026-09-20 (§7).** Damage splits by icon owner (`66298b9`) and specials are invokable off a charge meter (`e7f8298`). Upgrades moved to town (the Slotworks) and made permanent 2026-09-21. The invoker tray is built with all three buttons. Remaining: the warrior's cleave (his button already says Cleave and fires Defend until it lands). Hold-and-respin is deferred behind the specials |
 
 ```mermaid
@@ -1293,11 +1293,46 @@ Two small things to fold in while touching this:
 - Point §0.4 of the acceptance-testing spec at the runner for *future* runs, without
   rewriting what it recorded.
 
-### Still open
+### Decided 2026-09-23: every PR and push, gating the Pages deploy
 
-- **Per-push or nightly**, decided by the cold-import measurement above.
-- **Whether a red suite blocks the Pages deploy**, or only reports. `deploy-pages.yml`
-  publishes on every push to `main` today, with nothing gating it.
+**The cold import was measured from runs that already existed**
+([issue #59](https://github.com/DarkCascade/Sir-Fish/issues/59)). `deploy-pages.yml`
+already does a cold import on every push to `main`. On run 35950324496 its whole
+"Export Web build" step took 51 s, covering the Godot and template downloads, the import
+and the export. The whole workflow ran 73-120 s across fifteen recent runs. The one red
+run in that window (2026-09-24 01:51) was a GitHub download returning 500, not the project.
+The suite itself ran locally in 69 s (32 suites, 1089 checks, all green). A cold CI run is
+therefore about 2-3 minutes.
+
+**6.1: run on every pull request and every push to `main`, without a `.godot/` cache**
+([issue #60](https://github.com/DarkCascade/Sir-Fish/issues/60)).
+- Per-push points at the commit that broke something. `test_quest_generator` sat red for
+  six days because nothing ran it; a nightly run would only have narrowed that to a day.
+- 2-3 minutes is not slow enough to push the run to nightly, and the repo is public, so
+  Actions minutes on standard runners are free.
+- **No cache to start with.** It would save under a minute, and a stale import cache is
+  exactly what makes CI disagree with a local run. Add one keyed on the asset tree only if
+  the import grows.
+- **If the repo goes private**, the free plan's 2,000 minutes a month could get tight in a
+  busy month (about 15 pushes to `main` on 2026-09-23 alone, plus PR runs). Pages from a
+  private repo needs a paid plan anyway, so going private reopens both questions at once.
+
+**6.2: a red suite blocks the Pages deploy, and the suite is a required check on PRs into
+`main`** ([issue #61](https://github.com/DarkCascade/Sir-Fish/issues/61)).
+- **One definition of the suite.** `tests.yml` runs on `pull_request`, on `push` to `main`
+  and on `workflow_call`. `deploy-pages.yml` calls it, and its build job `needs:` it. The
+  Pages site is the playable build, so a red suite means shipping a known regression. The
+  gate adds about 2 minutes to a deploy, and a manual `workflow_dispatch` deploy passes the
+  same gate.
+- **Branch protection on `main` requires the test check.** This is a repo setting, turned
+  on once `tests.yml` has run and the check name exists. A red PR then cannot merge, so
+  the deploy gate becomes a backstop for direct pushes.
+- **The manual itch deploy stays ungated.** It is dispatched by hand, after a Pages deploy
+  that has already passed.
+- **The risk is a flaky test blocking deploys.** The suite has been deterministic so far,
+  and a hang is cut off as TIMEOUT rather than stalling the run.
+
+The build is [issue #62](https://github.com/DarkCascade/Sir-Fish/issues/62).
 
 ---
 
@@ -1752,8 +1787,8 @@ The review found these, which any revived version has to answer:
 | 4.6 | Move current characters to pack clips | Recommended | Not yet; do it with 4.3 as one visual pass |
 | 4.7 | T-pose or A-pose for Meshy | **Confirmed** | T-pose for `Rig_Medium`, proven by the trial |
 | 4.8 | Weights from the mannequin | **Confirmed** | Nearest-surface transfer from the body parts, a head blend, rigid small parts |
-| 6.1 | Per-push or nightly CI | Open | Decided by the cold `--import` measurement on 97 MB of assets; cache `.godot/` first |
-| 6.2 | Does a red suite block the Pages deploy? | Open | `deploy-pages.yml` publishes on every push to `main` today with nothing gating it |
+| 6.1 | Per-push or nightly CI | **Decided 2026-09-23** | Every PR and push to `main`, no `.godot/` cache: a cold CI run is ~2-3 min (the Pages export step, import included, is 51 s; the suite 69 s locally) ([#60](https://github.com/DarkCascade/Sir-Fish/issues/60), [#59](https://github.com/DarkCascade/Sir-Fish/issues/59)) |
+| 6.2 | Does a red suite block the Pages deploy? | **Decided 2026-09-23** | Yes: `deploy-pages.yml` calls `tests.yml` and its build `needs:` it; the suite is also a required check on PRs into `main`; the manual itch deploy stays ungated ([#61](https://github.com/DarkCascade/Sir-Fish/issues/61); built in [#62](https://github.com/DarkCascade/Sir-Fish/issues/62)) |
 | 7.1 | Slot or party as the main character | **Decided 2026-09-20** | Slot mechanically, party emotionally: player decisions live on the slot, the party expresses them (§7) |
 | 7.2 | Does slot damage split by owner? | **Decided, built** | Yes - each hero swings for the icons their own gear put on the board (`66298b9`) |
 | 7.3 | What gates a special invoke | **Decided, built, live-verified 2026-09-23** | A charge meter, filled by every icon that hero owns. `SPECIAL_CHARGE_COST` is 10; a 30-trial headless probe against a fully-geared party (issue #97) measured 3.7-3.9 spins to full per hero, matching the ~3-spin target - no retune (§7) |
