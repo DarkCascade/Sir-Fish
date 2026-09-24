@@ -1890,6 +1890,7 @@ to, the real price of this pivot.
 | 7.6 | Hold-and-respin | Deferred | A good verb, but it needs the specials layer first to have anything worth deciding about, and three questions are unanswered (§7) |
 | 7.7 | Should fights be longer? | **Decided 2026-09-23: no, for now** | Recent playtests found fight times very satisfying, so fights stay 2-6 spins and the harness keeps its 3-9s time-to-kill band. Revisit if playtests say otherwise (§7, [#99](https://github.com/DarkCascade/Sir-Fish/issues/99)) |
 | 9.1 | The tutorial narrative | **Adopted 2026-09-24, not scheduled** | The bandit-camps arc is the entire tutorial: a solo warrior in a town with no services, to a three-person party in a staffed town. Camp layout and which other services start closed are left for when it is scheduled (§9, [#129](https://github.com/DarkCascade/Sir-Fish/issues/129)) |
+| 9.2 | The stagecoach's name | **Decided 2026-09-24** | **The Gilded Guppy**; the warrior calls it **the Guppy** (§9, [#130](https://github.com/DarkCascade/Sir-Fish/issues/130)) |
 
 ---
 
@@ -1904,8 +1905,8 @@ recruit quests.
 **The bandit-camps story is the entire tutorial.** The player starts as a solo warrior in a
 town with no services, and finishes with a three-person party in a staffed town.
 
-- Sir Fish arrives on the slot-machine stagecoach (name to come, #130), driven by the
-  warrior, and at first the warrior is the whole party.
+- Sir Fish arrives on the slot-machine stagecoach, **the Gilded Guppy** (below), driven by
+  the warrior, and at first the warrior is the whole party.
 - The mayor's office posts jobs. The village's problem is bandits: camps are harassing
   travellers and merchants.
 - The bandit captain's two lieutenants each hold a captive. The ranger and mage recruit
@@ -1927,6 +1928,20 @@ town with no services, and finishes with a three-person party in a staffed town.
 - **Progression gates on finishing the tutorial**, not only on `unlock_level`, which is all
   quests gate on today.
 
+### The stagecoach: the Gilded Guppy (named 2026-09-24)
+
+[Issue #130](https://github.com/DarkCascade/Sir-Fish/issues/130). The slot-machine
+stagecoach is **the Gilded Guppy**, and the warrior's affectionate nickname for it is
+**the Guppy**. Settled before any tutorial text is written, since both will appear in the
+tutorial copy and probably on the cabinet art.
+
+- **Why:** it grew out of *The Gilded Carp*, which reads like a coaching-inn name and whose
+  "gilded" is gold leaf over something cheaper, which describes a flashy slot machine bolted
+  onto an old coach. A guppy is small, cheap and common, which fits the arc's start: one
+  warrior in a town with no services.
+- **Also considered:** *The Gilded Carp*, *The Carp & Coin*, *The Carp Rampant*,
+  *The Crowned Carp*, *The Copper Carp* (as a tutorial-start name upgrading to gilded).
+
 ### Still open, for when it is scheduled
 
 - **The camps:** how many, their levels, and how they sit against `easy.tres` (1-5) and the
@@ -1940,7 +1955,6 @@ town with no services, and finishes with a three-person party in a staffed town.
 
 - **#120, a dialogue system**, is blocked by this. Once the arc is scheduled, adopting one
   is its first build step.
-- **#130, the stagecoach's name**, should be settled before any tutorial text is written.
 - **#126, #127 and #128** (the recruit's kit, the relic as a story beat, the recruit in
   their own boss fight) all fit inside the arc and stay separate decisions.
 - **New bandit enemies** (more lieutenants and variants, and the captain) go through the
