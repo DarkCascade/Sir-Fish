@@ -26,6 +26,10 @@
 > headless-tested (issue #97) - which is also how the ranger's bomb arrow and the mage's
 > heal were found silently dealing/healing 1 regardless of gear (issue #137, fixed in #138).
 > §8 collects every decision with its status.
+>
+> **The whole tutorial is the bandit-camps arc (adopted 2026-09-24, not scheduled; §9).** It
+> takes the player from a solo warrior in a town with no services to a three-person party in
+> a staffed town, and it will reshape both recruit quests when it is built.
 
 ---
 
@@ -1861,3 +1865,60 @@ to, the real price of this pivot.
 | 7.5 | What happens to the three slot upgrades | **Decided, built 2026-09-21; revised** | They move to town (the Slotworks) and become **permanent**, saved with the profile. No reset at all but a new profile |
 | 7.6 | Hold-and-respin | Deferred | A good verb, but it needs the specials layer first to have anything worth deciding about, and three questions are unanswered (§7) |
 | 7.7 | Should fights be longer? | **Decided 2026-09-23: no, for now** | Recent playtests found fight times very satisfying, so fights stay 2-6 spins and the harness keeps its 3-9s time-to-kill band. Revisit if playtests say otherwise (§7, [#99](https://github.com/DarkCascade/Sir-Fish/issues/99)) |
+| 9.1 | The tutorial narrative | **Adopted 2026-09-24, not scheduled** | The bandit-camps arc is the entire tutorial: a solo warrior in a town with no services, to a three-person party in a staffed town. Camp layout and which other services start closed are left for when it is scheduled (§9, [#129](https://github.com/DarkCascade/Sir-Fish/issues/129)) |
+
+---
+
+## 9. The tutorial: the bandit camps (adopted 2026-09-24, not scheduled)
+
+[Issue #129](https://github.com/DarkCascade/Sir-Fish/issues/129). The arc will be built,
+but not now. Recording it here because it reframes several open decisions and both
+recruit quests.
+
+### The arc
+
+**The bandit-camps story is the entire tutorial.** The player starts as a solo warrior in a
+town with no services, and finishes with a three-person party in a staffed town.
+
+- Sir Fish arrives on the slot-machine stagecoach (name to come, #130), driven by the
+  warrior, and at first the warrior is the whole party.
+- The mayor's office posts jobs. The village's problem is bandits: camps are harassing
+  travellers and merchants.
+- The bandit captain's two lieutenants each hold a captive. The ranger and mage recruit
+  quests become Exterminate-style quests: go after the lieutenant, free the captive, and
+  they join.
+- Smaller, lower-level camps hold the tradesfolk (the blacksmith and the tavern keeper).
+  Freeing them is what staffs the town, and the tutorial suggests doing that before taking
+  on a lieutenant.
+- Clearing every camp, with the captain as the final boss, earns the village's respect and
+  opens the area's higher-level quests.
+
+### What that settles
+
+- **How much is tutorial:** all of it. There is no separate regular early game before the
+  captain falls.
+- **The tradesfolk gate their services.** The blacksmith and inn are closed until their
+  keepers are freed, rather than open with extras added. Today both are open from the first
+  visit.
+- **Progression gates on finishing the tutorial**, not only on `unlock_level`, which is all
+  quests gate on today.
+
+### Still open, for when it is scheduled
+
+- **The camps:** how many, their levels, and how they sit against `easy.tres` (1-5) and the
+  recruit bands (ranger 3-3, mage 5-9). Left open because the bands can move before then
+  (#157, #100).
+- **Which other services start closed.** "No services" clearly covers the blacksmith and
+  inn. Whether the Slotworks and the shop also wait on something is not decided. The
+  mayor's office has to be open, since it posts the jobs.
+
+### What depends on it
+
+- **#120, a dialogue system**, is blocked by this. Once the arc is scheduled, adopting one
+  is its first build step.
+- **#130, the stagecoach's name**, should be settled before any tutorial text is written.
+- **#126, #127 and #128** (the recruit's kit, the relic as a story beat, the recruit in
+  their own boss fight) all fit inside the arc and stay separate decisions.
+- **New bandit enemies** (more lieutenants and variants, and the captain) go through the
+  `new-character` pipeline and cost Meshy credits. `bandit_officer` can anchor the
+  lieutenants.
