@@ -37,7 +37,7 @@
 | **P2** | ~~Mage recruitment quest, offered from level 5~~ | High | S | nothing | **Built 2026-09-14, the same day as P1; recorded here 2026-09-20, gated at level 5 the same day.** Deviated from the plan: one authored RELIC (the heartstone, a trinket) via `QuestDef.guaranteed_boss_drop`, not a staff. Its own `_load_authored_quests()` rewrite is what caused P1's regressions |
 | **S1** | ~~Spike: does KayKit's `Rig_Medium` match the shipped rig?~~ | — | XS | — | **Done 2026-09-13: it matches** (§4) |
 | **P3** | Modifier sets per item type; item types for every shipped hand mesh | Medium | M data + M visible props | 3.8 | P1–P2 unblocked it (a full party can be tuned now, §1's balance check). 3.7's approach is decided (issue #71); what still blocks it is 3.8 - the item-modifier rework may replace decision 3.1 entirely (§7) |
-| **P4** | Prompt → Meshy → Blender → glb character skill | Medium | M | nothing: the trial character proved the route (§4) | What remains is packaging `rig_bandit_officer.py` as a skill and building 4.3's shared clip source, which lands with #78 or #81 (decided 2026-09-23, #79) |
+| **P4** | Prompt → Meshy → Blender → glb character skill | Medium | M | nothing: the trial character proved the route (§4) | Packaged as the project skill `new-character` and `tools/character_pipeline/` (2026-09-14), kept project-level (4.4, #82). What remains is 4.3's shared clip source, which lands with #78 or #81 (decided 2026-09-23, #79) |
 | **P5** | Small polish pass: post-expedition summary, chest presentation, slot upgrade UI, party modal info, shadow monster rework | Low–Medium | S (each item) | nothing | Queued during a later session; not yet scoped against P1–P4 |
 | **P6** | Make the headless suite a real gate: one full green-bar run, then CI on push | — (dev) | S | nothing | The first full green bar is recorded (2026-09-20: 31 suites, 0 failing - §6.1). What remains is CI: nothing runs the suites automatically. `tools/run_tests.py` (2026-09-19) exits non-zero on failure precisely so it can gate |
 | **P7** | Slot-first combat: owner swings, invokable specials, player decisions in a fight | High | M | nothing | **Pivot decided and two pieces built 2026-09-20 (§7).** Damage splits by icon owner (`66298b9`) and specials are invokable off a charge meter (`e7f8298`). Upgrades moved to town (the Slotworks) and made permanent 2026-09-21. The invoker tray is built with all three buttons. Remaining: the warrior's cleave (his button already says Cleave and fires Defend until it lands). Hold-and-respin is deferred behind the specials |
@@ -978,9 +978,25 @@ Why share, and why not yet (#79):
   `RigProfile` references. That handles the root name and the stripping at export, and
   leaves only the second source on `RigProfile`.
 
-**4.4 One project or every project?** *Recommend user-level*, beside
-`new-godot-project` in `~/.claude/skills/`, with palette, rig source and output paths
-passed in. The Meshy and Blender lessons are not specific to Sir Fish.
+**4.4 One project or every project?** *Decided 2026-09-23: stays project-level for now*
+([issue #82](https://github.com/DarkCascade/Sir-Fish/issues/82)). The original
+recommendation was user-level, beside `new-godot-project` in `~/.claude/skills/`, with
+palette, rig source and output paths passed in, because the Meshy and Blender lessons are
+not specific to Sir Fish. It shipped as the project skill `new-character` instead, and
+stays there:
+- **It is still moving.** It has produced one character, and 4.3 (#79) changes its bake
+  step when the shared clip library lands. Lifting it now would mean carrying that change
+  in two places.
+- **Lifting later is cheap, because the split line is already clean.** The Blender half
+  (`build`, `verify`, `template`, ~860 lines) is generic apart from one warning naming
+  `test_animation_clips`' 12-clip ceiling. The Sir Fish coupling sits almost entirely in
+  `register` (stats, `RigProfile`, scene, pools, the clip test) and in the skill's spec,
+  test and debug-spawn steps.
+- **Trigger: a second project wants a character.** Then lift `doctor`/`template`/`build`/
+  `verify` into a user-level core with palette and paths passed in, and keep `register`
+  as Sir Fish's adapter. Four other projects under `C:\Projects\Godot` reference KayKit
+  (Lootcave, blaster-training-academy, dungeon-of-fortune, mcplayground); which rig they
+  use is unchecked.
 
 **4.5 Meshy spend** (*open*). Meshy is on hold until the design locks, with exceptions
 only for slot board glyphs and biome frames. A trial character costs roughly 9 credits
@@ -1698,7 +1714,7 @@ The review found these, which any revived version has to answer:
 | 4.1 | Standard skeleton | **Decided** | `Rig_Medium`; S1 confirmed the shipped `Rig` is identical |
 | 4.2 | Clip source | **Decided** | KayKit Character Animations: 132 `Rig_Medium` clips, CC0, verified |
 | 4.3 | Bake clips or share them | **Decided 2026-09-23** | Share one library, built with #78 or #81 (whichever is picked up first); new characters bake until then. Needs a second clip source on `RigProfile` ([#79](https://github.com/DarkCascade/Sir-Fish/issues/79)) |
-| 4.4 | Skill scope | Recommended | User-level, built around `rig_bandit_officer.py` |
+| 4.4 | Skill scope | **Decided 2026-09-23** | Stays the project skill `new-character`; lift a generic core (build/verify/template) when a second project wants a character, with `register` as Sir Fish's adapter ([#82](https://github.com/DarkCascade/Sir-Fish/issues/82)) |
 | 4.5 | Meshy credits for P4 | **Done** | Trial approved; the bandit officer cost 33 credits |
 | 4.6 | Move current characters to pack clips | Recommended | Not yet; do it with 4.3 as one visual pass |
 | 4.7 | T-pose or A-pose for Meshy | **Confirmed** | T-pose for `Rig_Medium`, proven by the trial |
