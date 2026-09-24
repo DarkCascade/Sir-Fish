@@ -38,7 +38,7 @@
 | **S1** | ~~Spike: does KayKit's `Rig_Medium` match the shipped rig?~~ | — | XS | — | **Done 2026-09-13: it matches** (§4) |
 | **P3** | Modifier sets per item type; item types for every shipped hand mesh | Medium | M data + M visible props | 3.8 | P1–P2 unblocked it (a full party can be tuned now, §1's balance check). 3.7's approach is decided (issue #71); what still blocks it is 3.8 - the item-modifier rework may replace decision 3.1 entirely (§7) |
 | **P4** | Prompt → Meshy → Blender → glb character skill | Medium | M | nothing: the trial character proved the route (§4) | Packaged as the project skill `new-character` and `tools/character_pipeline/` (2026-09-14), kept project-level (4.4, #82). What remains is 4.3's shared clip source, which lands with #78 or #81 (decided 2026-09-23, #79) |
-| **P5** | Small polish pass: post-expedition summary, chest presentation, slot upgrade UI, party modal info, shadow monster rework | Low–Medium | S (each item) | nothing | Queued during a later session; not yet scoped against P1–P4 |
+| **P5** | Small polish pass: post-expedition summary, chest presentation, invoker tray boss theme (was slot upgrade UI, #90), party modal info, shadow monster rework | Low–Medium | S (each item) | nothing | Queued during a later session; not yet scoped against P1–P4 |
 | **P6** | Make the headless suite a real gate: one full green-bar run, then CI on push | — (dev) | S | nothing | The first full green bar is recorded (2026-09-20: 31 suites, 0 failing - §6.1). What remains is CI: nothing runs the suites automatically. `tools/run_tests.py` (2026-09-19) exits non-zero on failure precisely so it can gate |
 | **P7** | Slot-first combat: owner swings, invokable specials, player decisions in a fight | High | M | nothing | **Pivot decided and two pieces built 2026-09-20 (§7).** Damage splits by icon owner (`66298b9`) and specials are invokable off a charge meter (`e7f8298`). Upgrades moved to town (the Slotworks) and made permanent 2026-09-21. The invoker tray is built with all three buttons. Remaining: the warrior's cleave (his button already says Cleave and fires Defend until it lands). Hold-and-respin is deferred behind the specials |
 
@@ -1146,10 +1146,26 @@ or sequenced against P1–P4.
   animations wrapping `item_glyph.gd`'s rarity ring.
 - **Apply the same popped-glyph pattern to battle loot**, for consistency with the
   chest.
-- **Slot upgrade boxes**: transition their styling to the boss frame along with the
-  rest of the UI during boss encounters (coordinate with the boss console theme work).
-- **Slot upgrades, another pass**: revisit the interaction/display now that the current
-  slot mechanics are settled.
+- **Slot upgrade bullets re-scoped 2026-09-23**
+  ([issue #90](https://github.com/DarkCascade/Sir-Fish/issues/90)). Both were written
+  before 2026-09-21, when the three upgrades moved out of the console tray into the town
+  Slotworks and the tray became the three special invokers (§7).
+  - *Was: restyle the slot upgrade boxes to the boss frame.* It no longer applies: the cards
+    never appear in a boss fight now. Their `apply_boss_theme()`/`clear_boss_theme()` pair
+    on `UpgradeButton`/`UpgradeTray` is uncalled and gets deleted
+    ([#150](https://github.com/DarkCascade/Sir-Fish/issues/150)).
+  - *Carried over: boss-theme the invoker tray*
+    ([#151](https://github.com/DarkCascade/Sir-Fish/issues/151)). The invokers took the
+    cards' place in the console band and are what the player presses during a boss
+    fight, but `Console.apply_boss_theme()` does not touch them. Their gold frames are
+    baked into the renders, so look first, try a tint, and only then consider new art,
+    which is Meshy-gated. When the boss console theme shipped it deliberately skipped the
+    upgrade cards and the HUD buttons; this reverses that for the tray only, since it is now
+    the main control in a boss fight.
+  - *Was: slot upgrades, another pass.* **Dropped for now.** That would now mean polishing the
+    Slotworks Upgrades tab. It is "phase 0" with more tabs expected, and #100 (economy
+    pacing) may still change the costs and levels the cards show, so card polish now would
+    likely be redone. Revisit when the Slotworks gets its next tab or #100 settles.
 
 **Character & animation**
 
