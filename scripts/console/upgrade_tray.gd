@@ -1,8 +1,7 @@
 extends Control
 ## The upgrade tray (spec 17.6). [backlog P7 / decision 7.5] No longer part of the
 ## console: it lives on the Slotworks' Upgrades tab (town), where the three cards
-## are permanent purchases saved with the profile. Its boss-theme pair is now
-## uncalled (there is no boss in town) but kept working.
+## are permanent purchases saved with the profile.
 ##
 ## [move-elements-to-editor] The cards are authored instances in
 ## upgrade_tray.tscn, not spawned here: their X positions, their top margin and
@@ -37,18 +36,6 @@ func _ready() -> void:
 		_buttons[i].hide()
 
 	EventBus.upgrade_purchased.connect(_on_upgrade_purchased)
-
-## [black-glass] Facade over each card's own apply/clear pair - see
-## upgrade_button.gd's copy of the pair for the full contract. Called by
-## Console.apply_boss_theme()/clear_boss_theme(), the same facade
-## status_panel.gd and slot_machine.gd answer to.
-func apply_boss_theme() -> void:
-	for button: Variant in _buttons:
-		button.apply_boss_theme()
-
-func clear_boss_theme() -> void:
-	for button: Variant in _buttons:
-		button.clear_boss_theme()
 
 ## Called by the console once it knows how much room the tray gets. Only the
 ## HEIGHT is imposed - each card keeps the x/width/top it was authored with.
