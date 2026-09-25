@@ -1231,6 +1231,21 @@ or sequenced against P1–P4.
     (no background, three 240 x 262 buttons) and the 90 px margin under it. `TRAY_HEIGHT` was
     sized for the old upgrade cards and may be more than the invokers need, which is an art
     and layout question for #140 rather than a container one.
+- **Options menu and audio plumbing: deferred 2026-09-24 until there is audio**
+  ([issue #121](https://github.com/DarkCascade/Sir-Fish/issues/121), blocked by
+  [#168](https://github.com/DarkCascade/Sir-Fish/issues/168)). The game has no sound at
+  all: no audio files under `assets/` and no `AudioStreamPlayer` anywhere. An options menu
+  now would hold three volume sliders that do nothing. So the pieces land with the first
+  audio work instead.
+  - **The bus layout** (Master / Music / SFX) and **a settings file separate from the
+    profile**, so wiping a save keeps audio preferences. Both are small and pay off with
+    the first sound.
+  - **The options modal**, which is most of the work. It also needs an entry point, since
+    there is no title screen or pause menu: probably a gear in town and a pause during
+    quests.
+  - **Audio content is its own decision (#168):** where the sounds come from, given the
+    generated-assets-only rule, and what a first pass covers. The slot probably earns sound
+    first, since it is the main character (7.1).
 
 **Character & animation**
 
