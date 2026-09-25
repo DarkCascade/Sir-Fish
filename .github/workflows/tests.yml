@@ -1,0 +1,41 @@
+name: Tests
+
+# Runs every headless suite through tools/run_tests.py (backlog §6.2, #62).
+# deploy-pages.yml calls this through workflow_call and its build needs it, so a
+# red suite blocks the Pages deploy as well as the PR.
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_call:
+
+permissions:
+  contents: read
+
+env:
+  GODOT_VERSION: 4.7-stable
+
+jobs:
+  suite:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      # No lfs: true - there is no LFS setup, the meshes are plain blobs (#63).
+      - uses: actions/checkout@v4
+
+      # The headless binary only: the suites need no export templates.
+      - name: Download Godot
+        run: |
+          curl -fsSL --retry 3 -o godot.zip \
+            https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}/Godot_v${GODOT_VERSION}_linux.x86_64.zip
+          unzip -q godot.zip -d "$RUNNER_TEMP/godot"
+          rm godot.zip
+          echo "GODOT_PATH=$RUNNER_TEMP/godot/Godot_v${GODOT_VERSION}_linux.x86_64" >> "$GITHUB_ENV"
+
+      # .godot/ is gitignored and deliberately not cached (#60), so every run
+      # imports cold before the suites load any asset.
+      - name: Import project
+        run: '"$GODOT_PATH" --headless --path . --import'
+
+      - name: Run suites
+        run: python3 tools/run_tests.py

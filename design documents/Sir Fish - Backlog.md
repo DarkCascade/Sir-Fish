@@ -43,7 +43,7 @@
 | **P3** | Modifier sets per item type; item types for every shipped hand mesh | Medium | M data + M visible props | 3.8 | P1–P2 unblocked it (a full party can be tuned now, §1's balance check). 3.7's approach is decided (issue #71); what still blocks it is 3.8 - the item-modifier rework may replace decision 3.1 entirely (§7) |
 | **P4** | Prompt → Meshy → Blender → glb character skill | Medium | M | nothing: the trial character proved the route (§4) | Packaged as the project skill `new-character` and `tools/character_pipeline/` (2026-09-14), kept project-level (4.4, #82). What remains is 4.3's shared clip source, which lands with #78 or #81 (decided 2026-09-23, #79) |
 | **P5** | Small polish pass: post-expedition summary (a settlement receipt, #86/#153), chest presentation, invoker tray boss theme (was slot upgrade UI, #90), party modal info, shadow monster rework | Low–Medium | S (each item) | nothing | Queued during a later session; not yet scoped against P1–P4 |
-| **P6** | Make the headless suite a real gate: one full green-bar run, then CI on push | — (dev) | S | nothing | The first full green bar is recorded (2026-09-20: 31 suites, 0 failing - §6.1). What remains is CI: nothing runs the suites automatically. How it runs is decided (6.1/6.2, 2026-09-23: every PR and push, gating the Pages deploy, a required PR check); the build is #62. `tools/run_tests.py` (2026-09-19) exits non-zero on failure precisely so it can gate |
+| **P6** | Make the headless suite a real gate: one full green-bar run, then CI on push | — (dev) | S | nothing | The first full green bar is recorded (2026-09-20: 31 suites, 0 failing - §6.1). What remains is CI: nothing runs the suites automatically. How it runs is decided (6.1/6.2, 2026-09-23: every PR and push, gating the Pages deploy, a required PR check) and built 2026-09-25 (#62, §6.2). `tools/run_tests.py` (2026-09-19) exits non-zero on failure precisely so it can gate |
 | **P7** | Slot-first combat: owner swings, invokable specials, player decisions in a fight | High | M | nothing | **Pivot decided and two pieces built 2026-09-20 (§7).** Damage splits by icon owner (`66298b9`) and specials are invokable off a charge meter (`e7f8298`). Upgrades moved to town (the Slotworks) and made permanent 2026-09-21. The invoker tray is built with all three buttons. Remaining: the warrior's cleave (his button already says Cleave and fires Defend until it lands). Hold-and-respin is deferred behind the specials |
 
 ```mermaid
@@ -1439,7 +1439,25 @@ therefore about 2-3 minutes.
 - **The risk is a flaky test blocking deploys.** The suite has been deterministic so far,
   and a hang is cut off as TIMEOUT rather than stalling the run.
 
-The build is [issue #62](https://github.com/DarkCascade/Sir-Fish/issues/62).
+**Built 2026-09-25** ([issue #62](https://github.com/DarkCascade/Sir-Fish/issues/62),
+[PR #180](https://github.com/DarkCascade/Sir-Fish/pull/180)). `.github/workflows/tests.yml`
+has one job, `suite`. It downloads the headless 4.7-stable Linux binary, runs a cold
+`--headless --import`, then `python3 tools/run_tests.py` with `GODOT_PATH` pointing at the
+binary. `deploy-pages.yml` calls it as its `tests` job, and `build` `needs:` that job.
+- **The first CI run was green in about 1.5 minutes end to end:** 32 suites and 1103
+  checks, with the suites themselves taking about 60 s. That is under the 2-3 minute
+  estimate.
+- **A deliberately failed check turned `suite` red.** It failed `test_upgrades` at 63/64,
+  which proves the gate works. That commit was dropped from the branch before merge.
+- **The binary comes from a plain `curl`, not `chickensoft-games/setup-godot`.** `curl`
+  fetches the same release URL the Pages workflow already uses. It sidesteps that
+  action's `4.7.0` version format, which does not match `4.7-stable`, and adds no
+  third-party action. It loses only the binary cache, which saves a few seconds.
+- **On a push to `main` the suite runs twice.** It runs once as `tests.yml`'s own push
+  trigger and once inside the Pages deploy. That is the decided shape, because one
+  definition serves both the PR check and the deploy gate. It costs about a minute of
+  free Actions time.
+- **Still to do after merge:** make `suite` a required check on `main` (approved in #61).
 
 ### Closed 2026-09-24: no gdUnit4 scene runner
 
