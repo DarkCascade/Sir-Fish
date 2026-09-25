@@ -1290,6 +1290,24 @@ or sequenced against P1–P4.
   - **Audio content is its own decision (#168):** where the sounds come from, given the
     generated-assets-only rule, and what a first pass covers. The slot probably earns sound
     first, since it is the main character (7.1).
+- **Audio content: decided 2026-09-25** ([issue #168](https://github.com/DarkCascade/Sir-Fish/issues/168),
+  decision 5.1; build [#184](https://github.com/DarkCascade/Sir-Fish/issues/184), which
+  also carries #121's plumbing).
+  - **Procedural only, and documented for replacement.** Effects come from an sfxr-style
+    tool, and music is procedurally generated or tracker-built. No paid generators, so
+    audio needs no credit label. Every file gets a manifest row: where it is used, the
+    generator, the exact parameters or seed, and what a replacement would need. That
+    keeps it regenerable and swappable, since procedural is a floor and not the final
+    word.
+    - Rejected: a mix with AI generators for organic hits and music.
+    - Rejected: AI generators only.
+  - **First pass: the slot and music.** The slot is the main character (7.1). Music
+    carries the most mood per file: a town track, an expedition track and a boss track.
+    UI, economy and combat sounds come later.
+  - **Style: bright arcade-folk.** Chunky effects, chimes and coin clinks, and light folk
+    or whimsical music. That fits the cel-shaded primary palette and the Gilded Guppy's
+    tone. Procedural tools pull toward chiptune, so the build leans on bell, pluck and
+    chime timbres rather than bare square waves.
 
 **Character & animation**
 
@@ -2130,6 +2148,7 @@ replacement, against these targets once the ladders exist. The builds above bloc
 | 4.6 | Move current characters to pack clips | Recommended | Not yet; do it with 4.3 as one visual pass |
 | 4.7 | T-pose or A-pose for Meshy | **Confirmed** | T-pose for `Rig_Medium`, proven by the trial |
 | 4.8 | Weights from the mannequin | **Confirmed** | Nearest-surface transfer from the body parts, a head blend, rigid small parts |
+| 5.1 | Audio content | **Decided 2026-09-25, not built** | Procedural only (sfxr-style effects, procedural or tracker music), every file documented in a manifest for later replacement. First pass: the slot and music. Style: bright arcade-folk (§5, [#168](https://github.com/DarkCascade/Sir-Fish/issues/168), build [#184](https://github.com/DarkCascade/Sir-Fish/issues/184)) |
 | 6.1 | Per-push or nightly CI | **Decided 2026-09-23** | Every PR and push to `main`, no `.godot/` cache: a cold CI run is ~2-3 min (the Pages export step, import included, is 51 s; the suite 69 s locally) ([#60](https://github.com/DarkCascade/Sir-Fish/issues/60), [#59](https://github.com/DarkCascade/Sir-Fish/issues/59)) |
 | 6.2 | Does a red suite block the Pages deploy? | **Decided 2026-09-23** | Yes: `deploy-pages.yml` calls `tests.yml` and its build `needs:` it; the suite is also a required check on PRs into `main`; the manual itch deploy stays ungated ([#61](https://github.com/DarkCascade/Sir-Fish/issues/61); built in [#62](https://github.com/DarkCascade/Sir-Fish/issues/62)) |
 | 7.1 | Slot or party as the main character | **Decided 2026-09-20** | Slot mechanically, party emotionally: player decisions live on the slot, the party expresses them (§7) |
