@@ -26,13 +26,31 @@ const ITEM_TYPES := {
 	&"bow":    { "slot": Item.Slot.WEAPON,  "base_value": 20, "power": 5, "nouns": ["Bow", "Longbow", "Shortbow", "Recurve"] },
 	&"dagger": { "slot": Item.Slot.WEAPON,  "base_value": 18, "power": 5, "nouns": ["Dagger", "Knife", "Dirk", "Shiv"] },
 	&"staff":  { "slot": Item.Slot.WEAPON,  "base_value": 25, "power": 4, "nouns": ["Staff", "Rod", "Cane", "Scepter"] },
+	# [backlog P3, issue #74] The roster's new weapons (backlog §3, "Item types after
+	# these decisions"). Each copies its one-handed sibling's Power and value: a
+	# two-hander gives nothing up mechanically yet (P3b's off-hand hiding is visual
+	# only), so more Power would make it a strict upgrade. What sets them apart is
+	# their four-modifier set, drafted in #76.
+	&"greatsword":     { "slot": Item.Slot.WEAPON, "base_value": 22, "power": 6, "nouns": ["Greatsword", "Claymore", "Zweihander", "Flamberge"] },
+	&"crossbow":       { "slot": Item.Slot.WEAPON, "base_value": 20, "power": 5, "nouns": ["Crossbow", "Latchbow", "Handbow", "Stonebow"] },
+	&"heavy_crossbow": { "slot": Item.Slot.WEAPON, "base_value": 20, "power": 5, "nouns": ["Arbalest", "Heavy Crossbow", "Windlass", "Siege Bow"] },
+	&"wand":           { "slot": Item.Slot.WEAPON, "base_value": 25, "power": 4, "nouns": ["Wand", "Baton", "Sprig", "Switch"] },
 	# --- armor [armor items] - `armor` is flat damage reduction / level. Kept
 	# well under an enemy's weapon_power_per_level (6) so mitigation is a chip
 	# (~25-35% of a hit), never a wall - a fully-armored party still has to
 	# race the enemy's dps, not ignore it (see test_level_curves' ttd band). ---
 	&"helm":   { "slot": Item.Slot.ARMOR,   "base_value": 18, "armor": 2, "nouns": ["Helm", "Casque", "Barbute", "Coif"] },
 	&"mail":   { "slot": Item.Slot.ARMOR,   "base_value": 24, "armor": 2, "nouns": ["Mail", "Hauberk", "Cuirass", "Plate"] },
-	&"shield": { "slot": Item.Slot.ARMOR,   "base_value": 22, "armor": 2, "nouns": ["Shield", "Buckler", "Targe", "Kite"] },
+	# [backlog P3, issue #74] `shield` is retired: shields are the warrior's four
+	# (backlog §3, 2026-09-13 review decision 4), and the mage's armor is the tome. SaveGame's
+	# _migrate_5_to_6() turns every saved `shield` into a `tome`. All five keep the
+	# old shield's value and armor; the four shields get distinct Block mechanics
+	# in #75/#76, not distinct numbers here.
+	&"round_shield":  { "slot": Item.Slot.ARMOR, "base_value": 22, "armor": 2, "nouns": ["Round Shield", "Buckler", "Targe", "Roundel"] },
+	&"kite_shield":   { "slot": Item.Slot.ARMOR, "base_value": 22, "armor": 2, "nouns": ["Kite Shield", "Heater", "Kite", "Scutum"] },
+	&"tower_shield":  { "slot": Item.Slot.ARMOR, "base_value": 22, "armor": 2, "nouns": ["Tower Shield", "Pavise", "Bulwark", "Mantlet"] },
+	&"spiked_shield": { "slot": Item.Slot.ARMOR, "base_value": 22, "armor": 2, "nouns": ["Spiked Shield", "Thornguard", "Spikeboss", "Hedgeshield"] },
+	&"tome":          { "slot": Item.Slot.ARMOR, "base_value": 22, "armor": 2, "nouns": ["Tome", "Grimoire", "Codex", "Folio"] },
 	# --- trinkets [town] ---
 	&"ring":   { "slot": Item.Slot.TRINKET, "base_value": 19, "power": 4, "nouns": ["Ring", "Band", "Signet", "Loop"] },
 	&"amulet": { "slot": Item.Slot.TRINKET, "base_value": 21, "power": 4, "nouns": ["Amulet", "Pendant", "Charm", "Talisman"] },
@@ -76,24 +94,24 @@ const ADJECTIVES := [
 const RETIRED_MODIFIER_IDS: Array[StringName] = [&"slot_mend"]
 
 const MODIFIERS := [
-	# --- warrior weapons (axe, sword): elements + the physical bleed DoT ---
+	# --- warrior weapons (axe, sword, greatsword): elements + the physical bleed DoT ---
 	# [slot vocabulary] bleed is a weapon STAT, not a board icon: its roll is the
 	# per-tick damage of the bleed a swing opens with Tuning.BLEED_PROC_CHANCE.
-	{ "id": &"elem_fire",  "label": "+%d Fire Damage",   "caption": "Fire Damage",   "pct": false, "roll": [3, 11], "value_mult": [0.35, 0.70], "slots": [Item.Slot.WEAPON], "types": [&"axe", &"sword"] },
-	{ "id": &"elem_ice",   "label": "+%d Ice Damage",    "caption": "Ice Damage",    "pct": false, "roll": [3, 11], "value_mult": [0.35, 0.70], "slots": [Item.Slot.WEAPON], "types": [&"axe", &"sword"] },
-	{ "id": &"elem_light", "label": "+%d Lightning Dmg", "caption": "Lightning Dmg", "pct": false, "roll": [3, 11], "value_mult": [0.35, 0.70], "slots": [Item.Slot.WEAPON], "types": [&"axe", &"sword"] },
-	{ "id": &"bleed",      "label": "+%d Bleed on Hit",  "caption": "Bleed on Hit",         "pct": false, "roll": [3, 11], "value_mult": [0.35, 0.70], "slots": [Item.Slot.WEAPON], "types": [&"axe", &"sword"] },
-	# --- ranger weapons (bow, dagger): a charge for the ranger's special ---
+	{ "id": &"elem_fire",  "label": "+%d Fire Damage",   "caption": "Fire Damage",   "pct": false, "roll": [3, 11], "value_mult": [0.35, 0.70], "slots": [Item.Slot.WEAPON], "types": [&"axe", &"sword", &"greatsword"] },
+	{ "id": &"elem_ice",   "label": "+%d Ice Damage",    "caption": "Ice Damage",    "pct": false, "roll": [3, 11], "value_mult": [0.35, 0.70], "slots": [Item.Slot.WEAPON], "types": [&"axe", &"sword", &"greatsword"] },
+	{ "id": &"elem_light", "label": "+%d Lightning Dmg", "caption": "Lightning Dmg", "pct": false, "roll": [3, 11], "value_mult": [0.35, 0.70], "slots": [Item.Slot.WEAPON], "types": [&"axe", &"sword", &"greatsword"] },
+	{ "id": &"bleed",      "label": "+%d Bleed on Hit",  "caption": "Bleed on Hit",         "pct": false, "roll": [3, 11], "value_mult": [0.35, 0.70], "slots": [Item.Slot.WEAPON], "types": [&"axe", &"sword", &"greatsword"] },
+	# --- ranger weapons (bow, dagger, both crossbows): a charge for the ranger's special ---
 	# [slot vocabulary] The four special-charge ids (bomb_arrow, cleave, rain,
 	# thunderburst) only fill their owner's meter when they land, by a fixed
 	# Tuning.SLOT_CHARGE_ICON_CHARGE - so their roll is pinned to it, never
 	# Power-scaled (_roll_icon_magnitude), and the card reads "+3 ... Charge".
 	# A literal [3, 3], because a const cannot read an autoload's constant in
 	# the editor; test_content_registry fails if the two drift apart.
-	{ "id": &"bomb_arrow", "label": "+%d Bomb Arrow Charge", "caption": "Bomb Arrow Charge", "pct": false, "roll": [3, 3],  "value_mult": [0.40, 0.75], "slots": [Item.Slot.WEAPON], "types": [&"bow", &"dagger"] },
-	# --- mage weapons (staff): the stronger single-target bolt ---
-	{ "id": &"lightning_blast", "label": "+%d Lightning Blast", "caption": "Lightning Blast", "pct": false, "roll": [4, 14], "value_mult": [0.55, 0.90], "slots": [Item.Slot.WEAPON], "types": [&"staff"] },
-	# --- armor (helm, mail, shield): shared pool, any class ---
+	{ "id": &"bomb_arrow", "label": "+%d Bomb Arrow Charge", "caption": "Bomb Arrow Charge", "pct": false, "roll": [3, 3],  "value_mult": [0.40, 0.75], "slots": [Item.Slot.WEAPON], "types": [&"bow", &"dagger", &"crossbow", &"heavy_crossbow"] },
+	# --- mage weapons (staff, wand): the stronger single-target bolt ---
+	{ "id": &"lightning_blast", "label": "+%d Lightning Blast", "caption": "Lightning Blast", "pct": false, "roll": [4, 14], "value_mult": [0.55, 0.90], "slots": [Item.Slot.WEAPON], "types": [&"staff", &"wand"] },
+	# --- armor (helm, mail, the four shields, tome): shared pool, any class ---
 	{ "id": &"armor_block", "label": "+%d Block",        "caption": "Block",         "pct": false, "roll": [3, 9],  "value_mult": [0.35, 0.70], "slots": [Item.Slot.ARMOR] },
 	# --- trinkets (ring, amulet, idol): crit is universal, the rest exclusive ---
 	# [slot vocabulary] crit is a wearer STAT: its roll is a flat percent chance

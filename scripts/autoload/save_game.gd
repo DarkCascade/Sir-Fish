@@ -66,7 +66,12 @@ var PATH: String = DEV_PATH if (OS.is_debug_build() \
 ## (day_phase NIGHT_PENDING) holds a party that never got its post-quest
 ## recovery - downed heroes at 0 HP beside an old quest board - and nothing
 ## would ever apply it now. _migrate_4_to_5() does, the first real migration.
-const VERSION := 5
+##
+## [backlog P3, issue #74] Bumped 5 -> 6: the `shield` item type is retired.
+## Shields became the warrior's four types and the mage's armor became the tome,
+## so a saved `shield` would load as an item with no ITEM_TYPES row and no class
+## that can wear it. _migrate_5_to_6() turns each one into a `tome` instead.
+const VERSION := 6
 
 ## [content phase 0] Version -> the name of the function that migrates a
 ## payload FROM that version up to the next one, mutating and returning the
@@ -81,6 +86,7 @@ const VERSION := 5
 ## method, so a typo fails the suite rather than a player's first launch.
 const MIGRATIONS := {
 	4: "_migrate_4_to_5",
+	5: "_migrate_5_to_6",
 }
 
 ## Walks payload `d` from its own "version" up to `target`, one step per
@@ -139,6 +145,29 @@ func _migrate_4_to_5(d: Dictionary) -> Dictionary:
 	d.erase("day_phase")
 	d.erase("day_number")
 	d.erase("meal_eaten_today")
+	return d
+
+## [backlog P3, issue #74] v5 -> v6 (see VERSION). Every saved `shield`, in the
+## inventory or the blacksmith's stock, becomes a `tome`. The shield was only
+## ever the mage's armor, and the tome is her armor now, so the swap keeps her
+## armor slot filled. Level, rarity, modifiers, value and `equipped_by` carry
+## over unchanged, since both rows have the same value and armor. The name's noun
+## is swapped by position ("Rusty Buckler" -> "Rusty Grimoire"), so a card does
+## not call a book a shield. A name with an unrecognized noun is left alone.
+func _migrate_5_to_6(d: Dictionary) -> Dictionary:
+	const OLD_NOUNS := ["Shield", "Buckler", "Targe", "Kite"]
+	const NEW_NOUNS := ["Tome", "Grimoire", "Codex", "Folio"]
+	for key: String in ["inventory", "forge_stock"]:
+		for entry: Variant in d.get(key, []):
+			var item := entry as Dictionary
+			if StringName(item.get("weapon_type", &"")) != &"shield":
+				continue
+			item["weapon_type"] = &"tome"
+			var words := String(item.get("display_name", "")).split(" ")
+			var at := OLD_NOUNS.find(words[words.size() - 1])
+			if at != -1:
+				words[words.size() - 1] = NEW_NOUNS[at]
+				item["display_name"] = " ".join(words)
 	return d
 
 ## Every profile mutation in town saves (spec 2.4's "When to save" list); this

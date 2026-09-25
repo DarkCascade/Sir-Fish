@@ -12,4 +12,4 @@ executes = Array[int]([])
 glyph = ExtResource("2_glyph")
 glyph_box_fraction = 0.78
 chip_color = Color(0.29803923, 0.5254902, 0.9411765, 1)
-item_types = Array[StringName]([&"bow", &"dagger", &"helm", &"ring"])
+item_types = Array[StringName]([&"bow", &"dagger", &"crossbow", &"heavy_crossbow", &"helm", &"ring"])

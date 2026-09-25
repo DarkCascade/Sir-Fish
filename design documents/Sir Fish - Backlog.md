@@ -560,6 +560,35 @@ should sit on the same `handslot` bones. That part is untested.
 
 That is 19 types, 12 of them with a visible mesh.
 
+**Built 2026-09-25** ([issue #74](https://github.com/DarkCascade/Sir-Fish/issues/74)). The
+nine new types are in `Itemizer.ITEM_TYPES` and on each `ClassDef.item_types`:
+`greatsword`, `crossbow`, `heavy_crossbow`, `wand`, `round_shield`, `kite_shield`,
+`tower_shield`, `spiked_shield` and `tome`.
+- **`shield` is retired.** `SaveGame` v6 turns every saved `shield` into a `tome`, in the
+  inventory and in the blacksmith's stock. The shield was only ever the mage's armor, and
+  the tome is her armor now. The name's noun swaps by position ("Rusty Buckler" becomes
+  "Rusty Grimoire"), and level, rarity, modifiers, value and wearer carry over.
+- **Stats copy each type's sibling.** A two-hander has the same Power as the one-handed
+  version, because it gives nothing up mechanically yet. P3b's off-hand hiding is visual
+  only, so more Power would make it a strict upgrade. The four shields and the tome all
+  keep the old shield's value and armor. What will tell them apart is their
+  four-modifier sets (#76) and the shields' Block mechanics (#75).
+- **Modifier pools, until #76 replaces them with four per type:**
+  - the greatsword rolls the warrior weapon modifiers;
+  - both crossbows roll `bomb_arrow`;
+  - the wand rolls `lightning_blast`;
+  - the new armor rolls `armor_block`.
+- **Icons were generated with Meshy** to match the existing set: flat cream silhouettes
+  for weapons, shaded clay for armor. That took nine `nano-banana-pro` image-to-image
+  calls plus two retries, 99 credits in all.
+  - The first greatsword came out identical to the one-handed sword, so its retry asked
+    for a long two-handed grip and a diagonal pose.
+  - The tome's first cover emblem was a six-pointed star, which reads close to a Star of
+    David. It was regenerated with a sun emblem, a light theme.
+
+  Raw images are in `design documents/reference/item_icons/`.
+  `weapon_shield.png` was removed along with the retired type.
+
 | Mesh | Ships on | Attaches to | Type | Slot | Class | Status |
 |---|---|---|---|---|---|---|
 | `1H_Sword` | knight | `handslot.r` | sword | Weapon | warrior | draft |
@@ -1015,7 +1044,9 @@ stays there:
   (Lootcave, blaster-training-academy, dungeon-of-fortune, mcplayground); which rig they
   use is unchecked.
 
-**4.5 Meshy spend** (*open*). Meshy is on hold until the design locks, with exceptions
+**4.5 Meshy spend.** *The hold was lifted entirely on 2026-09-25, while building #74's
+item icons: Meshy is an ordinary option again, and each paid call still gets a credit
+confirmation.* Before that, Meshy was on hold until the design locked, with exceptions
 only for slot board glyphs and biome frames. A trial character costs roughly 9 credits
 for the concept image, plus 5 for a mesh-only smart-topology generation. The
 flat-palette step deletes Meshy's texture anyway, so the 15-credit textured tier may be

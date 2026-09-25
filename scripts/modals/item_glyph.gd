@@ -44,10 +44,22 @@ const WEAPON_TEXTURES := {
 	&"staff": preload("res://assets/icons/weapon_staff.png"),
 	&"helm": preload("res://assets/icons/weapon_helm.png"),
 	&"mail": preload("res://assets/icons/weapon_mail.png"),
-	&"shield": preload("res://assets/icons/weapon_shield.png"),
 	&"ring": preload("res://assets/icons/weapon_ring.png"),
 	&"amulet": preload("res://assets/icons/weapon_amulet.png"),
 	&"idol": preload("res://assets/icons/weapon_idol.png"),
+	# [backlog P3, issue #74] The roster's nine new types, generated to match the
+	# set above: flat silhouettes for weapons, shaded clay for armor. Raw images
+	# are in design documents/reference/item_icons/. weapon_shield.png went with
+	# the retired `shield` type.
+	&"greatsword": preload("res://assets/icons/weapon_greatsword.png"),
+	&"wand": preload("res://assets/icons/weapon_wand.png"),
+	&"crossbow": preload("res://assets/icons/weapon_crossbow.png"),
+	&"heavy_crossbow": preload("res://assets/icons/weapon_heavy_crossbow.png"),
+	&"round_shield": preload("res://assets/icons/weapon_round_shield.png"),
+	&"kite_shield": preload("res://assets/icons/weapon_kite_shield.png"),
+	&"tower_shield": preload("res://assets/icons/weapon_tower_shield.png"),
+	&"spiked_shield": preload("res://assets/icons/weapon_spiked_shield.png"),
+	&"tome": preload("res://assets/icons/weapon_tome.png"),
 }
 
 func _draw() -> void:
