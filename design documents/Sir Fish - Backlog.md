@@ -1434,6 +1434,21 @@ UI and timing suites. It was closed without running, because its premise had mov
   which calling `_on_pressed()` skips. If a bug ever gets through that only a real click
   would catch, try a `get_viewport().push_input()` helper in the existing harness first.
 
+### Closed 2026-09-24: no in-game performance overlay
+
+[Issue #123](https://github.com/DarkCascade/Sir-Fish/issues/123), a spike filed 2026-09-22
+to add [monitor_overlay](https://github.com/HungryProton/monitor_overlay) so the web build
+shows frame time, draw calls and object counts live. It was closed as out of scope.
+
+- **There is no open web performance problem for it to diagnose.** The one that built
+  `tools/analyze_web_profile.py`, the 12.8 s town-to-expedition freeze, was WebGL shader
+  compile, fixed in `3aaf0b7` by moving that compile to boot behind a progress bar.
+- **An overlay would not have found that cause.** It would show one 12-second frame; the
+  profile is what showed 61 program links inside it.
+- **If jank shows up later**, an FPS and frame-time readout in the `Debug` autoload is a
+  few lines over `Performance.get_monitor`, already inert in release builds, and needs no
+  addon.
+
 ---
 
 ## 7. P7 — Slot-first combat: owner swings and invokable specials
