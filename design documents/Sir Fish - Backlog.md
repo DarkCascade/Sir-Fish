@@ -2149,6 +2149,7 @@ replacement, against these targets once the ladders exist. The builds above bloc
 | 9.3 | The quest relic | **Decided 2026-09-24, builds with the arc** | The relic becomes the recruit's recovered kit: freed captives collect their confiscated weapon, armor and trinket, authored as their own (answers #126's generated-vs-authored). Replaces decision 1.2's relic-only join (§9, [#127](https://github.com/DarkCascade/Sir-Fish/issues/127)) |
 | 9.4 | Does the recruit fight in their own boss battle? | **Decided 2026-09-24: no** | Join-on-victory stays (decision 1.4). A mid-fight join (off-screen entry, kit grabbed on joining, guest until victory) is recorded as the alternative (§9, [#128](https://github.com/DarkCascade/Sir-Fish/issues/128)) |
 | 9.5 | The Slotworks in the tutorial | **Decided 2026-09-24, builds with the arc** | Closed until a tinker is freed from a small camp, then opens in stages: Upgrades first, Tuning and Charms later in the arc, so the three systems are taught one at a time. Which moments open them is left for scheduling (§9, [#157](https://github.com/DarkCascade/Sir-Fish/issues/157)) |
+| 9.6 | The town's name | **Decided 2026-09-25** | **Mossmere**, played mostly straight beside the punning Gilded Guppy (§9, [#165](https://github.com/DarkCascade/Sir-Fish/issues/165)) |
 
 ---
 
@@ -2199,6 +2200,23 @@ tutorial copy and probably on the cabinet art.
   warrior in a town with no services.
 - **Also considered:** *The Gilded Carp*, *The Carp & Coin*, *The Carp Rampant*,
   *The Crowned Carp*, *The Copper Carp* (as a tutorial-start name upgrading to gilded).
+
+### The town: Mossmere (named 2026-09-25)
+
+[Issue #165](https://github.com/DarkCascade/Sir-Fish/issues/165). The town is
+**Mossmere**. Until now nothing named it: it was only ever "town" (`Place.TOWN`,
+`town-with-purple-mist.png`). It is settled before any tutorial copy is written, because
+the bandit-camps arc is set there. The mayor's board posts the jobs, and clearing the
+camps earns the village's respect.
+
+- **Why:** it plays mostly straight beside the punning Gilded Guppy, so the two names do
+  not stack jokes ("the Guppy rolls into Mossmere"). *Moss* matches the town's carved
+  mossy-stone chrome and misty painting. *Mere*, a lake, is a quiet water nod for a fish
+  hero.
+- **Also considered:** *Carpstone* (the Guppy's pun register head-on), *Troutbridge* (a
+  fish name dressed as a real village), *Brackwater* (straight and a little grim).
+- **Not built:** no code, scene or art names the town yet. It lands with the tutorial
+  copy (#129) and wherever the town next shows a title.
 
 ### The relic becomes the recruit's recovered kit (decided 2026-09-24)
 
