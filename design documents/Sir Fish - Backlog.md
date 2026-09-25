@@ -580,9 +580,13 @@ nine new types are in `Itemizer.ITEM_TYPES` and on each `ClassDef.item_types`:
   - the new armor rolls `armor_block`.
 - **Icons were generated with Meshy** to match the existing set: flat cream silhouettes
   for weapons, shaded clay for armor. That took nine `nano-banana-pro` image-to-image
-  calls plus one greatsword retry, 90 credits in all. The first greatsword came out
-  identical to the one-handed sword, so the retry asked for a long two-handed grip and a
-  diagonal pose. Raw images are in `design documents/reference/item_icons/`.
+  calls plus two retries, 99 credits in all.
+  - The first greatsword came out identical to the one-handed sword, so its retry asked
+    for a long two-handed grip and a diagonal pose.
+  - The tome's first cover emblem was a six-pointed star, which reads close to a Star of
+    David. It was regenerated with a sun emblem, a light theme.
+
+  Raw images are in `design documents/reference/item_icons/`.
   `weapon_shield.png` was removed along with the retired type.
 
 | Mesh | Ships on | Attaches to | Type | Slot | Class | Status |
