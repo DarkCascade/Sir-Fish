@@ -1146,6 +1146,26 @@ CLAUDE.md's KayKit section is now a pointer to it.
 - **Retire the old draft** — done (issue #85): `character_generation_workflow.docx`
   removed; see §4's comparison table above for what superseded it.
 
+### Closed 2026-09-24: no debug_draw_3d
+
+[Issue #124](https://github.com/DarkCascade/Sir-Fish/issues/124), a spike filed 2026-09-22
+to add [godot_debug_draw_3d](https://github.com/DmitriySalnikov/godot_debug_draw_3d) and
+draw bone segments and per-bone influence in the running game. It was closed as out of
+scope.
+
+- **Most of the failures it cited were in Blender.** The lost `transform_apply` rotation
+  and the stale `bound_box` never reach Godot, so a runtime drawer cannot see them. Both
+  are CLAUDE.md pitfalls with workarounds.
+- **The pipeline already checks deformation.** The sporecap's cap-brim bleed came from
+  hand-weighting on the in-house rig. `pipeline.py verify` now measures edge stretch
+  across every clip and renders a pose sheet, in Blender where the fix is made, and the
+  `character_viewer` scene (#84) covers looking at the result in Godot.
+- **It would not have been cheap.** The addon draws primitives, so a per-bone influence
+  view would still be hand-written, and as a GDExtension it needs keeping out of the web
+  export and risks the headless suite loading.
+- **For #77's handslots**, if they ever need drawing, a few lines of built-in
+  `ImmediateMesh` do it without a native addon.
+
 ---
 
 ## 5. P5 — Small polish pass
