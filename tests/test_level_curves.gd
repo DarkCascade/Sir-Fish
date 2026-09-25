@@ -458,7 +458,7 @@ const _RELIC_ITEM := {
 ## The generated gear types a late-game recruit wears, per slot.
 const _GEAR_TYPES := {
 	&"ranger": { Item.Slot.WEAPON: &"bow", Item.Slot.ARMOR: &"helm", Item.Slot.TRINKET: &"ring" },
-	&"mage": { Item.Slot.WEAPON: &"staff", Item.Slot.ARMOR: &"shield", Item.Slot.TRINKET: &"amulet" },
+	&"mage": { Item.Slot.WEAPON: &"staff", Item.Slot.ARMOR: &"tome", Item.Slot.TRINKET: &"amulet" },
 }
 
 func _warrior_entry(level: int) -> Dictionary:

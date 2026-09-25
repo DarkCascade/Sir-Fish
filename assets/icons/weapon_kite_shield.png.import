@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://cwxd213v2y7xg"
-path="res://.godot/imported/weapon_shield.png-3744b18c263577d7be12062c06f223cd.ctex"
+uid="uid://cfcg0tg7kpw8q"
+path="res://.godot/imported/weapon_kite_shield.png-134a02ae43d3a1c03e339bee88b664ff.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/icons/weapon_shield.png"
-dest_files=["res://.godot/imported/weapon_shield.png-3744b18c263577d7be12062c06f223cd.ctex"]
+source_file="res://assets/icons/weapon_kite_shield.png"
+dest_files=["res://.godot/imported/weapon_kite_shield.png-134a02ae43d3a1c03e339bee88b664ff.ctex"]
 
 [params]
 

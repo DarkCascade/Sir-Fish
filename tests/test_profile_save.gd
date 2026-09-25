@@ -289,6 +289,40 @@ func _ready() -> void:
 			chain_ok = false
 	t.check(chain_ok, "S7: every SaveGame.MIGRATIONS entry names a real method below VERSION")
 
+	# --- S8: [backlog P3, issue #74] v5 -> v6 retires `shield` ------------------
+	# Every saved shield, carried or in the blacksmith's stock, becomes a tome
+	# the mage can still wear, with the name's noun swapped by position.
+	var v5 := {
+		"version": 5,
+		"inventory": [
+			{"weapon_type": &"shield", "display_name": "Rusty Buckler", "rarity": 2,
+				"level": 7, "value": 40, "equipped_by": &"mage", "modifiers": [{"id": &"armor_block"}]},
+			{"weapon_type": &"shield", "display_name": "Odd Name", "level": 1},
+			{"weapon_type": &"mail", "display_name": "Stout Plate", "level": 2},
+		],
+		"forge_stock": [{"weapon_type": &"shield", "display_name": "Bold Kite", "level": 3}],
+	}
+	var v6: Variant = SaveGame.migrate(v5, SaveGame.VERSION, SaveGame._migration_steps())
+	t.check(v6 is Dictionary, "S8: a v5 save walks the real chain to v%d" % SaveGame.VERSION)
+	if v6 is Dictionary:
+		var inv: Array = v6["inventory"]
+		var worn := inv[0] as Dictionary
+		t.check(worn["weapon_type"] == &"tome" and worn["display_name"] == "Rusty Grimoire",
+			"S8: a shield becomes a tome, noun swapped (got %s / %s)" % [worn["weapon_type"], worn["display_name"]])
+		t.check(worn["equipped_by"] == &"mage" and int(worn["level"]) == 7 and int(worn["rarity"]) == 2
+			and int(worn["value"]) == 40 and (worn["modifiers"] as Array).size() == 1,
+			"S8: level, rarity, value, modifiers and the wearer carry over")
+		var migrated_tome := Item.from_dict(worn)
+		t.check(migrated_tome.usable_by() == ([&"mage"] as Array[StringName]),
+			"S8: the migrated tome is still the mage's (got %s)" % [migrated_tome.usable_by()])
+		t.check((inv[1] as Dictionary)["weapon_type"] == &"tome" and (inv[1] as Dictionary)["display_name"] == "Odd Name",
+			"S8: an unrecognized noun is left alone, the type still moves")
+		t.check((inv[2] as Dictionary)["weapon_type"] == &"mail", "S8: other types are untouched")
+		var stocked := (v6["forge_stock"] as Array)[0] as Dictionary
+		t.check(stocked["weapon_type"] == &"tome" and stocked["display_name"] == "Bold Folio",
+			"S8: the blacksmith's stock migrates too")
+	t.check(not Itemizer.ITEM_TYPES.has(&"shield"), "S8: `shield` has no ITEM_TYPES row any more")
+
 	# Clean up so the next headless run starts fresh.
 	if FileAccess.file_exists(path):
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
