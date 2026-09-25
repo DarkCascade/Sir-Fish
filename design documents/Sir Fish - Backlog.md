@@ -1457,7 +1457,16 @@ binary. `deploy-pages.yml` calls it as its `tests` job, and `build` `needs:` tha
   trigger and once inside the Pages deploy. That is the decided shape, because one
   definition serves both the PR check and the deploy gate. It costs about a minute of
   free Actions time.
-- **Still to do after merge:** make `suite` a required check on `main` (approved in #61).
+- **`suite` is a required check on `main`** (done 2026-09-25, as approved in #61). A
+  repository ruleset requires the `suite` check from GitHub Actions. That is the name the
+  standalone run reports on a PR. The same job reports as `tests / suite` inside the Pages
+  deploy, which never runs on a PR, so requiring that name would have left every PR waiting
+  for a check that could never arrive. The ruleset has no bypass list, so direct pushes to
+  `main` are rejected too.
+- **The two small tidies were done 2026-09-25** ([issue #63](https://github.com/DarkCascade/Sir-Fish/issues/63)).
+  `lfs: true` is gone from `deploy-pages.yml`, and also from `deploy-itch.yml`, which
+  carried the same no-op. The acceptance spec's §0.4 now points future runs at
+  `run_tests.py`, with its loop left as the record of that pass.
 
 ### Closed 2026-09-24: no gdUnit4 scene runner
 

@@ -77,6 +77,13 @@ for t in test_economy test_slot_odds test_upgrades test_autoload_safety test_end
 Current baseline: **20 scenes, all `RESULT PASS`**, re-verified after every
 change in this pass.
 
+> **For future runs, use `python tools/run_tests.py`, not this loop** (added 2026-09-25,
+> [issue #63](https://github.com/DarkCascade/Sir-Fish/issues/63)). The loop above is left
+> as the record of what this pass ran. It names its 20 suites by hand, so it goes stale
+> whenever a suite is added. The runner finds every `tests/test_*.tscn` itself and reports
+> hangs, load errors and script errors as failures. CI also runs it on every PR and on
+> every push to `main` (backlog §6.2).
+
 ---
 
 ## 1. Method
