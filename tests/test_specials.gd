@@ -70,6 +70,7 @@ func _ready() -> void:
 	_check_authored_specials()
 	_check_invoke_guards()
 	await _check_cleave_special()
+	await _check_invoker_boss_theme()
 	_check_invoker_tray()
 	_check_charge_meter()
 	_t.finish(get_tree(), "test_specials")
@@ -422,6 +423,39 @@ func _check_invoker_tray() -> void:
 	warrior_b._refresh()
 	_t.check(warrior_b.modulate == SpecialInvoker.DIM, "with no director an empty meter reads dark")
 
+	tray.queue_free()
+
+## [black-glass] The gold is baked into the renders, so the boss theme is a shader
+## tint shared by each button's art and meter, driven through the tray facade.
+## Its own tray with no director: waiting out the tween with a live director
+## lets an earlier press's projectile resolve against this test's stub world.
+func _check_invoker_boss_theme() -> void:
+	print("--- invoker boss theme ---")
+	var tray := INVOKER_TRAY.instantiate()
+	add_child(tray)
+	var buttons: Array = [tray.get_node("RangerInvoker"), tray.get_node("WarriorInvoker"),
+		tray.get_node("MageInvoker")]
+	var mats := {}
+	for b: SpecialInvoker in buttons:
+		var art_mat: Material = b.get_node("Art").material
+		_t.check(art_mat is ShaderMaterial and art_mat == b.get_node("Meter").material,
+			"%s's art and meter share one tint, so the pips shift with the frame" % b.hero_class)
+		mats[art_mat] = true
+		_t.check(is_zero_approx(b.boss_tint()), "%s's button starts untinted" % b.hero_class)
+	_t.check(mats.size() == buttons.size(), "each button owns its own tint")
+
+	var before: Array = buttons.map(func(b: SpecialInvoker) -> Color: return b.modulate)
+	tray.apply_boss_theme()
+	await get_tree().create_timer(SpecialInvoker.BOSS_THEME_TIME + 0.1).timeout
+	for b: SpecialInvoker in buttons:
+		_t.check(is_equal_approx(b.boss_tint(), 1.0), "apply_boss_theme tints %s's button fully" % b.hero_class)
+	_t.check(buttons.map(func(b: SpecialInvoker) -> Color: return b.modulate) == before,
+		"the tint leaves the lit/dim modulate alone")
+
+	tray.clear_boss_theme()
+	await get_tree().create_timer(SpecialInvoker.BOSS_THEME_TIME + 0.1).timeout
+	for b: SpecialInvoker in buttons:
+		_t.check(is_zero_approx(b.boss_tint()), "clear_boss_theme reverts %s's button" % b.hero_class)
 	tray.queue_free()
 
 # --- the charge meter ---------------------------------------------------------
