@@ -819,6 +819,19 @@ strike or an element, a new shield id is block, and a new trinket id is a charge
 stays open is only whether an id differs from its category-mates by anything beyond its
 number and its card.
 
+### Closed 2026-09-24: no Pandora-style data editor
+
+[Issue #122](https://github.com/DarkCascade/Sir-Fish/issues/122), a spike filed 2026-09-22
+to see what to borrow from [Pandora](https://github.com/bitbrain/pandora)'s RPG data
+editor for the widening P3 content (#76 modifier sets, #77 hand meshes, #78 attack
+overrides). It was closed as out of scope without running.
+
+- **The current data flow is fine.** `.tres` plus `ContentRegistry` stays as it is, and
+  already has a test (`test_content_registry`). Adopting Pandora was never on the table,
+  and neither its typed-inheritance shape nor a table-view editor plugin is needed.
+- **If hand-authoring P3 turns out to hurt in practice**, raise a fresh, scoped tooling
+  issue then, with the real pain in hand rather than a guessed one.
+
 ---
 
 ## 4. P4 — Prompt → Meshy → Blender → glb character skill
