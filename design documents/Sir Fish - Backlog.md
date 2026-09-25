@@ -696,6 +696,66 @@ Each new id needs:
 
 Drafting all 17 sets is P3a's first task, after decision 3.7 says which new ids exist.
 
+### The four-modifier sets (drafted 2026-09-25, decision 3.11)
+
+[Issue #76](https://github.com/DarkCascade/Sir-Fish/issues/76). Every generated type's
+four, drafted for 19 types now that #74 added the roster. Approved as drafted.
+
+**The principles:**
+- **Every new id is an off-board stat**, like `bleed` and `crit`: it acts on the wearer
+  or on the weapon's swing, and it never adds a board icon. The item-modifier review found
+  that the board saturates ("thinning and weighting beat adding"), so the variety lives
+  on the cards and the board keeps its six categories (§3.9).
+- **Weapons are three elements plus one stat**, per decision 3.7.
+- **Charge coins live only on trinkets.** `bomb_arrow` (bow, dagger) and `lightning_blast`
+  (staff) leave the weapon pools, so all three classes match: weapons deal damage and
+  trinkets charge specials.
+  - Saved items keep theirs: the ids stay known and simply stop being rolled.
+  - The ranger and mage lose a charge source. #73 re-measures spins-to-full against
+    decision 7.3's ~3-spin target and retunes if they fall behind.
+
+**Weapons: `elem_fire`, `elem_ice`, `elem_light`, plus:**
+
+| Type | Stat | Effect |
+|---|---|---|
+| axe, sword | `bleed` | Existing. The sword's set keeps `elem_fire`, which `new_profile()` forces on the starter sword |
+| greatsword, heavy crossbow | `stagger` | A chance to delay the target's next action. The two heavy two-handers share it |
+| bow | `mark` | A chance to mark the target, which then takes +X% damage from every hero for a few seconds |
+| crossbow | `execute` | +X damage against a target under 30% HP |
+| dagger | `twin_strike` | A chance for the swing to strike twice |
+| staff | `arc` | A chance to arc X damage to a second enemy. It is one extra target, not a hit-all, so decision 7.4's "only two hit-alls" stands |
+| wand | `siphon` | A chance to add charge to the mage's special meter |
+
+**Armor: `armor_block`, `vitality`, `crit`, plus:**
+
+| Type | Stat | Effect |
+|---|---|---|
+| round shield | `deflect` | A chance to ignore a hit entirely |
+| kite shield | `cover` | Takes X% of the damage aimed at allies |
+| tower shield | `bulwark` | The wearer's Block grants are X% larger |
+| spiked shield | `thorns` | Attackers take X damage |
+| helm, mail, tome | `resolve` | Start each fight with X special charge |
+
+- `vitality` is new: +max HP. It has to scale with item level, because armor has no
+  Power (see "Pick kinds the item can scale" above).
+- `crit` is a wearer stat already, so it reads the same on armor as on a trinket.
+- The four shield mechanics are #72's distinct Block mechanics.
+
+**Trinkets: `crit`, the class charge coin, `vitality`, plus one element:**
+
+| Type | Charge coin | Element |
+|---|---|---|
+| idol | `cleave` | `elem_fire` |
+| ring | `rain` | `elem_ice` |
+| amulet | `thunderburst` | `elem_light` |
+
+**Twelve new ids.** They are `stagger`, `mark`, `execute`, `twin_strike`, `arc`,
+`siphon`, `deflect`, `cover`, `bulwark`, `thorns`, `vitality` and `resolve`. Building
+them is [#75](https://github.com/DarkCascade/Sir-Fish/issues/75). Because none is a board
+icon, they need card chips but no board glyph art. Wiring the sets onto `ITEM_TYPES` and
+the Enhanced rule is [#73](https://github.com/DarkCascade/Sir-Fish/issues/73). The
+magnitudes (the X's) are #75's tuning, measured rather than guessed.
+
 ### The visible-props plan (P3b)
 
 - Each `ITEM_TYPES` row gains `prop` (the mesh name) and `two_handed`.
@@ -2171,6 +2231,7 @@ replacement, against these targets once the ladders exist. The builds above bloc
 | 3.9 | Slot board vocabulary | **Decided, built 2026-09-21** | Six categories (strike as owner's weapon, fire, ice, lightning, block, charge coin with the owner's profile); charge coins only charge; bleed and crit are stats; payline matches category ([#114](https://github.com/DarkCascade/Sir-Fish/issues/114)) |
 | 3.10 | Jackpot rule for the early game | Open | All eight lines ships (~1/battle geared, ~0 early solo); options in [#115](https://github.com/DarkCascade/Sir-Fish/issues/115) |
 | 3.7 | New modifier ids | **Approach decided 2026-09-23** | Weapon ids fill out via universal elements + one new weapon-specific stat per type (the 2026-09-20 named action-ids retired); shields get distinct Block mechanics per shield ([#72](https://github.com/DarkCascade/Sir-Fish/issues/72): four shields, the barbarian shield left out; helm/mail/tome fill out in #76). Exact new ids left to P3a's drafting pass ([#71](https://github.com/DarkCascade/Sir-Fish/issues/71)) |
+| 3.11 | The four-modifier sets | **Drafted and approved 2026-09-25, not built** | Weapons: three elements plus one off-board stat per type. Armor: `armor_block`, `vitality`, `crit`, plus a shield mechanic or `resolve`. Trinkets: `crit`, the class charge coin, `vitality` and one element. Charge coins leave weapons. 12 new ids, none a board icon (§3, [#76](https://github.com/DarkCascade/Sir-Fish/issues/76), builds [#75](https://github.com/DarkCascade/Sir-Fish/issues/75), [#73](https://github.com/DarkCascade/Sir-Fish/issues/73)) |
 | 4.1 | Standard skeleton | **Decided** | `Rig_Medium`; S1 confirmed the shipped `Rig` is identical |
 | 4.2 | Clip source | **Decided** | KayKit Character Animations: 132 `Rig_Medium` clips, CC0, verified |
 | 4.3 | Bake clips or share them | **Decided 2026-09-23** | Share one library, built with #78 or #81 (whichever is picked up first); new characters bake until then. Needs a second clip source on `RigProfile` ([#79](https://github.com/DarkCascade/Sir-Fish/issues/79)) |
