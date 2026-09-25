@@ -1290,6 +1290,24 @@ or sequenced against P1–P4.
   - **Audio content is its own decision (#168):** where the sounds come from, given the
     generated-assets-only rule, and what a first pass covers. The slot probably earns sound
     first, since it is the main character (7.1).
+- **Audio content: decided 2026-09-25** ([issue #168](https://github.com/DarkCascade/Sir-Fish/issues/168),
+  decision 5.1; build [#184](https://github.com/DarkCascade/Sir-Fish/issues/184), which
+  also carries #121's plumbing).
+  - **Procedural only, and documented for replacement.** Effects come from an sfxr-style
+    tool, and music is procedurally generated or tracker-built. No paid generators, so
+    audio needs no credit label. Every file gets a manifest row: where it is used, the
+    generator, the exact parameters or seed, and what a replacement would need. That
+    keeps it regenerable and swappable, since procedural is a floor and not the final
+    word.
+    - Rejected: a mix with AI generators for organic hits and music.
+    - Rejected: AI generators only.
+  - **First pass: the slot and music.** The slot is the main character (7.1). Music
+    carries the most mood per file: a town track, an expedition track and a boss track.
+    UI, economy and combat sounds come later.
+  - **Style: bright arcade-folk.** Chunky effects, chimes and coin clinks, and light folk
+    or whimsical music. That fits the cel-shaded primary palette and the Gilded Guppy's
+    tone. Procedural tools pull toward chiptune, so the build leans on bell, pluck and
+    chime timbres rather than bare square waves.
 
 **Character & animation**
 
@@ -1761,6 +1779,7 @@ tuning rather than a per-run spend.
   upgrades first would likely be thrown away. For reference, maxing all three costs about
   2,400 gold at current prices (803 + 936 + 668), against quest rewards of 150-600 and
   enemy drops of 22-40.
+  *Targets decided 2026-09-25 (decision 7.12, see "Decided: economy pacing" below).*
 
 ### Done: Cleave replaces Defend (issue #96, 2026-09-23)
 
@@ -2052,6 +2071,45 @@ Upgrades comes first, with Tuning and Charms later in the arc, so the three syst
 taught one at a time. Which moments open the later tabs is left for when the arc is
 scheduled, e.g. one per lieutenant, or at the captain.
 
+### Decided: economy pacing (issue #100, 2026-09-25)
+
+[Issue #100](https://github.com/DarkCascade/Sir-Fish/issues/100), decision 7.12. With
+#157 settled, this sets the **targets** the Slotworks prices are tuned toward. The
+**numbers** are measured once the ladders they price exist (#176, #101, #173, #174),
+not guessed here.
+
+**Where the economy stood.** A quest grosses roughly 500-1,000 gold: the reward (a
+generated hunt pays about 225, a sweep about 340, an expedition about 490) plus 22-40 a
+kill, tripled for the boss. XP per kill and XP to the next level both grow linearly with
+level, so a quest is worth about one level at any level, and "by level N" reads as
+"after about N quests". Maxing today's three ladders costs about 2,400 gold, or 3-5
+quests of gross income. Quest rewards and kill gold do **not** grow with level, while
+item value grows 35% a level. Only item sales kept up.
+
+**The three targets:**
+- **Every permanent Slotworks ladder is bought out around L15-20.** That covers Quick
+  Reels, Overcharge, Polish, Holds, charm slots and tuning points. Today's three max
+  around L8-10, and the three new ladders fill the rest, which puts the permanent total at
+  roughly double today's 2,400. Gear and charms carry the late game.
+  - Rejected: ~L10 would have made the Slotworks an early-game sink only.
+  - Rejected: ~L30+ would have kept gold tight for gear across the whole band.
+- **Income scales with level; Slotworks ladder prices do not.** Quest rewards and kill
+  gold get a level multiplier, at the item-value rate unless measurement says go
+  gentler. That keeps gear as affordable at L20 as at L1. Fixed ladder prices then fall
+  relative to income, which is the right shape for a mid-game target: a player who
+  ignored the Slotworks early can catch up. Scaling the ladders too was rejected,
+  because it only keeps a late buy feeling like an early one, and a late buy is not
+  meant to. Build: [issue #182](https://github.com/DarkCascade/Sir-Fish/issues/182).
+- **One charm costs about 25% of a quest's income at the current level.** Charms are the
+  sink that never runs out (7.9), so they are priced off the current income and track it.
+  At 25%, one charm is affordable on most expeditions, and filling three charm slots is a
+  real trade against gear. At 10% they would be routine and the charm slots the only
+  gate. At 50% they would be saved for bosses. Built with
+  [#174](https://github.com/DarkCascade/Sir-Fish/issues/174).
+
+**What is left for #100:** set each ladder's prices, and the 1.9x growth or its
+replacement, against these targets once the ladders exist. The builds above block it.
+
 ### Still open
 
 - **Whether the item-modifier proposal above is revived**, and how it reconciles with
@@ -2090,6 +2148,7 @@ scheduled, e.g. one per lieutenant, or at the captain.
 | 4.6 | Move current characters to pack clips | Recommended | Not yet; do it with 4.3 as one visual pass |
 | 4.7 | T-pose or A-pose for Meshy | **Confirmed** | T-pose for `Rig_Medium`, proven by the trial |
 | 4.8 | Weights from the mannequin | **Confirmed** | Nearest-surface transfer from the body parts, a head blend, rigid small parts |
+| 5.1 | Audio content | **Decided 2026-09-25, not built** | Procedural only (sfxr-style effects, procedural or tracker music), every file documented in a manifest for later replacement. First pass: the slot and music. Style: bright arcade-folk (§5, [#168](https://github.com/DarkCascade/Sir-Fish/issues/168), build [#184](https://github.com/DarkCascade/Sir-Fish/issues/184)) |
 | 6.1 | Per-push or nightly CI | **Decided 2026-09-23** | Every PR and push to `main`, no `.godot/` cache: a cold CI run is ~2-3 min (the Pages export step, import included, is 51 s; the suite 69 s locally) ([#60](https://github.com/DarkCascade/Sir-Fish/issues/60), [#59](https://github.com/DarkCascade/Sir-Fish/issues/59)) |
 | 6.2 | Does a red suite block the Pages deploy? | **Decided 2026-09-23** | Yes: `deploy-pages.yml` calls `tests.yml` and its build `needs:` it; the suite is also a required check on PRs into `main`; the manual itch deploy stays ungated ([#61](https://github.com/DarkCascade/Sir-Fish/issues/61); built in [#62](https://github.com/DarkCascade/Sir-Fish/issues/62)) |
 | 7.1 | Slot or party as the main character | **Decided 2026-09-20** | Slot mechanically, party emotionally: player decisions live on the slot, the party expresses them (§7) |
@@ -2103,11 +2162,13 @@ scheduled, e.g. one per lieutenant, or at the captain.
 | 7.9 | Slotworks consumables | **Decided 2026-09-24, not built** | Expedition charms: bought in the Slotworks, active for one whole expedition, spent on departure. Charm slots 1, bought up to 3. Starting set Spare Hold, Primer, Loaded Reel (§7, [#157](https://github.com/DarkCascade/Sir-Fish/issues/157), build [#174](https://github.com/DarkCascade/Sir-Fish/issues/174)) |
 | 7.10 | The Slotworks ladders | **Decided 2026-09-24, not built** | Each ladder declares its own length (holds and charm slots are two buys). Polish's dead level 4 is fixed with steps 2/2/1/1 (9 -> 3 blanks), keeping 4 pips and the floor. Otherwise unchanged; cost growth is #100's (§7, [#157](https://github.com/DarkCascade/Sir-Fish/issues/157), build [#176](https://github.com/DarkCascade/Sir-Fish/issues/176)) |
 | 7.11 | The Slotworks tabs | **Decided 2026-09-24, not built** | Each ladder sits with its feature. Upgrades: Quick Reels, Overcharge, Polish, Holds and the freeze/clock switch. Tuning: the dials and tuning points. Charms: stock, equipped slots and charm slots (§7, [#157](https://github.com/DarkCascade/Sir-Fish/issues/157)) |
+| 7.12 | Economy pacing | **Decided 2026-09-25, numbers pending** | Every permanent Slotworks ladder bought out around L15-20 (about one quest per level). Quest rewards and kill gold scale with level, Slotworks ladder prices do not. A charm costs about 25% of a quest's income at the current level. Prices are measured once the ladders exist (§7, [#100](https://github.com/DarkCascade/Sir-Fish/issues/100), build [#182](https://github.com/DarkCascade/Sir-Fish/issues/182)) |
 | 9.1 | The tutorial narrative | **Adopted 2026-09-24, not scheduled** | The bandit-camps arc is the entire tutorial: a solo warrior in a town with no services, to a three-person party in a staffed town. Camp layout and which other services start closed are left for when it is scheduled (§9, [#129](https://github.com/DarkCascade/Sir-Fish/issues/129)) |
 | 9.2 | The stagecoach's name | **Decided 2026-09-24** | **The Gilded Guppy**; the warrior calls it **the Guppy** (§9, [#130](https://github.com/DarkCascade/Sir-Fish/issues/130)) |
 | 9.3 | The quest relic | **Decided 2026-09-24, builds with the arc** | The relic becomes the recruit's recovered kit: freed captives collect their confiscated weapon, armor and trinket, authored as their own (answers #126's generated-vs-authored). Replaces decision 1.2's relic-only join (§9, [#127](https://github.com/DarkCascade/Sir-Fish/issues/127)) |
 | 9.4 | Does the recruit fight in their own boss battle? | **Decided 2026-09-24: no** | Join-on-victory stays (decision 1.4). A mid-fight join (off-screen entry, kit grabbed on joining, guest until victory) is recorded as the alternative (§9, [#128](https://github.com/DarkCascade/Sir-Fish/issues/128)) |
 | 9.5 | The Slotworks in the tutorial | **Decided 2026-09-24, builds with the arc** | Closed until a tinker is freed from a small camp, then opens in stages: Upgrades first, Tuning and Charms later in the arc, so the three systems are taught one at a time. Which moments open them is left for scheduling (§9, [#157](https://github.com/DarkCascade/Sir-Fish/issues/157)) |
+| 9.6 | The town's name | **Decided 2026-09-25** | **Mossmere**, played mostly straight beside the punning Gilded Guppy (§9, [#165](https://github.com/DarkCascade/Sir-Fish/issues/165)) |
 
 ---
 
@@ -2158,6 +2219,23 @@ tutorial copy and probably on the cabinet art.
   warrior in a town with no services.
 - **Also considered:** *The Gilded Carp*, *The Carp & Coin*, *The Carp Rampant*,
   *The Crowned Carp*, *The Copper Carp* (as a tutorial-start name upgrading to gilded).
+
+### The town: Mossmere (named 2026-09-25)
+
+[Issue #165](https://github.com/DarkCascade/Sir-Fish/issues/165). The town is
+**Mossmere**. Until now nothing named it: it was only ever "town" (`Place.TOWN`,
+`town-with-purple-mist.png`). It is settled before any tutorial copy is written, because
+the bandit-camps arc is set there. The mayor's board posts the jobs, and clearing the
+camps earns the village's respect.
+
+- **Why:** it plays mostly straight beside the punning Gilded Guppy, so the two names do
+  not stack jokes ("the Guppy rolls into Mossmere"). *Moss* matches the town's carved
+  mossy-stone chrome and misty painting. *Mere*, a lake, is a quiet water nod for a fish
+  hero.
+- **Also considered:** *Carpstone* (the Guppy's pun register head-on), *Troutbridge* (a
+  fish name dressed as a real village), *Brackwater* (straight and a little grim).
+- **Not built:** no code, scene or art names the town yet. It lands with the tutorial
+  copy (#129) and wherever the town next shows a title.
 
 ### The relic becomes the recruit's recovered kit (decided 2026-09-24)
 
