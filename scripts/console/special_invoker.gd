@@ -58,10 +58,16 @@ var director = null:
 
 @onready var _meter: ChargeMeter = $Meter
 @onready var _art: TextureRect = $Art
+## [black-glass] Shared by Art and Meter in special_invoker.tscn, so the render's
+## baked gold and the drawn pips recolour together.
+@onready var _tint: ShaderMaterial = _art.material
 
 ## How far the button dims while its meter is still filling. Not disabled: a
 ## greyed-out control reads as broken, where a dim one reads as "not yet".
 const DIM := Color(0.62, 0.62, 0.66)
+
+const BOSS_THEME_TIME := 0.3
+var _tint_tween: Tween = null
 
 func _ready() -> void:
 	pressed.connect(_on_pressed)
@@ -71,7 +77,32 @@ func _ready() -> void:
 	_meter.hero_class = hero_class
 	if art != null:
 		_art.texture = art
+	_tint.set_shader_parameter("deep", Tuning.C_OBSIDIAN_DEEP)
+	_tint.set_shader_parameter("facet", Tuning.C_GLASS_FACET)
+	_tint.set_shader_parameter("seam", Tuning.C_SEAM)
+	_tint.set_shader_parameter("seam_bright", Tuning.C_SEAM_BRIGHT)
 	_refresh()
+
+# --- black-glass boss theme --------------------------------------------------
+
+## Called by InvokerTray, itself forwarded from Console.apply_boss_theme() - see
+## slot_machine.gd's copy of this pair for when apply/clear fire. The gold is
+## baked into the render, so this tints it rather than swapping a stylebox.
+func apply_boss_theme() -> void:
+	_tween_tint(1.0)
+
+func clear_boss_theme() -> void:
+	_tween_tint(0.0)
+
+func boss_tint() -> float:
+	return float(_tint.get_shader_parameter("boss_mix"))
+
+func _tween_tint(target: float) -> void:
+	if _tint_tween != null and _tint_tween.is_valid():
+		_tint_tween.kill()
+	_tint_tween = create_tween()
+	_tint_tween.tween_method(func(v: float) -> void:
+		_tint.set_shader_parameter("boss_mix", v), boss_tint(), target, BOSS_THEME_TIME)
 
 ## Polled, not event-driven: whether a press would fire also depends on things no
 ## single signal covers - the mage's heal wants somebody wounded, and anyone's

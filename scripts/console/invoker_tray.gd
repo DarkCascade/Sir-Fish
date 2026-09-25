@@ -33,6 +33,16 @@ func _buttons() -> Array[SpecialInvoker]:
 			out.append(child as SpecialInvoker)
 	return out
 
+## [black-glass] Facade over each button's own apply/clear pair, forwarded from
+## Console.apply_boss_theme()/clear_boss_theme() like the other two bands.
+func apply_boss_theme() -> void:
+	for b: SpecialInvoker in _buttons():
+		b.apply_boss_theme()
+
+func clear_boss_theme() -> void:
+	for b: SpecialInvoker in _buttons():
+		b.clear_boss_theme()
+
 ## A hero who is not in the party has nothing to invoke.
 func _refresh_party() -> void:
 	for b: SpecialInvoker in _buttons():

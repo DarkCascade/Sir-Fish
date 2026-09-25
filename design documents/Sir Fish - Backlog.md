@@ -1216,6 +1216,15 @@ or sequenced against P1–P4.
     which is Meshy-gated. When the boss console theme shipped it deliberately skipped the
     upgrade cards and the HUD buttons; this reverses that for the tray only, since it is now
     the main control in a boss fight.
+    *Done 2026-09-25 with a tint, no new art.* Looked first: under Black Glass the gold
+    invokers were the only heavy gold left in the console. Every render splits cleanly into
+    a warm frame (hue below ~0.2) and a cool dome and glyph, with no hues between, so
+    `black_glass_tint.gdshader` remaps just the warm pixels onto the obsidian-to-seam ramp by
+    luminance. It is one material per button, shared by the art and the drawn pip meter so
+    they shift together. It works on `COLOR`, so the lit/dim `modulate` still reads. The
+    `SpecialInvoker`/`InvokerTray` apply/clear pair hangs off the same `Console` facade as
+    the other two bands, so it follows the nameplate `impact` in and every combat end out.
+    No Meshy spend was needed.
   - *Was: slot upgrades, another pass.* **Dropped for now.** That would now mean polishing the
     Slotworks Upgrades tab. It is "phase 0" with more tabs expected, and #100 (economy
     pacing) may still change the costs and levels the cards show, so card polish now would

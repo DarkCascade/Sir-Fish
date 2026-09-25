@@ -77,13 +77,15 @@ func bind_director(director) -> void:
 	party_bars.director = director
 	invoker_tray.director = director
 
-## [black-glass] Facade over both bands' own apply/clear pair - see
+## [black-glass] Facade over all three bands' own apply/clear pair - see
 ## slot_machine.gd's copy of the pair for the full contract. RunController
-## never reaches into StatusPanel/SlotMachine directly for this.
+## never reaches into the bands directly for this.
 func apply_boss_theme() -> void:
 	status_panel.apply_boss_theme()
 	slot_machine.apply_boss_theme()
+	invoker_tray.apply_boss_theme()
 
 func clear_boss_theme() -> void:
 	status_panel.clear_boss_theme()
 	slot_machine.clear_boss_theme()
+	invoker_tray.clear_boss_theme()
