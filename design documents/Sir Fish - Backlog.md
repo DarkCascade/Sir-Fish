@@ -1220,6 +1220,8 @@ or sequenced against P1–P4.
     Slotworks Upgrades tab. It is "phase 0" with more tabs expected, and #100 (economy
     pacing) may still change the costs and levels the cards show, so card polish now would
     likely be redone. Revisit with the Slotworks design pass (#157), which #100 now waits on.
+    *#157 is done (2026-09-24, §7): the Upgrades tab gains a fourth card, Holds, and the
+    card polish now waits only on #100's numbers.*
 - **The shop Buy tab's cards: decided 2026-09-24, author them in the editor**
   ([issue #106](https://github.com/DarkCascade/Sir-Fish/issues/106); build in
   [#159](https://github.com/DarkCascade/Sir-Fish/issues/159)). The Buy tab is already a fixed
@@ -1975,11 +1977,44 @@ deferred: hold-and-respin" above, answered:
   - **Loaded Reel**: the first spin of each fight is guaranteed a jackpot line.
   - *Clean Reels* (the first spin of each fight draws no blanks) was offered and left out.
 
-**Still open in the pass:**
+### Decided: the rest of the Slotworks pass (issue #157, 2026-09-24)
 
-- whether the three existing upgrades' ladder changes (levels, the 1.9x growth, the count);
-- how the tabs lay out;
-- whether the tutorial arc keeps the Slotworks closed at the start (§9).
+The pass's other three questions, answered the same day. With them, #157 is done. What
+remains is #100's numbers and the builds.
+
+**The ladders (decision 7.10, build issue [#176](https://github.com/DarkCascade/Sir-Fish/issues/176)).**
+
+- **Polish's level 4 did nothing, and is fixed with uneven steps.** Polish removed 2 blanks
+  a level from a pad of 9, clamped at a floor of 3. Level 3 already reached the floor, so
+  level 4 (9 - 8 = 1, clamped to 3) removed nothing for about 343 gold. The balance pass's
+  change from 12/4 to 9/3 caused it, and the "floor at level 4" comment in `upgrades.gd`
+  was never updated. The steps become **2 / 2 / 1 / 1** (9 -> 7 -> 5 -> 4 -> 3). That keeps
+  4 pips and the floor, every level does something, and the early levels still do the most.
+- **Each ladder has its own length.** The pip row and `is_maxed` read one global
+  `UPGRADE_MAX_LEVEL = 4`. Holds and charm slots are two buys each (1 -> 3), and tuning
+  points are whatever #100 finds, so each ladder declares its own levels. #176 does both
+  changes, and blocks #101, #173 and #174.
+- **Otherwise unchanged.** Still three upgrades, with Holds added beside them. Quick Reels
+  and Overcharge keep 4 levels. The 1.9x cost growth is #100's.
+
+**The tabs (decision 7.11).** Each ladder sits with the feature it buys, so each tab is
+self-contained:
+
+| Tab | Ladders | Also |
+|---|---|---|
+| Upgrades | Quick Reels, Overcharge, Polish, Holds | The freeze / clock switch, beside Holds |
+| Tuning | Tuning points | The six category dials |
+| Charms | Charm slots | The charm stock and the equipped slots |
+
+Putting all six ladders in Upgrades was the alternative. It was not chosen because it
+meant six cards on a portrait screen, and buying tuning points in one tab to spend them
+in another.
+
+**In the tutorial (decision 9.5; see §9).** The Slotworks follows the tradesfolk pattern:
+it stays closed until a **tinker** is freed from a small camp, and then opens **in stages**.
+Upgrades comes first, with Tuning and Charms later in the arc, so the three systems are
+taught one at a time. Which moments open the later tabs is left for when the arc is
+scheduled, e.g. one per lieutenant, or at the captain.
 
 ### Still open
 
@@ -2030,10 +2065,13 @@ deferred: hold-and-respin" above, answered:
 | 7.7 | Should fights be longer? | **Decided 2026-09-23: no, for now** | Recent playtests found fight times very satisfying, so fights stay 2-6 spins and the harness keeps its 3-9s time-to-kill band. Revisit if playtests say otherwise (§7, [#99](https://github.com/DarkCascade/Sir-Fish/issues/99)) |
 | 7.8 | Slotworks bag tuning | **Decided 2026-09-24, not built** | Category dials: tuning points (a permanent ladder) assigned freely in town to weight a category (+1 copy of each owned icon) or mute it. Dial caps come from `test_level_curves`' jackpots-per-battle case (§7, [#157](https://github.com/DarkCascade/Sir-Fish/issues/157), build [#173](https://github.com/DarkCascade/Sir-Fish/issues/173)) |
 | 7.9 | Slotworks consumables | **Decided 2026-09-24, not built** | Expedition charms: bought in the Slotworks, active for one whole expedition, spent on departure. Charm slots 1, bought up to 3. Starting set Spare Hold, Primer, Loaded Reel (§7, [#157](https://github.com/DarkCascade/Sir-Fish/issues/157), build [#174](https://github.com/DarkCascade/Sir-Fish/issues/174)) |
+| 7.10 | The Slotworks ladders | **Decided 2026-09-24, not built** | Each ladder declares its own length (holds and charm slots are two buys). Polish's dead level 4 is fixed with steps 2/2/1/1 (9 -> 3 blanks), keeping 4 pips and the floor. Otherwise unchanged; cost growth is #100's (§7, [#157](https://github.com/DarkCascade/Sir-Fish/issues/157), build [#176](https://github.com/DarkCascade/Sir-Fish/issues/176)) |
+| 7.11 | The Slotworks tabs | **Decided 2026-09-24, not built** | Each ladder sits with its feature. Upgrades: Quick Reels, Overcharge, Polish, Holds and the freeze/clock switch. Tuning: the dials and tuning points. Charms: stock, equipped slots and charm slots (§7, [#157](https://github.com/DarkCascade/Sir-Fish/issues/157)) |
 | 9.1 | The tutorial narrative | **Adopted 2026-09-24, not scheduled** | The bandit-camps arc is the entire tutorial: a solo warrior in a town with no services, to a three-person party in a staffed town. Camp layout and which other services start closed are left for when it is scheduled (§9, [#129](https://github.com/DarkCascade/Sir-Fish/issues/129)) |
 | 9.2 | The stagecoach's name | **Decided 2026-09-24** | **The Gilded Guppy**; the warrior calls it **the Guppy** (§9, [#130](https://github.com/DarkCascade/Sir-Fish/issues/130)) |
 | 9.3 | The quest relic | **Decided 2026-09-24, builds with the arc** | The relic becomes the recruit's recovered kit: freed captives collect their confiscated weapon, armor and trinket, authored as their own (answers #126's generated-vs-authored). Replaces decision 1.2's relic-only join (§9, [#127](https://github.com/DarkCascade/Sir-Fish/issues/127)) |
 | 9.4 | Does the recruit fight in their own boss battle? | **Decided 2026-09-24: no** | Join-on-victory stays (decision 1.4). A mid-fight join (off-screen entry, kit grabbed on joining, guest until victory) is recorded as the alternative (§9, [#128](https://github.com/DarkCascade/Sir-Fish/issues/128)) |
+| 9.5 | The Slotworks in the tutorial | **Decided 2026-09-24, builds with the arc** | Closed until a tinker is freed from a small camp, then opens in stages: Upgrades first, Tuning and Charms later in the arc, so the three systems are taught one at a time. Which moments open them is left for scheduling (§9, [#157](https://github.com/DarkCascade/Sir-Fish/issues/157)) |
 
 ---
 
@@ -2154,10 +2192,13 @@ full in case the lieutenant fights ever want a bigger moment.
 
 - **The camps:** how many, their levels, and how they sit against `easy.tres` (1-5) and the
   recruit bands (ranger 3-3, mage 5-9). Left open because the bands can move before then
-  (#157, #100).
+  (#100). The Slotworks' tinker adds one small camp to the count (decision 9.5).
 - **Which other services start closed.** "No services" clearly covers the blacksmith and
-  inn. Whether the Slotworks and the shop also wait on something is not decided. The
-  mayor's office has to be open, since it posts the jobs.
+  inn. **The Slotworks waits on a freed tinker, then opens in stages** (decided 2026-09-24,
+  [#157](https://github.com/DarkCascade/Sir-Fish/issues/157); §7 "the rest of the Slotworks
+  pass"). Which moments open its Tuning and Charms tabs is left for scheduling. Whether the
+  shop also waits on something is not decided. The mayor's office has to be open, since it
+  posts the jobs.
 
 ### What depends on it
 
