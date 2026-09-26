@@ -31,6 +31,15 @@ extends Control
 
 const SHAKE_PIXELS := 4.0
 
+## A spin's beats, for any presentation that is not this cabinet's own reels
+## (the Rune Floor demo mirrors the board onto the battlefield). Emitted in
+## order: the nine icons dealt, each reel stopping, the winning lines if any,
+## then every resolution of a cell (twice for a payline cell).
+signal board_dealt(board: Array)
+signal reel_stopped(column: int)
+signal lines_won(wins: Array)
+signal cell_resolved(board_index: int)
+
 var director = null               # BattleDirector (untyped: custom API)
 
 var _reels: Array = []
@@ -310,6 +319,7 @@ func _one_spin() -> void:
 
 	_rebuild_bag()
 	_board = _draw_board()
+	board_dealt.emit(_board)
 	for c: int in range(3):
 		_reels[c].set_column(_board[c], _board[3 + c], _board[6 + c], _bag)
 		_reels[c].start_spin()
@@ -327,6 +337,7 @@ func _one_spin() -> void:
 
 	var wins := _winning_lines()
 	if not wins.is_empty():
+		lines_won.emit(wins)
 		_celebrate(wins)
 	await _resolve_board(wins)
 
@@ -334,6 +345,7 @@ func _one_spin() -> void:
 
 func _stop_reel(index: int) -> void:
 	_reels[index].stop_at()
+	reel_stopped.emit(index)
 	_shake_cabinet()
 
 func _shake_cabinet() -> void:
@@ -429,6 +441,7 @@ func _resolve_board(wins: Array) -> void:
 		var repeats := 2 if doubled.has(idx) else 1
 		for _r: int in range(repeats):
 			_pulse_cell(idx)
+			cell_resolved.emit(idx)
 			any_icon_resolved = true
 			GameState.run_stats["slot_icons_hit"] = int(GameState.run_stats["slot_icons_hit"]) + 1
 			# [specials] Every icon a hero owns charges THAT hero's special. The raw

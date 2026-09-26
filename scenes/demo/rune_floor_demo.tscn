@@ -1,0 +1,193 @@
+[gd_scene load_steps=15 format=3]
+
+[ext_resource type="Theme" path="res://assets/theme.tres" id="1_theme"]
+[ext_resource type="Script" path="res://scripts/demo/rune_floor_demo.gd" id="2_demo"]
+[ext_resource type="PackedScene" path="res://scenes/demo/rune_floor_world.tscn" id="3_world"]
+[ext_resource type="PackedScene" path="res://scenes/overlay/battle_overlay.tscn" id="4_overlay"]
+[ext_resource type="PackedScene" path="res://scenes/console/slot_machine.tscn" id="5_slot"]
+[ext_resource type="PackedScene" path="res://scenes/console/invoker_tray.tscn" id="6_tray"]
+[ext_resource type="Shader" path="res://assets/shaders/vignette.gdshader" id="7_vignette"]
+[ext_resource type="FontFile" path="res://assets/fonts/Cinzel-VariableFont.ttf" id="8_cinzel"]
+[ext_resource type="FontFile" path="res://assets/fonts/Baloo2-Variable.ttf" id="9_baloo"]
+[ext_resource type="Script" path="res://scripts/demo/rune_floor_party_hp.gd" id="10_hp"]
+
+; [rune floor demo] Design canvas concept A as a playable combat loop. The world
+; takes the whole 1080 x 1920 screen; the invoker dock floats over the bottom
+; band and a thin title bar over the top. The real SlotMachine lives in
+; HiddenCabinet, never drawn - RuneFloor mirrors its board onto the ground.
+
+[sub_resource type="ShaderMaterial" id="vignette_mat"]
+shader = ExtResource("7_vignette")
+shader_parameter/tint = Color(0.01, 0.03, 0.04, 1)
+shader_parameter/inner = 0.62
+shader_parameter/outer = 1.25
+shader_parameter/strength = 0.55
+shader_parameter/top_bias = 0.0
+shader_parameter/aspect = Vector2(1, 1.778)
+
+[sub_resource type="Gradient" id="top_grad"]
+offsets = PackedFloat32Array(0, 1)
+colors = PackedColorArray(0.016, 0.027, 0.035, 0.92, 0.016, 0.027, 0.035, 0)
+
+[sub_resource type="GradientTexture2D" id="top_tex"]
+gradient = SubResource("top_grad")
+width = 4
+height = 64
+fill_to = Vector2(0, 1)
+
+[sub_resource type="Gradient" id="dock_grad"]
+offsets = PackedFloat32Array(0, 0.3, 1)
+colors = PackedColorArray(0.016, 0.027, 0.035, 0, 0.016, 0.027, 0.035, 0.85, 0.016, 0.027, 0.035, 1)
+
+[sub_resource type="GradientTexture2D" id="dock_tex"]
+gradient = SubResource("dock_grad")
+width = 4
+height = 64
+fill_to = Vector2(0, 1)
+
+[node name="RuneFloorDemo" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme = ExtResource("1_theme")
+script = ExtResource("2_demo")
+
+[node name="BattleView" type="SubViewportContainer" parent="."]
+layout_mode = 0
+offset_right = 1080.0
+offset_bottom = 1920.0
+mouse_filter = 2
+stretch = true
+
+[node name="BattleViewport" type="SubViewport" parent="BattleView"]
+handle_input_locally = false
+msaa_3d = 1
+size = Vector2i(1080, 1920)
+render_target_update_mode = 4
+
+[node name="RuneFloorWorld" parent="BattleView/BattleViewport" instance=ExtResource("3_world")]
+
+[node name="Vignette" type="ColorRect" parent="."]
+material = SubResource("vignette_mat")
+layout_mode = 0
+offset_right = 1080.0
+offset_bottom = 1920.0
+mouse_filter = 2
+
+[node name="BattleOverlay" parent="." instance=ExtResource("4_overlay")]
+layout_mode = 0
+offset_right = 1080.0
+offset_bottom = 1920.0
+
+[node name="TopBar" type="TextureRect" parent="."]
+layout_mode = 0
+offset_right = 1080.0
+offset_bottom = 190.0
+mouse_filter = 2
+texture = SubResource("top_tex")
+expand_mode = 1
+
+[node name="Title" type="Label" parent="TopBar"]
+layout_mode = 0
+offset_left = 40.0
+offset_top = 34.0
+offset_right = 640.0
+offset_bottom = 94.0
+theme_override_colors/font_color = Color(0.937, 0.839, 0.58, 1)
+theme_override_colors/font_outline_color = Color(0.141, 0.118, 0.078, 1)
+theme_override_constants/outline_size = 10
+theme_override_fonts/font = ExtResource("8_cinzel")
+theme_override_font_sizes/font_size = 46
+text = "RUNE FLOOR"
+
+[node name="FightLabel" type="Label" parent="TopBar"]
+layout_mode = 0
+offset_left = 40.0
+offset_top = 96.0
+offset_right = 700.0
+offset_bottom = 140.0
+theme_override_colors/font_color = Color(0.71, 0.824, 0.784, 1)
+theme_override_colors/font_outline_color = Color(0.141, 0.118, 0.078, 1)
+theme_override_constants/outline_size = 8
+theme_override_fonts/font = ExtResource("9_baloo")
+theme_override_font_sizes/font_size = 34
+text = "Fight 1"
+
+[node name="RecordLabel" type="Label" parent="TopBar"]
+layout_mode = 0
+offset_left = 560.0
+offset_top = 44.0
+offset_right = 1040.0
+offset_bottom = 88.0
+theme_override_colors/font_color = Color(0.71, 0.824, 0.784, 1)
+theme_override_colors/font_outline_color = Color(0.141, 0.118, 0.078, 1)
+theme_override_constants/outline_size = 8
+theme_override_fonts/font = ExtResource("9_baloo")
+theme_override_font_sizes/font_size = 30
+text = "0 won · 0 lost"
+horizontal_alignment = 2
+
+[node name="Dock" type="Control" parent="."]
+layout_mode = 0
+offset_top = 1560.0
+offset_right = 1080.0
+offset_bottom = 1920.0
+mouse_filter = 2
+
+[node name="Backdrop" type="TextureRect" parent="Dock"]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+texture = SubResource("dock_tex")
+expand_mode = 1
+
+[node name="InvokerTray" parent="Dock" instance=ExtResource("6_tray")]
+layout_mode = 0
+offset_left = 97.0
+offset_top = 10.0
+offset_right = 1177.0
+offset_bottom = 368.0
+scale = Vector2(0.82, 0.82)
+
+[node name="PartyHp" type="Control" parent="Dock"]
+layout_mode = 0
+offset_top = 282.0
+offset_right = 1080.0
+offset_bottom = 350.0
+mouse_filter = 2
+script = ExtResource("10_hp")
+
+[node name="Banner" type="Label" parent="."]
+layout_mode = 0
+offset_top = 330.0
+offset_right = 1080.0
+offset_bottom = 460.0
+pivot_offset = Vector2(540, 65)
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.961, 0.875, 0.627, 1)
+theme_override_colors/font_outline_color = Color(0.141, 0.118, 0.078, 1)
+theme_override_constants/outline_size = 18
+theme_override_fonts/font = ExtResource("8_cinzel")
+theme_override_font_sizes/font_size = 84
+text = "Cleared"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="HiddenCabinet" type="Control" parent="."]
+visible = false
+layout_mode = 0
+offset_top = 2000.0
+offset_right = 1080.0
+offset_bottom = 2600.0
+mouse_filter = 2
+
+[node name="SlotMachine" parent="HiddenCabinet" instance=ExtResource("5_slot")]
+layout_mode = 0

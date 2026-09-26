@@ -30,6 +30,11 @@
 > **The whole tutorial is the bandit-camps arc (adopted 2026-09-24, not scheduled; §9).** It
 > takes the player from a solo warrior in a town with no services to a three-person party in
 > a staffed town, and it will reshape both recruit quests when it is built.
+>
+> **The Rune Floor spike opened 2026-09-26 (§10).** It tries the expedition's design canvas
+> concept A as a playable combat loop: a tactical camera, and the slot board on the ground
+> between the party and the enemies. Its fiction is decided: the Gilded Guppy projects the
+> board, and Sir Fish's knighting amulet is the lens (#196).
 
 ---
 
@@ -40,6 +45,7 @@
 | **P1** | ~~Ranger recruitment quest, offered from level 3~~ | High | M | nothing | **Built 2026-09-14; regressions fixed, balance measured, join level set 2026-09-20.** Unlock gate, one-shot tracking, relic-based `CollectObjective`, `RecruitRewardExtra` (joins at level 3), the quest and its warbow relic, all tested. The live playtest caught and fixed a real combat-loop bug (§1) |
 | **P2** | ~~Mage recruitment quest, offered from level 5~~ | High | S | nothing | **Built 2026-09-14, the same day as P1; recorded here 2026-09-20, gated at level 5 the same day.** Deviated from the plan: one authored RELIC (the heartstone, a trinket) via `QuestDef.guaranteed_boss_drop`, not a staff. Its own `_load_authored_quests()` rewrite is what caused P1's regressions |
 | **S1** | ~~Spike: does KayKit's `Rig_Medium` match the shipped rig?~~ | — | XS | — | **Done 2026-09-13: it matches** (§4) |
+| **S2** | Spike: the Rune Floor (the slot board on the battlefield) | High, if it holds | M | nothing | **Opened 2026-09-26 (§10).** A combat-only demo scene runs the real combat under a tactical camera. The fiction is decided (#196); showing it on screen is not built. Tagged `rune-floor-spike` on the board |
 | **P3** | Modifier sets per item type; item types for every shipped hand mesh | Medium | M data + M visible props | 3.8 | P1–P2 unblocked it (a full party can be tuned now, §1's balance check). 3.7's approach is decided (issue #71); what still blocks it is 3.8 - the item-modifier rework may replace decision 3.1 entirely (§7) |
 | **P4** | Prompt → Meshy → Blender → glb character skill | Medium | M | nothing: the trial character proved the route (§4) | Packaged as the project skill `new-character` and `tools/character_pipeline/` (2026-09-14), kept project-level (4.4, #82). What remains is 4.3's shared clip source, which lands with #78 or #81 (decided 2026-09-23, #79) |
 | **P5** | Small polish pass: post-expedition summary (a settlement receipt, #86/#153), chest presentation, invoker tray boss theme (was slot upgrade UI, #90), party modal info, shadow monster rework | Low–Medium | S (each item) | nothing | Queued during a later session; not yet scoped against P1–P4 |
@@ -2398,6 +2404,7 @@ replacement, against these targets once the ladders exist. The builds above bloc
 | 9.4 | Does the recruit fight in their own boss battle? | **Decided 2026-09-24: no** | Join-on-victory stays (decision 1.4). A mid-fight join (off-screen entry, kit grabbed on joining, guest until victory) is recorded as the alternative (§9, [#128](https://github.com/DarkCascade/Sir-Fish/issues/128)) |
 | 9.5 | The Slotworks in the tutorial | **Decided 2026-09-24, builds with the arc** | Closed until a tinker is freed from a small camp, then opens in stages: Upgrades first, Tuning and Charms later in the arc, so the three systems are taught one at a time. Which moments open them is left for scheduling (§9, [#157](https://github.com/DarkCascade/Sir-Fish/issues/157)) |
 | 9.6 | The town's name | **Decided 2026-09-25** | **Mossmere**, played mostly straight beside the punning Gilded Guppy (§9, [#165](https://github.com/DarkCascade/Sir-Fish/issues/165)) |
+| 10.1 | How the Guppy's slot becomes the Rune Floor board | **Decided 2026-09-26, not built** | The Guppy is a magic lantern: parked behind the party, its reels are the slides and the amulet Sir Fish was given when he was knighted is the lens that projects the board onto the ground. The board is light, not stone (§10, [#196](https://github.com/DarkCascade/Sir-Fish/issues/196)) |
 
 ---
 
@@ -2554,3 +2561,84 @@ full in case the lieutenant fights ever want a bigger moment.
 - **New bandit enemies** (more lieutenants and variants, and the captain) go through the
   `new-character` pipeline and cost Meshy credits. `bandit_officer` can anchor the
   lieutenants.
+
+---
+
+## 10. The Rune Floor spike (opened 2026-09-26)
+
+Tagged `rune-floor-spike` on the board. The spike tries the expedition design canvas's
+concept A ("Rune Floor") as a playable scene before anything commits to it.
+
+### The idea
+
+The shipped expedition screen stacks four bands: the fight, a status strip, the slot
+cabinet, and the invoker tray. The fight and the board, the two things that matter most,
+sit furthest apart. The Rune Floor puts the slot board on the battlefield instead: a 3×3
+of runes on the ground between the party and the enemies, seen from a tactical camera
+behind the party. You watch one place instead of two.
+
+### What is built (branch `rune-floor-demo`, not merged)
+
+`scenes/demo/rune_floor_demo.tscn`: one random fight at a time, and the next starts when
+it resolves. There is no town, travel or encounter track.
+
+- **The combat is the shipped combat.** It uses the real `BattleDirector`, overlay and
+  invoker tray, plus the real `SlotMachine`, kept hidden. `RuneFloor` mirrors that
+  machine's board onto the ground through four new signals on `SlotMachine`
+  (`board_dealt`, `reel_stopped`, `lines_won`, `cell_resolved`). They are additive, and
+  the full suite passes.
+- **The board:**
+  - A dealt icon stands up out of its rune as a billboard. It is the real `SlotSymbol`
+    drawing, rendered through a small viewport.
+  - A rune glows in its icon owner's colour.
+  - A winning line becomes a trench of light with a callout.
+  - Each resolved cell sends a mote to the hero it feeds.
+- **The world:** a floating moss island in a black void, with lantern posts at the board's
+  corners. The enemies run in across a rope bridge from the next island, and the loot, shop
+  and boss islands hang beyond it: the encounter track made physical.
+- **The camera** is pitched 36° down, low enough to keep those islands in frame. The far
+  row's icons stand in front of the middle row's tiles, which reads through as 3D icons.
+- **The spacing:** both sides stand back from the board (party 1.5, enemies 1.2) in the
+  demo world only. Tuning's slot geometry, which the expedition camera is solved against, is
+  untouched.
+- **Hero health** moves from the status strip to the dock, under each invoker.
+- **The party is in memory only.** It is a level-5 trio in Magic gear built from a fresh
+  profile, and nothing in the scene calls `SaveGame`.
+
+### Decided: the Guppy projects the board (2026-09-26, #196)
+
+[Issue #196](https://github.com/DarkCascade/Sir-Fish/issues/196). The fiction has the
+slot bolted onto the Gilded Guppy (§9), so something has to explain a stagecoach's slot
+machine becoming a board the size of a battlefield.
+
+**The Guppy is a magic lantern, and Sir Fish's amulet is its lens.** At each fight the
+warrior parks the Guppy just behind the party. The slot's reels are the slides. The focus
+is the amulet Sir Fish was given when he was knighted, and it throws the board onto the
+ground ahead. The board is projected light, not stone.
+
+- **Why:**
+  - **It explains the camera.** The high view from behind the party is the Guppy's view,
+    with Sir Fish looking out from the coach.
+  - **It makes the Lantern spec literal.** That spec (Art Style A) asks the console to be
+    the light source; here it lights the battlefield.
+  - **The board already reads as light.** Runes glow, paylines are beams, and icons rise
+    out of the ground.
+- **Why the amulet rather than the bowl:** this was the owner's modification to the
+  proposed option. It gives Sir Fish's knighthood a prop with a job, and a focus that can
+  be upgraded or swapped later without redesigning his tank.
+- **Also considered:**
+  - **The Guppy unfolds into the board:** hinged panels drop into a 3×3 and the icons are
+    tokens fired from the cabinet. The most physical option, but it needs a coach with
+    moving parts and a deploy animation on every encounter.
+  - **Old rune circles on the islands, woken by the reels:** fits a stone board, but it
+    leaves the coach and Sir Fish out of the fight, against decision 7.1.
+
+### Not built yet
+
+What the spike still needs to show the decision (checklist on #196):
+
+- The parked Guppy at the bottom edge of the frame.
+- Sir Fish wearing the amulet, with a beam to the board.
+- The board as light on the ground. Today's carved slab and gold rim are stand-ins.
+- The invoker dock framed as part of the coach.
+- The amulet's design. A Meshy concept would need `needs-meshy` and a credit confirmation.

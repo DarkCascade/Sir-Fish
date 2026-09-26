@@ -8,6 +8,7 @@ extends RefCounted
 ## fewer than 40 meshes, so the sorting cost is irrelevant.
 
 const CEL_SHADER := preload("res://assets/shaders/cel_shade.gdshader")
+const CEL_OPAQUE_SHADER := preload("res://assets/shaders/cel_shade_opaque.gdshader")
 const OUTLINE_SHADER := preload("res://assets/shaders/outline.gdshader")
 const SMOKE_SHADER := preload("res://assets/shaders/smoke.gdshader")
 const FLAT_SHADER := preload("res://assets/shaders/parallax_layer.gdshader")
@@ -27,6 +28,15 @@ static func cel(albedo: Color, emission: Color = Color.BLACK, emission_strength:
 	mat.set_shader_parameter("alpha", 1.0)
 	if outline_width > 0.0:
 		mat.next_pass = outline(outline_width)
+	return mat
+
+## cel() in the opaque pass, for scenery that never fades. A blended cel
+## surface can be sorted after the shadow monsters' smoke (translucent, no
+## depth write) and paint over it; see cel_shade_opaque.gdshader.
+static func cel_opaque(albedo: Color, emission: Color = Color.BLACK,
+		emission_strength: float = 0.0, outline_width: float = 0.018) -> ShaderMaterial:
+	var mat := cel(albedo, emission, emission_strength, outline_width)
+	mat.shader = CEL_OPAQUE_SHADER
 	return mat
 
 static func outline(width: float = 0.018) -> ShaderMaterial:
