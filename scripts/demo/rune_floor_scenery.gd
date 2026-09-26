@@ -93,16 +93,16 @@ func _island(centre: Vector3, radius: float, depth: float, yaw: float,
 	add_child(root)
 	root.position = centre
 	root.basis = (_world.field_basis() as Basis).rotated(Vector3.UP, yaw) 		.scaled_local(Vector3(across_scale, 1.0, 1.0))
-	_mesh(_cyl(radius, radius, 0.5, 12), CelMaterials.cel(top_color, Color.BLACK, 0.0, outline),
+	_mesh(_cyl(radius, radius, 0.5, 12), CelMaterials.cel_opaque(top_color, Color.BLACK, 0.0, outline),
 		Vector3(0, -0.25, 0), root)
 	_mesh(_cyl(radius * 0.97, radius * 0.16, depth, 9),
-		CelMaterials.cel(under_color, Color.BLACK, 0.0, outline),
+		CelMaterials.cel_opaque(under_color, Color.BLACK, 0.0, outline),
 		Vector3(0, -0.5 - depth * 0.5, 0), root)
 	for i: int in range(3):
 		var a := TAU * float(i) / 3.0 + 0.6
 		var r := radius * 0.45
 		var shard_h := depth * 0.35
-		_mesh(_cyl(radius * 0.16, 0.0, shard_h, 5), CelMaterials.cel(under_color, Color.BLACK, 0.0, outline),
+		_mesh(_cyl(radius * 0.16, 0.0, shard_h, 5), CelMaterials.cel_opaque(under_color, Color.BLACK, 0.0, outline),
 			Vector3(cos(a) * r, -0.5 - depth * 0.55 - shard_h * 0.5, sin(a) * r), root)
 	return root
 
@@ -110,7 +110,7 @@ func _build_main_island() -> void:
 	var centre := _at(0.0, island_along)
 	_island(centre, island_radius, 6.5, 0.0, moss, rock, 0.02, island_across_scale)
 	# Loose rocks on the moss, kept clear of the board and both ranks.
-	var rock_mat := CelMaterials.cel(Tuning.C_ROCK, Color.BLACK, 0.0, 0.02)
+	var rock_mat := CelMaterials.cel_opaque(Tuning.C_ROCK, Color.BLACK, 0.0, 0.02)
 	for spot: Vector3 in [Vector3(-4.3, -3.4, 0.0), Vector3(4.4, 0.6, 0.0),
 			Vector3(-3.6, 4.6, 0.0), Vector3(3.4, -6.2, 0.0), Vector3(-4.6, 1.2, 0.0)]:
 		var r := _mesh(_box(Vector3(0.7, 0.45, 0.55)), rock_mat, _at(spot.x, spot.y, 0.18))
@@ -121,11 +121,11 @@ func _build_next_island() -> void:
 	# The chest waiting beyond this fight - off to the side of the enemies' lane.
 	var chest := _at(2.9, next_island_along + 1.4, 0.0)
 	var b: Basis = _world.field_basis()
-	var body := _mesh(_box(Vector3(0.95, 0.55, 0.62)), CelMaterials.cel(wood), chest + Vector3.UP * 0.28)
+	var body := _mesh(_box(Vector3(0.95, 0.55, 0.62)), CelMaterials.cel_opaque(wood), chest + Vector3.UP * 0.28)
 	body.basis = b
-	var lid := _mesh(_box(Vector3(0.98, 0.22, 0.66)), CelMaterials.cel(wood.lightened(0.1)), chest + Vector3.UP * 0.66)
+	var lid := _mesh(_box(Vector3(0.98, 0.22, 0.66)), CelMaterials.cel_opaque(wood.lightened(0.1)), chest + Vector3.UP * 0.66)
 	lid.basis = b
-	var band := _mesh(_box(Vector3(1.0, 0.1, 0.68)), CelMaterials.cel(Tuning.C_GOLD, Tuning.C_GOLD, 0.8, 0.0),
+	var band := _mesh(_box(Vector3(1.0, 0.1, 0.68)), CelMaterials.cel_opaque(Tuning.C_GOLD, Tuning.C_GOLD, 0.8, 0.0),
 		chest + Vector3.UP * 0.52)
 	band.basis = b
 	_light(chest + Vector3.UP * 1.0, Tuning.C_GOLD, 1.6, 3.5)
@@ -134,17 +134,17 @@ func _build_far_islands() -> void:
 	# The shop and the boss - the rest of the level, hanging further out and down.
 	var shop := _at(7.5, 27.0, -2.5)
 	_island(shop, 3.0, 3.5, 0.4, moss.darkened(0.3), rock_far, 0.0)
-	var house := _mesh(_box(Vector3(1.6, 1.2, 1.4)), CelMaterials.cel(wood), shop + Vector3.UP * 0.6)
+	var house := _mesh(_box(Vector3(1.6, 1.2, 1.4)), CelMaterials.cel_opaque(wood), shop + Vector3.UP * 0.6)
 	house.basis = _world.field_basis()
 	var roof_mesh := PrismMesh.new()
 	roof_mesh.size = Vector3(1.9, 0.9, 1.6)
-	var roof := _mesh(roof_mesh, CelMaterials.cel(Tuning.C_VELVET), shop + Vector3.UP * 1.65)
+	var roof := _mesh(roof_mesh, CelMaterials.cel_opaque(Tuning.C_VELVET), shop + Vector3.UP * 1.65)
 	roof.basis = _world.field_basis()
 	_light(shop + Vector3.UP * 1.0 - Tuning.RUN_DIR * 1.0, lantern_light, 1.2, 3.0)
 
 	var boss := _at(-5.5, 38.0, -5.0)
 	_island(boss, 2.4, 3.0, 1.3, moss.darkened(0.45), rock_far, 0.0)
-	_mesh(_cyl(0.0, 0.55, 2.6, 5), CelMaterials.cel(Color("1a1016"), boss_glow, 1.4, 0.0), boss + Vector3.UP * 1.3)
+	_mesh(_cyl(0.0, 0.55, 2.6, 5), CelMaterials.cel_opaque(Color("1a1016"), boss_glow, 1.4, 0.0), boss + Vector3.UP * 1.3)
 	_light(boss + Vector3.UP * 1.6, boss_glow, 2.0, 5.0)
 
 	# Distant islets for depth, well below and around the stage.
@@ -161,8 +161,8 @@ func _build_far_islands() -> void:
 
 func _build_bridge(from_along: float, to_along: float) -> void:
 	var b: Basis = _world.field_basis()
-	var plank_mat := CelMaterials.cel(wood, Color.BLACK, 0.0, 0.01)
-	var rope_mat := CelMaterials.cel(Tuning.C_WOOD_DARK, Color.BLACK, 0.0, 0.0)
+	var plank_mat := CelMaterials.cel_opaque(wood, Color.BLACK, 0.0, 0.01)
+	var rope_mat := CelMaterials.cel_opaque(Tuning.C_WOOD_DARK, Color.BLACK, 0.0, 0.0)
 	var length := to_along - from_along
 	var steps := int(length / 0.55)
 	for i: int in range(steps + 1):
@@ -174,7 +174,7 @@ func _build_bridge(from_along: float, to_along: float) -> void:
 	for side: float in [-1.0, 1.0]:
 		var across := side * bridge_width * 0.5
 		for end_along: float in [from_along, to_along]:
-			_mesh(_cyl(0.08, 0.1, 1.2, 6), CelMaterials.cel(Tuning.C_WOOD_DARK), _at(across, end_along, 0.6))
+			_mesh(_cyl(0.08, 0.1, 1.2, 6), CelMaterials.cel_opaque(Tuning.C_WOOD_DARK), _at(across, end_along, 0.6))
 		# The hand rope, as a run of short segments so it can sag.
 		var segs := 10
 		for s: int in range(segs):
@@ -188,8 +188,8 @@ func _build_bridge(from_along: float, to_along: float) -> void:
 # --- lanterns, crystals, motes -------------------------------------------------
 
 func _build_lantern_posts() -> void:
-	var post_mat := CelMaterials.cel(Tuning.C_WOOD_DARK, Color.BLACK, 0.0, 0.01)
-	var lamp_mat := CelMaterials.cel(lantern_light, lantern_light, 2.2, 0.01)
+	var post_mat := CelMaterials.cel_opaque(Tuning.C_WOOD_DARK, Color.BLACK, 0.0, 0.01)
+	var lamp_mat := CelMaterials.cel_opaque(lantern_light, lantern_light, 2.2, 0.01)
 	var reach := 3.0
 	for across: float in [-reach, reach]:
 		for along: float in [-reach, reach]:
@@ -198,7 +198,7 @@ func _build_lantern_posts() -> void:
 			_light(_at(across, along, 1.9), lantern_light, 2.6, 5.5)
 
 func _build_crystals() -> void:
-	var mat := CelMaterials.cel(crystal, crystal_glow, 1.1, 0.012)
+	var mat := CelMaterials.cel_opaque(crystal, crystal_glow, 1.1, 0.012)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 3
 	for spot: Vector2 in [Vector2(-4.6, 2.2), Vector2(4.7, -2.8), Vector2(-3.9, -6.3),

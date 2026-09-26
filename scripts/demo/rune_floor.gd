@@ -79,10 +79,10 @@ func _build_slab() -> void:
 	var box := BoxMesh.new()
 	box.size = Vector3(span, 0.16, span)
 	slab.mesh = box
-	slab.material_override = CelMaterials.cel(slab_color, Color.BLACK, 0.0, 0.015)
+	slab.material_override = CelMaterials.cel_opaque(slab_color, Color.BLACK, 0.0, 0.015)
 	add_child(slab)
 	slab.position = Vector3(0, 0.0, 0)
-	var rim_mat := CelMaterials.cel(rim_color, rim_color, 0.35, 0.0)
+	var rim_mat := CelMaterials.cel_opaque(rim_color, rim_color, 0.35, 0.0)
 	var half := span * 0.5
 	for edge: Array in [[Vector3(span + 0.16, 0.08, 0.16), Vector3(0, 0.06, -half)],
 			[Vector3(span + 0.16, 0.08, 0.16), Vector3(0, 0.06, half)],
@@ -106,7 +106,7 @@ func _build_cell(index: int) -> Dictionary:
 	var tb := BoxMesh.new()
 	tb.size = Vector3(cell_size - tile_gap, 0.1, cell_size - tile_gap)
 	tile.mesh = tb
-	var tile_mat := CelMaterials.cel(tile_color, Color.BLACK, 0.0, 0.0)
+	var tile_mat := CelMaterials.cel_opaque(tile_color, Color.BLACK, 0.0, 0.0)
 	tile.material_override = tile_mat
 	root.add_child(tile)
 	tile.position = Vector3(0, 0.1, 0)
