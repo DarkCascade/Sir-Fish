@@ -1,0 +1,78 @@
+[gd_scene load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/demo/rune_floor_world.gd" id="1_world"]
+[ext_resource type="Script" path="res://scripts/demo/rune_floor_scenery.gd" id="2_scenery"]
+[ext_resource type="Script" path="res://scripts/demo/rune_floor.gd" id="3_floor"]
+
+; [rune floor demo] A BattleWorld for the Rune Floor concept. The node names
+; below are the ones battle_world.gd and BattleDirector reach for; the camera is
+; placed by rune_floor_world.gd, the island and board are built by the Scenery
+; and RuneFloor scripts. The background is a void, not a sky: the island is the
+; lit thing, the Lantern spec's "lit object held in real darkness".
+
+[sub_resource type="Environment" id="env"]
+background_mode = 1
+background_color = Color(0.012, 0.03, 0.04, 1)
+ambient_light_source = 2
+ambient_light_color = Color(0.2, 0.4, 0.46, 1)
+ambient_light_energy = 0.5
+tonemap_mode = 2
+tonemap_white = 2.2
+glow_enabled = true
+glow_intensity = 0.8
+glow_bloom = 0.1
+glow_hdr_threshold = 1.0
+fog_enabled = true
+fog_mode = 1
+fog_light_color = Color(0.03, 0.09, 0.11, 1)
+fog_density = 1.0
+fog_sky_affect = 0.0
+fog_depth_curve = 1.2
+fog_depth_begin = 22.0
+fog_depth_end = 70.0
+adjustment_enabled = true
+adjustment_contrast = 1.12
+adjustment_saturation = 1.12
+
+[node name="RuneFloorWorld" type="Node3D" groups=["battle_world"]]
+script = ExtResource("1_world")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("env")
+
+[node name="KeyLight" type="DirectionalLight3D" parent="."]
+rotation = Vector3(-0.98, -0.42, 0)
+light_color = Color(0.62, 0.8, 0.95, 1)
+light_energy = 0.6
+shadow_enabled = true
+shadow_bias = 0.04
+shadow_normal_bias = 1.4
+directional_shadow_max_distance = 60.0
+
+[node name="FillLight" type="DirectionalLight3D" parent="."]
+rotation = Vector3(-0.45, 2.5, 0)
+light_color = Color(0.27, 0.48, 0.9, 1)
+light_energy = 0.35
+
+[node name="BattleCamera" type="Camera3D" parent="."]
+keep_aspect = 0
+current = true
+fov = 31.0
+near = 0.3
+far = 300.0
+
+[node name="OverworldField" type="Node3D" parent="."]
+
+[node name="HeroSlots" type="Node3D" parent="."]
+
+[node name="EnemyRoot" type="Node3D" parent="."]
+
+[node name="PropRoot" type="Node3D" parent="."]
+
+[node name="ProjectileRoot" type="Node3D" parent="."]
+
+[node name="Scenery" type="Node3D" parent="."]
+script = ExtResource("2_scenery")
+
+[node name="RuneFloor" type="Node3D" parent="."]
+script = ExtResource("3_floor")
