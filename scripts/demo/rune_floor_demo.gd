@@ -34,6 +34,7 @@ extends Control
 @onready var fight_label: Label = $TopBar/FightLabel
 @onready var record_label: Label = $TopBar/RecordLabel
 @onready var banner: Label = $Banner
+@onready var overlay = $BattleOverlay
 
 var director: BattleDirector
 
@@ -132,7 +133,11 @@ func _on_combat_ended(victory: bool) -> void:
 	if not is_inside_tree():
 		return
 	if not victory:
-		# A wipe resets the run: everyone up at full HP, no banked charge.
+		# A wipe resets the run: everyone up at full HP, no banked charge. The
+		# enemies that won leave without dying, so nothing frees their health
+		# bars - the overlay is cleared by hand, as RunController does on a wipe.
+		director.clear_enemies()
+		overlay.clear_all()
 		GameState.special_charges.clear()
 		GameState.heal_party()
 		director.spawn_party()
