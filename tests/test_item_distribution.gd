@@ -64,22 +64,33 @@ func _ready() -> void:
 	t.check(dupes == 0, "no item carries a duplicate modifier id (%d found)" % dupes)
 	t.check(missing_roll == 0, "every modifier stores its raw roll (%d missing)" % missing_roll)
 
-	# [icons phase 2] 11 entries: 4 warrior weapon + 1 ranger weapon + 1 mage
-	# weapon + 1 armor + 4 trinket. [backlog P7] slot_mend (the second armor
-	# modifier) is retired with the slot's heal. Each has a `slots` field;
-	# _modifiers_for_type filters on it (and `types`, where present).
-	# [backlog P3, issue #75] Plus decision 3.11's twelve stats, 23 in all. They
-	# carry `types: []` until #73 wires the sets, so no type can roll one yet.
-	t.check(Itemizer.MODIFIERS.size() == 23, "the modifier pool has 23 entries")
-	var unwired := 0
+	# [backlog P3, issue #73] Every generated type names its own four, and every
+	# id in a set is a real def. The authored relics (no set) roll nothing.
 	for wtype: StringName in Itemizer.ITEM_TYPES:
-		for def: Dictionary in Itemizer._modifiers_for_type(wtype):
-			if StringName(def["id"]) in SlotIcon.STAT_MODIFIER_IDS 					and not (StringName(def["id"]) in [&"bleed", &"crit"]):
-				unwired += 1
-	t.check(unwired == 0, "no type rolls a decision-3.11 stat before #73 (%d found)" % unwired)
+		var row: Dictionary = Itemizer.ITEM_TYPES[wtype]
+		if not row.has("modifiers"):
+			t.check(Itemizer._modifiers_for_type(wtype).is_empty(), "%s: no set, so it rolls nothing" % wtype)
+			continue
+		var ids: Array = row["modifiers"]
+		var unique := {}
+		for id: Variant in ids:
+			unique[id] = true
+		t.check(ids.size() == 4 and unique.size() == 4 and Itemizer._modifiers_for_type(wtype).size() == 4,
+			"%s: a set of four distinct, real modifiers" % wtype)
+	t.check((Itemizer.ITEM_TYPES[&"sword"]["modifiers"] as Array).has(&"elem_fire"),
+		"the sword's set keeps elem_fire, which new_profile() forces on the starter sword")
 	for def: Dictionary in Itemizer.MODIFIERS:
-		t.check(def.has("slots") and not (def["slots"] as Array).is_empty(),
-			"modifier '%s' declares which slots may roll it" % def["id"])
+		t.check(not def.has("slots") and not def.has("types"),
+			"%s: no slots/types filter left on the def" % def["id"])
+	# Decision 3.11: charge coins live only on trinkets.
+	var coin_off_trinket := 0
+	for wtype: StringName in Itemizer.ITEM_TYPES:
+		if int(Itemizer.ITEM_TYPES[wtype]["slot"]) == Item.Slot.TRINKET:
+			continue
+		for def: Dictionary in Itemizer._modifiers_for_type(wtype):
+			if SlotIcon.kind_of(StringName(def["id"])) == SlotIcon.Kind.CHARGE:
+				coin_off_trinket += 1
+	t.check(coin_off_trinket == 0, "no weapon or armor set carries a charge coin (%d)" % coin_off_trinket)
 	var has_purse := false
 	for def: Dictionary in Itemizer.MODIFIERS:
 		if def["id"] == &"slot_purse":

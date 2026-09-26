@@ -128,8 +128,17 @@ func required_anims() -> Array[StringName]:
 static func at_level(base: int, growth: int, level: int) -> int:
 	return base + growth * maxi(level - 1, 0)
 
+## [backlog P3, issue #73] An enemy's HP grows Tuning.ENEMY_HP_GROWTH_MULT times
+## as fast past Tuning.ENEMY_HP_RAMP_FROM, so the stronger gear decision 3.11 put
+## on the party does not shorten mid- and late-game fights (decision 7.7). The
+## early game, where the sims are calibrated, is untouched. A boss inherits it
+## through the hp_per_level BOSS_HP_MULT already scales.
 func hp_at(level: int) -> int:
-	return at_level(max_hp, hp_per_level, level)
+	var hp := at_level(max_hp, hp_per_level, level)
+	if not is_hero:
+		var ramped := maxi(level - Tuning.ENEMY_HP_RAMP_FROM, 0)
+		hp += int(round(float(hp_per_level) * (Tuning.ENEMY_HP_GROWTH_MULT - 1.0) * float(ramped)))
+	return hp
 
 func weapon_power_at(level: int) -> int:
 	return at_level(weapon_power, weapon_power_per_level, level)

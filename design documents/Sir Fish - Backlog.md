@@ -785,6 +785,52 @@ charge coins leaving weapons, in one place, where it can be measured.
   - A deflected hit shows no feedback yet.
   - The new ids have no chip art, the same as `bleed` and `crit`.
 
+**Wired and rebalanced (2026-09-25, [#73](https://github.com/DarkCascade/Sir-Fish/issues/73)).**
+Each `ITEM_TYPES` row names its four (`modifiers`), `_modifiers_for_type()` reads that set,
+and the `slots` / `types` filter and the repeat fallback are gone. Reaching Enhanced boosts
+one of the three modifiers, never a charge coin, and gives it the marker.
+
+**What it measured.** Against `main`, a geared trio got much stronger from L10 up:
+
+| | `main` | Sets as drafted | Target |
+|---|---|---|---|
+| Trio time to kill a regular enemy, L10 / L20 / L30 | 5.1 / 5.4 / 5.9s | 3.7 / 3.5 / 2.7s | 3-9s |
+| Jackpots per battle, L10 / L20 / L30 | 1.03 / 0.90 / 1.13 | 0.81 / 0.50 / 0.34 | 0.6-2.0 |
+| Spins to fill a special (warrior / ranger / mage, L20) | 3.8 / 2.6 / 3.6 | 4.2 / 4.1 / 4.1 | about 3 (7.3) |
+
+- **The biggest source is built into 3.11 itself:** ranger and mage weapons now roll damage
+  elements, where their charge coins dealt no damage.
+- **Trinket elements, crit on armor and the Enhanced boost** add the rest. Removing them one
+  at a time helped but never restored the bands.
+- **Shorter fights also cost jackpots and specials,** because there are fewer spins per
+  battle. The jackpot rate per spin barely moved.
+- **Solo L1-L5 was unchanged**, so the early game and its calibration were never at risk.
+
+**Decided 2026-09-25: grow enemies, keep the sets.** Enemy HP now grows
+`Tuning.ENEMY_HP_GROWTH_MULT` (1.85) times as fast past `ENEMY_HP_RAMP_FROM` (L6), through
+`CombatantStats.hp_at()`, and a boss inherits it.
+- **Why:** one lever restores fight length (decision 7.7), jackpots per battle and specials
+  per fight together, and decision 3.11's sets stay as approved.
+- **The ramp starts past L6** so the easy quest (levels 1-5, its boss one level up) and the
+  first-clear-at-L5 calibration are untouched.
+- **`ENHANCED_BOOST` is 1.25, not 3.1's 1.5.** At 1.5 a geared L30 trio fell under the 3s
+  floor. The strongest damage roll is about 219% of Power.
+- **Trimming the sets was rejected.** It meant replacing the trinkets' element and armor's
+  crit, reopening 3.11, and still left L30 jackpots short.
+- **Accepting faster fights was rejected.** It meant lowering the jackpot band and cutting
+  `SPECIAL_CHARGE_COST`.
+
+**After:**
+- **Trio time to kill:** 4.9 / 5.5 / 4.9s.
+- **Solo time to kill:** 6.4 / 6.5 / 6.8s.
+- **Spins per battle:** 4.5-4.9.
+- **Jackpots per battle:** 1.06 / 0.79 / 0.61. L30 clears the 0.6 floor by a hair.
+- **Specials:** 3.8-4.7 spins to fill, about one special per fight. The ranger no longer
+  charges faster than the others. The probe leaves out `siphon` and `resolve`, which only
+  add charge.
+- **Not re-measured:** the mage recruit quest's first-attempt band. Its sim
+  (`sim_recruit_bands`) has not parsed since #114 ([#191](https://github.com/DarkCascade/Sir-Fish/issues/191)).
+
 ### The visible-props plan (P3b)
 
 - Each `ITEM_TYPES` row gains `prop` (the mesh name) and `two_handed`.
@@ -2283,7 +2329,8 @@ replacement, against these targets once the ladders exist. The builds above bloc
 | 3.9 | Slot board vocabulary | **Decided, built 2026-09-21** | Six categories (strike as owner's weapon, fire, ice, lightning, block, charge coin with the owner's profile); charge coins only charge; bleed and crit are stats; payline matches category ([#114](https://github.com/DarkCascade/Sir-Fish/issues/114)) |
 | 3.10 | Jackpot rule for the early game | Open | All eight lines ships (~1/battle geared, ~0 early solo); options in [#115](https://github.com/DarkCascade/Sir-Fish/issues/115) |
 | 3.7 | New modifier ids | **Approach decided 2026-09-23** | Weapon ids fill out via universal elements + one new weapon-specific stat per type (the 2026-09-20 named action-ids retired); shields get distinct Block mechanics per shield ([#72](https://github.com/DarkCascade/Sir-Fish/issues/72): four shields, the barbarian shield left out; helm/mail/tome fill out in #76). Exact new ids left to P3a's drafting pass ([#71](https://github.com/DarkCascade/Sir-Fish/issues/71)) |
-| 3.11 | The four-modifier sets | **Drafted and approved 2026-09-25, not built** | Weapons: three elements plus one off-board stat per type. Armor: `armor_block`, `vitality`, `crit`, plus a shield mechanic or `resolve`. Trinkets: `crit`, the class charge coin, `vitality` and one element. Charge coins leave weapons. 12 new ids, none a board icon (§3, [#76](https://github.com/DarkCascade/Sir-Fish/issues/76), builds [#75](https://github.com/DarkCascade/Sir-Fish/issues/75), [#73](https://github.com/DarkCascade/Sir-Fish/issues/73)) |
+| 3.11 | The four-modifier sets | **Drafted and approved 2026-09-25, built (#75, #73)** | Weapons: three elements plus one off-board stat per type. Armor: `armor_block`, `vitality`, `crit`, plus a shield mechanic or `resolve`. Trinkets: `crit`, the class charge coin, `vitality` and one element. Charge coins leave weapons. 12 new ids, none a board icon (§3, [#76](https://github.com/DarkCascade/Sir-Fish/issues/76), builds [#75](https://github.com/DarkCascade/Sir-Fish/issues/75), [#73](https://github.com/DarkCascade/Sir-Fish/issues/73)) |
+| 3.12 | Absorbing the stronger sets | **Decided and built 2026-09-25** | Enemy HP grows 1.85x as fast past L6 (`Tuning.ENEMY_HP_GROWTH_MULT`, `ENEMY_HP_RAMP_FROM`), and `ENHANCED_BOOST` is 1.25, not 1.5. That restores trio fights to ~5s, 0.6-1.1 jackpots per battle and about one special per fight. The sets stay as approved and the early game is untouched (§3, [#73](https://github.com/DarkCascade/Sir-Fish/issues/73)) |
 | 4.1 | Standard skeleton | **Decided** | `Rig_Medium`; S1 confirmed the shipped `Rig` is identical |
 | 4.2 | Clip source | **Decided** | KayKit Character Animations: 132 `Rig_Medium` clips, CC0, verified |
 | 4.3 | Bake clips or share them | **Decided 2026-09-23** | Share one library, built with #78 or #81 (whichever is picked up first); new characters bake until then. Needs a second clip source on `RigProfile` ([#79](https://github.com/DarkCascade/Sir-Fish/issues/79)) |

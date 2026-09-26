@@ -646,12 +646,12 @@ func hero_weapon_type(id: StringName) -> StringName:
 ## carries a Power-scaled roll that would otherwise read as, say, 30%), then
 ## capped at Tuning.CRIT_CHANCE_CAP. Applied in Combatant.take_damage.
 func hero_crit_chance(id: StringName) -> float:
-	var cap := Itemizer.modifier_roll_max(&"crit")
 	var pct := 0
 	for it: Item in equipped_set(id):
 		for mod: Dictionary in it.modifiers:
 			if StringName(mod.get("id", &"")) == &"crit":
-				pct += clampi(int(mod.get("roll", 0)), 0, cap)
+				# [backlog P3, issue #73] Capped per modifier, allowing an Enhanced boost.
+				pct += clampi(int(mod.get("roll", 0)), 0, Itemizer.modifier_roll_cap(mod))
 	return minf(float(pct) / 100.0, Tuning.CRIT_CHANCE_CAP)
 
 ## [slot vocabulary] The bleed `id`'s weapon opens on a swing, or 0 if it has no
