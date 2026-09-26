@@ -40,6 +40,13 @@ extends Control
 ## inventory, and GameState.apply_spoils() resolves both here, once the reels
 ## land.
 ##
+## [backlog P5, issue #153] It is a SETTLEMENT RECEIPT (decided in #86): its one
+## job is what the party walked away with and what the reels did to it. One row
+## per bank, in reel order (XP, Items, Gold, Scrap), the quest reward leading on a
+## win, and each row changes in place as ITS reel lands (_land_reel settles that
+## bank alone through GameState.apply_spoils_category). Encounters and run time
+## are context, so they moved into the subtitle; damage and spin counts went.
+##
 ## Which is also why the heading is no longer a fixed word on either path. Each
 ## LOSE is -1 and each DOUBLE +1, and that sum alone picks the word and its
 ## colour - red at <= -1, yellow at 0, green at >= 1. Winning or wiping adds
@@ -64,6 +71,12 @@ enum Mode { RETRY, VICTORY, FAILURE }
 
 var _mode: Mode = Mode.RETRY
 var _victory: bool = false
+## [backlog P5, issue #153] The XP the reel settled, once it has landed (-1
+## before). apply_expedition_xp() zeroes GameState.expedition_xp, so the row
+## has to remember what it was.
+var _xp_settled: int = -1
+## Reels still landing; _spin_spoils waits for this to reach 0.
+var _landing: int = 0
 
 ## [party-wipe-consequences] The verdict, by rating. What used to be one bank of
 ## punch words for every defeat is three, because a wipe that held on to
@@ -74,22 +87,20 @@ const VERDICT_GOOD := ["nice", "way to go", "smooth"]
 
 ## [victory-failure-stat-parity] The shared stat row set, in the exact order it
 ## should read - reordered into place every present() regardless of how
-## quest_result.tscn happens to author them. Originally the failure reveal's
-## own shorter set; the victory reveal now uses the same rows and order so the
-## two screens read as one format, with QuestReward (and its extras) leading
-## on a win since a loss has no reward to show.
+## quest_result.tscn happens to author them. Both reveals use it, with
+## QuestReward (and its extras) leading on a win since a loss has no reward.
+## [backlog P5, issue #153] One row per spoils reel, in reel order
+## (Spoils.CATEGORY_ORDER), so each row sits under the reel that rewrites it.
 const _STAT_ROW_ORDER: Array[StringName] = [
-	&"NetGold", &"ExpeditionScrap", &"ItemsFound", &"EncountersCleared",
-	&"RunTime", &"DamageDealt", &"DamageTaken", &"IconsSpins",
+	&"XP", &"ItemsFound", &"NetGold", &"ExpeditionScrap",
 ]
-## [victory-failure-stat-parity] Superseded by _STAT_ROW_ORDER - these used to
-## be the victory reveal's own, larger row set. Kept as authored chrome in
-## quest_result.tscn (see _row_values(), which still fills them) but never
-## shown on either screen any more.
-const _RETIRED_ROWS: Array[StringName] = [
-	&"ExpeditionGold", &"GoldEarned", &"GoldSpent",
-	&"GoldOnHand", &"SlotSpins", &"SlotWins", &"ItemsSold",
-]
+## The row each spoils reel rewrites when it lands.
+const _ROW_FOR_CATEGORY := {
+	Spoils.Category.XP: &"XP",
+	Spoils.Category.ITEMS: &"ItemsFound",
+	Spoils.Category.GOLD: &"NetGold",
+	Spoils.Category.SCRAP: &"ExpeditionScrap",
+}
 
 const _BLANK_HOLD := 0.35         # beat before Sir Fish fades in
 const _FISH_FADE_TIME := 0.4
@@ -123,6 +134,8 @@ func present(victory: bool) -> void:
 	else:
 		_mode = Mode.RETRY
 
+	_xp_settled = -1
+	_rebuild_level_up_rows([])
 	show()
 	_apply_subtitle(is_quest)
 	_configure_buttons()
@@ -155,11 +168,16 @@ func _apply_subtitle(is_quest: bool) -> void:
 		# failure line takes the same "%s — ..." shape as the victory one rather
 		# than prefixing a second article.
 		var qname: String = GameState.completed_quest.display_name
+		# [backlog P5, issue #153] Encounters and run time are context now, not
+		# rows: "The Shallow Wood - 6 encounters, 7:24 - ...".
+		var cleared := int(GameState.run_stats["encounters_cleared"])
+		var context := "%d encounter%s, %s" % [cleared, "" if cleared == 1 else "s",
+			_format_time(float(GameState.run_stats["run_time"]))]
 		# [inn & recovery] A win's free night at the inn (GameState.
 		# recover_after_expedition()) is named here, or the full heal on the
 		# way home reads as a bug.
-		subtitle.text = ("%s — the town stands you a night at the inn" % qname) if _victory \
-			else ("%s — the expedition is lost" % qname)
+		subtitle.text = ("%s — %s — the town stands you a night at the inn" % [qname, context]) if _victory \
+			else ("%s — %s — the expedition is lost" % [qname, context])
 		return
 
 	if _victory:
@@ -232,9 +250,8 @@ func _present_victory() -> void:
 	# verdict waits for it; the rows are already up, and just take their new
 	# numbers in place.
 	var outcomes := await _spin_spoils(true)
-	_settle_spoils(outcomes)
+	_save_settled_run()
 	primary_button.disabled = false
-	_fill_row_values()
 
 	_apply_verdict(_verdict_points(outcomes))
 	title.modulate.a = 1.0
@@ -275,12 +292,18 @@ func _present_failure() -> void:
 	await create_tween().tween_property(fish, "modulate:a", 1.0, _FISH_FADE_TIME).finished
 	await get_tree().create_timer(_FISH_HOLD).timeout
 
+	# [backlog P5, issue #153] The rows come up BEFORE the roll, holding what the
+	# run banked, so each one visibly changes as its reel lands - the same
+	# treatment a win gets. They used to fade in only after the roll.
+	_fill_row_values()
+	_reveal_rows_overlapped(_STAT_ROW_ORDER)
+	await get_tree().create_timer(_ROW_FADE_TIME * (1.0 + _ROW_OVERLAP * float(_STAT_ROW_ORDER.size() - 1))).timeout
+
 	# [party-wipe-consequences] What the run brings home is decided here, before
 	# the verdict can be worded - the reels ARE the suspense beat.
 	var outcomes := await _spin_spoils(false)
-	_settle_spoils(outcomes)
+	_save_settled_run()
 	_apply_verdict(_verdict_points(outcomes))
-	_fill_row_values()
 
 	# The verdict explodes in - an exaggerated version of the victory title's
 	# own overshoot, big enough to read as impact rather than a heading.
@@ -299,17 +322,11 @@ func _present_failure() -> void:
 	button_tw.tween_property(divider, "modulate:a", 1.0, _BUTTON_FADE_TIME)
 	await button_tw.finished
 
-	_reveal_rows_overlapped(_STAT_ROW_ORDER)
-
-## Hides QuestReward and every retired row, and reorders the shared set into
-## _STAT_ROW_ORDER. [party-wipe-consequences] Does NOT fill the values any
-## more - the spoils roll rewrites what the run brought home, so the fill waits
-## until it has settled (_present_failure).
+## Hides QuestReward and reorders the shared set into _STAT_ROW_ORDER. The
+## values are filled once Sir Fish is up, just before the roll (_present_failure).
 func _prepare_failure_rows() -> void:
 	_rebuild_reward_extra_rows(false)
 	_row_visible(&"QuestReward", false)
-	for row_name: StringName in _RETIRED_ROWS:
-		_row_visible(row_name, false)
 	for row_name: StringName in _STAT_ROW_ORDER:
 		_row_visible(row_name, true)
 	for i: int in range(_STAT_ROW_ORDER.size()):
@@ -352,28 +369,70 @@ func _spin_spoils(victory: bool) -> Dictionary:
 	await get_tree().create_timer(_SPOILS_SPIN_TIME).timeout
 
 	var outcomes: Dictionary = {}
+	_landing = 0
 	for i: int in range(count):
 		var reel := reels[i] as SpoilsReel
+		var category := Spoils.CATEGORY_ORDER[i] as Spoils.Category
 		var outcome := Spoils.roll(victory)
-		outcomes[Spoils.CATEGORY_ORDER[i]] = outcome
+		outcomes[category] = outcome
+		_landing += 1
 		if i == count - 1:
 			# The last one is awaited in full, so the hold below starts once its
 			# word has actually popped rather than once its reel stopped moving.
-			await reel.stop_on(outcome)
+			await _land_reel(reel, category, outcome)
 		else:
-			reel.stop_on(outcome)
+			_land_reel(reel, category, outcome)
 			await get_tree().create_timer(_SPOILS_STAGGER).timeout
+	# Every bank has to be settled before the verdict and the save.
+	while _landing > 0:
+		await get_tree().process_frame
 
 	await get_tree().create_timer(_SPOILS_HOLD).timeout
 	return outcomes
 
-## Hands the roll to GameState, then re-saves. The quest path already saved in
+## [backlog P5, issue #153] Stops one reel, then settles ITS bank alone and
+## rewrites its row - so "Gold brought home" doubles as the gold reel lands, not
+## once all four have. An XP reel also names every hero it levelled.
+func _land_reel(reel: SpoilsReel, category: Spoils.Category, outcome: Spoils.Outcome) -> void:
+	await reel.stop_on(outcome)
+	if category == Spoils.Category.XP:
+		_xp_settled = int(float(GameState.expedition_xp) * Spoils.multiplier(outcome))
+		var before := {}
+		for hero: StringName in GameState.active_party:
+			before[hero] = GameState.hero_level(hero)
+		GameState.apply_spoils_category(category, outcome)
+		var ups: Array[String] = []
+		for hero: StringName in GameState.active_party:
+			var now := GameState.hero_level(hero)
+			if now > int(before[hero]):
+				ups.append("%s → L%d" % [String(hero).capitalize(), now])
+		_rebuild_level_up_rows(ups)
+	else:
+		GameState.apply_spoils_category(category, outcome)
+	_fill_row_values()
+	_pulse_row(_ROW_FOR_CATEGORY.get(category, &""))
+	_landing -= 1
+
+## Re-saves once every bank has settled. The quest path already saved in
 ## RunController, but that save predates everything the roll just changed - the
 ## XP it applied, the loot it kept or dropped, the gold and scrap it moved.
-func _settle_spoils(outcomes: Dictionary) -> void:
-	GameState.apply_spoils(outcomes)
+func _save_settled_run() -> void:
 	if GameState.completed_quest != null:
 		SaveGame.save_profile()
+
+## A quick pop on the row a reel just rewrote, so the change reads as caused by
+## that reel.
+func _pulse_row(row_name: StringName) -> void:
+	var row := stat_rows.get_node_or_null(NodePath(row_name)) as Control
+	if row == null or not row.visible:
+		return
+	var value := row.get_node_or_null("Value") as Control
+	if value == null:
+		return
+	value.pivot_offset = value.size * 0.5
+	value.scale = Vector2(1.25, 1.25)
+	create_tween().tween_property(value, "scale", Vector2.ONE, 0.25) \
+		.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 ## The run's rating, from the reels ALONE. <= -1 reads red, 0 yellow, >= 1 green
 ## (_apply_verdict).
@@ -408,8 +467,6 @@ func _show_victory_rows() -> void:
 	var is_quest: bool = GameState.completed_quest != null
 	var show_reward: bool = is_quest and _victory
 	_row_visible(&"QuestReward", show_reward)
-	for row_name: StringName in _RETIRED_ROWS:
-		_row_visible(row_name, false)
 	for row_name: StringName in _STAT_ROW_ORDER:
 		_row_visible(row_name, true)
 	_rebuild_reward_extra_rows(show_reward)
@@ -437,37 +494,24 @@ func _show_victory_rows() -> void:
 
 ## Every row this screen can show, keyed by node NAME - both present() paths
 ## call this and let it just leave stale text sitting under a hidden row.
+## [backlog P5, issue #153] Read fresh after every reel lands, so each row shows
+## the banked number until its own reel settles it.
 func _row_values() -> Dictionary:
 	var stats: Dictionary = GameState.run_stats
 	var is_quest: bool = GameState.completed_quest != null
 	return {
 		&"QuestReward": str(GameState.completed_quest.gold_reward) if is_quest and _victory else "",
-		&"ExpeditionGold": str(GameState.expedition_gold),
-		&"ExpeditionScrap": str(GameState.expedition_scrap),
-		# [run-summary-modal] Net for the run, not a running total - can go
-		# negative, unlike every other row here.
-		&"NetGold": str(int(stats["gold_earned"]) - int(stats["gold_spent"])),
-		&"EncountersCleared": str(int(stats["encounters_cleared"])),
-		&"RunTime": _format_time(float(stats["run_time"])),
-		&"GoldEarned": str(int(stats["gold_earned"])),
-		&"GoldSpent": str(int(stats["gold_spent"])),
-		&"GoldOnHand": str(GameState.gold),
-		&"DamageDealt": str(int(stats["damage_dealt"])),
-		&"DamageTaken": str(int(stats["damage_taken"])),
-		&"SlotSpins": str(int(stats["slot_spins"])),
-		&"SlotWins": str(int(stats["slot_wins"])),
-		# [run-summary-modal] X = every icon resolution this expedition (a
-		# payline triple's centre row counts twice - see slot_machine.gd);
-		# Y = only spins that actually resolved at least one, so a spin still
-		# spinning when the party wiped doesn't count.
-		&"IconsSpins": "%d icons hit in %d spins" % \
-			[int(stats["slot_icons_hit"]), int(stats["slot_spins_resolved"])],
+		# Banked until the XP reel lands, then what it settled.
+		&"XP": str(_xp_settled if _xp_settled >= 0 else GameState.expedition_xp),
 		# [party-wipe-consequences] What came home, not what was found - the ITEMS
 		# reel can halve or drop the haul, and "Items found 4" beside a LOSE is a
 		# straight contradiction. run_stats["items_found"] is left as the true
 		# find count for anything else that wants it.
 		&"ItemsFound": str(GameState.expedition_items_held()),
-		&"ItemsSold": str(int(stats["items_sold"])),
+		# [run-summary-modal] Net for the run, not a running total - can go
+		# negative, unlike every other row here.
+		&"NetGold": str(int(stats["gold_earned"]) - int(stats["gold_spent"])),
+		&"ExpeditionScrap": str(GameState.expedition_scrap),
 	}
 
 func _fill_row_values() -> void:
@@ -509,6 +553,36 @@ func _rebuild_reward_extra_rows(show_rows: bool) -> void:
 		stat_rows.add_child(row)
 		stat_rows.move_child(row, insert_index)
 		insert_index += 1
+
+## [backlog P5, issue #153] One callout row per hero the XP reel levelled
+## ("Ranger → L6"), right under the XP row, in the heal green. Rebuilt from
+## scratch like the reward extras, so a re-presented modal never doubles them.
+const _LEVEL_UP_GROUP := "quest_result_level_up_row"
+
+func _rebuild_level_up_rows(callouts: Array[String]) -> void:
+	for row: Node in get_tree().get_nodes_in_group(_LEVEL_UP_GROUP):
+		if row.get_parent() == stat_rows:
+			row.queue_free()
+	var xp_row := stat_rows.get_node_or_null(NodePath(&"XP"))
+	if xp_row == null:
+		return
+	var insert_index: int = xp_row.get_index() + 1
+	for text: String in callouts:
+		var row := HBoxContainer.new()
+		row.custom_minimum_size = Vector2(0, 54)
+		row.add_to_group(_LEVEL_UP_GROUP)
+		var caption := Label.new()
+		caption.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		caption.add_theme_color_override("font_color", Tuning.C_HEAL)
+		caption.add_theme_font_size_override("font_size", 42)
+		caption.text = text
+		row.add_child(caption)
+		stat_rows.add_child(row)
+		stat_rows.move_child(row, insert_index)
+		insert_index += 1
+		row.modulate.a = 0.0
+		create_tween().tween_property(row, "modulate:a", 1.0, _ROW_FADE_TIME)
 
 func _row_visible(row_name: StringName, visible_now: bool) -> void:
 	var row := stat_rows.get_node_or_null(NodePath(row_name)) as Control

@@ -107,6 +107,18 @@ func _test_gold_and_scrap(t) -> void:
 	t.check(GameState.gold == carried, "LOSE takes back exactly what the run banked")
 	t.check(GameState.expedition_gold == 0, "LOSE zeroes the brought-home row")
 
+	# [backlog P5, issue #153] The result screen settles one bank per reel as it
+	# lands (apply_spoils_category). Settling gold must leave scrap alone, so a
+	# row only changes when its own reel lands.
+	GameState.add_expedition_gold(100)
+	var scrap_before := GameState.scrap
+	var exp_scrap_before := GameState.expedition_scrap
+	GameState.apply_spoils_category(Spoils.Category.GOLD, Spoils.Outcome.DOUBLE)
+	t.check(GameState.expedition_gold == 200, "one reel: the gold bank settles on its own")
+	t.check(GameState.scrap == scrap_before and GameState.expedition_scrap == exp_scrap_before,
+		"one reel: the other banks are untouched until their reels land")
+	GameState.apply_spoils_category(Spoils.Category.GOLD, Spoils.Outcome.LOSE)
+
 	GameState.apply_spoils({Spoils.Category.SCRAP: Spoils.Outcome.LOSE})
 	t.check(GameState.expedition_scrap == 0, "the scrap reel settles scrap, not gold")
 
