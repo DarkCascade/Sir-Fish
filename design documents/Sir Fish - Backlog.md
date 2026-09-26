@@ -1898,7 +1898,30 @@ the slot heal is removed. Two things on the board healed, and both are gone:
   tenths of a second) and the harness lost its heal regen column; every assertion holds.
   The mage now adds a little damage (group fight 8.1s -> 7.7s at level 5) as well as HP.
 - **The harness does not credit Healing Aura** (an invocable, once or twice a fight), so party
-  life is HP alone until a model for it exists.
+  life is HP alone until a model for it exists. *Modelled 2026-09-26 (issue #103); see below.*
+
+**Healing Aura in `test_level_curves` (issue #103, 2026-09-26).** The party cases now model
+the aura. The mage's meter fills as `SlotMachine._resolve_board` fills it: +1 per owned icon,
++3 per charge coin, doubled on a payline. Each full meter heals her weapon Power x
+`heal_multiplier`. The meter carries across encounters, so the harness uses the steady cast
+rate. The aura is printed beside the HP-only figures rather than folded into them, and every
+existing figure is unchanged.
+
+The harness also gained a **fights per HP bar** column, and it is the column that matters.
+Heroes keep their HP between encounters, so per-fight time-to-die (about 3x the fight length
+everywhere) never showed the pressure. Sustain is measured against the run, not one fight.
+
+- **A geared trio casts about once a fight** (0.9 / 1.4 / 1.0 casts at L10 / 20 / 30, on the
+  once-or-twice cadence `SPECIAL_CHARGE_COST` was picked for). It stretches a full HP bar from
+  about 4.5 fights to about 5.5, roughly +20-30%. Both are now asserted: 0.5-3 casts, and 10%+
+  on the bar. The 10% floor is what a fallback-to-1 heal would fail.
+- **A solo warrior's bar lasts 1.5-1.9 group fights** at every band. That is the #98 question
+  in one number: with no in-run healing, the inn and meals are all that carry him between
+  fights.
+- **A just-recruited mage heals 1 HP a cast.** She joins holding only the heartstone, a
+  trinket, and the heal reads her weapon's Power. So in practice the early game's healing
+  arrives when a staff drops, not when she joins. Filed as issue #194 (needs a decision); the
+  harness prints the row and does not assert it.
 
 ### Done: the invoker tray - ranger and mage buttons, and the console band (2026-09-21)
 
