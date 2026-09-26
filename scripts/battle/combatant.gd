@@ -52,6 +52,15 @@ var _temp_armor_timer: SceneTreeTimer = null
 ## take-max-and-refresh shape as `add_temp_armor()`.
 var _bleed_dps: int = 0
 var _bleed_timer: SceneTreeTimer = null
+## [backlog P3, issue #75] Decision 3.11's armor stats, read off a hero's gear by
+## StatModifiers.cache_on() (enemies leave them at 0), and the `mark` an enemy
+## carries: extra percent taken from heroes until _mark_timer runs out.
+var deflect_chance: float = 0.0
+var cover_fraction: float = 0.0
+var bulwark_pct: int = 0
+var thorns: int = 0
+var _mark_pct: int = 0
+var _mark_timer: SceneTreeTimer = null
 var is_hero: bool = false
 
 ## Set by BattleDirector when it spawns us.
@@ -111,6 +120,8 @@ func setup(s: CombatantStats, starting_hp: int = -1, a_level: int = 1) -> void:
 	_temp_armor_timer = null
 	_bleed_dps = 0
 	_bleed_timer = null
+	_mark_pct = 0
+	_mark_timer = null
 	apply_party_bonuses()
 	_home_position = global_position
 	visual.visible = true
@@ -161,6 +172,8 @@ func apply_party_bonuses() -> void:
 	armor = GameState.hero_armor(stats.id)
 	# [slot vocabulary] Crit is a wearer stat from trinket `crit` modifiers.
 	crit_chance = GameState.hero_crit_chance(stats.id)
+	# [backlog P3, issue #75] deflect / cover / bulwark / thorns.
+	StatModifiers.cache_on(self)
 	# [backlog P3b, issue #77] The hands show what is equipped now.
 	CombatantRig.apply_hand_props(rig, stats)
 	# [armor items] Max hp = the runtime figure GameState keeps (hero level plus
@@ -367,8 +380,16 @@ func compute_damage(school: int = -1) -> int:
 	raw *= RNG.randf_range(1.0 - Tuning.DAMAGE_VARIANCE, 1.0 + Tuning.DAMAGE_VARIANCE)
 	return maxi(1, int(round(raw)))
 
-func take_damage(amount: int, source: Combatant) -> void:
+## [backlog P3, issue #75] `redirected` marks the share of a hit a `cover` ally
+## took for someone else, so it is never covered a second time.
+func take_damage(amount: int, source: Combatant, redirected: bool = false) -> void:
 	if not is_alive():
+		return
+	# [backlog P3, issue #75] mark, deflect and cover (StatModifiers.incoming).
+	# A deflected hit never lands: no damage, no hurt, no thorns.
+	var allies: Array[Combatant] = director.living_heroes() if director != null and is_hero else ([] as Array[Combatant])
+	amount = StatModifiers.incoming(self, amount, source, redirected, allies)
+	if amount < 0:
 		return
 	# [slot vocabulary] Crit lives here, on the one path every attack takes, so a
 	# slot swing, a projectile and a special all roll it alike. Sourceless damage
@@ -393,6 +414,9 @@ func take_damage(amount: int, source: Combatant) -> void:
 		GameState.run_stats["damage_taken"] = int(GameState.run_stats["damage_taken"]) + final
 	else:
 		GameState.run_stats["damage_dealt"] = int(GameState.run_stats["damage_dealt"]) + final
+
+	# [backlog P3, issue #75] thorns hit back, whether or not this hit killed.
+	StatModifiers.after_hit(self, source)
 
 	if current_hp == 0:
 		die()
@@ -483,6 +507,8 @@ func apply_defend(reduction: float = Tuning.WARRIOR_DEFEND_REDUCTION,
 func add_temp_armor(amount: int) -> void:
 	if amount <= 0 or not is_alive():
 		return
+	# [backlog P3, issue #75] bulwark raises the grant this hero receives.
+	amount = StatModifiers.block_grant(self, amount)
 	_temp_armor = maxi(_temp_armor, amount)
 	var timer := get_tree().create_timer(Tuning.BLOCK_DURATION)
 	_temp_armor_timer = timer
@@ -513,6 +539,25 @@ func apply_bleed(dps: int, duration: float = Tuning.BLEED_DURATION) -> void:
 	if _bleed_timer == timer:
 		_bleed_dps = 0
 		_bleed_timer = null
+
+# --- [backlog P3, issue #75] mark --------------------------------------------
+
+## Marks this enemy for `pct` percent more damage from heroes for
+## Tuning.MARK_DURATION. Takes the larger of old and new and refreshes the
+## window, the same shape as apply_bleed().
+func apply_mark(pct: int, duration: float = Tuning.MARK_DURATION) -> void:
+	if pct <= 0 or not is_alive():
+		return
+	_mark_pct = maxi(_mark_pct, pct)
+	var timer := get_tree().create_timer(duration)
+	_mark_timer = timer
+	await timer.timeout
+	if _mark_timer == timer:
+		_mark_pct = 0
+		_mark_timer = null
+
+func mark_pct() -> int:
+	return _mark_pct
 
 func is_bleeding() -> bool:
 	return _bleed_dps > 0

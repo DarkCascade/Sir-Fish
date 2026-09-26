@@ -128,6 +128,24 @@ const MODIFIERS := [
 	{ "id": &"cleave",       "label": "+%d Cleave Charge", "caption": "Cleave Charge", "pct": false, "roll": [3, 3], "value_mult": [0.40, 0.75], "slots": [Item.Slot.TRINKET], "types": [&"idol"] },
 	{ "id": &"rain",         "label": "+%d Rain Charge",  "caption": "Rain Charge",  "pct": false, "roll": [3, 3], "value_mult": [0.40, 0.75], "slots": [Item.Slot.TRINKET], "types": [&"ring"] },
 	{ "id": &"thunderburst", "label": "+%d Thunderburst Charge", "caption": "Thunderburst Charge", "pct": false, "roll": [3, 3],  "value_mult": [0.40, 0.75], "slots": [Item.Slot.TRINKET], "types": [&"amulet"] },
+	# --- [backlog P3, issue #75] decision 3.11's twelve off-board stats ---------
+	# `types: []` keeps each one out of every pool for now: #73 puts them on the
+	# types decision 3.11 names, when the four-per-type rule replaces this
+	# derivation. Until then they exist only for force_modifier() and the tests.
+	# Mechanics are in StatModifiers; rolls marked Power / armor / level scale in
+	# _roll_icon_magnitude(), the rest are flat percents or charge.
+	{ "id": &"stagger",     "label": "+%d%% Stagger",        "caption": "Stagger",        "pct": true,  "roll": [15, 35], "value_mult": [0.35, 0.70], "slots": [Item.Slot.WEAPON], "types": [] },
+	{ "id": &"mark",        "label": "+%d%% Mark",           "caption": "Mark",           "pct": true,  "roll": [8, 20],  "value_mult": [0.35, 0.70], "slots": [Item.Slot.WEAPON], "types": [] },
+	{ "id": &"execute",     "label": "+%d Execute",          "caption": "Execute",        "pct": false, "roll": [3, 11],  "value_mult": [0.35, 0.70], "slots": [Item.Slot.WEAPON], "types": [] },
+	{ "id": &"twin_strike", "label": "+%d%% Twin Strike",    "caption": "Twin Strike",    "pct": true,  "roll": [8, 20],  "value_mult": [0.35, 0.70], "slots": [Item.Slot.WEAPON], "types": [] },
+	{ "id": &"arc",         "label": "+%d Arc",              "caption": "Arc",            "pct": false, "roll": [3, 11],  "value_mult": [0.35, 0.70], "slots": [Item.Slot.WEAPON], "types": [] },
+	{ "id": &"siphon",      "label": "+%d%% Siphon",         "caption": "Siphon",         "pct": true,  "roll": [15, 35], "value_mult": [0.35, 0.70], "slots": [Item.Slot.WEAPON], "types": [] },
+	{ "id": &"deflect",     "label": "+%d%% Deflect",        "caption": "Deflect",        "pct": true,  "roll": [4, 10],  "value_mult": [0.35, 0.70], "slots": [Item.Slot.ARMOR], "types": [] },
+	{ "id": &"cover",       "label": "+%d%% Cover",          "caption": "Cover",          "pct": true,  "roll": [10, 25], "value_mult": [0.35, 0.70], "slots": [Item.Slot.ARMOR], "types": [] },
+	{ "id": &"bulwark",     "label": "+%d%% Bulwark",        "caption": "Bulwark",        "pct": true,  "roll": [15, 40], "value_mult": [0.35, 0.70], "slots": [Item.Slot.ARMOR], "types": [] },
+	{ "id": &"thorns",      "label": "+%d Thorns",           "caption": "Thorns",         "pct": false, "roll": [3, 9],   "value_mult": [0.35, 0.70], "slots": [Item.Slot.ARMOR], "types": [] },
+	{ "id": &"vitality",    "label": "+%d Max HP",           "caption": "Max HP",         "pct": false, "roll": [5, 15],  "value_mult": [0.35, 0.70], "slots": [Item.Slot.ARMOR, Item.Slot.TRINKET], "types": [] },
+	{ "id": &"resolve",     "label": "+%d Starting Charge",  "caption": "Starting Charge", "pct": false, "roll": [1, 3],  "value_mult": [0.35, 0.70], "slots": [Item.Slot.ARMOR], "types": [] },
 ]
 
 # 13.2 Rarity: weight, modifier count, value multiplier range.
@@ -330,10 +348,14 @@ func _roll_icon_magnitude(def: Dictionary, item: Item, enhanced: bool) -> int:
 	var basis: int = 0
 	# [slot vocabulary] bleed scales off Power as a stat (it is no board kind);
 	# CHARGE and crit have no basis and take their def's flat range.
-	if kind == SlotIcon.Kind.DAMAGE or def["id"] == &"bleed":
+	var id: StringName = def["id"]
+	if kind == SlotIcon.Kind.DAMAGE or id in [&"bleed", &"execute", &"arc"]:
 		basis = item.power()
-	elif kind == SlotIcon.Kind.BLOCK:
+	elif kind == SlotIcon.Kind.BLOCK or id == &"thorns":
 		basis = item.armor_value()
+	elif id == &"vitality":
+		# [backlog P3, issue #75] Max HP grows with the item, not off Power or armor.
+		basis = maxi(item.level, 1) * Tuning.VITALITY_HP_PER_LEVEL
 	if basis > 0:
 		var frac: float = Tuning.FORGE_ICON_POWER_MAX if enhanced \
 			else RNG.randf_range(Tuning.FORGE_ICON_POWER_MIN, Tuning.FORGE_ICON_POWER_MAX)

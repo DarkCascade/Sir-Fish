@@ -570,10 +570,15 @@ func _deliver_swings(swings: Dictionary) -> int:
 func _swing_for(hero: Combatant, amount: int, primary: Combatant) -> int:
 	var dealt := maxi(1, int(round(float(amount) * RNG.randf_range(
 		1.0 - Tuning.DAMAGE_VARIANCE, 1.0 + Tuning.DAMAGE_VARIANCE))))
+	# [backlog P3, issue #75] execute lands with the swing itself.
+	dealt += StatModifiers.execute_bonus(hero, primary)
 	hero.slot_attack(primary, dealt)
 	var bleed := GameState.hero_bleed(hero.stats.id)
 	if bleed > 0 and RNG.randf() < Tuning.BLEED_PROC_CHANCE:
 		primary.apply_bleed(bleed)
+	# [backlog P3, issue #75] stagger, mark, twin_strike, arc and siphon.
+	var enemies: Array[Combatant] = director.living_enemies() if director != null else ([] as Array[Combatant])
+	StatModifiers.on_hero_swing(hero, primary, dealt, enemies)
 	return dealt
 
 ## [armor items] The board's summed BLOCK value, granted as temporary flat

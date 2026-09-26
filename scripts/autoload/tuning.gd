@@ -163,6 +163,31 @@ const BLEED_TICK_FLOOR := 2
 ## hero with a `bleed` weapon makes opens (or refreshes) a bleed on its target
 ## with this chance (SlotMachine._swing_for, GameState.hero_bleed).
 const BLEED_PROC_CHANCE := 0.35
+
+# --- [backlog P3, issue #75] The decision-3.11 stat modifiers -----------------
+## Off-board stats, like bleed and crit (StatModifiers). Every number here is a
+## first cut: none of the twelve rolls on an item until #73 wires the per-type
+## sets, and #73 measures and retunes them there.
+## The shared on-swing proc chance for stagger, mark and arc - bleed's, so every
+## "chance on hit" weapon stat fires equally often.
+const STAT_PROC_CHANCE := 0.35
+## How long a `mark` lasts on an enemy (Combatant.apply_mark). Refreshed by a
+## new mark, never stacked, like BLEED_DURATION.
+const MARK_DURATION := 4.0
+## `execute` adds its roll to a swing against a target under this HP fraction.
+const EXECUTE_HP_FRACTION := 0.3
+## `twin_strike`'s second hit and `arc`'s jump land this long after the swing,
+## so each reads as its own hit number rather than one merged one.
+const TWIN_STRIKE_DELAY := 0.45
+const ARC_DELAY := 0.3
+## `vitality`'s scaling basis per item level: armor and trinkets have no Power to
+## scale off, and max HP has to grow with the item or a late `vitality` roll
+## would be a rounding error.
+const VITALITY_HP_PER_LEVEL := 4
+## Caps on the summed chance stats, so stacked gear cannot make a hero immune
+## (deflect) or turn the whole party's damage onto one wearer (cover).
+const DEFLECT_CHANCE_CAP := 0.5
+const COVER_FRACTION_CAP := 0.5
 ## [slot vocabulary] What landing a special-charge icon (the gold coin carrying
 ## its owner's profile) adds to that owner's meter, out of SPECIAL_CHARGE_COST.
 ## Every other icon adds 1. A charge icon does nothing else - it replaced the

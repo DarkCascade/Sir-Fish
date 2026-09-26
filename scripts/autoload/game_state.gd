@@ -475,6 +475,9 @@ func party_bonuses() -> Dictionary:
 		"bomb_arrow": 0, "lightning_blast": 0,
 		"armor_block": 0,
 		"crit": 0, "cleave": 0, "rain": 0, "thunderburst": 0,
+		# [backlog P3, issue #75] decision 3.11's stats.
+		"stagger": 0, "mark": 0, "execute": 0, "twin_strike": 0, "arc": 0, "siphon": 0,
+		"deflect": 0, "cover": 0, "bulwark": 0, "thorns": 0, "vitality": 0, "resolve": 0,
 	}
 	# Elemental totals are kept apart rather than summed into one number, because
 	# resistances are the obvious next step (spec 22).
@@ -665,6 +668,19 @@ func hero_bleed(id: StringName) -> int:
 			best = maxi(best, int(mod.get("roll", 0)))
 	return best
 
+## [backlog P3, issue #75] The summed roll of every `stat` modifier on `id`'s
+## gear: a percent for the chance and percent stats, damage for execute / arc /
+## thorns, HP for vitality, charge for resolve. Each id rolls on one slot only
+## (Itemizer.MODIFIERS), so summing the whole set is the same as reading that
+## slot. StatModifiers turns the number into behaviour.
+func hero_stat(id: StringName, stat: StringName) -> int:
+	var total := 0
+	for it: Item in equipped_set(id):
+		for mod: Dictionary in it.modifiers:
+			if StringName(mod.get("id", &"")) == stat:
+				total += int(mod.get("roll", 0))
+	return total
+
 ## [armor items] Flat damage reduction from `id`'s equipped armor - the passive
 ## half of Combatant.armor (the temporary half comes from BLOCK icons).
 func hero_armor(id: StringName) -> int:
@@ -681,11 +697,13 @@ func hero_max_hp(id: StringName) -> int:
 
 ## hero_max_hp() at an explicit level - _apply_xp_to_hero needs the OLD and NEW
 ## max across a level change, and hero_max_hp reads the already-updated level.
+## [backlog P3, issue #75] Plus the `vitality` on their gear. Gear is the same at
+## either level, so the old and new max still differ by exactly the level's HP.
 func _leveled_max_hp(id: StringName, lvl: int) -> int:
 	var s := get_stats(id)
 	if s == null:
 		return 1
-	return s.hp_at(lvl)
+	return s.hp_at(lvl) + hero_stat(id, &"vitality")
 
 ## XP needed to advance FROM `lvl` TO `lvl + 1` (spec §3.2). Parameter named
 ## `lvl`, not `level` - this class already has a `level: LevelDef` field and
