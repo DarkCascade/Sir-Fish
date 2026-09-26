@@ -136,20 +136,21 @@ func _make_geared_item(slot: Item.Slot, rarity: int, level: int,
 	var mods: Array[Dictionary] = []
 	# [icons phase 2] Roll from this exact type's real sub-pool (class-
 	# restricted for weapons/trinkets now, not just slot-restricted).
+	# [backlog P3, issue #73] The type's set of four, dealt without repeats.
 	var pool: Array = Itemizer._modifiers_for_type(type_used).duplicate()
-	var count: int = Itemizer.RARITY_MOD_COUNT[rarity]
+	var count: int = mini(Itemizer.RARITY_MOD_COUNT[rarity], pool.size())
 	for i: int in range(count):
-		if pool.is_empty():
-			pool = Itemizer._modifiers_for_type(type_used).duplicate()   # small pools repeat to reach Enhanced
 		var pick_index: int = RNG.randi_range(0, pool.size() - 1)
 		var def: Dictionary = pool[pick_index]
 		pool.remove_at(pick_index)
-		var is_enhanced_rung: bool = rarity == Item.Rarity.ENHANCED and i == count - 1
 		# [item power model] Roll through the real shared helper so this gear is
 		# exactly as strong as an actually-generated / forged item.
-		var roll: int = Itemizer._roll_icon_magnitude(def, item, is_enhanced_rung)
-		mods.append({ "id": def["id"], "roll": roll, "enhanced": is_enhanced_rung })
+		var roll: int = Itemizer._roll_icon_magnitude(def, item, false)
+		mods.append({ "id": def["id"], "roll": roll, "label": "", "enhanced": false })
 	item.modifiers = mods
+	# [backlog P3, issue #73] Enhanced boosts one of the three, exactly as forge() does.
+	if rarity == Item.Rarity.ENHANCED:
+		Itemizer._boost_enhanced(item)
 	return item
 
 ## The solo warrior's full bag at `level`: the innate icon plus one base icon
@@ -263,9 +264,12 @@ func _boss_hp(level: int) -> int:
 	# Mirrors battle_director.start_combat()'s corrected fix exactly: both
 	# max_hp and hp_per_level scaled before the level resolve, so hp_at()
 	# comes out to hp_at_unboosted(boss_level) * BOSS_HP_MULT.
-	var boosted_base: int = int(round(float(e.max_hp) * Tuning.BOSS_HP_MULT))
-	var boosted_growth: int = int(round(float(e.hp_per_level) * Tuning.BOSS_HP_MULT))
-	return CombatantStats.at_level(boosted_base, boosted_growth, boss_level)
+	# [backlog P3, issue #73] Through hp_at() on a boosted copy, as the director
+	# does, so the boss picks up the enemy HP ramp (Tuning.ENEMY_HP_GROWTH_MULT).
+	var boosted := e.duplicate() as CombatantStats
+	boosted.max_hp = int(round(float(e.max_hp) * Tuning.BOSS_HP_MULT))
+	boosted.hp_per_level = int(round(float(e.hp_per_level) * Tuning.BOSS_HP_MULT))
+	return boosted.hp_at(boss_level)
 
 # --- assertions ---------------------------------------------------------------
 

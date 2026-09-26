@@ -148,50 +148,53 @@ func _test_insufficient_currency() -> void:
 # --- the enhanced marker (spec 10.3) --------------------------------------
 
 func _test_enhanced_marker_and_rolls() -> void:
+	# [backlog P3, issue #73] Reaching Enhanced no longer locks the new icon at
+	# the max. The third modifier rolls like any other, then exactly one of the
+	# item's three - never a charge coin - is boosted by Tuning.ENHANCED_BOOST
+	# (rounded, at least +1) and takes the marker. The other two keep their rolls.
 	_be_rich()
-	var mods_by_id := {}
-	for def: Dictionary in Itemizer.MODIFIERS:
-		mods_by_id[def["id"]] = def
-
 	var early_enhanced := 0
-	var final_plain := 0
-	var out_of_range := 0
+	var marker_count_off := 0
+	var boosted_a_coin := 0
+	var boost_off := 0
+	var others_moved := 0
 	for i: int in range(300):
 		var item := _fresh_common()
-		for step: int in range(3):
-			Itemizer.forge(item)
-			var last: Dictionary = item.modifiers[item.modifiers.size() - 1]
-			var is_final := step == 2
-			if not is_final and last.get("enhanced", false):
+		Itemizer.forge(item)
+		Itemizer.forge(item)
+		for m: Dictionary in item.modifiers:
+			if m.get("enhanced", false):
 				early_enhanced += 1
-			if is_final and not last.get("enhanced", false):
-				final_plain += 1
-			if is_final:
-				# [item power model] The enhanced icon is locked to the max
-				# bonus: FORGE_ICON_POWER_MAX of the item's Power for a
-				# damage-flavoured icon, or the top of the modifier's roll
-				# range for an icon with no Power basis.
-				var def: Dictionary = mods_by_id[last["id"]]
-				var kind: int = SlotIcon.kind_of(StringName(last["id"]))
-				var want: int
-				# [slot vocabulary] bleed is a Power-scaled stat; charge and crit
-				# take their flat range.
-				if kind == SlotIcon.Kind.DAMAGE or StringName(last["id"]) == &"bleed":
-					want = maxi(1, int(round(float(item.power()) * Tuning.FORGE_ICON_POWER_MAX)))
-				elif kind == SlotIcon.Kind.BLOCK:
-					# [armor items] block scales off armor_value, like damage off Power.
-					want = maxi(1, int(round(float(item.armor_value()) * Tuning.FORGE_ICON_POWER_MAX)))
-				else:
-					want = int(def["roll"][1])
-				if int(last["roll"]) != want:
-					out_of_range += 1
+		var before := {}
+		for m: Dictionary in item.modifiers:
+			before[m["id"]] = int(m["roll"])
+		Itemizer.forge(item)
+		var marked: Array[Dictionary] = []
+		for m: Dictionary in item.modifiers:
+			if m.get("enhanced", false):
+				marked.append(m)
+			elif before.has(m["id"]) and int(m["roll"]) != int(before[m["id"]]):
+				others_moved += 1
+		if marked.size() != 1:
+			marker_count_off += 1
+			continue
+		var boosted: Dictionary = marked[0]
+		if SlotIcon.kind_of(StringName(boosted["id"])) == SlotIcon.Kind.CHARGE:
+			boosted_a_coin += 1
+		if before.has(boosted["id"]):
+			var was: int = int(before[boosted["id"]])
+			var want: int = maxi(was + 1, int(round(float(was) * Tuning.ENHANCED_BOOST)))
+			if int(boosted["roll"]) != want:
+				boost_off += 1
 
 	_t.check(early_enhanced == 0,
 		"steps 1-2 never produce an enhanced modifier (%d/600)" % early_enhanced)
-	_t.check(final_plain == 0,
-		"step 3 always produces an enhanced modifier (%d/300 missed)" % final_plain)
-	_t.check(out_of_range == 0,
-		"every enhanced roll is locked to the max bonus (%d/300 off)" % out_of_range)
+	_t.check(marker_count_off == 0,
+		"step 3 marks exactly one modifier enhanced (%d/300 off)" % marker_count_off)
+	_t.check(boosted_a_coin == 0, "the boost never lands on a charge coin (%d/300)" % boosted_a_coin)
+	_t.check(boost_off == 0,
+		"a boosted older modifier is its roll x ENHANCED_BOOST, at least +1 (%d off)" % boost_off)
+	_t.check(others_moved == 0, "the two unboosted modifiers keep their rolls (%d moved)" % others_moved)
 
 # --- the arbitrage gate (spec 10.5) -------------------------------------------
 

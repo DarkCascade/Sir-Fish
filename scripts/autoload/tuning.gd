@@ -109,6 +109,17 @@ const BOSS_LEVEL_BONUS := 1
 ## "how much HP does this unit have" (spec §2.5). Raised 2.5 -> 3.5 with the
 ## BOSS_LEVEL_BONUS retune above - see that constant's comment.
 const BOSS_HP_MULT := 3.5
+## [backlog P3, issue #73] Enemy HP grows ENEMY_HP_GROWTH_MULT times as fast past
+## ENEMY_HP_RAMP_FROM (CombatantStats.hp_at). Decision 3.11's sets made a geared
+## party much stronger from L10 up: ranger and mage weapons now roll damage
+## elements instead of charge coins, trinkets roll an element, and armor rolls
+## crit. That shortened fights, and with them jackpots and specials per fight.
+## Growing enemies was chosen over trimming the sets (2026-09-25), because one
+## lever restores all three and decision 7.7 keeps fight length as it was. It
+## starts past L6 so the easy quest (levels 1-5, its boss one level up) and the
+## first-clear-at-L5 calibration the sims rest on are unchanged.
+const ENEMY_HP_RAMP_FROM := 6
+const ENEMY_HP_GROWTH_MULT := 1.85
 ## Endless depth d runs encounters at level band
 ## (d * ENDLESS_LEVELS_PER_DEPTH, d * ENDLESS_LEVELS_PER_DEPTH + 4) - depth 1 is
 ## levels 3-7, depth 10 is levels 30-34 (spec §2.4).
@@ -140,6 +151,12 @@ const ITEM_VALUE_PER_LEVEL := 0.35
 ## anything else keeps its own roll range from Itemizer.MODIFIERS.
 const FORGE_ICON_POWER_MIN := 1.25
 const FORGE_ICON_POWER_MAX := 1.75
+## [backlog P3, issue #73] Reaching Enhanced multiplies one of the item's three
+## modifiers by this, rounded and always at least +1. It replaced locking the
+## third icon at FORGE_ICON_POWER_MAX. Decision 3.1 said 1.5x; #73 measured that
+## pushing a geared L30 trio under the 3s time-to-kill floor and settled on 1.25x,
+## which puts the strongest damage roll at about 219% of Power, not 262%.
+const ENHANCED_BOOST := 1.25
 
 ## [armor items] How long a BLOCK slot icon's temporary flat armor lasts on a
 ## hero (Combatant.add_temp_armor). Blocks within the window add together;
@@ -389,11 +406,10 @@ const FORGE_COSTS := [
 	[18, 70],     # Magic  -> Rare
 	[30, 120],    # Rare   -> Enhanced
 ]
-## [item power model] The final rung's added icon carries an `enhanced: true`
-## marker the UI tints, and its magnitude is locked to the maximum bonus:
-## FORGE_ICON_POWER_MAX of the item's Power for a DAMAGE / DAMAGE_ALL icon, or
-## the top of the modifier's roll range for an icon with no Power basis. Only that one
-## icon is maxed - the other rungs on an Enhanced item keep their rolls.
+## [backlog P3, issue #73] The final rung's added modifier rolls like any other.
+## Reaching Enhanced then boosts one of the item's three (never a charge coin) by
+## ENHANCED_BOOST, and that one carries the `enhanced: true` marker the UI tints.
+## It replaced locking the new icon at FORGE_ICON_POWER_MAX.
 
 # --- [town] Combat pickups (spec 9) ----------------------------------------------
 ## VALUE rolled per kill, NOT an object count (spec 9.3): spawn

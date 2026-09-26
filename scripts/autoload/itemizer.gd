@@ -12,8 +12,7 @@ extends Node
 ## item.power() scales it by level and the card shows it as "Weapon Damage".
 ## [armor items] ARMOR rows carry `armor` instead - a flat damage reduction
 ## that item.armor_value() scales by level, shown as "Armor". Armor's base slot
-## icon is a BLOCK (a temporary flat-armor buff), never a strike, and armor
-## only rolls the block modifier - see Itemizer.MODIFIERS' `slots` field.
+## icon is a BLOCK (a temporary flat-armor buff), never a strike.
 ## [content phase 1] No `classes` key on any row any more (spec §3 Step 2b) -
 ## class eligibility is read from ClassDef.item_types instead
 ## (weapon_types_for() / Itemizer.classes_for_type()). Weapons stay one class
@@ -25,44 +24,49 @@ extends Node
 ## It is a per-type flag, not something read off the mesh name: the mage's
 ## `2H_Staff` beside her book is KayKit's own default look, so the staff is not
 ## flagged. A type with no `prop` (helm, mail, trinkets) shows nothing in hand.
+## [backlog P3, issue #73] `modifiers` is the type's fixed set of exactly four
+## (decision 3.1, drafted in decision 3.11). Rarity deals from it in random
+## order and never repeats: Magic 1, Rare 2, Enhanced 3, so the fourth is the one
+## that item never drew. A type with no `modifiers` (the authored relics) rolls
+## nothing.
 ## `bow` borrows the crossbow until #78 brings the bow clips; the pack's bow is
 ## drawn left-handed and needs its own draw and release animation.
 const ITEM_TYPES := {
 	# --- weapons ---
-	&"axe":    { "slot": Item.Slot.WEAPON,  "base_value": 20, "power": 6, "nouns": ["Axe", "Hatchet", "Cleaver", "Chopper"], "prop": "axe_1handed" },
-	&"sword":  { "slot": Item.Slot.WEAPON,  "base_value": 22, "power": 6, "nouns": ["Sword", "Blade", "Saber", "Longsword"], "prop": "1H_Sword" },
-	&"bow":    { "slot": Item.Slot.WEAPON,  "base_value": 20, "power": 5, "nouns": ["Bow", "Longbow", "Shortbow", "Recurve"], "prop": "1H_Crossbow" },
-	&"dagger": { "slot": Item.Slot.WEAPON,  "base_value": 18, "power": 5, "nouns": ["Dagger", "Knife", "Dirk", "Shiv"], "prop": "Knife" },
-	&"staff":  { "slot": Item.Slot.WEAPON,  "base_value": 25, "power": 4, "nouns": ["Staff", "Rod", "Cane", "Scepter"], "prop": "2H_Staff" },
+	&"axe":    { "slot": Item.Slot.WEAPON,  "base_value": 20, "power": 6, "nouns": ["Axe", "Hatchet", "Cleaver", "Chopper"], "prop": "axe_1handed", "modifiers": [&"elem_fire", &"elem_ice", &"elem_light", &"bleed"] },
+	&"sword":  { "slot": Item.Slot.WEAPON,  "base_value": 22, "power": 6, "nouns": ["Sword", "Blade", "Saber", "Longsword"], "prop": "1H_Sword", "modifiers": [&"elem_fire", &"elem_ice", &"elem_light", &"bleed"] },
+	&"bow":    { "slot": Item.Slot.WEAPON,  "base_value": 20, "power": 5, "nouns": ["Bow", "Longbow", "Shortbow", "Recurve"], "prop": "1H_Crossbow", "modifiers": [&"elem_fire", &"elem_ice", &"elem_light", &"mark"] },
+	&"dagger": { "slot": Item.Slot.WEAPON,  "base_value": 18, "power": 5, "nouns": ["Dagger", "Knife", "Dirk", "Shiv"], "prop": "Knife", "modifiers": [&"elem_fire", &"elem_ice", &"elem_light", &"twin_strike"] },
+	&"staff":  { "slot": Item.Slot.WEAPON,  "base_value": 25, "power": 4, "nouns": ["Staff", "Rod", "Cane", "Scepter"], "prop": "2H_Staff", "modifiers": [&"elem_fire", &"elem_ice", &"elem_light", &"arc"] },
 	# [backlog P3, issue #74] The roster's new weapons (backlog §3, "Item types after
 	# these decisions"). Each copies its one-handed sibling's Power and value: a
 	# two-hander gives nothing up mechanically yet (P3b's off-hand hiding is visual
 	# only), so more Power would make it a strict upgrade. What sets them apart is
 	# their four-modifier set, drafted in #76.
-	&"greatsword":     { "slot": Item.Slot.WEAPON, "base_value": 22, "power": 6, "nouns": ["Greatsword", "Claymore", "Zweihander", "Flamberge"], "prop": "2H_Sword", "two_handed": true },
-	&"crossbow":       { "slot": Item.Slot.WEAPON, "base_value": 20, "power": 5, "nouns": ["Crossbow", "Latchbow", "Handbow", "Stonebow"], "prop": "1H_Crossbow" },
-	&"heavy_crossbow": { "slot": Item.Slot.WEAPON, "base_value": 20, "power": 5, "nouns": ["Arbalest", "Heavy Crossbow", "Windlass", "Siege Bow"], "prop": "2H_Crossbow", "two_handed": true },
-	&"wand":           { "slot": Item.Slot.WEAPON, "base_value": 25, "power": 4, "nouns": ["Wand", "Baton", "Sprig", "Switch"], "prop": "1H_Wand" },
+	&"greatsword":     { "slot": Item.Slot.WEAPON, "base_value": 22, "power": 6, "nouns": ["Greatsword", "Claymore", "Zweihander", "Flamberge"], "prop": "2H_Sword", "two_handed": true, "modifiers": [&"elem_fire", &"elem_ice", &"elem_light", &"stagger"] },
+	&"crossbow":       { "slot": Item.Slot.WEAPON, "base_value": 20, "power": 5, "nouns": ["Crossbow", "Latchbow", "Handbow", "Stonebow"], "prop": "1H_Crossbow", "modifiers": [&"elem_fire", &"elem_ice", &"elem_light", &"execute"] },
+	&"heavy_crossbow": { "slot": Item.Slot.WEAPON, "base_value": 20, "power": 5, "nouns": ["Arbalest", "Heavy Crossbow", "Windlass", "Siege Bow"], "prop": "2H_Crossbow", "two_handed": true, "modifiers": [&"elem_fire", &"elem_ice", &"elem_light", &"stagger"] },
+	&"wand":           { "slot": Item.Slot.WEAPON, "base_value": 25, "power": 4, "nouns": ["Wand", "Baton", "Sprig", "Switch"], "prop": "1H_Wand", "modifiers": [&"elem_fire", &"elem_ice", &"elem_light", &"siphon"] },
 	# --- armor [armor items] - `armor` is flat damage reduction / level. Kept
 	# well under an enemy's weapon_power_per_level (6) so mitigation is a chip
 	# (~25-35% of a hit), never a wall - a fully-armored party still has to
 	# race the enemy's dps, not ignore it (see test_level_curves' ttd band). ---
-	&"helm":   { "slot": Item.Slot.ARMOR,   "base_value": 18, "armor": 2, "nouns": ["Helm", "Casque", "Barbute", "Coif"] },
-	&"mail":   { "slot": Item.Slot.ARMOR,   "base_value": 24, "armor": 2, "nouns": ["Mail", "Hauberk", "Cuirass", "Plate"] },
+	&"helm":   { "slot": Item.Slot.ARMOR,   "base_value": 18, "armor": 2, "nouns": ["Helm", "Casque", "Barbute", "Coif"], "modifiers": [&"armor_block", &"vitality", &"crit", &"resolve"] },
+	&"mail":   { "slot": Item.Slot.ARMOR,   "base_value": 24, "armor": 2, "nouns": ["Mail", "Hauberk", "Cuirass", "Plate"], "modifiers": [&"armor_block", &"vitality", &"crit", &"resolve"] },
 	# [backlog P3, issue #74] `shield` is retired: shields are the warrior's four
 	# (backlog §3, 2026-09-13 review decision 4), and the mage's armor is the tome. SaveGame's
 	# _migrate_5_to_6() turns every saved `shield` into a `tome`. All five keep the
 	# old shield's value and armor; the four shields get distinct Block mechanics
 	# in #75/#76, not distinct numbers here.
-	&"round_shield":  { "slot": Item.Slot.ARMOR, "base_value": 22, "armor": 2, "nouns": ["Round Shield", "Buckler", "Targe", "Roundel"], "prop": "Round_Shield" },
-	&"kite_shield":   { "slot": Item.Slot.ARMOR, "base_value": 22, "armor": 2, "nouns": ["Kite Shield", "Heater", "Kite", "Scutum"], "prop": "Badge_Shield" },
-	&"tower_shield":  { "slot": Item.Slot.ARMOR, "base_value": 22, "armor": 2, "nouns": ["Tower Shield", "Pavise", "Bulwark", "Mantlet"], "prop": "Rectangle_Shield" },
-	&"spiked_shield": { "slot": Item.Slot.ARMOR, "base_value": 22, "armor": 2, "nouns": ["Spiked Shield", "Thornguard", "Spikeboss", "Hedgeshield"], "prop": "Spike_Shield" },
-	&"tome":          { "slot": Item.Slot.ARMOR, "base_value": 22, "armor": 2, "nouns": ["Tome", "Grimoire", "Codex", "Folio"], "prop": "Spellbook" },
+	&"round_shield":  { "slot": Item.Slot.ARMOR, "base_value": 22, "armor": 2, "nouns": ["Round Shield", "Buckler", "Targe", "Roundel"], "prop": "Round_Shield", "modifiers": [&"armor_block", &"vitality", &"crit", &"deflect"] },
+	&"kite_shield":   { "slot": Item.Slot.ARMOR, "base_value": 22, "armor": 2, "nouns": ["Kite Shield", "Heater", "Kite", "Scutum"], "prop": "Badge_Shield", "modifiers": [&"armor_block", &"vitality", &"crit", &"cover"] },
+	&"tower_shield":  { "slot": Item.Slot.ARMOR, "base_value": 22, "armor": 2, "nouns": ["Tower Shield", "Pavise", "Bulwark", "Mantlet"], "prop": "Rectangle_Shield", "modifiers": [&"armor_block", &"vitality", &"crit", &"bulwark"] },
+	&"spiked_shield": { "slot": Item.Slot.ARMOR, "base_value": 22, "armor": 2, "nouns": ["Spiked Shield", "Thornguard", "Spikeboss", "Hedgeshield"], "prop": "Spike_Shield", "modifiers": [&"armor_block", &"vitality", &"crit", &"thorns"] },
+	&"tome":          { "slot": Item.Slot.ARMOR, "base_value": 22, "armor": 2, "nouns": ["Tome", "Grimoire", "Codex", "Folio"], "prop": "Spellbook", "modifiers": [&"armor_block", &"vitality", &"crit", &"resolve"] },
 	# --- trinkets [town] ---
-	&"ring":   { "slot": Item.Slot.TRINKET, "base_value": 19, "power": 4, "nouns": ["Ring", "Band", "Signet", "Loop"] },
-	&"amulet": { "slot": Item.Slot.TRINKET, "base_value": 21, "power": 4, "nouns": ["Amulet", "Pendant", "Charm", "Talisman"] },
-	&"idol":   { "slot": Item.Slot.TRINKET, "base_value": 23, "power": 5, "nouns": ["Idol", "Fetish", "Totem", "Effigy"] },
+	&"ring":   { "slot": Item.Slot.TRINKET, "base_value": 19, "power": 4, "nouns": ["Ring", "Band", "Signet", "Loop"], "modifiers": [&"crit", &"rain", &"vitality", &"elem_ice"] },
+	&"amulet": { "slot": Item.Slot.TRINKET, "base_value": 21, "power": 4, "nouns": ["Amulet", "Pendant", "Charm", "Talisman"], "modifiers": [&"crit", &"thunderburst", &"vitality", &"elem_light"] },
+	&"idol":   { "slot": Item.Slot.TRINKET, "base_value": 23, "power": 5, "nouns": ["Idol", "Fetish", "Totem", "Effigy"], "modifiers": [&"crit", &"cleave", &"vitality", &"elem_fire"] },
 	# --- authored relics [recruitment] - never rolled by any generator below:
 	# no ClassDef lists these in item_types, so _roll_typed()/generate_drop()
 	# can never reach them. Exists only so a hand-authored RELIC Item (see
@@ -86,15 +90,11 @@ const ADJECTIVES := [
 # the chip's corner badge is "+%d" or "+%d%%" of the roll, and `caption` is the
 # short label under it. `label` stays the source of truth for every text
 # renderer (inventory row count, the change list); the two new keys are additive.
-## [icons phase 2] Each def carries `slots` (the Item.Slot values that may roll
-## it) and an optional `types` (the specific Itemizer.ITEM_TYPES keys that may
-## roll it, within those slots). No `types` key means every type in `slots` is
-## eligible - that's how armor_block stays shared across all three
-## armor types regardless of who wears them, and `crit` stays shared across all
-## three trinket types. A def WITH `types` is how warrior weapons, ranger
-## weapons, mage weapons and each class's trinket ultimate stay exclusive to
-## their own item types. _modifiers_for_type() filters on both before
-## _generate_typed()/forge() pick from the result.
+## [backlog P3, issue #73] Which types roll a def is no longer derived from it:
+## each ITEM_TYPES row names its own four (`modifiers`), and the `slots` / `types`
+## filter this table used to carry is gone. A def no set names (`bomb_arrow`,
+## `lightning_blast`) stays here so saved items, force_modifier() and the Debug
+## harness still resolve it.
 ## [backlog P7] Modifier ids that no longer exist, and the saved items still
 ## carrying them. Item.from_dict() drops these on load, so a card never advertises
 ## a stat that does nothing. slot_mend went with the slot's heal: healing is the
@@ -105,10 +105,10 @@ const MODIFIERS := [
 	# --- warrior weapons (axe, sword, greatsword): elements + the physical bleed DoT ---
 	# [slot vocabulary] bleed is a weapon STAT, not a board icon: its roll is the
 	# per-tick damage of the bleed a swing opens with Tuning.BLEED_PROC_CHANCE.
-	{ "id": &"elem_fire",  "label": "+%d Fire Damage",   "caption": "Fire Damage",   "pct": false, "roll": [3, 11], "value_mult": [0.35, 0.70], "slots": [Item.Slot.WEAPON], "types": [&"axe", &"sword", &"greatsword"] },
-	{ "id": &"elem_ice",   "label": "+%d Ice Damage",    "caption": "Ice Damage",    "pct": false, "roll": [3, 11], "value_mult": [0.35, 0.70], "slots": [Item.Slot.WEAPON], "types": [&"axe", &"sword", &"greatsword"] },
-	{ "id": &"elem_light", "label": "+%d Lightning Dmg", "caption": "Lightning Dmg", "pct": false, "roll": [3, 11], "value_mult": [0.35, 0.70], "slots": [Item.Slot.WEAPON], "types": [&"axe", &"sword", &"greatsword"] },
-	{ "id": &"bleed",      "label": "+%d Bleed on Hit",  "caption": "Bleed on Hit",         "pct": false, "roll": [3, 11], "value_mult": [0.35, 0.70], "slots": [Item.Slot.WEAPON], "types": [&"axe", &"sword", &"greatsword"] },
+	{ "id": &"elem_fire",  "label": "+%d Fire Damage",   "caption": "Fire Damage",   "pct": false, "roll": [3, 11], "value_mult": [0.35, 0.70] },
+	{ "id": &"elem_ice",   "label": "+%d Ice Damage",    "caption": "Ice Damage",    "pct": false, "roll": [3, 11], "value_mult": [0.35, 0.70] },
+	{ "id": &"elem_light", "label": "+%d Lightning Dmg", "caption": "Lightning Dmg", "pct": false, "roll": [3, 11], "value_mult": [0.35, 0.70] },
+	{ "id": &"bleed",      "label": "+%d Bleed on Hit",  "caption": "Bleed on Hit",         "pct": false, "roll": [3, 11], "value_mult": [0.35, 0.70] },
 	# --- ranger weapons (bow, dagger, both crossbows): a charge for the ranger's special ---
 	# [slot vocabulary] The four special-charge ids (bomb_arrow, cleave, rain,
 	# thunderburst) only fill their owner's meter when they land, by a fixed
@@ -116,36 +116,33 @@ const MODIFIERS := [
 	# Power-scaled (_roll_icon_magnitude), and the card reads "+3 ... Charge".
 	# A literal [3, 3], because a const cannot read an autoload's constant in
 	# the editor; test_content_registry fails if the two drift apart.
-	{ "id": &"bomb_arrow", "label": "+%d Bomb Arrow Charge", "caption": "Bomb Arrow Charge", "pct": false, "roll": [3, 3],  "value_mult": [0.40, 0.75], "slots": [Item.Slot.WEAPON], "types": [&"bow", &"dagger", &"crossbow", &"heavy_crossbow"] },
+	{ "id": &"bomb_arrow", "label": "+%d Bomb Arrow Charge", "caption": "Bomb Arrow Charge", "pct": false, "roll": [3, 3],  "value_mult": [0.40, 0.75] },
 	# --- mage weapons (staff, wand): the stronger single-target bolt ---
-	{ "id": &"lightning_blast", "label": "+%d Lightning Blast", "caption": "Lightning Blast", "pct": false, "roll": [4, 14], "value_mult": [0.55, 0.90], "slots": [Item.Slot.WEAPON], "types": [&"staff", &"wand"] },
+	{ "id": &"lightning_blast", "label": "+%d Lightning Blast", "caption": "Lightning Blast", "pct": false, "roll": [4, 14], "value_mult": [0.55, 0.90] },
 	# --- armor (helm, mail, the four shields, tome): shared pool, any class ---
-	{ "id": &"armor_block", "label": "+%d Block",        "caption": "Block",         "pct": false, "roll": [3, 9],  "value_mult": [0.35, 0.70], "slots": [Item.Slot.ARMOR] },
+	{ "id": &"armor_block", "label": "+%d Block",        "caption": "Block",         "pct": false, "roll": [3, 9],  "value_mult": [0.35, 0.70] },
 	# --- trinkets (ring, amulet, idol): crit is universal, the rest exclusive ---
 	# [slot vocabulary] crit is a wearer STAT: its roll is a flat percent chance
 	# for all the wearer's attacks to deal double (GameState.hero_crit_chance).
-	{ "id": &"crit",         "label": "+%d%% Crit Chance", "caption": "Crit Chance", "pct": true, "roll": [4, 10], "value_mult": [0.35, 0.70], "slots": [Item.Slot.TRINKET] },
-	{ "id": &"cleave",       "label": "+%d Cleave Charge", "caption": "Cleave Charge", "pct": false, "roll": [3, 3], "value_mult": [0.40, 0.75], "slots": [Item.Slot.TRINKET], "types": [&"idol"] },
-	{ "id": &"rain",         "label": "+%d Rain Charge",  "caption": "Rain Charge",  "pct": false, "roll": [3, 3], "value_mult": [0.40, 0.75], "slots": [Item.Slot.TRINKET], "types": [&"ring"] },
-	{ "id": &"thunderburst", "label": "+%d Thunderburst Charge", "caption": "Thunderburst Charge", "pct": false, "roll": [3, 3],  "value_mult": [0.40, 0.75], "slots": [Item.Slot.TRINKET], "types": [&"amulet"] },
+	{ "id": &"crit",         "label": "+%d%% Crit Chance", "caption": "Crit Chance", "pct": true, "roll": [4, 10], "value_mult": [0.35, 0.70] },
+	{ "id": &"cleave",       "label": "+%d Cleave Charge", "caption": "Cleave Charge", "pct": false, "roll": [3, 3], "value_mult": [0.40, 0.75] },
+	{ "id": &"rain",         "label": "+%d Rain Charge",  "caption": "Rain Charge",  "pct": false, "roll": [3, 3], "value_mult": [0.40, 0.75] },
+	{ "id": &"thunderburst", "label": "+%d Thunderburst Charge", "caption": "Thunderburst Charge", "pct": false, "roll": [3, 3],  "value_mult": [0.40, 0.75] },
 	# --- [backlog P3, issue #75] decision 3.11's twelve off-board stats ---------
-	# `types: []` keeps each one out of every pool for now: #73 puts them on the
-	# types decision 3.11 names, when the four-per-type rule replaces this
-	# derivation. Until then they exist only for force_modifier() and the tests.
 	# Mechanics are in StatModifiers; rolls marked Power / armor / level scale in
 	# _roll_icon_magnitude(), the rest are flat percents or charge.
-	{ "id": &"stagger",     "label": "+%d%% Stagger",        "caption": "Stagger",        "pct": true,  "roll": [15, 35], "value_mult": [0.35, 0.70], "slots": [Item.Slot.WEAPON], "types": [] },
-	{ "id": &"mark",        "label": "+%d%% Mark",           "caption": "Mark",           "pct": true,  "roll": [8, 20],  "value_mult": [0.35, 0.70], "slots": [Item.Slot.WEAPON], "types": [] },
-	{ "id": &"execute",     "label": "+%d Execute",          "caption": "Execute",        "pct": false, "roll": [3, 11],  "value_mult": [0.35, 0.70], "slots": [Item.Slot.WEAPON], "types": [] },
-	{ "id": &"twin_strike", "label": "+%d%% Twin Strike",    "caption": "Twin Strike",    "pct": true,  "roll": [8, 20],  "value_mult": [0.35, 0.70], "slots": [Item.Slot.WEAPON], "types": [] },
-	{ "id": &"arc",         "label": "+%d Arc",              "caption": "Arc",            "pct": false, "roll": [3, 11],  "value_mult": [0.35, 0.70], "slots": [Item.Slot.WEAPON], "types": [] },
-	{ "id": &"siphon",      "label": "+%d%% Siphon",         "caption": "Siphon",         "pct": true,  "roll": [15, 35], "value_mult": [0.35, 0.70], "slots": [Item.Slot.WEAPON], "types": [] },
-	{ "id": &"deflect",     "label": "+%d%% Deflect",        "caption": "Deflect",        "pct": true,  "roll": [4, 10],  "value_mult": [0.35, 0.70], "slots": [Item.Slot.ARMOR], "types": [] },
-	{ "id": &"cover",       "label": "+%d%% Cover",          "caption": "Cover",          "pct": true,  "roll": [10, 25], "value_mult": [0.35, 0.70], "slots": [Item.Slot.ARMOR], "types": [] },
-	{ "id": &"bulwark",     "label": "+%d%% Bulwark",        "caption": "Bulwark",        "pct": true,  "roll": [15, 40], "value_mult": [0.35, 0.70], "slots": [Item.Slot.ARMOR], "types": [] },
-	{ "id": &"thorns",      "label": "+%d Thorns",           "caption": "Thorns",         "pct": false, "roll": [3, 9],   "value_mult": [0.35, 0.70], "slots": [Item.Slot.ARMOR], "types": [] },
-	{ "id": &"vitality",    "label": "+%d Max HP",           "caption": "Max HP",         "pct": false, "roll": [5, 15],  "value_mult": [0.35, 0.70], "slots": [Item.Slot.ARMOR, Item.Slot.TRINKET], "types": [] },
-	{ "id": &"resolve",     "label": "+%d Starting Charge",  "caption": "Starting Charge", "pct": false, "roll": [1, 3],  "value_mult": [0.35, 0.70], "slots": [Item.Slot.ARMOR], "types": [] },
+	{ "id": &"stagger",     "label": "+%d%% Stagger",        "caption": "Stagger",        "pct": true,  "roll": [15, 35], "value_mult": [0.35, 0.70] },
+	{ "id": &"mark",        "label": "+%d%% Mark",           "caption": "Mark",           "pct": true,  "roll": [8, 20],  "value_mult": [0.35, 0.70] },
+	{ "id": &"execute",     "label": "+%d Execute",          "caption": "Execute",        "pct": false, "roll": [3, 11],  "value_mult": [0.35, 0.70] },
+	{ "id": &"twin_strike", "label": "+%d%% Twin Strike",    "caption": "Twin Strike",    "pct": true,  "roll": [8, 20],  "value_mult": [0.35, 0.70] },
+	{ "id": &"arc",         "label": "+%d Arc",              "caption": "Arc",            "pct": false, "roll": [3, 11],  "value_mult": [0.35, 0.70] },
+	{ "id": &"siphon",      "label": "+%d%% Siphon",         "caption": "Siphon",         "pct": true,  "roll": [15, 35], "value_mult": [0.35, 0.70] },
+	{ "id": &"deflect",     "label": "+%d%% Deflect",        "caption": "Deflect",        "pct": true,  "roll": [4, 10],  "value_mult": [0.35, 0.70] },
+	{ "id": &"cover",       "label": "+%d%% Cover",          "caption": "Cover",          "pct": true,  "roll": [10, 25], "value_mult": [0.35, 0.70] },
+	{ "id": &"bulwark",     "label": "+%d%% Bulwark",        "caption": "Bulwark",        "pct": true,  "roll": [15, 40], "value_mult": [0.35, 0.70] },
+	{ "id": &"thorns",      "label": "+%d Thorns",           "caption": "Thorns",         "pct": false, "roll": [3, 9],   "value_mult": [0.35, 0.70] },
+	{ "id": &"vitality",    "label": "+%d Max HP",           "caption": "Max HP",         "pct": false, "roll": [5, 15],  "value_mult": [0.35, 0.70] },
+	{ "id": &"resolve",     "label": "+%d Starting Charge",  "caption": "Starting Charge", "pct": false, "roll": [1, 3],  "value_mult": [0.35, 0.70] },
 ]
 
 # 13.2 Rarity: weight, modifier count, value multiplier range.
@@ -281,14 +278,19 @@ func forge(item: Item) -> bool:
 		return false
 	var pool := _modifier_pool_excluding(item)
 	if pool.is_empty():
-		return false                       # unreachable: the pool falls back to repeats
+		# Unreachable for a generated item: a set of four outlasts the three a
+		# full ladder deals. Only a hand-authored relic (no set) lands here.
+		return false
 	if not GameState.spend_scrap(int(cost[0])):
 		return false
 	if not GameState.spend_gold(int(cost[1])):
 		GameState.add_scrap(int(cost[0]))  # refund - never half-charge
 		return false
-	var enhanced: bool = item.rarity == Item.Rarity.RARE
-	item.modifiers.append(_roll_modifier(pool, item, enhanced))
+	# [backlog P3, issue #73] The third modifier rolls like any other; reaching
+	# Enhanced then boosts one of the three (_boost_enhanced).
+	item.modifiers.append(_roll_modifier(pool, item, false))
+	if item.rarity == Item.Rarity.RARE:
+		_boost_enhanced(item)
 	item.rarity = (item.rarity + 1) as Item.Rarity
 	item.forge_count += 1
 	item.value += int(cost[1])             # spec 10.5 - the gold half only
@@ -312,28 +314,50 @@ func _modifier_pool_excluding(item: Item) -> Array:
 	for def: Dictionary in slot_pool:
 		if not have.has(def["id"]):
 			pool.append(def)
-	# [icons phase 2] Every pool here is small (armor: {block}; ranger/mage
-	# weapons: one id apiece; a trinket type: {crit, its own ultimate}) - once
-	# all of it is carried, the last forge rung has to repeat a roll rather than
-	# stall the ladder short of Enhanced. Only the warrior weapon pool of 4
-	# outlasts the 3 distinct picks a full ladder needs.
-	return pool if not pool.is_empty() else slot_pool
+	# [backlog P3, issue #73] No repeat fallback any more: a set of four always
+	# has one left after the at-most-three a ladder deals.
+	return pool
 
-## [icons phase 2] The MODIFIERS entries `wtype` may roll: every def whose
-## `slots` includes wtype's slot AND (no `types` key, or `types` includes
-## wtype). This is what keeps warrior weapons off the ranger/mage pools, each
-## class's trinket off the others' ultimates, and armor/`crit` shared across
-## every type in their slot.
+## [backlog P3, issue #73] The MODIFIERS defs in `wtype`'s set of four, in the
+## set's order. Empty for a type with no set (the authored relics).
 func _modifiers_for_type(wtype: StringName) -> Array:
-	var slot: int = int(ITEM_TYPES.get(wtype, {}).get("slot", Item.Slot.WEAPON))
 	var out: Array = []
-	for def: Dictionary in MODIFIERS:
-		if not (def["slots"] as Array).has(slot):
-			continue
-		if def.has("types") and not (def["types"] as Array).has(wtype):
-			continue
-		out.append(def)
+	for id: Variant in ITEM_TYPES.get(wtype, {}).get("modifiers", []):
+		var def := modifier_def(StringName(id))
+		if not def.is_empty():
+			out.append(def)
 	return out
+
+## [backlog P3, issue #73] Reaching Enhanced boosts one of the item's modifiers
+## by Tuning.ENHANCED_BOOST (rounded, always at least +1), re-renders its label
+## and gives it the `enhanced` marker the UI tints. Never a charge coin: a
+## coin's roll is never read (it fills its owner's meter by a fixed amount), so
+## boosting one would change only its label. A saved modifier with no def left
+## is skipped too.
+func _boost_enhanced(item: Item) -> void:
+	var candidates: Array[Dictionary] = []
+	for mod: Dictionary in item.modifiers:
+		var id := StringName(mod.get("id", &""))
+		if SlotIcon.kind_of(id) == SlotIcon.Kind.CHARGE or modifier_def(id).is_empty():
+			continue
+		candidates.append(mod)
+	if candidates.is_empty():
+		return
+	var mod: Dictionary = candidates[RNG.randi_range(0, candidates.size() - 1)]
+	var before := int(mod.get("roll", 0))
+	var boosted := maxi(before + 1, int(round(float(before) * Tuning.ENHANCED_BOOST)))
+	mod["roll"] = boosted
+	mod["label"] = (modifier_def(StringName(mod["id"]))["label"] as String) % boosted
+	mod["enhanced"] = true
+
+## [backlog P3, issue #73] The highest roll `mod` may legitimately carry: its
+## def's range top, times Tuning.ENHANCED_BOOST when it is the boosted one. This
+## is what the load-time and read-time clamps allow, so neither undoes a boost.
+func modifier_roll_cap(mod: Dictionary) -> int:
+	var top := modifier_roll_max(StringName(mod.get("id", &"")))
+	if bool(mod.get("enhanced", false)):
+		return maxi(top + 1, int(round(float(top) * Tuning.ENHANCED_BOOST)))
+	return top
 
 ## [item power model] One rarity icon's magnitude, shared by generation and
 ## forge() so a found item and a forged item of the same rarity roll their
@@ -420,7 +444,8 @@ func refresh_saved_modifier(mod: Dictionary) -> void:
 	var def := modifier_def(id)
 	if def.is_empty():
 		return
-	var roll := clampi(int(mod.get("roll", 0)), int(def["roll"][0]), int(def["roll"][1]))
+	# [backlog P3, issue #73] A boosted roll may sit above the range top.
+	var roll := clampi(int(mod.get("roll", 0)), int(def["roll"][0]), modifier_roll_cap(mod))
 	mod["roll"] = roll
 	mod["label"] = (def["label"] as String) % roll
 	mod["caption"] = def["caption"]
