@@ -193,20 +193,28 @@ func _warrior_loadout(level: int) -> Array[Item]:
 ## one icon per modifier - what SlotMachine._rebuild_bag() adds for that hero.
 ## [item power model] The innate damage icon is 100% of the EQUIPPED weapon's
 ## Power, not a fraction of a hero stat (0 when the hero holds no weapon).
+## [issue #103] Every icon is stamped with `owner`, as _rebuild_bag() does, so the
+## Healing Aura model can count the mage's own charge. Damage ignores the owner.
 func _hero_icons(hero_class: StringName, items: Array[Item]) -> Array:
-	var weapon_power := 0
+	var icons: Array = [SlotIcon.innate(hero_class, _weapon_power(items))]
 	for item: Item in items:
-		if item.slot() == Item.Slot.WEAPON:
-			weapon_power = item.power()
-			break
-	var icons: Array = [SlotIcon.innate(hero_class, weapon_power)]
-	for item: Item in items:
-		icons.append(SlotIcon.from_item_base(item))
+		var base_icon := SlotIcon.from_item_base(item)
+		base_icon["owner"] = hero_class
+		icons.append(base_icon)
 		for mod: Dictionary in item.modifiers:
 			var ic := SlotIcon.from_modifier(mod, item)
 			if not ic.is_empty():
+				ic["owner"] = hero_class
 				icons.append(ic)
 	return icons
+
+## The equipped weapon's Power among `items`, 0 when unarmed - the harness's
+## GameState.hero_weapon_power().
+func _weapon_power(items: Array[Item]) -> int:
+	for item: Item in items:
+		if item.slot() == Item.Slot.WEAPON:
+			return item.power()
+	return 0
 
 # --- output model ------------------------------------------------------------
 
@@ -437,8 +445,9 @@ func _case_crossover_table() -> void:
 #   - BOMB_ARROW / THUNDERBURST: hit every enemy, so once per enemy in the group.
 #   - RAIN / CLEAVE: the buffed swing also lands on the other enemies
 #     (approximated as the same spin's swing; rain hits all, cleave up to two).
-#   (The slot no longer heals - healing is the mage's invokable Healing Aura,
-#   which this model does not credit, so party life is HP alone.)
+#   - [issue #103] The mage's Healing Aura, the party's only in-run healing.
+#     See "Healing Aura model" below; it is reported beside the HP-only figures
+#     rather than folded into them.
 # Left out, as the solo model leaves them out: crit doubling, bleed ticks,
 # payline double-resolves, BLOCK's temporary armor, the trinket ultimates' 25%
 # per-spin drop, and a hero dying mid-fight (its icons leave the bag).
@@ -451,6 +460,24 @@ func _case_crossover_table() -> void:
 #   ttd         time for the group to kill the whole party (total party HP over
 #               group dps, per-hit reduced by each hero's own armor, all
 #               heroes equally likely to be hit).
+#   fights/bar  how many group fights one full party HP bar lasts. Heroes keep
+#               their HP between encounters (BattleDirector's header), so this,
+#               not ttd, is what the inn and a heal are measured against. The
+#               party takes fire from every enemy still standing while it
+#               focuses them down one at a time.
+#
+# Healing Aura model [issue #103]. HealAllyAbility heals the lowest-HP hero for
+# the mage's equipped weapon Power x heal_multiplier. Her meter fills exactly as
+# SlotMachine._resolve_board fills it: +1 per non-blank icon she owns,
+# SLOT_CHARGE_ICON_CHARGE for a charge coin, twice for a cell on a winning
+# payline. It holds SPECIAL_CHARGE_COST and carries across encounters (it only
+# clears when an expedition starts), so a cast every cost/charge-per-spin spins
+# is the steady rate, and fractional casts per fight are real. The player is
+# assumed to press it the moment it is full. Overheal is not modelled (between
+# fights the party is steadily losing HP, so the lowest hero is rarely near full),
+# and neither is a meal's damage_multiplier, which the heal also scales by.
+#   aura        HP per cast, casts per group fight, and the two figures above
+#               with the aura's healing credited.
 
 ## The authored relic each recruitment quest hands over - what the recruit is
 ## actually wearing the moment they join (RecruitRewardExtra.grant()).
@@ -496,15 +523,32 @@ func _geared_entry(hero_class: StringName, level: int) -> Dictionary:
 ## fills a meter and the old on-board AoE / cleave / rain effects are gone, so
 ## `group` damage is single-target damage (the specials those coins fund are
 ## player-invoked and not modelled here, same as before).
+##
+## [issue #103] Also each owner's mean special charge per spin, read off the same
+## boards (winning_lines draws nothing from the RNG, so every damage figure is
+## unchanged). Unlike damage, the charge credits payline doubling, as the meter does.
 func _spin_stats(bag: Array, _group: int, samples: int = 8000) -> Dictionary:
 	var single := 0.0
+	var charge := {}
 	for _i: int in range(samples):
-		for ic: Dictionary in SlotMachineScript.draw_nine(bag):
-			if SlotIcon.kind_of(StringName(ic.get("id", &""))) == SlotIcon.Kind.DAMAGE:
+		var board: Array = SlotMachineScript.draw_nine(bag)
+		var doubled := SlotMachineScript.jackpot_cells(SlotMachineScript.winning_lines(board))
+		for idx: int in range(board.size()):
+			var ic: Dictionary = board[idx]
+			var kind: int = SlotIcon.kind_of(StringName(ic.get("id", &"")))
+			if kind == SlotIcon.Kind.BLANK:
+				continue
+			if kind == SlotIcon.Kind.DAMAGE:
 				single += float(ic.get("roll", 0)) + float(Tuning.SLOT_ATTACK_ICON_FLOOR)
+			var owner := StringName(ic.get("owner", &""))
+			var per := Tuning.SLOT_CHARGE_ICON_CHARGE if kind == SlotIcon.Kind.CHARGE else 1
+			charge[owner] = float(charge.get(owner, 0.0)) + float(per * (2 if doubled.has(idx) else 1))
+	for owner: StringName in charge:
+		charge[owner] = float(charge[owner]) / float(samples)
 	return {
 		"single": single / float(samples),
 		"group": single / float(samples),
+		"charge": charge,
 	}
 
 ## The six figures the party cases read, for `party` against regular enemies of
@@ -525,18 +569,52 @@ func _party_metrics(party: Array, enemy_level: int) -> Dictionary:
 		bag.append(SlotIcon.blank())
 	var spin := _spin_stats(bag, ENEMY_GROUP_SIZE)
 	var enemy_hp := float(e.hp_at(enemy_level))
-	var group_dps: float = (hit_sum / float(party.size())) \
-		/ (e.attack_cooldown + ENEMY_ATTACK_CLIP) * float(ENEMY_GROUP_SIZE)
-	return {
-		"ttk_single": enemy_hp / (float(spin["single"]) / _SPIN_CYCLE),
-		"ttk_group": enemy_hp * float(ENEMY_GROUP_SIZE) / (float(spin["group"]) / _SPIN_CYCLE),
+	var enemy_dps: float = (hit_sum / float(party.size())) / (e.attack_cooldown + ENEMY_ATTACK_CLIP)
+	var group_dps: float = enemy_dps * float(ENEMY_GROUP_SIZE)
+	var ttk_single: float = enemy_hp / (float(spin["single"]) / _SPIN_CYCLE)
+	var ttk_group: float = enemy_hp * float(ENEMY_GROUP_SIZE) / (float(spin["group"]) / _SPIN_CYCLE)
+	# Focus fire: all N enemies swing until the first falls, then N-1, ... - so
+	# the fight costs enemy_dps * ttk_single * (N + ... + 1).
+	var hp_lost: float = enemy_dps * ttk_single \
+		* float(ENEMY_GROUP_SIZE * (ENEMY_GROUP_SIZE + 1)) / 2.0
+	var m := {
+		"ttk_single": ttk_single,
+		"ttk_group": ttk_group,
 		"ttd": float(party_hp) / group_dps,
 		"party_hp": party_hp,
+		"fights_per_bar": float(party_hp) / hp_lost,
+	}
+	for h: Dictionary in party:
+		if h["class"] == &"mage":
+			m.merge(_aura_metrics(h, spin, m, group_dps, hp_lost))
+	return m
+
+## [issue #103] The Healing Aura figures for `mage` (one party entry), given the
+## party's spin stats, its HP-only metrics `m`, and the damage it takes.
+func _aura_metrics(mage: Dictionary, spin: Dictionary, m: Dictionary,
+		group_dps: float, hp_lost: float) -> Dictionary:
+	var ability := GameState.get_stats(&"mage").special as HealAllyAbility
+	# HealAllyAbility.resolve()'s own floor: never less than 1.
+	var heal: int = maxi(1, int(round(float(_weapon_power(mage["items"])) * ability.heal_multiplier)))
+	var charge_per_spin := float((spin["charge"] as Dictionary).get(&"mage", 0.0))
+	var cast_interval: float = float(Tuning.SPECIAL_CHARGE_COST) / charge_per_spin * _SPIN_CYCLE
+	var casts: float = float(m["ttk_group"]) / cast_interval
+	var net_loss: float = hp_lost - casts * float(heal)
+	var party_hp := float(m["party_hp"])
+	return {
+		"aura_heal": heal,
+		"aura_casts": casts,
+		"ttd_aura": party_hp / maxf(group_dps - float(heal) / cast_interval, 0.001),
+		# The aura out-heals the fight: the bar never runs down.
+		"fights_per_bar_aura": INF if net_loss <= 0.0 else party_hp / net_loss,
 	}
 
 func _print_party(label: String, m: Dictionary) -> void:
-	print("  %-34s ttk %.1fs single / %.1fs group | ttd %.1fs (party hp %d)"
-		% [label, m["ttk_single"], m["ttk_group"], m["ttd"], m["party_hp"]])
+	print("  %-34s ttk %.1fs single / %.1fs group | ttd %.1fs (party hp %d) | %.1f fights/bar"
+		% [label, m["ttk_single"], m["ttk_group"], m["ttd"], m["party_hp"], m["fights_per_bar"]])
+	if m.has("aura_heal"):
+		print("  %-34s aura %d hp x %.2f casts/fight -> ttd %.1fs | %.1f fights/bar"
+			% ["", m["aura_heal"], m["aura_casts"], m["ttd_aura"], m["fights_per_bar_aura"]])
 
 ## Recruits are meant to make the early game easier: at the levels the recruit
 ## quests open, every recruit must shorten the fight and lengthen the party's
@@ -587,6 +665,9 @@ func _case_recruit_ease() -> void:
 			% [ranger_join, solo5["ttk_group"], ranger_late["ttk_group"], solo5["ttd"], ranger_late["ttd"]])
 	# The mage adds HP and, now that her innate icon is a staff strike, some
 	# damage; assert the fight is no slower rather than pinning her damage.
+	# [issue #103] Her aura row prints 1 HP and is deliberately not asserted: she
+	# joins holding only the heartstone, a trinket, and the heal reads her WEAPON's
+	# Power, so it heals HealAllyAbility's floor of 1 until a staff drops.
 	_t.check(trio5["ttd"] > ranger5["ttd"],
 		"L5: the mage recruit lengthens the party's life (%.1fs -> %.1fs)" % [ranger5["ttd"], trio5["ttd"]])
 	_t.check(trio5["ttk_group"] <= ranger5["ttk_group"] * 1.03,
@@ -595,7 +676,8 @@ func _case_recruit_ease() -> void:
 
 ## The late game with a full, fully-geared party, next to the solo warrior the
 ## solo bands hold. Asserts only that the party stays inside the solo bands'
-## 3-9s ttk window and lives longer than the solo warrior: nothing pins what
+## 3-9s ttk window and lives longer than the solo warrior, and that its Healing
+## Aura keeps its cadence and is worth casting ([issue #103]): nothing pins what
 ## the late game SHOULD be for a party of three (the solo bands were tuned for
 ## one hero), so the printed gap between the two rows is the thing to read.
 func _case_full_party_bands() -> void:
@@ -613,6 +695,14 @@ func _case_full_party_bands() -> void:
 		_t.check(trio["ttd"] > solo["ttd"],
 			"L%d: a full geared party outlasts the solo warrior (%.1fs vs %.1fs)"
 				% [level, trio["ttd"], solo["ttd"]])
+		# [issue #103] The cadence SPECIAL_CHARGE_COST was picked for, and a heal
+		# big enough to matter: the 10% floor is what the old fallback-to-1 heal
+		# (HealAllyAbility's note) would have failed.
+		_t.check_between(trio["aura_casts"], 0.5, 3.0,
+			"L%d: Healing Aura fires about once or twice a group fight" % level)
+		_t.check(trio["fights_per_bar_aura"] >= trio["fights_per_bar"] * 1.1,
+			"L%d: Healing Aura stretches a full party's HP bar by 10%%+ (%.1f -> %.1f fights)"
+				% [level, trio["fights_per_bar"], trio["fights_per_bar_aura"]])
 
 # --- [slot vocabulary] jackpots per battle -------------------------------------
 
