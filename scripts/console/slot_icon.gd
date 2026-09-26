@@ -113,8 +113,19 @@ static func category_of(id: StringName) -> StringName:
 
 ## [slot vocabulary] The weapon-glyph key for an item type: the authored relic
 ## bow draws as a bow.
+## [backlog P3, issue #74] The roster's new weapons have no board glyph yet, so
+## each borrows its nearest relative's until real glyphs are generated (#188).
+## Without this they fell back to the generic gold sword (glyph_dmg_flat).
+const _BORROWED_WEAPON_GLYPHS := {
+	&"warbow": &"bow",
+	&"greatsword": &"sword",
+	&"crossbow": &"bow",
+	&"heavy_crossbow": &"bow",
+	&"wand": &"staff",
+}
+
 static func weapon_glyph_key(weapon_type: StringName) -> StringName:
-	return &"bow" if weapon_type == &"warbow" else weapon_type
+	return _BORROWED_WEAPON_GLYPHS.get(weapon_type, weapon_type)
 
 static func is_innate(id: StringName) -> bool:
 	return id == INNATE_DAMAGE
