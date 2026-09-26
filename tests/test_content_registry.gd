@@ -18,6 +18,7 @@ func _ready() -> void:
 	_check_all_stats()
 	_check_quests()
 	_check_charge_modifiers()
+	_check_weapon_board_glyphs()
 	_t.finish(get_tree(), "test_content_registry")
 
 ## [slot vocabulary] The four special-charge modifiers carry a literal roll in
@@ -159,3 +160,15 @@ func _check_quests() -> void:
 		_t.check(not q.objectives.is_empty(),
 			"%s: objectives is non-empty (spec §3 Step 1a)" % clean)
 	_t.check(any, "at least one QuestDef found in %s" % QUESTS_DIR)
+
+## [backlog P3, issue #74] Every weapon a class can wield draws a real weapon
+## glyph on the board, its own or a borrowed one (SlotIcon.weapon_glyph_key),
+## never the generic gold sword a missing glyph falls back to.
+func _check_weapon_board_glyphs() -> void:
+	for cdef: ClassDef in GameState.all_class_defs():
+		for wtype: StringName in cdef.item_types:
+			if int(Itemizer.ITEM_TYPES[wtype].get("slot", Item.Slot.WEAPON)) != Item.Slot.WEAPON:
+				continue
+			var path := SlotIcon.board_glyph_path_for({"id": SlotIcon.BASE_WEAPON, "weapon": wtype})
+			_t.check(path.contains("glyph_weapon_"),
+				"%s strikes draw a weapon glyph, not the generic sword (got %s)" % [wtype, path.get_file()])
