@@ -14,5 +14,4 @@ clips = {
 &"hurt": {"clip": "Hit_A", "length": 0.3, "loop": false},
 &"die": {"clip": "Death_A", "length": 0.8, "loop": false}
 }
-hidden_parts = PackedStringArray("1H_Wand", "Spellbook_open")
 finalizer = ExtResource("2_finalizer")

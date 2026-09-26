@@ -775,6 +775,29 @@ magnitudes (the X's) are #75's tuning, measured rather than guessed.
   import, and `tests/test_animation_clips.gd` fails if that table drifts. Every
   override clip therefore has to be added there.
 
+**Built 2026-09-25** ([issue #77](https://github.com/DarkCascade/Sir-Fish/issues/77)).
+`ITEM_TYPES` rows carry `prop` and `two_handed`. `CombatantRig.apply_hand_props()` shows
+the equipped weapon's prop in the right hand and the armor's in the left, and hides
+everything else on either hand. `Combatant.apply_party_bonuses()` re-runs it, so a
+mid-run equip updates the model.
+- **Heroes only.** Enemies keep whatever their .glb and `hidden_parts` give them. The
+  ranger's and mage's hand entries in `hidden_parts` are gone, because the hand pass
+  replaces them.
+- **The axe comes from the pack.** `assets/meshes/props/axe_1handed.gltf` is instanced
+  onto the knight's right hand the first time an axe is equipped. It copies
+  `1H_Sword`'s local transform. The pack's meshes share the 1.x props' authoring frame
+  exactly (the pack's `sword_1handed` has the knight's `1H_Sword` vertex bounds to the
+  float), so no hand-tuned offset is needed.
+- **The bow borrows `1H_Crossbow`,** as it always has. The pack's bow is drawn
+  left-handed and needs the bow draw and release clips, so it lands with
+  [#78](https://github.com/DarkCascade/Sir-Fish/issues/78). Until then the greatsword and
+  the heavy crossbow also swing with the one-handed clips.
+- **The wand shares the staff's glow material,** so the cast-glow track, which is keyed on
+  the staff, lights whichever one the mage holds.
+- **Checked by eye** in a throwaway render of six loadouts: sword and round shield; axe
+  and kite shield; greatsword with its shield hidden; heavy crossbow; dagger; wand and
+  tome. `tests/test_hand_props` pins the rules.
+
 ### Still open
 
 **3.5 The two off-hand weapons and `Throwable`:** *Decided 2026-09-20: ignore them for

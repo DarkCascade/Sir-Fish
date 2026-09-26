@@ -19,22 +19,30 @@ extends Node
 ## (weapon_types_for() / Itemizer.classes_for_type()). Weapons stay one class
 ## apiece; the six armor/trinket rows carry no class flavor in their naming,
 ## so every ClassDef lists all six (content-phase-1 questions doc Q3).
+## [backlog P3b, issue #77] `prop` names the hand mesh a type shows when equipped:
+## a weapon's in the right hand, armor's in the left (CombatantRig.apply_hand_props).
+## `two_handed` hides the off-hand prop, because a greatsword and a shield would clip.
+## It is a per-type flag, not something read off the mesh name: the mage's
+## `2H_Staff` beside her book is KayKit's own default look, so the staff is not
+## flagged. A type with no `prop` (helm, mail, trinkets) shows nothing in hand.
+## `bow` borrows the crossbow until #78 brings the bow clips; the pack's bow is
+## drawn left-handed and needs its own draw and release animation.
 const ITEM_TYPES := {
 	# --- weapons ---
-	&"axe":    { "slot": Item.Slot.WEAPON,  "base_value": 20, "power": 6, "nouns": ["Axe", "Hatchet", "Cleaver", "Chopper"] },
-	&"sword":  { "slot": Item.Slot.WEAPON,  "base_value": 22, "power": 6, "nouns": ["Sword", "Blade", "Saber", "Longsword"] },
-	&"bow":    { "slot": Item.Slot.WEAPON,  "base_value": 20, "power": 5, "nouns": ["Bow", "Longbow", "Shortbow", "Recurve"] },
-	&"dagger": { "slot": Item.Slot.WEAPON,  "base_value": 18, "power": 5, "nouns": ["Dagger", "Knife", "Dirk", "Shiv"] },
-	&"staff":  { "slot": Item.Slot.WEAPON,  "base_value": 25, "power": 4, "nouns": ["Staff", "Rod", "Cane", "Scepter"] },
+	&"axe":    { "slot": Item.Slot.WEAPON,  "base_value": 20, "power": 6, "nouns": ["Axe", "Hatchet", "Cleaver", "Chopper"], "prop": "axe_1handed" },
+	&"sword":  { "slot": Item.Slot.WEAPON,  "base_value": 22, "power": 6, "nouns": ["Sword", "Blade", "Saber", "Longsword"], "prop": "1H_Sword" },
+	&"bow":    { "slot": Item.Slot.WEAPON,  "base_value": 20, "power": 5, "nouns": ["Bow", "Longbow", "Shortbow", "Recurve"], "prop": "1H_Crossbow" },
+	&"dagger": { "slot": Item.Slot.WEAPON,  "base_value": 18, "power": 5, "nouns": ["Dagger", "Knife", "Dirk", "Shiv"], "prop": "Knife" },
+	&"staff":  { "slot": Item.Slot.WEAPON,  "base_value": 25, "power": 4, "nouns": ["Staff", "Rod", "Cane", "Scepter"], "prop": "2H_Staff" },
 	# [backlog P3, issue #74] The roster's new weapons (backlog §3, "Item types after
 	# these decisions"). Each copies its one-handed sibling's Power and value: a
 	# two-hander gives nothing up mechanically yet (P3b's off-hand hiding is visual
 	# only), so more Power would make it a strict upgrade. What sets them apart is
 	# their four-modifier set, drafted in #76.
-	&"greatsword":     { "slot": Item.Slot.WEAPON, "base_value": 22, "power": 6, "nouns": ["Greatsword", "Claymore", "Zweihander", "Flamberge"] },
-	&"crossbow":       { "slot": Item.Slot.WEAPON, "base_value": 20, "power": 5, "nouns": ["Crossbow", "Latchbow", "Handbow", "Stonebow"] },
-	&"heavy_crossbow": { "slot": Item.Slot.WEAPON, "base_value": 20, "power": 5, "nouns": ["Arbalest", "Heavy Crossbow", "Windlass", "Siege Bow"] },
-	&"wand":           { "slot": Item.Slot.WEAPON, "base_value": 25, "power": 4, "nouns": ["Wand", "Baton", "Sprig", "Switch"] },
+	&"greatsword":     { "slot": Item.Slot.WEAPON, "base_value": 22, "power": 6, "nouns": ["Greatsword", "Claymore", "Zweihander", "Flamberge"], "prop": "2H_Sword", "two_handed": true },
+	&"crossbow":       { "slot": Item.Slot.WEAPON, "base_value": 20, "power": 5, "nouns": ["Crossbow", "Latchbow", "Handbow", "Stonebow"], "prop": "1H_Crossbow" },
+	&"heavy_crossbow": { "slot": Item.Slot.WEAPON, "base_value": 20, "power": 5, "nouns": ["Arbalest", "Heavy Crossbow", "Windlass", "Siege Bow"], "prop": "2H_Crossbow", "two_handed": true },
+	&"wand":           { "slot": Item.Slot.WEAPON, "base_value": 25, "power": 4, "nouns": ["Wand", "Baton", "Sprig", "Switch"], "prop": "1H_Wand" },
 	# --- armor [armor items] - `armor` is flat damage reduction / level. Kept
 	# well under an enemy's weapon_power_per_level (6) so mitigation is a chip
 	# (~25-35% of a hit), never a wall - a fully-armored party still has to
@@ -46,11 +54,11 @@ const ITEM_TYPES := {
 	# _migrate_5_to_6() turns every saved `shield` into a `tome`. All five keep the
 	# old shield's value and armor; the four shields get distinct Block mechanics
 	# in #75/#76, not distinct numbers here.
-	&"round_shield":  { "slot": Item.Slot.ARMOR, "base_value": 22, "armor": 2, "nouns": ["Round Shield", "Buckler", "Targe", "Roundel"] },
-	&"kite_shield":   { "slot": Item.Slot.ARMOR, "base_value": 22, "armor": 2, "nouns": ["Kite Shield", "Heater", "Kite", "Scutum"] },
-	&"tower_shield":  { "slot": Item.Slot.ARMOR, "base_value": 22, "armor": 2, "nouns": ["Tower Shield", "Pavise", "Bulwark", "Mantlet"] },
-	&"spiked_shield": { "slot": Item.Slot.ARMOR, "base_value": 22, "armor": 2, "nouns": ["Spiked Shield", "Thornguard", "Spikeboss", "Hedgeshield"] },
-	&"tome":          { "slot": Item.Slot.ARMOR, "base_value": 22, "armor": 2, "nouns": ["Tome", "Grimoire", "Codex", "Folio"] },
+	&"round_shield":  { "slot": Item.Slot.ARMOR, "base_value": 22, "armor": 2, "nouns": ["Round Shield", "Buckler", "Targe", "Roundel"], "prop": "Round_Shield" },
+	&"kite_shield":   { "slot": Item.Slot.ARMOR, "base_value": 22, "armor": 2, "nouns": ["Kite Shield", "Heater", "Kite", "Scutum"], "prop": "Badge_Shield" },
+	&"tower_shield":  { "slot": Item.Slot.ARMOR, "base_value": 22, "armor": 2, "nouns": ["Tower Shield", "Pavise", "Bulwark", "Mantlet"], "prop": "Rectangle_Shield" },
+	&"spiked_shield": { "slot": Item.Slot.ARMOR, "base_value": 22, "armor": 2, "nouns": ["Spiked Shield", "Thornguard", "Spikeboss", "Hedgeshield"], "prop": "Spike_Shield" },
+	&"tome":          { "slot": Item.Slot.ARMOR, "base_value": 22, "armor": 2, "nouns": ["Tome", "Grimoire", "Codex", "Folio"], "prop": "Spellbook" },
 	# --- trinkets [town] ---
 	&"ring":   { "slot": Item.Slot.TRINKET, "base_value": 19, "power": 4, "nouns": ["Ring", "Band", "Signet", "Loop"] },
 	&"amulet": { "slot": Item.Slot.TRINKET, "base_value": 21, "power": 4, "nouns": ["Amulet", "Pendant", "Charm", "Talisman"] },
@@ -65,7 +73,7 @@ const ITEM_TYPES := {
 	# not a TRINKET like heartstone, since the ranger recruitment quest is
 	# specifically about recovering her own bow. power matches the ordinary
 	# `bow` row so she isn't over- or under-tuned relative to a generated one.
-	&"warbow": { "slot": Item.Slot.WEAPON, "base_value": 0, "power": 5 },
+	&"warbow": { "slot": Item.Slot.WEAPON, "base_value": 0, "power": 5, "prop": "1H_Crossbow" },
 }
 
 const ADJECTIVES := [

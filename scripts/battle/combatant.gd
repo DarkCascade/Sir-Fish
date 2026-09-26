@@ -161,6 +161,8 @@ func apply_party_bonuses() -> void:
 	armor = GameState.hero_armor(stats.id)
 	# [slot vocabulary] Crit is a wearer stat from trinket `crit` modifiers.
 	crit_chance = GameState.hero_crit_chance(stats.id)
+	# [backlog P3b, issue #77] The hands show what is equipped now.
+	CombatantRig.apply_hand_props(rig, stats)
 	# [armor items] Max hp = the runtime figure GameState keeps (hero level plus
 	# the armor_life percent), not the level-1 stats base setup() seeded. A
 	# raise adds its delta to current_hp so a full hero stays full; a drop

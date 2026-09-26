@@ -24,3 +24,9 @@ func apply(rig: Node3D, _stats: CombatantStats) -> void:
 			and (existing as ShaderMaterial).get_shader_parameter("emission_strength") != null
 			and (existing as ShaderMaterial).get_shader_parameter("emission_strength") > 0.0):
 		staff.material_override = CelMaterials.cel(Tuning.C_MAGE_ACCENT, Tuning.C_MAGE_ACCENT, 1.5)
+	# [backlog P3b, issue #77] The wand shares the staff's material instance. The
+	# cast-glow track is keyed on the staff's material_override, so animating it
+	# lights whichever of the two she is holding (CombatantRig.apply_hand_props).
+	var wand := CombatantRig.find_by_name(rig, "1H_Wand") as MeshInstance3D
+	if wand != null:
+		wand.material_override = staff.material_override
