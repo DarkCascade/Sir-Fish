@@ -68,7 +68,15 @@ func _ready() -> void:
 	# weapon + 1 armor + 4 trinket. [backlog P7] slot_mend (the second armor
 	# modifier) is retired with the slot's heal. Each has a `slots` field;
 	# _modifiers_for_type filters on it (and `types`, where present).
-	t.check(Itemizer.MODIFIERS.size() == 11, "the modifier pool has 11 entries")
+	# [backlog P3, issue #75] Plus decision 3.11's twelve stats, 23 in all. They
+	# carry `types: []` until #73 wires the sets, so no type can roll one yet.
+	t.check(Itemizer.MODIFIERS.size() == 23, "the modifier pool has 23 entries")
+	var unwired := 0
+	for wtype: StringName in Itemizer.ITEM_TYPES:
+		for def: Dictionary in Itemizer._modifiers_for_type(wtype):
+			if StringName(def["id"]) in SlotIcon.STAT_MODIFIER_IDS 					and not (StringName(def["id"]) in [&"bleed", &"crit"]):
+				unwired += 1
+	t.check(unwired == 0, "no type rolls a decision-3.11 stat before #73 (%d found)" % unwired)
 	for def: Dictionary in Itemizer.MODIFIERS:
 		t.check(def.has("slots") and not (def["slots"] as Array).is_empty(),
 			"modifier '%s' declares which slots may roll it" % def["id"])

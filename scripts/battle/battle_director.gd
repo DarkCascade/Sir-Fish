@@ -300,6 +300,8 @@ func start_combat(enemy_stat_ids: Array, is_boss: bool = false, boss_rarity_floo
 		_roll_initial_cooldown(c)
 
 	_active = true
+	# [backlog P3, issue #75] resolve: each hero starts the fight with charge.
+	StatModifiers.grant_resolve(heroes)
 	EventBus.combat_started.emit(heroes, enemies)
 
 ## The entrance: sprint from off-screen down the run axis into the slot, on a

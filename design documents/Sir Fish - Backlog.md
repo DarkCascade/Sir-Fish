@@ -756,6 +756,35 @@ icon, they need card chips but no board glyph art. Wiring the sets onto `ITEM_TY
 the Enhanced rule is [#73](https://github.com/DarkCascade/Sir-Fish/issues/73). The
 magnitudes (the X's) are #75's tuning, measured rather than guessed.
 
+**The twelve are built (2026-09-25, [#75](https://github.com/DarkCascade/Sir-Fish/issues/75)) but roll on nothing yet.**
+Each definition in `Itemizer.MODIFIERS` carries `types: []`, so no type's pool reaches it
+until #73 puts the sets on `ITEM_TYPES`. That keeps the balance change, including the
+charge coins leaving weapons, in one place, where it can be measured.
+`test_item_distribution` pins that none of them rolls before then.
+- **The behaviour is in `StatModifiers`** (`scripts/battle/stat_modifiers.gd`), which
+  takes its participants as arguments so each rule is tested on bare combatants
+  (`tests/test_stat_modifiers`). It hooks into:
+  - `SlotMachine._swing_for`: `execute` is added to the swing, then `stagger`, `mark`,
+    `twin_strike`, `arc` and `siphon` fire;
+  - `Combatant.take_damage`: `mark` raises hero hits, `deflect` drops a hit entirely,
+    `cover` redirects a share, and `thorns` hits back;
+  - `Combatant.add_temp_armor`: `bulwark`;
+  - the start of each fight in `BattleDirector`: `resolve`.
+  - `vitality` is part of `GameState.hero_max_hp`.
+- **How each roll reads:**
+  - `execute` and `arc` scale off Power and `thorns` off armor, like `bleed` and Block.
+  - `vitality` scales off item level (`Tuning.VITALITY_HP_PER_LEVEL`), because armor
+    and trinkets have no Power.
+  - `resolve` is flat charge. The rest are flat percents.
+  - `stagger`, `mark` and `arc` proc at `Tuning.STAT_PROC_CHANCE`, which is bleed's
+    0.35. `twin_strike`, `siphon` and `deflect` use their own percent as the chance.
+- **Every magnitude is a first cut,** for #73 to measure once the stats actually roll.
+  `deflect` and `cover` are capped at 50% so stacked gear cannot make a hero immune.
+- **Known limits:**
+  - In turn-based mode, a staggered enemy that is already queued keeps its place.
+  - A deflected hit shows no feedback yet.
+  - The new ids have no chip art, the same as `bleed` and `crit`.
+
 ### The visible-props plan (P3b)
 
 - Each `ITEM_TYPES` row gains `prop` (the mesh name) and `two_handed`.

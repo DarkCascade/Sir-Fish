@@ -49,7 +49,13 @@ const KNOWN_MODIFIER_IDS: Array[StringName] = [
 ## `bleed` is a chance for the wearer's swings to open a bleed
 ## (GameState.hero_bleed), `crit` a percent chance for all of the wearer's
 ## attacks to deal double (GameState.hero_crit_chance).
-const STAT_MODIFIER_IDS: Array[StringName] = [&"bleed", &"crit"]
+## [backlog P3, issue #75] Decision 3.11's twelve join them, every one a stat
+## by design, so the board keeps its six categories (StatModifiers applies them).
+const STAT_MODIFIER_IDS: Array[StringName] = [
+	&"bleed", &"crit",
+	&"stagger", &"mark", &"execute", &"twin_strike", &"arc", &"siphon",
+	&"deflect", &"cover", &"bulwark", &"thorns", &"vitality", &"resolve",
+]
 
 ## [slot vocabulary] The board speaks six categories, and only six: a weapon
 ## strike (drawn as the owner's weapon), the three elements, block, and a
@@ -342,6 +348,18 @@ static func short_label(id: StringName) -> String:
 		BASE_ARMOR, &"armor_block": return "Block"
 		BASE_TRINKET: return "Focus"
 		&"crit": return "Crit"
+		&"stagger": return "Stagger"
+		&"mark": return "Mark"
+		&"execute": return "Execute"
+		&"twin_strike": return "Twin Strike"
+		&"arc": return "Arc"
+		&"siphon": return "Siphon"
+		&"deflect": return "Deflect"
+		&"cover": return "Cover"
+		&"bulwark": return "Bulwark"
+		&"thorns": return "Thorns"
+		&"vitality": return "Vitality"
+		&"resolve": return "Resolve"
 		&"cleave": return "Cleave"
 		&"rain": return "Rain of Arrows"
 		&"thunderburst": return "Thunderburst"
