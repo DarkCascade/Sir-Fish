@@ -1267,13 +1267,31 @@ func discard_expedition_loot() -> void:
 ## expedition_xp until here, which is why RunController stopped calling
 ## apply_expedition_xp() itself. Items are neither - they are already in the
 ## inventory, so the roll only decides how many stay.
+##
+## [backlog P5, issue #153] Walks apply_spoils_category() in reel order, a missing
+## category settling as KEEP. The result screen calls that one directly instead,
+## as each reel lands, so its row can change in place.
 func apply_spoils(outcomes: Dictionary) -> void:
-	expedition_xp = int(float(expedition_xp) * _spoils_mult(outcomes, Spoils.Category.XP))
-	apply_expedition_xp()
+	for category: int in Spoils.CATEGORY_ORDER:
+		apply_spoils_category(category as Spoils.Category,
+			outcomes.get(category, Spoils.Outcome.KEEP) as Spoils.Outcome)
 
-	_settle_expedition_loot(outcomes.get(Spoils.Category.ITEMS, Spoils.Outcome.KEEP))
+## Settles ONE bank against its reel's outcome - see apply_spoils().
+func apply_spoils_category(category: Spoils.Category, outcome: Spoils.Outcome) -> void:
+	var mult := Spoils.multiplier(outcome)
+	match category:
+		Spoils.Category.XP:
+			expedition_xp = int(float(expedition_xp) * mult)
+			apply_expedition_xp()
+		Spoils.Category.ITEMS:
+			_settle_expedition_loot(outcome)
+		Spoils.Category.GOLD:
+			_settle_expedition_gold(mult)
+		Spoils.Category.SCRAP:
+			_settle_expedition_scrap(mult)
 
-	var gold_delta := _spoils_delta(expedition_gold, _spoils_mult(outcomes, Spoils.Category.GOLD))
+func _settle_expedition_gold(mult: float) -> void:
+	var gold_delta := _spoils_delta(expedition_gold, mult)
 	if gold_delta != 0:
 		gold = maxi(0, gold + gold_delta)
 		# gold_earned is always >= expedition_gold (add_expedition_gold routes
@@ -1284,7 +1302,8 @@ func apply_spoils(outcomes: Dictionary) -> void:
 		expedition_gold += gold_delta
 		EventBus.gold_changed.emit(gold, gold_delta)
 
-	var scrap_delta := _spoils_delta(expedition_scrap, _spoils_mult(outcomes, Spoils.Category.SCRAP))
+func _settle_expedition_scrap(mult: float) -> void:
+	var scrap_delta := _spoils_delta(expedition_scrap, mult)
 	if scrap_delta != 0:
 		scrap = maxi(0, scrap + scrap_delta)
 		expedition_scrap += scrap_delta
@@ -1296,9 +1315,6 @@ func apply_spoils(outcomes: Dictionary) -> void:
 ## batch a DOUBLE rolls, so it is "brought home" rather than "found".
 func expedition_items_held() -> int:
 	return maxi(0, inventory.size() - _expedition_inventory_mark)
-
-func _spoils_mult(outcomes: Dictionary, category: Spoils.Category) -> float:
-	return Spoils.multiplier(outcomes.get(category, Spoils.Outcome.KEEP))
 
 func _spoils_delta(banked: int, mult: float) -> int:
 	return int(float(banked) * mult) - banked

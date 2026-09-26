@@ -113,7 +113,6 @@ horizontal_alignment = 1
 vertical_alignment = 1
 
 [node name="Subtitle" type="Label" parent="Panel/Layout" unique_id=1893431644]
-visible = false
 layout_mode = 2
 theme_override_colors/font_color = Color(0.611765, 0.686275, 0.643137, 1)
 theme_override_font_sizes/font_size = 46
@@ -166,233 +165,23 @@ theme_override_font_sizes/font_size = 46
 text = "200"
 horizontal_alignment = 2
 
-[node name="NetGold" type="HBoxContainer" parent="Panel/Layout/Stats" unique_id=1649595403]
+[node name="XP" type="HBoxContainer" parent="Panel/Layout/Stats" unique_id=1735500101]
 custom_minimum_size = Vector2(0, 54)
 layout_mode = 2
 
-[node name="Caption" type="Label" parent="Panel/Layout/Stats/NetGold" unique_id=491961491]
+[node name="Caption" type="Label" parent="Panel/Layout/Stats/XP" unique_id=1735500102]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_colors/font_color = Color(0.611765, 0.690196, 0.67451, 1)
 theme_override_font_sizes/font_size = 46
-text = "Gold brought home"
+text = "Experience"
 
-[node name="Value" type="Label" parent="Panel/Layout/Stats/NetGold" unique_id=1348085284]
+[node name="Value" type="Label" parent="Panel/Layout/Stats/XP" unique_id=1735500103]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.960784, 0.945098, 0.894118, 1)
 theme_override_font_sizes/font_size = 46
-text = "1275"
+text = "240"
 horizontal_alignment = 2
-
-[node name="ExpeditionGold" type="HBoxContainer" parent="Panel/Layout/Stats" unique_id=1431245856]
-custom_minimum_size = Vector2(0, 54)
-layout_mode = 2
-
-[node name="Caption" type="Label" parent="Panel/Layout/Stats/ExpeditionGold" unique_id=1488352760]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_colors/font_color = Color(0.611765, 0.690196, 0.67451, 1)
-theme_override_font_sizes/font_size = 46
-text = "Gold brought home"
-
-[node name="Value" type="Label" parent="Panel/Layout/Stats/ExpeditionGold" unique_id=25929989]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.960784, 0.945098, 0.894118, 1)
-theme_override_font_sizes/font_size = 46
-text = "47"
-horizontal_alignment = 2
-
-[node name="ExpeditionScrap" type="HBoxContainer" parent="Panel/Layout/Stats" unique_id=1386063314]
-custom_minimum_size = Vector2(0, 54)
-layout_mode = 2
-
-[node name="Caption" type="Label" parent="Panel/Layout/Stats/ExpeditionScrap" unique_id=1696255392]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_colors/font_color = Color(0.611765, 0.690196, 0.67451, 1)
-theme_override_font_sizes/font_size = 46
-text = "Scrap brought home"
-
-[node name="Value" type="Label" parent="Panel/Layout/Stats/ExpeditionScrap" unique_id=290915298]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.960784, 0.945098, 0.894118, 1)
-theme_override_font_sizes/font_size = 46
-text = "31"
-horizontal_alignment = 2
-
-[node name="EncountersCleared" type="HBoxContainer" parent="Panel/Layout/Stats" unique_id=2030079747]
-custom_minimum_size = Vector2(0, 54)
-layout_mode = 2
-
-[node name="Caption" type="Label" parent="Panel/Layout/Stats/EncountersCleared" unique_id=1228003352]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_colors/font_color = Color(0.611765, 0.690196, 0.67451, 1)
-theme_override_font_sizes/font_size = 46
-text = "Encounters cleared"
-
-[node name="Value" type="Label" parent="Panel/Layout/Stats/EncountersCleared" unique_id=612526298]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.960784, 0.945098, 0.894118, 1)
-theme_override_font_sizes/font_size = 46
-text = "6"
-horizontal_alignment = 2
-
-[node name="RunTime" type="HBoxContainer" parent="Panel/Layout/Stats" unique_id=704904997]
-custom_minimum_size = Vector2(0, 54)
-layout_mode = 2
-
-[node name="Caption" type="Label" parent="Panel/Layout/Stats/RunTime" unique_id=626454776]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_colors/font_color = Color(0.611765, 0.690196, 0.67451, 1)
-theme_override_font_sizes/font_size = 46
-text = "Run time"
-
-[node name="Value" type="Label" parent="Panel/Layout/Stats/RunTime" unique_id=2080027768]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.960784, 0.945098, 0.894118, 1)
-theme_override_font_sizes/font_size = 46
-text = "7:24"
-horizontal_alignment = 2
-
-[node name="GoldEarned" type="HBoxContainer" parent="Panel/Layout/Stats" unique_id=295087093]
-custom_minimum_size = Vector2(0, 54)
-layout_mode = 2
-
-[node name="Caption" type="Label" parent="Panel/Layout/Stats/GoldEarned" unique_id=735613530]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_colors/font_color = Color(0.611765, 0.690196, 0.67451, 1)
-theme_override_font_sizes/font_size = 46
-text = "Gold earned"
-
-[node name="Value" type="Label" parent="Panel/Layout/Stats/GoldEarned" unique_id=496100869]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.960784, 0.945098, 0.894118, 1)
-theme_override_font_sizes/font_size = 46
-text = "1480"
-horizontal_alignment = 2
-
-[node name="GoldSpent" type="HBoxContainer" parent="Panel/Layout/Stats" unique_id=1024194132]
-custom_minimum_size = Vector2(0, 54)
-layout_mode = 2
-
-[node name="Caption" type="Label" parent="Panel/Layout/Stats/GoldSpent" unique_id=1563162021]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_colors/font_color = Color(0.611765, 0.690196, 0.67451, 1)
-theme_override_font_sizes/font_size = 46
-text = "Gold spent"
-
-[node name="Value" type="Label" parent="Panel/Layout/Stats/GoldSpent" unique_id=80689911]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.960784, 0.945098, 0.894118, 1)
-theme_override_font_sizes/font_size = 46
-text = "205"
-horizontal_alignment = 2
-
-[node name="GoldOnHand" type="HBoxContainer" parent="Panel/Layout/Stats" unique_id=2107515822]
-custom_minimum_size = Vector2(0, 54)
-layout_mode = 2
-
-[node name="Caption" type="Label" parent="Panel/Layout/Stats/GoldOnHand" unique_id=1263566483]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_colors/font_color = Color(0.611765, 0.690196, 0.67451, 1)
-theme_override_font_sizes/font_size = 46
-text = "Gold on hand"
-
-[node name="Value" type="Label" parent="Panel/Layout/Stats/GoldOnHand" unique_id=442636143]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.960784, 0.945098, 0.894118, 1)
-theme_override_font_sizes/font_size = 46
-text = "1275"
-horizontal_alignment = 2
-
-[node name="DamageDealt" type="HBoxContainer" parent="Panel/Layout/Stats" unique_id=115138004]
-custom_minimum_size = Vector2(0, 54)
-layout_mode = 2
-
-[node name="Caption" type="Label" parent="Panel/Layout/Stats/DamageDealt" unique_id=1642387018]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_colors/font_color = Color(0.611765, 0.690196, 0.67451, 1)
-theme_override_font_sizes/font_size = 46
-text = "Damage dealt"
-
-[node name="Value" type="Label" parent="Panel/Layout/Stats/DamageDealt" unique_id=241719019]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.960784, 0.945098, 0.894118, 1)
-theme_override_font_sizes/font_size = 46
-text = "3910"
-horizontal_alignment = 2
-
-[node name="DamageTaken" type="HBoxContainer" parent="Panel/Layout/Stats" unique_id=1702193040]
-custom_minimum_size = Vector2(0, 54)
-layout_mode = 2
-
-[node name="Caption" type="Label" parent="Panel/Layout/Stats/DamageTaken" unique_id=1615732595]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_colors/font_color = Color(0.611765, 0.690196, 0.67451, 1)
-theme_override_font_sizes/font_size = 46
-text = "Damage taken"
-
-[node name="Value" type="Label" parent="Panel/Layout/Stats/DamageTaken" unique_id=1563099355]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.960784, 0.945098, 0.894118, 1)
-theme_override_font_sizes/font_size = 46
-text = "1102"
-horizontal_alignment = 2
-
-[node name="SlotSpins" type="HBoxContainer" parent="Panel/Layout/Stats" unique_id=2125839409]
-custom_minimum_size = Vector2(0, 54)
-layout_mode = 2
-
-[node name="Caption" type="Label" parent="Panel/Layout/Stats/SlotSpins" unique_id=506278322]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_colors/font_color = Color(0.611765, 0.690196, 0.67451, 1)
-theme_override_font_sizes/font_size = 46
-text = "Slot spins"
-
-[node name="Value" type="Label" parent="Panel/Layout/Stats/SlotSpins" unique_id=981645013]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.960784, 0.945098, 0.894118, 1)
-theme_override_font_sizes/font_size = 46
-text = "38"
-horizontal_alignment = 2
-
-[node name="SlotWins" type="HBoxContainer" parent="Panel/Layout/Stats" unique_id=1092601519]
-custom_minimum_size = Vector2(0, 54)
-layout_mode = 2
-
-[node name="Caption" type="Label" parent="Panel/Layout/Stats/SlotWins" unique_id=1086717444]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_colors/font_color = Color(0.611765, 0.690196, 0.67451, 1)
-theme_override_font_sizes/font_size = 46
-text = "Slot wins"
-
-[node name="Value" type="Label" parent="Panel/Layout/Stats/SlotWins" unique_id=176600936]
-layout_mode = 2
-theme_override_colors/font_color = Color(0.960784, 0.945098, 0.894118, 1)
-theme_override_font_sizes/font_size = 46
-text = "19"
-horizontal_alignment = 2
-
-[node name="IconsSpins" type="HBoxContainer" parent="Panel/Layout/Stats" unique_id=167087246]
-custom_minimum_size = Vector2(0, 54)
-layout_mode = 2
-
-[node name="Value" type="Label" parent="Panel/Layout/Stats/IconsSpins" unique_id=2010706995]
-layout_mode = 2
-size_flags_horizontal = 3
-theme_override_colors/font_color = Color(0.960784, 0.945098, 0.894118, 1)
-theme_override_font_sizes/font_size = 46
-text = "37 icons hit in 12 spins"
-horizontal_alignment = 1
 
 [node name="ItemsFound" type="HBoxContainer" parent="Panel/Layout/Stats" unique_id=1976506994]
 custom_minimum_size = Vector2(0, 54)
@@ -412,22 +201,40 @@ theme_override_font_sizes/font_size = 46
 text = "7"
 horizontal_alignment = 2
 
-[node name="ItemsSold" type="HBoxContainer" parent="Panel/Layout/Stats" unique_id=198033373]
+[node name="NetGold" type="HBoxContainer" parent="Panel/Layout/Stats" unique_id=1649595403]
 custom_minimum_size = Vector2(0, 54)
 layout_mode = 2
 
-[node name="Caption" type="Label" parent="Panel/Layout/Stats/ItemsSold" unique_id=458743159]
+[node name="Caption" type="Label" parent="Panel/Layout/Stats/NetGold" unique_id=491961491]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_colors/font_color = Color(0.611765, 0.690196, 0.67451, 1)
 theme_override_font_sizes/font_size = 46
-text = "Items sold"
+text = "Gold brought home"
 
-[node name="Value" type="Label" parent="Panel/Layout/Stats/ItemsSold" unique_id=955862465]
+[node name="Value" type="Label" parent="Panel/Layout/Stats/NetGold" unique_id=1348085284]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.960784, 0.945098, 0.894118, 1)
 theme_override_font_sizes/font_size = 46
-text = "3"
+text = "1275"
+horizontal_alignment = 2
+
+[node name="ExpeditionScrap" type="HBoxContainer" parent="Panel/Layout/Stats" unique_id=1386063314]
+custom_minimum_size = Vector2(0, 54)
+layout_mode = 2
+
+[node name="Caption" type="Label" parent="Panel/Layout/Stats/ExpeditionScrap" unique_id=1696255392]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.611765, 0.690196, 0.67451, 1)
+theme_override_font_sizes/font_size = 46
+text = "Scrap brought home"
+
+[node name="Value" type="Label" parent="Panel/Layout/Stats/ExpeditionScrap" unique_id=290915298]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.960784, 0.945098, 0.894118, 1)
+theme_override_font_sizes/font_size = 46
+text = "31"
 horizontal_alignment = 2
 
 [node name="Buttons" type="HBoxContainer" parent="Panel/Layout" unique_id=1674321943]

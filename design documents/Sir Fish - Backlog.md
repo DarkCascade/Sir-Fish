@@ -1337,6 +1337,21 @@ or sequenced against P1–P4.
     `run_stats` tracking and would compete with the reels for the same moment. Worth
     revisiting once P7's combat settles which stats are worth showing off.
   - **Item glyphs** in place of the item count go with the popped-glyph bullet below.
+  - **Built 2026-09-25 (#153).**
+    - **Rows:** the rows are XP, Items, Gold and Scrap, each settling as its own reel
+      lands. `GameState.apply_spoils()` became a loop over `apply_spoils_category()`,
+      which `quest_result.gd` calls reel by reel.
+    - **XP row:** it shows the banked XP until its reel lands, then the settled amount
+      with a "Warrior → L3" line per hero who levelled.
+    - **Wipe order:** the wipe reveal now puts its rows up before the reels spin, not
+      after. The verdict, subtitle and button follow the roll, as before.
+    - **Subtitle:** it had been hidden in the scene since the 2026-09-17 spoils rework
+      and is shown again, because it now carries the context line, e.g. "The Shallow
+      Wood — 6 encounters, 7:24 — …".
+    - **Removed:** the twelve dropped rows are gone from the scene.
+    - **Checked by eye:** both reveals were checked in a throwaway render of the real
+      screen. The editor-run game had stopped answering MCP calls, so this was not a
+      live game.
 - **Expedition chest redo** — done (issues #87, #88; commit `1110694`, 2026-09-15):
   chest moved out to the same up-run band as the shop building so the party no longer
   occludes it, and text loot popups replaced with `loot_glyph.tscn`/`.gd` glyph-pop
