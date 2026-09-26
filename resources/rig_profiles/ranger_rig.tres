@@ -13,4 +13,3 @@ clips = {
 &"hurt": {"clip": "Hit_A", "length": 0.3, "loop": false},
 &"die": {"clip": "Death_A", "length": 0.8, "loop": false}
 }
-hidden_parts = PackedStringArray("2H_Crossbow", "Knife", "Throwable", "Knife_Offhand")

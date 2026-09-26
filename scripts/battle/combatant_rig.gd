@@ -21,8 +21,62 @@ static func build(rig: Node3D, stats: CombatantStats) -> void:
 		var mi := find_by_name(rig, part_name) as MeshInstance3D
 		if mi != null:
 			mi.visible = false
+	apply_hand_props(rig, stats)
 	if profile.finalizer != null:
 		profile.finalizer.new().apply(rig, stats)
+
+# --- [backlog P3b, issue #77] equipped items show in hand -----------------------
+
+## Props that ship on no hero .glb, instanced onto the hand the first time they
+## are wanted. The Adventurers 2.0 pack's meshes share the 1.x props' authoring
+## frame exactly (the pack's sword_1handed has the knight's 1H_Sword's vertex
+## bounds to the float), so an external prop copies the local transform of the
+## native prop named in `like`.
+const EXTERNAL_PROPS := {
+	"axe_1handed": { "scene": preload("res://assets/meshes/props/axe_1handed.gltf"), "like": "1H_Sword" },
+}
+
+## The KayKit BoneAttachment3Ds, as Godot names them on import (`handslot.r`).
+const HAND_SLOTS: Array[String] = ["handslot_r", "handslot_l"]
+
+## Shows the equipped weapon's `prop` in the right hand and the armor's in the
+## left, and hides every other prop on either hand. A two-handed weapon empties
+## the left hand. Heroes only: an enemy keeps whatever its .glb and
+## RigProfile.hidden_parts give it. Cheap enough to redo on every equipment
+## change (Combatant.apply_party_bonuses() calls it again).
+static func apply_hand_props(rig: Node3D, stats: CombatantStats) -> void:
+	if not stats.is_hero:
+		return
+	var wanted: Array[String] = []
+	var weapon := GameState.equipped_item(stats.id, Item.Slot.WEAPON)
+	var weapon_row: Dictionary = Itemizer.ITEM_TYPES.get(weapon.weapon_type, {}) if weapon != null else {}
+	if weapon_row.has("prop"):
+		wanted.append(String(weapon_row["prop"]))
+	if not bool(weapon_row.get("two_handed", false)):
+		var armor := GameState.equipped_item(stats.id, Item.Slot.ARMOR)
+		var armor_row: Dictionary = Itemizer.ITEM_TYPES.get(armor.weapon_type, {}) if armor != null else {}
+		if armor_row.has("prop"):
+			wanted.append(String(armor_row["prop"]))
+	for prop: String in wanted:
+		_ensure_external_prop(rig, prop)
+	for slot_name: String in HAND_SLOTS:
+		var hand := find_by_name(rig, slot_name)
+		if hand == null:
+			continue
+		for child: Node in hand.get_children():
+			if child is Node3D:
+				(child as Node3D).visible = wanted.has(String(child.name))
+
+static func _ensure_external_prop(rig: Node3D, prop: String) -> void:
+	if not EXTERNAL_PROPS.has(prop) or find_by_name(rig, prop) != null:
+		return
+	var like := find_by_name(rig, String(EXTERNAL_PROPS[prop]["like"])) as Node3D
+	if like == null:
+		return
+	var inst := (EXTERNAL_PROPS[prop]["scene"] as PackedScene).instantiate() as Node3D
+	inst.name = prop
+	like.get_parent().add_child(inst)
+	inst.transform = like.transform
 
 ## Public so a RigProfile.finalizer script (scripts/battle/rig_finalizers/)
 ## can reuse the same name-search lookup rather than duplicating it.
