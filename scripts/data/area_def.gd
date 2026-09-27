@@ -6,7 +6,21 @@ extends Resource
 ## instance, The Endless Wood, covering the one area that exists - new areas
 ## are a future content pass with an art dependency (spec §4).
 
+## [expedition phase II] How an expedition here is presented (PRD §6.1): the
+## Rune Floor's islands, or the classic fight-over-console split. Only the
+## presentation differs - both run the same RunController, slot and director.
+## A style is about the place, so it lives here; a quest may override it
+## (QuestDef.expedition_style). SceneRouter.PATHS[Place.QUEST] is keyed by it.
+enum ExpeditionStyle { RUNE_FLOOR, CLASSIC }
+
 @export var display_name: String = ""
+
+## RUNE_FLOOR is the default (decision 10.2), but an area whose style has no
+## expedition scene yet cannot route there - test_expedition_style checks every
+## shipped area and quest. The Endless Wood authors CLASSIC until milestone 7
+## (#217) flips it.
+@export var expedition_style: ExpeditionStyle = ExpeditionStyle.RUNE_FLOOR
+
 @export var pool: EnemyPool
 
 ## [content phase 1] Joins `pool` once a run is at least one level/quest deep

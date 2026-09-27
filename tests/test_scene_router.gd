@@ -40,8 +40,11 @@ func _ready() -> void:
 		"slotworks.tscn exists (Place.SLOTWORKS)")
 	t.check(ResourceLoader.exists(SceneRouter.PATHS[SceneRouter.Place.MAYOR]),
 		"mayor_office.tscn exists (Place.MAYOR, widened in at step 8)")
-	t.check(ResourceLoader.exists(SceneRouter.PATHS[SceneRouter.Place.QUEST]),
-		"main.tscn (Place.QUEST) exists")
+	# [expedition phase II] Place.QUEST is keyed by style; which styles must
+	# exist is test_expedition_style's to check. CLASSIC always must.
+	t.check(ResourceLoader.exists(
+			SceneRouter.PATHS[SceneRouter.Place.QUEST][AreaDef.ExpeditionStyle.CLASSIC]),
+		"main.tscn (Place.QUEST, CLASSIC) exists")
 	t.check(ResourceLoader.exists(SceneRouter.PATHS[SceneRouter.Place.RUNE_FLOOR]),
 		"rune_floor_demo.tscn exists (Place.RUNE_FLOOR, the town's demo button)")
 

@@ -17,12 +17,21 @@ enum Place { TOWN, INN, BLACKSMITH, MAYOR, QUEST, ITEM_FORGE, SLOTWORKS, RUNE_FL
 ## Every Place must have an entry (test_scene_router.gd asserts totality). All
 ## five scenes exist as of step 10; go()'s missing-path bail stays anyway - a
 ## typo'd path would otherwise soft-lock behind an opaque rect (spec 3.1).
+##
+## [expedition phase II] Place.QUEST is the one entry keyed a second time, by
+## the expedition's AreaDef.ExpeditionStyle (PRD §6.1). Resolve through
+## path_for(), never PATHS directly. The Rune Floor scene arrives with
+## milestone 2 (#212); until then no shipped area or quest resolves to it
+## (test_expedition_style).
 const PATHS := {
 	Place.TOWN:       "res://scenes/town/town.tscn",
 	Place.INN:        "res://scenes/town/inn.tscn",
 	Place.BLACKSMITH: "res://scenes/town/blacksmith.tscn",
 	Place.MAYOR:      "res://scenes/town/mayor_office.tscn",
-	Place.QUEST:      "res://scenes/main.tscn",
+	Place.QUEST: {
+		AreaDef.ExpeditionStyle.RUNE_FLOOR: "res://scenes/expedition_rune_floor.tscn",
+		AreaDef.ExpeditionStyle.CLASSIC:    "res://scenes/main.tscn",
+	},
 	Place.ITEM_FORGE: "res://scenes/town/item_forge.tscn",
 	Place.SLOTWORKS:  "res://scenes/town/slotworks.tscn",
 	# [rune floor spike] The looping combat demo, reached from a town button so
@@ -36,6 +45,15 @@ const FADE_TIME := 0.18
 
 var place: Place = Place.TOWN
 var _routing: bool = false
+
+## The scene `to` routes to. For Place.QUEST that depends on the expedition
+## about to start (GameState.expedition_style()), so it is resolved at call
+## time rather than read off PATHS. "" for an unknown place or style.
+func path_for(to: Place) -> String:
+	var entry: Variant = PATHS.get(to, "")
+	if entry is Dictionary:
+		return String(entry.get(GameState.expedition_style(), ""))
+	return String(entry)
 
 ## Fades out, swaps to `to`, fades back in. Ignored (not queued) if a route is
 ## already in flight - go() is called from await-ing flows (spec 8.5) and a
@@ -53,7 +71,7 @@ func go(to: Place, fade_out: float = FADE_TIME, fade_in: float = FADE_TIME,
 	# returns ERR_CANT_OPEN and queues no swap, so a go() that had already faded
 	# to black would await a swap that never comes - opaque rect, input blocked,
 	# _routing stuck true. Check before touching the rect.
-	var target: String = PATHS.get(to, "")
+	var target: String = path_for(to)
 	if target.is_empty() or not ResourceLoader.exists(target):
 		push_warning("SceneRouter.go(): no scene for Place %d (%s) - staying put" % [to, target])
 		return

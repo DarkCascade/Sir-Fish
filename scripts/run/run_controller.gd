@@ -12,11 +12,15 @@ const SHOP_SCENE := preload("res://scenes/battle/props/shop_building.tscn")
 
 var state: RunState = RunState.BOOT
 
-# These five are deliberately untyped: each exposes a custom script API that a
+## [expedition phase II] The scene this run is presented in (PRD §6.1) - the
+## parent, whichever expedition style it is. RunController reaches the world,
+## overlay and shop modal through it, and never touches a style's own UI.
+var presentation: ExpeditionPresentation
+
+# These four are deliberately untyped: each exposes a custom script API that a
 # static Node/Control annotation would reject at parse time.
 var world
 var overlay
-var console
 var shop_modal
 var run_summary
 var director: BattleDirector
@@ -35,11 +39,10 @@ func _ready() -> void:
 	# leaves QUEST and guards it with is_instance_valid() (go() frees this node).
 	Hud.register_run_controller(self)
 
-	var main := get_parent()
-	world = main.get_node("BattleView/BattleViewport/BattleWorld")
-	overlay = main.get_node("BattleOverlay")
-	console = main.get_node("Console")
-	shop_modal = main.get_node("ModalLayer/ShopModal")
+	presentation = get_parent() as ExpeditionPresentation
+	world = presentation.get_world()
+	overlay = presentation.get_overlay()
+	shop_modal = presentation.get_shop_modal()
 	# spec 3.2 / step-5 Q2: the result modal moved to Hud/ModalLayer and was
 	# renamed QuestResult. Step 5 is a reference swap plus a signal rename;
 	# spec 8.5 rewires the actual victory/failure flow at step 8.
@@ -64,7 +67,7 @@ func _ready() -> void:
 	EventBus.combat_ended.connect(_on_combat_ended)
 	run_summary.dismissed.connect(_on_retry)
 
-	console.bind_director(director)
+	presentation.bind_director(director)
 	_start_run()
 
 func _process(delta: float) -> void:
@@ -146,18 +149,15 @@ func _travel(def: EncounterDef) -> void:
 	if def.is_boss:
 		_play_boss_nameplate(def)
 
-	var accel := create_tween()
-	accel.tween_method(Callable(world, "set_scroll_speed"),
-		world.get_scroll_speed(), Tuning.TRAVEL_SPEED, Tuning.TRAVEL_ACCEL_TIME) \
-		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+	presentation.begin_travel(def)
 
 	await get_tree().create_timer(def.travel_duration).timeout
 	_arrive(def)
 
 ## [black-glass] Resolves the two display strings the nameplate needs (neither
 ## is stored on EncounterDef itself) and connects its `impact` signal - fired
-## the instant the boss's name lands - to swap the console's chrome at exactly
-## that beat. CONNECT_ONE_SHOT because `overlay.boss_nameplate` is one
+## the instant the boss's name lands - to put the presentation's boss theme on
+## at exactly that beat. CONNECT_ONE_SHOT because `overlay.boss_nameplate` is one
 ## persistent node reused by every boss encounter in the run; without it,
 ## a second boss fight would stack a second connection onto the first.
 func _play_boss_nameplate(def: EncounterDef) -> void:
@@ -171,16 +171,12 @@ func _play_boss_nameplate(def: EncounterDef) -> void:
 		if stats != null:
 			boss_name = stats.display_name
 	overlay.boss_nameplate.impact.connect(
-		func() -> void: console.apply_boss_theme(), CONNECT_ONE_SHOT)
+		func() -> void: presentation.boss_theme(true), CONNECT_ONE_SHOT)
 	overlay.boss_nameplate.play(quest_name, boss_name)
 
 func _arrive(def: EncounterDef) -> void:
 	state = RunState.ARRIVE
-	var decel := create_tween()
-	decel.tween_method(Callable(world, "set_scroll_speed"),
-		world.get_scroll_speed(), 0.0, Tuning.TRAVEL_DECEL_TIME) \
-		.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-	await decel.finished
+	await presentation.end_travel()
 
 	for hero: Combatant in director.living_heroes():
 		hero.set_running(false)
@@ -190,6 +186,7 @@ func _arrive(def: EncounterDef) -> void:
 	match def.type:
 		EncounterDef.Type.COMBAT:
 			state = RunState.COMBAT
+			presentation.board_visible(true)
 			director.start_combat(def.enemy_stat_ids, def.is_boss, def.boss_drop_rarity_floor, def.level)
 		EncounterDef.Type.LOOT:
 			state = RunState.LOOT
@@ -204,14 +201,16 @@ func _on_combat_ended(victory: bool) -> void:
 	if state != RunState.COMBAT:
 		return
 	# [black-glass] "All enemies dead" (or a wipe) is the revert trigger, not
-	# the expedition ending - a harmless no-op re-assertion of the rootwood
-	# console when this wasn't a boss fight to begin with, since apply/clear
-	# just set explicit colours rather than toggle a delta.
-	console.clear_boss_theme()
+	# the expedition ending - a harmless no-op re-assertion of the default
+	# theme when this wasn't a boss fight to begin with (boss_theme()'s
+	# contract).
+	presentation.boss_theme(false)
 	if not victory:
 		director.pending_drops.clear()      # a wipe carries nothing home (§5)
 		_game_over()
 		return
+	# [expedition phase II] The board goes before the drops land (PRD §5.2).
+	presentation.board_visible(false)
 	director.begin_corpse_cleanup()
 	await _award_drops()
 	_encounter_resolved()
@@ -246,7 +245,7 @@ func _run_loot(def: EncounterDef) -> void:
 ## the field is not scrolling yet (travel only restarts in _encounter_exit()),
 ## so those positions are still where the bodies fell.
 ##
-## No _ui_hidden() branch, unlike _run_shop(): nothing here blocks on a button,
+## No ui_hidden() branch, unlike _run_shop(): nothing here blocks on a button,
 ## so with the overlay hidden the items are still added and only the glyphs go
 ## unseen, which is the correct degradation.
 func _award_drops() -> void:
@@ -292,7 +291,7 @@ func _run_shop(def: EncounterDef) -> void:
 	# encounter chain would stall here forever and the "ongoing action" the
 	# overworld is meant to show would stop at the first shop. Hold on the
 	# building for a beat instead and move on.
-	if _ui_hidden():
+	if presentation.ui_hidden():
 		await get_tree().create_timer(Tuning.SHOP_SKIP_HOLD).timeout
 		_encounter_resolved()
 		return
@@ -301,11 +300,6 @@ func _run_shop(def: EncounterDef) -> void:
 	# The encounter resolves only when the modal's close button is pressed.
 	await shop_modal.closed
 	_encounter_resolved()
-
-## Whether the run is being played with the UI hidden (main_layout.hide_console).
-func _ui_hidden() -> bool:
-	var main := get_parent()
-	return main != null and bool(main.get("hide_console"))
 
 # --- resolution / exit ------------------------------------------------------
 
@@ -473,9 +467,7 @@ func _on_retry() -> void:
 			child.queue_free()
 	_prop = null
 	overlay.clear_all()
-	console.slot_machine.reset_to_attract()
-	world.set_scroll_speed(0.0)
-	world.parallax.reset_tiles()
+	presentation.reset_track()
 	await get_tree().process_frame
 	# spec 3.1 / step-5 Q1: endless retry wants the full wipe, explicitly. The
 	# guard in _start_run() would otherwise skip it - `level` is still non-null

@@ -8,7 +8,8 @@ that is a real thing in this repo. Read it before changing it.
   need answers before their parts are built.
 - **Decision:** 10.2 in the backlog doc (§10). The Rune Floor style becomes the default
   for expeditions. It was decided after a phone playtest of the demo on 2026-09-27.
-- **Board:** the `rune-floor-spike` label. Epic issue to be opened from §9's milestones.
+- **Board:** the `rune-floor-spike` label. Epic [#210](https://github.com/DarkCascade/Sir-Fish/issues/210); milestones [#211](https://github.com/DarkCascade/Sir-Fish/issues/211) to [#217](https://github.com/DarkCascade/Sir-Fish/issues/217);
+  open questions Q1 [#218](https://github.com/DarkCascade/Sir-Fish/issues/218), Q2 [#219](https://github.com/DarkCascade/Sir-Fish/issues/219), Q3 [#220](https://github.com/DarkCascade/Sir-Fish/issues/220).
 
 ---
 

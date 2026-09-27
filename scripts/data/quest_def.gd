@@ -94,6 +94,13 @@ extends Resource
 ## mayor_office.gd header).
 @export var one_shot: bool = false
 
+## [expedition phase II] Overrides the area's AreaDef.expedition_style for a
+## special quest (PRD §6.1). STYLE_FROM_AREA (the default) defers to the area;
+## the other values are AreaDef.ExpeditionStyle's. Resolved by
+## GameState.expedition_style().
+const STYLE_FROM_AREA := -1
+@export_enum("From area:-1", "Rune Floor:0", "Classic:1") var expedition_style: int = STYLE_FROM_AREA
+
 # --- persistence (spec §3 Step 3.2) -----------------------------------------
 
 ## A flat dictionary of primitives for the profile save - same reasoning as
@@ -124,6 +131,7 @@ func to_dict() -> Dictionary:
 		"level_range": level_range,
 		"unlock_level": unlock_level,
 		"one_shot": one_shot,
+		"expedition_style": expedition_style,
 	}
 
 ## Rebuilds a QuestDef from to_dict()'s output. Unknown / missing keys fall
@@ -169,4 +177,5 @@ static func from_dict(data: Dictionary) -> QuestDef:
 	q.level_range = data.get("level_range", Vector2i(1, 1))
 	q.unlock_level = int(data.get("unlock_level", 1))
 	q.one_shot = bool(data.get("one_shot", false))
+	q.expedition_style = int(data.get("expedition_style", STYLE_FROM_AREA))
 	return q

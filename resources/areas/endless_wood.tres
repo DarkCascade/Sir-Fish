@@ -8,6 +8,7 @@
 [resource]
 script = ExtResource("1_area")
 display_name = "The Endless Wood"
+expedition_style = 1
 pool = ExtResource("2_early")
 mid_pool = ExtResource("3_mid")
 boss_pool = ExtResource("4_boss")
