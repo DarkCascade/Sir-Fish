@@ -2,8 +2,33 @@
 
 [ext_resource type="Texture2D" uid="uid://bl8vmice2qf8r" path="res://assets/town-with-purple-mist.png" id="1_n11nm"]
 [ext_resource type="Script" uid="uid://b5xg7jo107ee2" path="res://scripts/town/town.gd" id="2_town"]
+[ext_resource type="FontFile" path="res://assets/fonts/Cinzel-VariableFont.ttf" id="3_cinzel"]
 
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_hit"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_rune"]
+bg_color = Color(0.016, 0.027, 0.035, 0.86)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0.937, 0.839, 0.58, 0.9)
+corner_radius_top_left = 14
+corner_radius_top_right = 14
+corner_radius_bottom_right = 14
+corner_radius_bottom_left = 14
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_rune_pressed"]
+bg_color = Color(0.09, 0.075, 0.05, 0.92)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(1, 0.91, 0.66, 1)
+corner_radius_top_left = 14
+corner_radius_top_right = 14
+corner_radius_bottom_right = 14
+corner_radius_bottom_left = 14
 
 [node name="Town" type="Control" unique_id=1096428498]
 layout_mode = 3
@@ -75,3 +100,25 @@ offset_top = 886.0
 offset_right = 624.0
 offset_bottom = 983.0
 text = "Item Forge"
+
+; [rune floor spike] A visible, labelled button rather than a hit box: the demo
+; has no building in the painting. Sits on the empty ground below the gate.
+; Loads the looping Rune Floor combat demo on a throwaway profile.
+[node name="RuneFloorButton" type="Button" parent="." unique_id=1572585500]
+layout_mode = 0
+offset_left = 290.0
+offset_top = 1748.0
+offset_right = 790.0
+offset_bottom = 1858.0
+theme_override_colors/font_color = Color(0.937, 0.839, 0.58, 1)
+theme_override_colors/font_pressed_color = Color(1, 0.91, 0.66, 1)
+theme_override_colors/font_hover_color = Color(1, 0.91, 0.66, 1)
+theme_override_colors/font_outline_color = Color(0.141, 0.118, 0.078, 1)
+theme_override_constants/outline_size = 8
+theme_override_fonts/font = ExtResource("3_cinzel")
+theme_override_font_sizes/font_size = 40
+theme_override_styles/normal = SubResource("StyleBoxFlat_rune")
+theme_override_styles/hover = SubResource("StyleBoxFlat_rune")
+theme_override_styles/pressed = SubResource("StyleBoxFlat_rune_pressed")
+theme_override_styles/focus = SubResource("StyleBoxEmpty_hit")
+text = "Rune Floor (demo)"

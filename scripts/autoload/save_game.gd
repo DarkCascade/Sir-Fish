@@ -170,10 +170,18 @@ func _migrate_5_to_6(d: Dictionary) -> Dictionary:
 				item["display_name"] = " ".join(words)
 	return d
 
+## [rune floor demo] True while a scene is running on a throwaway in-memory
+## profile. save_profile() then writes nothing, so neither the scene nor the
+## app-pause save in _notification() can put that profile over the player's.
+## The scene that sets it restores the real profile with load_profile() on exit.
+var suspended: bool = false
+
 ## Every profile mutation in town saves (spec 2.4's "When to save" list); this
-## is also called from GameState.new_profile(), from start_expedition() and the
-## result-banking flow (later steps), and from _notification() below.
+## is also called from boot's new-profile fallback, the result-banking flow,
+## and _notification() below.
 func save_profile() -> void:
+	if suspended:
+		return
 	var f := FileAccess.open(PATH, FileAccess.WRITE)
 	if f == null:
 		push_error("SaveGame: cannot write %s (%d)" % [PATH, FileAccess.get_open_error()])

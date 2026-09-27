@@ -323,6 +323,21 @@ func _ready() -> void:
 			"S8: the blacksmith's stock migrates too")
 	t.check(not Itemizer.ITEM_TYPES.has(&"shield"), "S8: `shield` has no ITEM_TYPES row any more")
 
+	# --- S9: a suspended save writes nothing (the Rune Floor demo) ---------------
+	# The demo swaps a throwaway trio into GameState and suspends saving, so the
+	# app-pause save cannot put it over the player's profile. Leaving it reloads
+	# the profile from disk, which must still be the player's.
+	GameState.new_profile()
+	GameState.gold = 111
+	SaveGame.save_profile()
+	SaveGame.suspended = true
+	GameState.gold = 999
+	SaveGame.save_profile()
+	SaveGame._notification(NOTIFICATION_APPLICATION_PAUSED)
+	SaveGame.suspended = false
+	t.check(SaveGame.load_profile() and GameState.gold == 111,
+		"S9: nothing is written while suspended, app pause included (got %d gold)" % GameState.gold)
+
 	# Clean up so the next headless run starts fresh.
 	if FileAccess.file_exists(path):
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
