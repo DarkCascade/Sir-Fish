@@ -34,10 +34,14 @@ extends Node
 ## on a winning payline (SlotMachine.winning_lines, [slot vocabulary]) double-
 ## resolves, and BLOCK is max-not-sum for BLOCK_DURATION.
 ##
+## Special CHARGE is modelled with the real rules (GameState.add_special_charge
+## per owned icon, SLOT_CHARGE_ICON_CHARGE per coin, doubled on a payline), because
+## pressing a lit invoker is the only input a fight accepts - see
+## _maybe_invoke_specials(). What a special then DOES is not.
+##
 ## Known unmodelled, all of them small and all of them CONSERVATIVE (they make
 ## the party slightly weaker than the real game): crit, the bleed stat's
-## damage-over-time, the specials that charge coins fund, and per-target
-## animation timing.
+## damage-over-time, the specials' effects, and per-target animation timing.
 ##
 ## The honest caveat, same as sim_easy_attempts.gd's: the town/gear/quest
 ## DECISIONS are a stated heuristic per archetype, not the real game. A real
@@ -65,9 +69,11 @@ const RECRUIT_QUESTS := {
 ##                    a proxy for "reads the cards" vs "knows what it wants".
 ##   shop_modal_s     seconds held on the mid-expedition shop modal, which is
 ##                    the ONLY blocking interaction inside a run.
-##   buys_upgrades    whether they spend run gold in the console's upgrade tray -
-##                    the only input the game accepts DURING combat.
+##   buys_upgrades    whether they visit the Slotworks in town and buy its
+##                    permanent slot upgrades.
 ##   upgrade_order    priority when they do.
+##   presses_specials whether they press a hero's special invoker once its meter
+##                    fills - the only input the game accepts DURING combat.
 ##   sells/forges/    town economy engagement.
 ##   swaps_gear       whether they re-equip a better drop, or leave auto-equip
 ##                    (which only ever fills an EMPTY slot) to decide for them.
@@ -83,6 +89,7 @@ const ARCHETYPES := [
 		"buys_upgrades": true,
 		# Wants the board busier and the payouts splashier before it wants speed.
 		"upgrade_order": [&"polish", &"overcharge", &"quick_reels"],
+		"presses_specials": true,
 		"sells_junk": true,
 		"buys_gear": true,
 		"forges": true,
@@ -104,6 +111,7 @@ const ARCHETYPES := [
 		# Damage first, then cycle speed. Polish last - denser boards are a
 		# throughput gain, but overcharge is the direct dps lever.
 		"upgrade_order": [&"overcharge", &"quick_reels", &"polish"],
+		"presses_specials": true,
 		"sells_junk": true,
 		"buys_gear": true,
 		"forges": true,
@@ -122,10 +130,13 @@ const ARCHETYPES := [
 		# what the screen wants from them.
 		"deliberation_s": 40.0,
 		"shop_modal_s": 30.0,
-		# Never finds the upgrade tray: it is a console widget that never asks
-		# to be pressed.
+		# Never opens the Slotworks: nothing in town sends them there, and a
+		# building that sells numbers reads as optional.
 		"buys_upgrades": false,
 		"upgrade_order": [],
+		# But does press an invoker: it lights up when ready and dims when not,
+		# which is the one control in a fight that asks to be pressed.
+		"presses_specials": true,
 		"sells_junk": false,
 		"buys_gear": false,
 		"forges": false,
@@ -191,7 +202,9 @@ func _play(arch: Dictionary) -> Dictionary:
 		"travel_seconds": 0.0,
 		"town_seconds": 0.0,
 		"input_events": 0,           # discrete taps/clicks the player makes
-		"in_combat_inputs": 0,       # of those, ones available DURING a fight
+		"in_combat_inputs": 0,       # of those, ones made DURING a fight (invoker presses)
+		"in_run_inputs": 0,          # of those, ones made inside a run but outside a fight
+		"specials": 0,
 		"spins": 0,
 		"expeditions": 0,
 		"wipes": 0,
@@ -218,11 +231,10 @@ func _play(arch: Dictionary) -> Dictionary:
 		# Accepting a quest at the mayor's office: open board, read, accept.
 		log["input_events"] = int(log["input_events"]) + 2
 
+		# Slot upgrades are permanent profile state, bought at the Slotworks in
+		# _town_phase(); an expedition neither resets nor buys them. Special charge
+		# IS run-scoped - start_expedition() clears it, as the real one does.
 		GameState.start_expedition(q)
-		# Upgrades are RUN-scoped (Upgrades.reset() from recover_after_expedition) -
-		# every upgrade bought last expedition is gone. NOTE (P7): they are bought
-		# in town now, so this tool's mid-fight buying model is stale. This is load-bearing for the
-		# review: it is why the only in-combat input resets to zero every trip.
 		var won := _run_expedition(arch, log)
 		GameState.apply_expedition_xp()
 
@@ -460,10 +472,10 @@ func _run_combat(arch: Dictionary, log: Dictionary, enc: EncounterDef, party: Ar
 	while _any_alive(party) and _living(enemies) and guard < 20000:
 		guard += 1
 
-		# During a fight the ONLY thing a player may press is the upgrade tray.
-		# Model it as: when they can afford their next priority, they buy it.
-		if bool(arch["buys_upgrades"]):
-			_maybe_buy_upgrade(arch, log)
+		# During a fight the ONLY thing a player may press is a lit invoker.
+		# Model it as: the moment a meter fills, they press it.
+		if bool(arch["presses_specials"]):
+			_maybe_invoke_specials(log, party, enemies)
 
 		var next_t: float = next_spin
 		var acting: Dictionary = {}
@@ -501,7 +513,8 @@ func _run_combat(arch: Dictionary, log: Dictionary, enc: EncounterDef, party: Ar
 ## DAMAGE icon's contribution sums into a single combined swing at one random
 ## enemy; the centre row resolves twice on a payline triple; AoE icons hit every
 ## living enemy per-cell; BLOCK is granted to the
-## whole party as temp armor, max-not-sum.
+## whole party as temp armor, max-not-sum. Every resolution charges its icon's
+## owner, SLOT_CHARGE_ICON_CHARGE for a charge coin and 1 for anything else.
 func _resolve_spin(log: Dictionary, party: Array, enemies: Array, now: float) -> void:
 	var bag := _build_bag(party)
 	var board: Array = SlotMachineScript.draw_nine(bag)
@@ -519,6 +532,8 @@ func _resolve_spin(log: Dictionary, party: Array, enemies: Array, now: float) ->
 		var repeats: int = 2 if doubled.has(idx) else 1
 		for _r: int in range(repeats):
 			var roll := int(ic.get("roll", 0))
+			GameState.add_special_charge(StringName(ic.get("owner", &"")),
+				Tuning.SLOT_CHARGE_ICON_CHARGE if kind == SlotIcon.Kind.CHARGE else 1)
 			match kind:
 				SlotIcon.Kind.DAMAGE:
 					swing += SlotIcon.board_value(ic, mult)
@@ -556,11 +571,15 @@ func _build_bag(party: Array) -> Array:
 	for item: Item in GameState.inventory:
 		if item.equipped_by == &"" or item.equipped_by not in living:
 			continue
-		bag.append(SlotIcon.from_item_base(item))
+		# Every item icon belongs to its wearer, which is whose meter it charges.
+		var base_icon := SlotIcon.from_item_base(item)
+		base_icon["owner"] = item.equipped_by
+		bag.append(base_icon)
 		for mod: Dictionary in item.modifiers:
 			var ic := SlotIcon.from_modifier(mod, item)
 			if ic.is_empty():
 				continue
+			ic["owner"] = item.equipped_by
 			bag.append(ic)
 	var pad: int = maxi(Tuning.SLOT_BLANK_PAD_START - Upgrades.polish_blanks_removed(),
 		Tuning.SLOT_BLANK_PAD_FLOOR)
@@ -634,7 +653,7 @@ func _run_loot(arch: Dictionary, log: Dictionary, enc: EncounterDef) -> void:
 func _run_shop(arch: Dictionary, log: Dictionary, enc: EncounterDef) -> void:
 	log["seconds"] = float(log["seconds"]) + 0.4 + 0.45 + float(arch["shop_modal_s"])
 	log["input_events"] = int(log["input_events"]) + 1        # the close button
-	log["in_combat_inputs"] = int(log["in_combat_inputs"]) + 1
+	log["in_run_inputs"] = int(log["in_run_inputs"]) + 1
 	if not bool(arch["buys_gear"]):
 		return
 	for item: Item in Itemizer.generate_shop_stock(enc.level):
@@ -680,6 +699,8 @@ func _town_phase(arch: Dictionary, log: Dictionary) -> void:
 		screens += 1                      # item forge
 	if bool(arch["buys_meal"]) or bool(arch["rests_at_inn"]):
 		screens += 1                      # inn
+	if bool(arch["buys_upgrades"]):
+		screens += 1                      # slotworks
 	var town_time: float = float(arch["deliberation_s"]) * float(screens)
 	log["town_seconds"] = float(log["town_seconds"]) + town_time
 	log["seconds"] = float(log["seconds"]) + town_time
@@ -700,6 +721,8 @@ func _town_phase(arch: Dictionary, log: Dictionary) -> void:
 		if GameState.rest_at_inn():
 			log["gold_spent"] = int(log["gold_spent"]) + Tuning.INN_NIGHT_COST
 			log["input_events"] = int(log["input_events"]) + 1
+	if bool(arch["buys_upgrades"]):
+		_slotworks(arch, log)
 
 func _party_hurt() -> bool:
 	for entry: Dictionary in GameState.party_status():
@@ -755,20 +778,51 @@ func _forge_pass(log: Dictionary) -> void:
 						log["gold_spent"] = int(log["gold_spent"]) + int(cost[1])
 						log["input_events"] = int(log["input_events"]) + 1
 
-## The upgrade tray - the only input the game accepts while a fight is running.
-func _maybe_buy_upgrade(arch: Dictionary, log: Dictionary) -> void:
-	for id: StringName in (arch["upgrade_order"] as Array):
-		if Upgrades.is_maxed(id):
+## The Slotworks: permanent slot upgrades, bought in priority order until the
+## next affordable one runs out. Like the old tray model, an unaffordable top
+## priority is skipped rather than saved for.
+func _slotworks(arch: Dictionary, log: Dictionary) -> void:
+	var bought := true
+	while bought:
+		bought = false
+		for id: StringName in (arch["upgrade_order"] as Array):
+			if Upgrades.is_maxed(id):
+				continue
+			var price := Upgrades.cost(id)
+			if price < 0 or GameState.gold < price:
+				continue
+			if Upgrades.buy(id):
+				log["gold_spent"] = int(log["gold_spent"]) + price
+				log["upgrades_bought"] = int(log["upgrades_bought"]) + 1
+				log["input_events"] = int(log["input_events"]) + 1
+				bought = true
+			break
+
+## The special invokers - the only input the game accepts while a fight is
+## running. Presses every hero whose button would be lit, under the same rules
+## BattleDirector.can_invoke_hero_special() applies: alive, meter full, a special
+## to fire, and a wounded ally for a special that needs one. (Something to aim at
+## always holds here - this only runs while an enemy lives.) The press spends
+## the meter; what the special does is not modelled.
+func _maybe_invoke_specials(log: Dictionary, party: Array, enemies: Array) -> void:
+	if not _living(enemies):
+		return
+	var anyone_hurt := false
+	for h: Dictionary in party:
+		if int(h["hp"]) > 0 and int(h["hp"]) < int(h["max_hp"]):
+			anyone_hurt = true
+	for h: Dictionary in party:
+		if int(h["hp"]) <= 0 or not GameState.special_ready(h["id"]):
 			continue
-		var price := Upgrades.cost(id)
-		if price < 0 or GameState.gold < price:
+		var s := GameState.get_stats(h["id"])
+		if s == null or s.special == null:
 			continue
-		if Upgrades.buy(id):
-			log["gold_spent"] = int(log["gold_spent"]) + price
-			log["upgrades_bought"] = int(log["upgrades_bought"]) + 1
+		if s.special.special_requires_wounded_ally and not anyone_hurt:
+			continue
+		if GameState.spend_special_charges(h["id"]):
+			log["specials"] = int(log["specials"]) + 1
 			log["input_events"] = int(log["input_events"]) + 1
 			log["in_combat_inputs"] = int(log["in_combat_inputs"]) + 1
-		return
 
 # =============================================================================
 # Report
@@ -780,8 +834,8 @@ func _report(arch: Dictionary, log: Dictionary) -> void:
 	var travel := float(log["travel_seconds"])
 	var town := float(log["town_seconds"])
 	var inputs := int(log["input_events"])
-	# "Spectating" = inside an expedition, where the only possible input is the
-	# upgrade tray (and the one shop modal). Combat + travel time, less the
+	# "Spectating" = inside an expedition, where the only possible inputs are a
+	# lit invoker (and the one shop modal). Combat + travel time, less the
 	# handful of in-run taps, is time the player watches without agency.
 	var in_run := combat + travel
 	var ipm: float = (float(inputs) / (secs / 60.0)) if secs > 0.0 else 0.0
@@ -808,7 +862,8 @@ func _report(arch: Dictionary, log: Dictionary) -> void:
 		_mmss(town), 100.0 * town / maxf(secs, 1.0)])
 	_emit("- Slot spins watched: %d (all automatic - no spin input exists)" % int(log["spins"]))
 	_emit("- Total inputs: %d (%.1f per minute)" % [inputs, ipm])
-	_emit("    - of which available during a fight: %d" % int(log["in_combat_inputs"]))
+	_emit("    - of which during a fight (special invokes): %d" % int(log["in_combat_inputs"]))
+	_emit("    - of which in a run, outside a fight (shop modal): %d" % int(log["in_run_inputs"]))
 	_emit("- Items found: %d | equipped: %d | upgrades bought: %d | forges: %d" % [
 		int(log["items_found"]), int(log["items_equipped"]),
 		int(log["upgrades_bought"]), int(log["forges"])])

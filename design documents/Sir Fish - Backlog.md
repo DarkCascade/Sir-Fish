@@ -2004,6 +2004,23 @@ where that effort will grow.
 mid-fight, so its in-combat-input metric is stale; and pacing now that gold funds permanent
 tuning rather than a per-run spend.
 
+- **Done 2026-09-26: `sim_reviewers` buys at the Slotworks**
+  ([issue #104](https://github.com/DarkCascade/Sir-Fish/issues/104)).
+  - **Upgrades.** The upgrades are bought in `_town_phase()` as one more screen, and they
+    persist across expeditions.
+  - **Fight inputs.** The input a fight really accepts is a lit special invoker, so
+    "inputs during a fight" now counts invoker presses. Charge follows the real rules:
+    +1 per owned icon, +`SLOT_CHARGE_ICON_CHARGE` per coin, doubled on a payline, and
+    `can_invoke_hero_special()`'s wounded-ally gate for the mage. What a special does is
+    still unmodelled.
+  - **Shop modal.** Its close tap had been counted as a fight input. It is now its own
+    count: in a run, but outside a fight.
+  - **Why the owner fix.** The sim's bag had never stamped `owner` on item icons, which
+    the real `_rebuild_bag()` does. Nothing read it until charge did.
+  - **Unchanged.** Two archetype policies still stall: the hardcore player keeps taking the
+    hardest posting and wipes at L1, and the non-gamer never swaps gear. Both pre-date
+    this change.
+
 - **Economy pacing is deferred behind a Slotworks design pass** (2026-09-24,
   [issue #100](https://github.com/DarkCascade/Sir-Fish/issues/100), now blocked by
   [#157](https://github.com/DarkCascade/Sir-Fish/issues/157)). The Slotworks has grown past
