@@ -12,8 +12,14 @@ extends Control
 ##
 ## The combat is the shipped combat: the real BattleDirector, the real
 ## SlotMachine (kept hidden - RuneFloor mirrors it onto the ground), the real
-## overlay and invoker tray. The party is a fresh in-memory profile built here;
-## nothing in this scene ever calls SaveGame, so the player's save is untouched.
+## overlay and invoker tray. The party is a fresh in-memory profile built here.
+##
+## [rune floor spike] The town reaches this scene (Place.RUNE_FLOOR), so the
+## player's real profile is in memory on the way in. The demo replaces it, so
+## SaveGame is suspended for the whole visit - otherwise the app-pause save
+## (SaveGame._notification) would write the demo trio over the player's save
+## the first time a phone switched apps. Leaving restores the real profile from
+## disk, which is current in town because every town mutation saves.
 
 ## The trio's level and the rarity/level of the gear rolled for each slot.
 @export var hero_level: int = 5
@@ -34,6 +40,7 @@ extends Control
 @onready var fight_label: Label = $TopBar/FightLabel
 @onready var record_label: Label = $TopBar/RecordLabel
 @onready var banner: Label = $Banner
+@onready var back_button: Button = $TopBar/BackButton
 @onready var overlay = $BattleOverlay
 
 var director: BattleDirector
@@ -45,6 +52,12 @@ var _losses: int = 0
 var _hud_was_visible: bool = true
 
 func _ready() -> void:
+	# spec 3.1: every routed scene re-asserts its own place.
+	SceneRouter.place = SceneRouter.Place.RUNE_FLOOR
+	# Before anything touches GameState - see the header.
+	SaveGame.suspended = true
+	back_button.pressed.connect(SceneRouter.go.bind(SceneRouter.Place.TOWN))
+
 	# The Hud autoload's town/quest buttons and currency plate belong to the
 	# real game; the demo has its own top bar.
 	_hud_was_visible = Hud.visible
@@ -71,6 +84,14 @@ func _ready() -> void:
 
 func _exit_tree() -> void:
 	Hud.visible = _hud_was_visible
+	# Put the player's profile back. A direct launch (F6) with no save on disk
+	# just keeps the demo party in memory, which is harmless: nothing persisted.
+	SaveGame.suspended = false
+	if SaveGame.load_profile():
+		GameState.special_charges.clear()
+		GameState.quest = null
+		EventBus.gold_changed.emit(GameState.gold, 0)
+		EventBus.scrap_changed.emit(GameState.scrap, 0)
 
 ## A full trio at `hero_level`, each wearing a weapon, an armor and a trinket of
 ## `gear_rarity`, so the bag has something from everyone in it. In memory only.

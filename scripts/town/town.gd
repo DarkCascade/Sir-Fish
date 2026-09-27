@@ -12,6 +12,7 @@ extends Control
 @onready var _mayor_button: Button = $MayorButton
 @onready var _slotworks_button: Button = $SlotworksButton
 @onready var _item_forge_button: Button = $ItemForgeButton
+@onready var _rune_floor_button: Button = $RuneFloorButton
 
 func _ready() -> void:
 	# spec 3.1: every routed scene re-asserts its own place, so a direct launch
@@ -22,3 +23,4 @@ func _ready() -> void:
 	_mayor_button.pressed.connect(SceneRouter.go.bind(SceneRouter.Place.MAYOR))
 	_slotworks_button.pressed.connect(SceneRouter.go.bind(SceneRouter.Place.SLOTWORKS))
 	_item_forge_button.pressed.connect(SceneRouter.go.bind(SceneRouter.Place.ITEM_FORGE))
+	_rune_floor_button.pressed.connect(SceneRouter.go.bind(SceneRouter.Place.RUNE_FLOOR))

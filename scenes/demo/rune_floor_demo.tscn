@@ -1,4 +1,4 @@
-[gd_scene load_steps=15 format=3]
+[gd_scene load_steps=17 format=3]
 
 [ext_resource type="Theme" path="res://assets/theme.tres" id="1_theme"]
 [ext_resource type="Script" path="res://scripts/demo/rune_floor_demo.gd" id="2_demo"]
@@ -44,6 +44,30 @@ gradient = SubResource("dock_grad")
 width = 4
 height = 64
 fill_to = Vector2(0, 1)
+
+[sub_resource type="StyleBoxFlat" id="back_style"]
+bg_color = Color(0.016, 0.027, 0.035, 0.86)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(0.937, 0.839, 0.58, 0.9)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
+
+[sub_resource type="StyleBoxFlat" id="back_style_pressed"]
+bg_color = Color(0.09, 0.075, 0.05, 0.92)
+border_width_left = 3
+border_width_top = 3
+border_width_right = 3
+border_width_bottom = 3
+border_color = Color(1, 0.91, 0.66, 1)
+corner_radius_top_left = 12
+corner_radius_top_right = 12
+corner_radius_bottom_right = 12
+corner_radius_bottom_left = 12
 
 [node name="RuneFloorDemo" type="Control"]
 layout_mode = 3
@@ -130,6 +154,26 @@ theme_override_fonts/font = ExtResource("9_baloo")
 theme_override_font_sizes/font_size = 30
 text = "0 won · 0 lost"
 horizontal_alignment = 2
+
+; Back to town. Leaving restores the player's own profile from disk (see
+; rune_floor_demo.gd's _exit_tree()).
+[node name="BackButton" type="Button" parent="TopBar"]
+layout_mode = 0
+offset_left = 820.0
+offset_top = 100.0
+offset_right = 1040.0
+offset_bottom = 172.0
+theme_override_colors/font_color = Color(0.937, 0.839, 0.58, 1)
+theme_override_colors/font_pressed_color = Color(1, 0.91, 0.66, 1)
+theme_override_colors/font_hover_color = Color(1, 0.91, 0.66, 1)
+theme_override_colors/font_outline_color = Color(0.141, 0.118, 0.078, 1)
+theme_override_constants/outline_size = 8
+theme_override_fonts/font = ExtResource("8_cinzel")
+theme_override_font_sizes/font_size = 34
+theme_override_styles/normal = SubResource("back_style")
+theme_override_styles/hover = SubResource("back_style")
+theme_override_styles/pressed = SubResource("back_style_pressed")
+text = "Town"
 
 [node name="Dock" type="Control" parent="."]
 layout_mode = 0

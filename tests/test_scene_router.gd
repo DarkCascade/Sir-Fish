@@ -42,6 +42,8 @@ func _ready() -> void:
 		"mayor_office.tscn exists (Place.MAYOR, widened in at step 8)")
 	t.check(ResourceLoader.exists(SceneRouter.PATHS[SceneRouter.Place.QUEST]),
 		"main.tscn (Place.QUEST) exists")
+	t.check(ResourceLoader.exists(SceneRouter.PATHS[SceneRouter.Place.RUNE_FLOOR]),
+		"rune_floor_demo.tscn exists (Place.RUNE_FLOOR, the town's demo button)")
 
 	# --- SceneRouter is a live autoload with a clean lifecycle ------------
 	t.check(get_node_or_null("/root/SceneRouter") != null,

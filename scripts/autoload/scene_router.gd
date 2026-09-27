@@ -12,7 +12,7 @@ extends Node
 ## none - so test_autoload_safety.gd's lint passes. go()'s Hud reference is
 ## fine: it is not a lifecycle method.
 
-enum Place { TOWN, INN, BLACKSMITH, MAYOR, QUEST, ITEM_FORGE, SLOTWORKS }
+enum Place { TOWN, INN, BLACKSMITH, MAYOR, QUEST, ITEM_FORGE, SLOTWORKS, RUNE_FLOOR }
 
 ## Every Place must have an entry (test_scene_router.gd asserts totality). All
 ## five scenes exist as of step 10; go()'s missing-path bail stays anyway - a
@@ -25,6 +25,9 @@ const PATHS := {
 	Place.QUEST:      "res://scenes/main.tscn",
 	Place.ITEM_FORGE: "res://scenes/town/item_forge.tscn",
 	Place.SLOTWORKS:  "res://scenes/town/slotworks.tscn",
+	# [rune floor spike] The looping combat demo, reached from a town button so
+	# it can be tried on a phone build. Runs on a throwaway profile.
+	Place.RUNE_FLOOR: "res://scenes/demo/rune_floor_demo.tscn",
 }
 
 ## Fade half-durations. No Tuning constant: this is chrome timing, not a
