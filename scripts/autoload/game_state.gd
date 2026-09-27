@@ -934,6 +934,22 @@ func _interpolated_level(band: Vector2i, index: int, count: int) -> int:
 ## and no end."
 const ENDLESS_WOOD_AREA: AreaDef = preload("res://resources/areas/endless_wood.tres")
 
+## [expedition phase II] The area the current expedition happens in. A quest
+## carries no area of its own yet - every quest, authored or generated, is in
+## the one area that exists - so this is the Endless Wood until a second area
+## gives QuestDef a reason to name one.
+func expedition_area() -> AreaDef:
+	return ENDLESS_WOOD_AREA
+
+## [expedition phase II] How the current expedition is presented (PRD §6.1):
+## the quest's own override when it sets one, otherwise its area's style.
+## SceneRouter reads this to pick Place.QUEST's scene, so it must be settled
+## before go(QUEST) - start_expedition() sets `quest` first, which is enough.
+func expedition_style() -> AreaDef.ExpeditionStyle:
+	if quest != null and quest.expedition_style != QuestDef.STYLE_FROM_AREA:
+		return quest.expedition_style as AreaDef.ExpeditionStyle
+	return expedition_area().expedition_style
+
 ## Six encounters, same COMBAT/LOOT/COMBAT/SHOP/COMBAT/boss-COMBAT rhythm as
 ## the fixed level (that pacing was already tuned - only which enemies fill
 ## the combat slots is generated). Called again every time the party walks

@@ -1,4 +1,8 @@
-extends Control
+extends ExpeditionPresentation
+## [expedition phase II] The CLASSIC expedition's presentation (PRD §6.1, §7.1):
+## the fight on top, the console below. The ExpeditionPresentation half is at
+## the bottom of this file.
+##
 ## Owns the one number that decides how the screen is divided: how many of the
 ## 1920 px belong to the battle view, with the console taking the rest.
 ##
@@ -119,3 +123,58 @@ func _keep_camera_framing() -> void:
 	if cam == null:
 		return
 	cam.keep_aspect = Camera3D.KEEP_WIDTH
+
+# --- ExpeditionPresentation (CLASSIC) ---------------------------------------
+# Paths, not the @onready vars above: RunController is a child, so it calls in
+# here before this node's own _ready() has filled them.
+
+func get_world() -> Node3D:
+	return $BattleView/BattleViewport/BattleWorld
+
+func get_overlay() -> Control:
+	return $BattleOverlay
+
+func get_shop_modal() -> Control:
+	return $ModalLayer/ShopModal
+
+func bind_director(director: BattleDirector) -> void:
+	$Console.bind_director(director)
+
+## [black-glass] The console's facade over its three bands' own apply/clear
+## pair; each sets explicit colours, so repeating either is harmless.
+func boss_theme(on: bool) -> void:
+	if on:
+		$Console.apply_boss_theme()
+	else:
+		$Console.clear_boss_theme()
+
+## The console's board is always on screen; between fights the slot runs its
+## own attract loop.
+func board_visible(_on: bool) -> void:
+	pass
+
+## Travel is a treadmill: the party runs in place while the ground scrolls
+## under it (OverworldField), easing up to speed here and back down in
+## end_travel().
+func begin_travel(_def: EncounterDef) -> void:
+	var world = get_world()
+	create_tween().tween_method(Callable(world, "set_scroll_speed"),
+		world.get_scroll_speed(), Tuning.TRAVEL_SPEED, Tuning.TRAVEL_ACCEL_TIME) \
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+
+func end_travel() -> void:
+	var world = get_world()
+	var decel := create_tween()
+	decel.tween_method(Callable(world, "set_scroll_speed"),
+		world.get_scroll_speed(), 0.0, Tuning.TRAVEL_DECEL_TIME) \
+		.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	await decel.finished
+
+func reset_track() -> void:
+	$Console.slot_machine.reset_to_attract()
+	var world = get_world()
+	world.set_scroll_speed(0.0)
+	world.parallax.reset_tiles()
+
+func ui_hidden() -> bool:
+	return hide_console

@@ -2696,8 +2696,21 @@ dock had already read well on the first one.
   (a treadmill, like the overworld field), the boss, the wipe and retry, and routing by
   style. It also covers the other expedition types, and asks two open questions:
   - **Q1:** can the void around the islands become a forest for one area and a cave for
-    another?
-  - **Q2:** how does the art show the Guppy and the amulet?
+    another? [#218](https://github.com/DarkCascade/Sir-Fish/issues/218)
+  - **Q2:** how does the art show the Guppy and the amulet? [#219](https://github.com/DarkCascade/Sir-Fish/issues/219)
+  - Q3's smaller ones (keep Classic, the minimap, one- and two-hero docks) are [#220](https://github.com/DarkCascade/Sir-Fish/issues/220).
+- **Tracked as** epic [#210](https://github.com/DarkCascade/Sir-Fish/issues/210), one issue per PRD §9 milestone ([#211](https://github.com/DarkCascade/Sir-Fish/issues/211) to [#217](https://github.com/DarkCascade/Sir-Fish/issues/217)),
+  chained by blocked-by links so each milestone opens when the one it needs ships.
+- **Milestone 1 ([#211](https://github.com/DarkCascade/Sir-Fish/issues/211)): one `RunController` behind a presentation interface.**
+  `ExpeditionPresentation` is what RunController asks of the scene it runs in (world,
+  overlay, shop modal, boss theme, board, travel, reset). `main_layout.gd` implements it
+  for CLASSIC; the Rune Floor's root will for RUNE_FLOOR. Why an interface rather than a
+  second controller: the encounter, loot, drop and result code is the part the sims and
+  tests describe, and a fork would let the two styles drift apart on rules, not just looks.
+  The style lives on `AreaDef.expedition_style` (default RUNE_FLOOR) with a
+  `QuestDef.expedition_style` override, and `SceneRouter.PATHS[Place.QUEST]` is keyed by it.
+  The Endless Wood authors CLASSIC until milestone 7 flips it, and `test_expedition_style`
+  fails if any shipped area or quest resolves to a style whose scene doesn't exist yet.
 - **Also from the playtest:**
   - [#203](https://github.com/DarkCascade/Sir-Fish/issues/203) halves the payline glow.
   - [#204](https://github.com/DarkCascade/Sir-Fish/issues/204) rebalances the specials.
