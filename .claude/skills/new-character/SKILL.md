@@ -80,31 +80,29 @@ python tools/character_pipeline/pipeline.py register <id> --dry-run
 python tools/character_pipeline/pipeline.py register <id>
 ```
 
-Then have the editor import the new files: `execute_editor_script` with
-`EditorInterface.get_resource_filesystem().scan()`.
+Then have the editor import the new files: `filesystem_manage(op="scan")`.
 
 ## 6. Test
 
-Run each of these with `run_headless_scene`:
-- `res://tests/test_content_registry.tscn`
-- `res://tests/test_animation_clips.tscn`
-- `res://tests/test_endless_level_gen.tscn`
-- `res://tests/test_quest_gen.tscn`
-- `res://tests/test_quest_generator.tscn`
-- `res://tests/test_level_curves.tscn`
+Run these suites:
+```bash
+python tools/run_tests.py content_registry animation_clips endless_level_gen quest_gen quest_generator level_curves
+```
+(`quest_gen` also matches `test_quest_generator`.)
 
 ## 7. In-game look (optional)
 
-Runs autosave the real dev profile, so **copy
-`%APPDATA%/Godot/app_userdata/Sir Fish/profile.save` first**. Then:
-1. `play_scene` main.
-2. From town, `execute_game_script` with
+Runs autosave the dev profile, so **copy `profile.save` and `profile.dev.save` from
+`%APPDATA%/Godot/app_userdata/Sir Fish/` first**. Then:
+1. `project_run(autosave=false)`.
+2. From town, `editor_manage(op="game_eval")` with
    `get_node("/root/Debug").command = "quest easy"`.
 3. Once `get_node("/root/Debug")._director()` returns a director, spawn with
    `command = "spawn <id>"`.
 4. Guard every `director.enemies` entry with `is_instance_valid()`, because it keeps
    freed combatants.
-5. Stop the scene when done.
+5. Look with `editor_screenshot(source="game")`, and stop with
+   `project_manage(op="stop")` when done.
 
 ## Gotchas
 

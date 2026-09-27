@@ -2426,6 +2426,7 @@ replacement, against these targets once the ladders exist. The builds above bloc
 | 10.2 | Rune Floor or console as the expedition style | **Decided 2026-09-27** | The Rune Floor is the **default** for expeditions; other styles, the console one included, may exist for variety. Built as Expedition Phase II (§10, `design documents/Expedition Phase II/`) |
 | 10.3 | The Rune Floor dock | **Decided and built 2026-09-26** | Design A, hero plates: health bar on top, portrait in a segmented charge ring, the special's name in a full-width pill; the whole plate is the button (§10, [#202](https://github.com/DarkCascade/Sir-Fish/pull/202)) |
 | 10.4 | The smallest font | **Decided 2026-09-27** | `Tuning.MIN_FONT_SIZE` = 36 px (about 13 pt on a phone), the plate's HP number; enforced by `test_font_floor` as a ratchet (§10, CLAUDE.md, [#205](https://github.com/DarkCascade/Sir-Fish/issues/205)) |
+| 10.5 | The Godot MCP server | **Decided and switched 2026-09-27** | godot-ai (pinned release 5.0.45) replaces Godot MCP Pro; no domain exclusions, no public tunnel (§10, CLAUDE.md, [#222](https://github.com/DarkCascade/Sir-Fish/issues/222)) |
 
 ---
 
@@ -2727,3 +2728,34 @@ that read comfortably on the phone, and it becomes the floor: `Tuning.MIN_FONT_S
   as a ratchet: a file's count can only go down.
   [#205](https://github.com/DarkCascade/Sir-Fish/issues/205) raises them. Script-drawn text
   is outside the test's reach, so CLAUDE.md states the rule for it (best practice 4).
+
+### Decided: godot-ai replaces Godot MCP Pro (2026-09-27)
+
+Decision 10.5, made before Expedition Phase II's milestone 2 because M2 to M5 are the most
+screenshot-heavy work on the roadmap. Tracked in [#222](https://github.com/DarkCascade/Sir-Fish/issues/222); it also closes the
+`godot-editor-mcp` watch item, [#112](https://github.com/DarkCascade/Sir-Fish/issues/112).
+
+- **Why:** godot-ai passed every routine of an evaluation run on a clone of this project
+  (routines in `C:\Projects\Godot\godot-ai-sir-fish-test-routines.md`, results in the clone's
+  `GODOT_AI_RESULTS.md`).
+  - It screenshots and scripts the game running embedded in the editor, whichever editor
+    tab is showing. Pro needs the Game tab visible, which cost repeated scratch-scene checks.
+  - When the game-side helper is missing, it says so and names the fix. Pro reported a busy
+    game and suggested a longer timeout.
+  - `scene_open(force_reload=true)` re-reads a scene from disk as a first-class call.
+- **What turned out not to be godot-ai's fault:** `;` comments are lost on any scene save
+  because of Godot 4.7's serializer, by either tool; and a run saves only scenes with
+  unsaved changes, by either tool. The edit-on-disk rule stays.
+- **What it costs:** no editor-side scripts while the game runs, and `batch_execute` plus the
+  `*_manage` tools mean the old per-tool deny rules became a PreToolUse hook
+  (`.claude/hooks/godot_ai_guard.py`).
+- **Two settings decided against:**
+  - **No TileMap domain exclusion.** It had to match in the editor setting and the client
+    entry on every project, and a server still running with the old setting refuses new
+    bridges. Sir Fish has no TileMaps, so the directive in that tool's description never
+    reaches an agent anyway.
+  - **No public tunnel.** Claude Code runs on the same PC as Godot; the phone reaches the
+    Claude session, not the editor.
+- **Install:** the add-on from the 5.0.45 release zip, and the server as that release's wheel
+  through `uvx`. The web export excludes `addons/godot_ai/*`, and the plugin's export hook
+  strips its game-helper autoload from the pack.
