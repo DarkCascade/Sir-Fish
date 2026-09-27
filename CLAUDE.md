@@ -125,6 +125,19 @@ Pass an array of node definitions. Nodes are processed in order, so earlier node
 
    Note the parts are **not** separate glTF nodes — one node, one mesh, one material, one baked texture. Find them as connected components (Blender: separate by loose parts).
 
+4. **Mobile legibility: no text below `Tuning.MIN_FONT_SIZE` (36 px).** The game is played
+   on phones, where the 1080 px canvas shows about 390 pt wide, so 36 px lands at about
+   13 pt. That is the Rune Floor hero plate's HP number, the smallest text that read
+   comfortably in the 2026-09-27 phone playtest; the old dock's 26 px and 20 px labels
+   (9 and 7 pt) did not. It applies to every new or changed text: theme sizes, node font
+   overrides, exported `font_size` properties, and text a script draws. Shrink-to-fit
+   floors too. If something doesn't fit at 36, change the layout or cut the words, not
+   the size.
+   - `tests/test_font_floor.gd` enforces it for scenes and resources as a ratchet. The
+     sizes that predate the rule are grandfathered there. Lower a file's count when you
+     raise its text; the test fails until you do. Issue #205 tracks raising the rest.
+   - Script-drawn text is not covered by the test, so check it by hand.
+
 ## Common Pitfalls
 
 1. **Never edit project.godot directly** — Use `set_project_setting` instead. The Godot editor overwrites the file.
