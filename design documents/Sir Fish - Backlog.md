@@ -31,10 +31,11 @@
 > takes the player from a solo warrior in a town with no services to a three-person party in
 > a staffed town, and it will reshape both recruit quests when it is built.
 >
-> **The Rune Floor spike opened 2026-09-26 (§10).** It tries the expedition's design canvas
-> concept A as a playable combat loop: a tactical camera, and the slot board on the ground
-> between the party and the enemies. Its fiction is decided: the Gilded Guppy projects the
-> board, and Sir Fish's knighting amulet is the lens (#196).
+> **The Rune Floor is the default expedition style (decided 2026-09-27, §10).** The spike
+> put the slot board on the ground between the party and the enemies, under a tactical
+> camera. After two phone playtests it becomes the expedition, as Expedition Phase II. Its
+> fiction is decided: the Gilded Guppy projects the board, and Sir Fish's knighting amulet
+> is the lens (#196).
 
 ---
 
@@ -45,7 +46,7 @@
 | **P1** | ~~Ranger recruitment quest, offered from level 3~~ | High | M | nothing | **Built 2026-09-14; regressions fixed, balance measured, join level set 2026-09-20.** Unlock gate, one-shot tracking, relic-based `CollectObjective`, `RecruitRewardExtra` (joins at level 3), the quest and its warbow relic, all tested. The live playtest caught and fixed a real combat-loop bug (§1) |
 | **P2** | ~~Mage recruitment quest, offered from level 5~~ | High | S | nothing | **Built 2026-09-14, the same day as P1; recorded here 2026-09-20, gated at level 5 the same day.** Deviated from the plan: one authored RELIC (the heartstone, a trinket) via `QuestDef.guaranteed_boss_drop`, not a staff. Its own `_load_authored_quests()` rewrite is what caused P1's regressions |
 | **S1** | ~~Spike: does KayKit's `Rig_Medium` match the shipped rig?~~ | — | XS | — | **Done 2026-09-13: it matches** (§4) |
-| **S2** | Spike: the Rune Floor (the slot board on the battlefield) | High, if it holds | M | nothing | **Opened 2026-09-26 (§10).** A combat-only demo scene runs the real combat under a tactical camera. The fiction is decided (#196); showing it on screen is not built. Tagged `rune-floor-spike` on the board |
+| **S2** | Spike: the Rune Floor (the slot board on the battlefield) | High | M | nothing | **Opened 2026-09-26; held 2026-09-27 (§10).** Two phone playtests later it is the **default expedition style** (decision 10.2), built next as Expedition Phase II (its PRD is in `design documents/Expedition Phase II/`). The fiction is decided (#196); showing it on screen is not built. Tagged `rune-floor-spike` on the board |
 | **P3** | Modifier sets per item type; item types for every shipped hand mesh | Medium | M data + M visible props | 3.8 | P1–P2 unblocked it (a full party can be tuned now, §1's balance check). 3.7's approach is decided (issue #71); what still blocks it is 3.8 - the item-modifier rework may replace decision 3.1 entirely (§7) |
 | **P4** | Prompt → Meshy → Blender → glb character skill | Medium | M | nothing: the trial character proved the route (§4) | Packaged as the project skill `new-character` and `tools/character_pipeline/` (2026-09-14), kept project-level (4.4, #82). What remains is 4.3's shared clip source, which lands with #78 or #81 (decided 2026-09-23, #79) |
 | **P5** | Small polish pass: post-expedition summary (a settlement receipt, #86/#153), chest presentation, invoker tray boss theme (was slot upgrade UI, #90), party modal info, shadow monster rework | Low–Medium | S (each item) | nothing | Queued during a later session; not yet scoped against P1–P4 |
@@ -2422,6 +2423,9 @@ replacement, against these targets once the ladders exist. The builds above bloc
 | 9.5 | The Slotworks in the tutorial | **Decided 2026-09-24, builds with the arc** | Closed until a tinker is freed from a small camp, then opens in stages: Upgrades first, Tuning and Charms later in the arc, so the three systems are taught one at a time. Which moments open them is left for scheduling (§9, [#157](https://github.com/DarkCascade/Sir-Fish/issues/157)) |
 | 9.6 | The town's name | **Decided 2026-09-25** | **Mossmere**, played mostly straight beside the punning Gilded Guppy (§9, [#165](https://github.com/DarkCascade/Sir-Fish/issues/165)) |
 | 10.1 | How the Guppy's slot becomes the Rune Floor board | **Decided 2026-09-26, not built** | The Guppy is a magic lantern: parked behind the party, its reels are the slides and the amulet Sir Fish was given when he was knighted is the lens that projects the board onto the ground. The board is light, not stone (§10, [#196](https://github.com/DarkCascade/Sir-Fish/issues/196)) |
+| 10.2 | Rune Floor or console as the expedition style | **Decided 2026-09-27** | The Rune Floor is the **default** for expeditions; other styles, the console one included, may exist for variety. Built as Expedition Phase II (§10, `design documents/Expedition Phase II/`) |
+| 10.3 | The Rune Floor dock | **Decided and built 2026-09-26** | Design A, hero plates: health bar on top, portrait in a segmented charge ring, the special's name in a full-width pill; the whole plate is the button (§10, [#202](https://github.com/DarkCascade/Sir-Fish/pull/202)) |
+| 10.4 | The smallest font | **Decided 2026-09-27** | `Tuning.MIN_FONT_SIZE` = 36 px (about 13 pt on a phone), the plate's HP number; enforced by `test_font_floor` as a ratchet (§10, CLAUDE.md, [#205](https://github.com/DarkCascade/Sir-Fish/issues/205)) |
 
 ---
 
@@ -2659,3 +2663,54 @@ What the spike still needs to show the decision (checklist on #196):
 - The board as light on the ground. Today's carved slab and gold rim are stand-ins.
 - The invoker dock framed as part of the coach.
 - The amulet's design. A Meshy concept would need `needs-meshy` and a credit confirmation.
+
+### Done: the demo on a phone, and a readable dock (2026-09-26/27)
+
+- **A town button reaches the demo** ([#201](https://github.com/DarkCascade/Sir-Fish/pull/201)),
+  so it can be played on the Pages build. The demo runs a throwaway party, so it suspends
+  saving (`SaveGame.suspended`) and reloads the real profile on the way out. Without that,
+  the app-pause save would have written the demo party over the player's save the first time
+  a phone switched apps.
+- **The first phone playtest failed the dock.** The special names baked into the Meshy
+  invoker art came out at about 7 pt, and the HP numbers under them at 9 pt.
+- **Three dock designs were mocked up at phone size**
+  ([canvas](https://claude.ai/artifact/FQVDmc88ycEfTGLpmijQQQ)): A hero plates, B the Guppy's
+  rail, C health over the heroes. **A was chosen** (decision 10.3), revised to put the bars
+  on top, add a full-width name pill and drop the small glyphs, and built
+  ([#202](https://github.com/DarkCascade/Sir-Fish/pull/202)).
+- **Found on the way:** a `FontVariation` weight keyed `"wght"` loads silently and does
+  nothing; it needs the integer tag `2003265652`. Four older font resources are affected,
+  and a separate task fixes them.
+
+### Decided: the Rune Floor becomes the default expedition (2026-09-27)
+
+Decision 10.2, after the second phone playtest, on the hero plates. Everything but the
+dock had already read well on the first one.
+
+- **Why:** the fight and the board are one place to watch instead of two, and the plates put
+  health and the only fight input under the thumb.
+- **Other styles stay possible.** The console expedition becomes one style among several
+  rather than being deleted. Whether it stays selectable is PRD question Q3.
+- **Built as Expedition Phase II:** `design documents/Expedition Phase II/Sir Fish -
+  Expedition Phase II PRD.md`. It covers every encounter type, the crossing between islands
+  (a treadmill, like the overworld field), the boss, the wipe and retry, and routing by
+  style. It also covers the other expedition types, and asks two open questions:
+  - **Q1:** can the void around the islands become a forest for one area and a cave for
+    another?
+  - **Q2:** how does the art show the Guppy and the amulet?
+- **Also from the playtest:**
+  - [#203](https://github.com/DarkCascade/Sir-Fish/issues/203) halves the payline glow.
+  - [#204](https://github.com/DarkCascade/Sir-Fish/issues/204) rebalances the specials.
+
+### Decided: a minimum font size (2026-09-27)
+
+Decision 10.4. The plate's HP number, 36 px in the 1080 px canvas, was the smallest text
+that read comfortably on the phone, and it becomes the floor: `Tuning.MIN_FONT_SIZE`.
+
+- **Why a number, not a guideline:** the old dock proved that sizes which look fine in the
+  editor fail on a phone. A number can be tested; "legible" cannot.
+- **Enforced going forward, not all at once.** `tests/test_font_floor.gd` scans every
+  scene and resource and fails on any new size below 36. The 22 older ones are grandfathered
+  as a ratchet: a file's count can only go down.
+  [#205](https://github.com/DarkCascade/Sir-Fish/issues/205) raises them. Script-drawn text
+  is outside the test's reach, so CLAUDE.md states the rule for it (best practice 4).

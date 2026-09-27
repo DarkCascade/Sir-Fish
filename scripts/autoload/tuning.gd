@@ -666,6 +666,14 @@ const C_LIGHTNING := Color("4C86F0")
 const C_DEFEND := Color("D9A825")         # was blue - now the shield gold
 const C_CONSOLE_BG := Color("040709")     # the void behind the lantern, near-black
 const C_CONSOLE_PANEL := Color("34756A")  # panel fill, a lit teal mid-tone - the lantern surface
+## [mobile legibility] The smallest font size any new text may use, in the
+## game's 1080 px-wide canvas. It is the Rune Floor hero plate's HP number
+## (PlateHpBar), the smallest text that read comfortably in the 2026-09-27 phone
+## playtest: about 13 pt once a phone shows the canvas 390 pt wide. The old dock's
+## 26 px (9 pt) and baked 20 px (7 pt) labels were the ones that failed.
+## tests/test_font_floor.gd holds every scene and resource to it, grandfathering
+## the sizes that predate the rule until they are raised.
+const MIN_FONT_SIZE := 36
 const C_TEXT := Color("F5F1E6")           # near-white, on dark
 const C_TEXT_DIM := Color("B5D2C8")       # secondary text - lives in the wells / on the void, never the lit panel (spec A 2.6)
 const C_WOOD := Color("7A4E28")           # slightly darkened for the night mood

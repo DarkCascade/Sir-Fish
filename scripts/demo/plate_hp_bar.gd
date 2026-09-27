@@ -7,6 +7,7 @@ class_name PlateHpBar
 
 ## Baloo 2 at wght 800 - the demo scene assigns it.
 @export var font: Font
+## The project's floor (Tuning.MIN_FONT_SIZE): this number is what set it.
 @export var font_size: int = 36
 @export var outline_size: int = 8
 @export var corner_radius: int = 14
