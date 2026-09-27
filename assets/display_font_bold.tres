@@ -5,10 +5,11 @@
 ; Combat text (damage_number.tscn) only - same Cinzel and weight as
 ; display_font.tres, plus variation_embolden for a heavier stroke that reads
 ; better as a floating number than the rest of the console's headings need.
+; wght is keyed by its integer OpenType tag (2003265652); a "wght" string key is silently ignored.
 [resource]
 base_font = ExtResource("1_cinzel")
 variation_opentype = {
-"wght": 900.0
+2003265652: 900.0
 }
 variation_embolden = 0.9
 spacing_glyph = 6
