@@ -1,15 +1,17 @@
-[gd_scene load_steps=17 format=3]
+[gd_scene load_steps=18 format=3]
 
 [ext_resource type="Theme" path="res://assets/theme.tres" id="1_theme"]
 [ext_resource type="Script" path="res://scripts/demo/rune_floor_demo.gd" id="2_demo"]
 [ext_resource type="PackedScene" path="res://scenes/demo/rune_floor_world.tscn" id="3_world"]
 [ext_resource type="PackedScene" path="res://scenes/overlay/battle_overlay.tscn" id="4_overlay"]
 [ext_resource type="PackedScene" path="res://scenes/console/slot_machine.tscn" id="5_slot"]
-[ext_resource type="PackedScene" path="res://scenes/console/invoker_tray.tscn" id="6_tray"]
+[ext_resource type="PackedScene" path="res://scenes/demo/hero_plate.tscn" id="6_plate"]
 [ext_resource type="Shader" path="res://assets/shaders/vignette.gdshader" id="7_vignette"]
 [ext_resource type="FontFile" path="res://assets/fonts/Cinzel-VariableFont.ttf" id="8_cinzel"]
 [ext_resource type="FontFile" path="res://assets/fonts/Baloo2-Variable.ttf" id="9_baloo"]
-[ext_resource type="Script" path="res://scripts/demo/rune_floor_party_hp.gd" id="10_hp"]
+[ext_resource type="Texture2D" path="res://assets/ui/slot/portrait_ranger.png" id="10_ranger"]
+[ext_resource type="Texture2D" path="res://assets/ui/slot/portrait_warrior.png" id="11_warrior"]
+[ext_resource type="Texture2D" path="res://assets/ui/slot/portrait_mage.png" id="12_mage"]
 
 ; [rune floor demo] Design canvas concept A as a playable combat loop. The world
 ; takes the whole 1080 x 1920 screen; the invoker dock floats over the bottom
@@ -35,15 +37,10 @@ width = 4
 height = 64
 fill_to = Vector2(0, 1)
 
-[sub_resource type="Gradient" id="dock_grad"]
-offsets = PackedFloat32Array(0, 0.3, 1)
-colors = PackedColorArray(0.016, 0.027, 0.035, 0, 0.016, 0.027, 0.035, 0.85, 0.016, 0.027, 0.035, 1)
-
-[sub_resource type="GradientTexture2D" id="dock_tex"]
-gradient = SubResource("dock_grad")
-width = 4
-height = 64
-fill_to = Vector2(0, 1)
+[sub_resource type="StyleBoxFlat" id="dock_style"]
+bg_color = Color(0.078, 0.059, 0.11, 1)
+border_width_top = 6
+border_color = Color(0.847, 0.686, 0.322, 1)
 
 [sub_resource type="StyleBoxFlat" id="back_style"]
 bg_color = Color(0.016, 0.027, 0.035, 0.86)
@@ -175,39 +172,52 @@ theme_override_styles/hover = SubResource("back_style")
 theme_override_styles/pressed = SubResource("back_style_pressed")
 text = "Town"
 
-[node name="Dock" type="Control" parent="."]
+; [rune floor dock] Design A of the dock mockups (2026-09-26): one plate per
+; hero, health on top, portrait in a segmented charge ring, the special's name in
+; a pill; the whole plate is the special's button. Replaces the Meshy invoker tray
+; and the HP strip under it, whose text read at 7-9 pt on a phone.
+[node name="Dock" type="Panel" parent="."]
 layout_mode = 0
-offset_top = 1560.0
+offset_top = 1487.0
 offset_right = 1080.0
 offset_bottom = 1920.0
 mouse_filter = 2
+theme_override_styles/panel = SubResource("dock_style")
 
-[node name="Backdrop" type="TextureRect" parent="Dock"]
+[node name="Plates" type="HBoxContainer" parent="Dock"]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
+offset_left = 11.0
+offset_top = 28.0
+offset_right = -11.0
+offset_bottom = -28.0
 grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
-texture = SubResource("dock_tex")
-expand_mode = 1
+theme_override_constants/separation = 11
 
-[node name="InvokerTray" parent="Dock" instance=ExtResource("6_tray")]
-layout_mode = 0
-offset_left = 97.0
-offset_top = 10.0
-offset_right = 1177.0
-offset_bottom = 368.0
-scale = Vector2(0.82, 0.82)
+[node name="Ranger" parent="Dock/Plates" instance=ExtResource("6_plate")]
+layout_mode = 2
+hero_class = &"ranger"
+special_name = "Bomb Arrow"
+portrait = ExtResource("10_ranger")
+owner_color = Color(0.373, 0.761, 0.478, 1)
 
-[node name="PartyHp" type="Control" parent="Dock"]
-layout_mode = 0
-offset_top = 282.0
-offset_right = 1080.0
-offset_bottom = 350.0
-mouse_filter = 2
-script = ExtResource("10_hp")
+[node name="Warrior" parent="Dock/Plates" instance=ExtResource("6_plate")]
+layout_mode = 2
+hero_class = &"warrior"
+special_name = "Cleave"
+portrait = ExtResource("11_warrior")
+owner_color = Color(0.435, 0.584, 0.847, 1)
+
+[node name="Mage" parent="Dock/Plates" instance=ExtResource("6_plate")]
+layout_mode = 2
+hero_class = &"mage"
+special_name = "Healing Aura"
+portrait = ExtResource("12_mage")
+owner_color = Color(0.627, 0.486, 0.969, 1)
 
 [node name="Banner" type="Label" parent="."]
 layout_mode = 0

@@ -1,0 +1,116 @@
+[gd_scene load_steps=9 format=3]
+
+[ext_resource type="Script" path="res://scripts/demo/hero_plate.gd" id="1_plate"]
+[ext_resource type="Script" path="res://scripts/demo/plate_hp_bar.gd" id="2_bar"]
+[ext_resource type="Script" path="res://scripts/demo/plate_charge_ring.gd" id="3_ring"]
+[ext_resource type="FontFile" path="res://assets/fonts/Baloo2-Variable.ttf" id="4_baloo"]
+
+; [rune floor dock] Design A of the dock mockups: one hero's plate, which is also
+; that hero's special button. Sizes are the mockup's phone points x 2.77 (a 1080 px
+; screen shown 390 pt wide), so the name reads at 15 pt and the HP at 13 pt.
+; Per-hero fields (hero_class, special_name, portrait, owner_color) are set on each
+; instance in rune_floor_demo.tscn.
+
+; The weight axis is keyed by its OpenType tag as an integer (2003265652 is
+; "wght"). A "wght" string key loads without error and is silently ignored.
+[sub_resource type="FontVariation" id="baloo_800"]
+base_font = ExtResource("4_baloo")
+variation_opentype = {
+2003265652: 800.0
+}
+
+[sub_resource type="StyleBoxFlat" id="idle"]
+bg_color = Color(0.129, 0.102, 0.18, 1)
+border_width_left = 6
+border_width_top = 6
+border_width_right = 6
+border_width_bottom = 6
+border_color = Color(0.231, 0.192, 0.322, 1)
+corner_radius_top_left = 28
+corner_radius_top_right = 28
+corner_radius_bottom_right = 28
+corner_radius_bottom_left = 28
+
+; Ready: warm face, gold rim and a gold glow round the whole plate.
+[sub_resource type="StyleBoxFlat" id="lit"]
+bg_color = Color(0.169, 0.137, 0.22, 1)
+border_width_left = 6
+border_width_top = 6
+border_width_right = 6
+border_width_bottom = 6
+border_color = Color(0.961, 0.875, 0.627, 1)
+corner_radius_top_left = 28
+corner_radius_top_right = 28
+corner_radius_bottom_right = 28
+corner_radius_bottom_left = 28
+shadow_color = Color(0.961, 0.875, 0.627, 0.55)
+shadow_size = 18
+
+; The name's pill. Its rim is recoloured per hero (and gold when ready) by
+; hero_plate.gd, which works on its own copy.
+[sub_resource type="StyleBoxFlat" id="pill"]
+content_margin_left = 16.0
+content_margin_top = 4.0
+content_margin_right = 16.0
+content_margin_bottom = 0.0
+bg_color = Color(0.078, 0.059, 0.11, 1)
+border_width_left = 6
+border_width_top = 6
+border_width_right = 6
+border_width_bottom = 6
+border_color = Color(1, 1, 1, 1)
+corner_radius_top_left = 40
+corner_radius_top_right = 40
+corner_radius_bottom_right = 40
+corner_radius_bottom_left = 40
+
+[node name="HeroPlate" type="Button"]
+custom_minimum_size = Vector2(0, 360)
+size_flags_horizontal = 3
+focus_mode = 0
+script = ExtResource("1_plate")
+idle_style = SubResource("idle")
+lit_style = SubResource("lit")
+
+[node name="Column" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 14.0
+offset_top = 16.0
+offset_right = -14.0
+offset_bottom = -16.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/separation = 14
+alignment = 1
+
+[node name="HpBar" type="Control" parent="Column"]
+custom_minimum_size = Vector2(0, 53)
+layout_mode = 2
+mouse_filter = 2
+script = ExtResource("2_bar")
+font = SubResource("baloo_800")
+
+[node name="Ring" type="Control" parent="Column"]
+custom_minimum_size = Vector2(166, 166)
+layout_mode = 2
+size_flags_horizontal = 4
+mouse_filter = 2
+script = ExtResource("3_ring")
+
+[node name="NamePill" type="PanelContainer" parent="Column"]
+layout_mode = 2
+mouse_filter = 2
+theme_override_styles/panel = SubResource("pill")
+
+[node name="Name" type="Label" parent="Column/NamePill"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.961, 0.945, 0.902, 1)
+theme_override_fonts/font = SubResource("baloo_800")
+theme_override_font_sizes/font_size = 42
+text = "Special"
+horizontal_alignment = 1
+vertical_alignment = 1
