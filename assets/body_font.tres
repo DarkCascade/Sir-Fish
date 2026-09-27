@@ -15,9 +15,10 @@
 ; assets/fonts/Crimson-Semibold.ttf (already vendored/imported) rather than
 ; pushing wght further - EB Garamond's axis starts deforming letterforms
 ; above ~700.
+; wght is keyed by its integer OpenType tag (2003265652); a "wght" string key is silently ignored.
 [resource]
 base_font = ExtResource("1_garamond")
 variation_opentype = {
-"wght": 600.0
+2003265652: 600.0
 }
 spacing_glyph = 1

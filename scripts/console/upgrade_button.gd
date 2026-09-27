@@ -24,8 +24,11 @@ extends Button
 ## Title auto-fit range - see _fit_title(). MAX is the size the board's titles
 ## read at; MIN is the floor past which a name would be smaller than its own
 ## blurb, at which point the card is wrong in some other way.
+## MIN was 26. Once display_font's wght 900 actually applied, "Quick Reels" and
+## "Overcharge" measured 233/231 px at 26 against a 216 px box and ran into the
+## vine rim; at 24 they fit (and they overflowed slightly even at wght 400).
 const TITLE_FONT_MAX := 42
-const TITLE_FONT_MIN := 26
+const TITLE_FONT_MIN := 24
 ## [slot ui phase 3] Was 16. The card's gold-vine rim is 30 px thick now, and a
 ## title fitted to 16 ran its last letter into the vines.
 const TITLE_RIGHT_MARGIN := 36.0

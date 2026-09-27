@@ -2,9 +2,10 @@
 
 [ext_resource type="FontFile" uid="uid://c0000qslynpqp" path="res://assets/fonts/Cinzel-VariableFont.ttf" id="1_cinzel"]
 
+; wght is keyed by its integer OpenType tag (2003265652); a "wght" string key is silently ignored.
 [resource]
 base_font = ExtResource("1_cinzel")
 variation_opentype = {
-"wght": 900.0
+2003265652: 900.0
 }
 spacing_glyph = 6
