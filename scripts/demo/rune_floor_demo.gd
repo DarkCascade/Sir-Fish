@@ -2,7 +2,8 @@ extends Control
 ## [rune floor demo] One combat encounter at a time, forever, in the Rune Floor
 ## style (design canvas concept A): a high tactical camera over a floating
 ## island, the slot board carved into the ground between the party and the
-## enemies, the special invokers in a dock under the thumb.
+## enemies, and a dock of hero plates under the thumb - each hero's health,
+## charge and special button in one (HeroPlate).
 ##
 ## No town, no travel, no encounter track. A random fight starts; when it
 ## resolves, the next one starts. A victory keeps the party's HP and meters
@@ -12,7 +13,7 @@ extends Control
 ##
 ## The combat is the shipped combat: the real BattleDirector, the real
 ## SlotMachine (kept hidden - RuneFloor mirrors it onto the ground), the real
-## overlay and invoker tray. The party is a fresh in-memory profile built here.
+## overlay. The party is a fresh in-memory profile built here.
 ##
 ## [rune floor spike] The town reaches this scene (Place.RUNE_FLOOR), so the
 ## player's real profile is in memory on the way in. The demo replaces it, so
@@ -35,8 +36,7 @@ extends Control
 
 @onready var world = $BattleView/BattleViewport/RuneFloorWorld
 @onready var slot_machine = $HiddenCabinet/SlotMachine
-@onready var invoker_tray = $Dock/InvokerTray
-@onready var party_hp = $Dock/PartyHp
+@onready var plates: HBoxContainer = $Dock/Plates
 @onready var fight_label: Label = $TopBar/FightLabel
 @onready var record_label: Label = $TopBar/RecordLabel
 @onready var banner: Label = $Banner
@@ -73,8 +73,8 @@ func _ready() -> void:
 
 	slot_machine.apply_height(600.0)
 	slot_machine.director = director
-	invoker_tray.director = director
-	party_hp.director = director
+	for plate: HeroPlate in plates.get_children():
+		plate.director = director
 	(world.get_node("RuneFloor") as RuneFloor).bind(slot_machine, director)
 
 	EventBus.combat_ended.connect(_on_combat_ended)
