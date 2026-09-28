@@ -386,7 +386,8 @@ Also to decide:
   the Sir Fish tank's current home and several grandfathered small fonts (#205).
 - **The minimap:** keep it next to the islands, or rely on the islands alone (§5.8)?
 - **One- and two-hero parties:** the dock has three plate slots. Centre the plates that
-  exist, or keep empty slots as "recruit to fill" teasers?
+  exist, or keep empty slots as "recruit to fill" teasers? **Decided 2026-09-27: keep the
+  empty slots as "recruit to fill" teasers** ([#220](https://github.com/DarkCascade/Sir-Fish/issues/220)).
 
 ---
 

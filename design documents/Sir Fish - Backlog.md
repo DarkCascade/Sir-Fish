@@ -2700,6 +2700,11 @@ dock had already read well on the first one.
     another? [#218](https://github.com/DarkCascade/Sir-Fish/issues/218)
   - **Q2:** how does the art show the Guppy and the amulet? [#219](https://github.com/DarkCascade/Sir-Fish/issues/219)
   - Q3's smaller ones (keep Classic, the minimap, one- and two-hero docks) are [#220](https://github.com/DarkCascade/Sir-Fish/issues/220).
+    - **One- and two-hero docks, decided 2026-09-27:** the dock keeps its three plate
+      slots, and a slot with no hero shows a "recruit to fill" teaser rather than the
+      plates re-centring. The layout stays one fixed shape whatever the party size, and an
+      empty slot tells a solo warrior's player that the party can grow. Built in milestone 2
+      ([#212](https://github.com/DarkCascade/Sir-Fish/issues/212)).
 - **Tracked as** epic [#210](https://github.com/DarkCascade/Sir-Fish/issues/210), one issue per PRD §9 milestone ([#211](https://github.com/DarkCascade/Sir-Fish/issues/211) to [#217](https://github.com/DarkCascade/Sir-Fish/issues/217)),
   chained by blocked-by links so each milestone opens when the one it needs ships.
 - **Milestone 1 ([#211](https://github.com/DarkCascade/Sir-Fish/issues/211)): one `RunController` behind a presentation interface.**
