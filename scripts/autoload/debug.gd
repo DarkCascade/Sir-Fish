@@ -428,9 +428,13 @@ func _cmd_route(args: Array) -> void:
 ## standing in for the mayor's office (spec 7.5). start_expedition() is
 ## unconditional here - `route quest` twice just re-runs a clean expedition reset
 ## and costs the profile nothing.
+##
+## [expedition phase II] An optional second word, `rune` or `classic`, plays the
+## quest in that style through QuestDef.expedition_style (PRD §6.1) - on a copy,
+## so the authored resource keeps deferring to its area.
 func _cmd_quest(args: Array) -> void:
 	if args.is_empty():
-		_log("quest -> needs <easy|medium|hard>")
+		_log("quest -> needs <easy|medium|hard> [rune|classic]")
 		return
 	var key := String(args[0]).to_lower()
 	var path := "res://resources/quests/%s.tres" % key
@@ -438,10 +442,19 @@ func _cmd_quest(args: Array) -> void:
 		_log("quest -> unknown quest '%s'" % key)
 		return
 	var q := load(path) as QuestDef
+	var style := ""
+	if args.size() > 1:
+		style = String(args[1]).to_lower()
+		var styles := { "rune": AreaDef.ExpeditionStyle.RUNE_FLOOR, "classic": AreaDef.ExpeditionStyle.CLASSIC }
+		if not styles.has(style):
+			_log("quest -> unknown style '%s' (rune|classic)" % args[1])
+			return
+		q = q.duplicate() as QuestDef
+		q.expedition_style = int(styles[style])
 	GameState.start_expedition(q)
 	SceneRouter.go(SceneRouter.Place.QUEST)
-	_log("quest -> started %s (%d encounters, %d gold)" % [
-		key, q.encounter_types.size(), q.gold_reward])
+	_log("quest -> started %s%s (%d encounters, %d gold)" % [
+		key, (" as " + style) if not style.is_empty() else "", q.encounter_types.size(), q.gold_reward])
 
 ## [town] spec 13.4. Deletes the save and starts a fresh profile. Meaningful
 ## from step 5 on: this is the first step where a launch reads SaveGame.PATH

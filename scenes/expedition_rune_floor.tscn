@@ -1,22 +1,29 @@
-[gd_scene load_steps=18 format=3]
+[gd_scene load_steps=19 format=3]
 
 [ext_resource type="Theme" path="res://assets/theme.tres" id="1_theme"]
-[ext_resource type="Script" path="res://scripts/demo/rune_floor_demo.gd" id="2_demo"]
+[ext_resource type="Script" path="res://scripts/expedition/rune_floor_expedition.gd" id="2_presentation"]
 [ext_resource type="PackedScene" path="res://scenes/expedition/rune_floor_world.tscn" id="3_world"]
 [ext_resource type="PackedScene" path="res://scenes/overlay/battle_overlay.tscn" id="4_overlay"]
 [ext_resource type="PackedScene" path="res://scenes/console/slot_machine.tscn" id="5_slot"]
 [ext_resource type="PackedScene" path="res://scenes/expedition/hero_plate.tscn" id="6_plate"]
 [ext_resource type="Shader" path="res://assets/shaders/vignette.gdshader" id="7_vignette"]
 [ext_resource type="FontFile" path="res://assets/fonts/Cinzel-VariableFont.ttf" id="8_cinzel"]
-[ext_resource type="FontFile" path="res://assets/fonts/Baloo2-Variable.ttf" id="9_baloo"]
 [ext_resource type="Texture2D" path="res://assets/ui/slot/portrait_ranger.png" id="10_ranger"]
 [ext_resource type="Texture2D" path="res://assets/ui/slot/portrait_warrior.png" id="11_warrior"]
 [ext_resource type="Texture2D" path="res://assets/ui/slot/portrait_mage.png" id="12_mage"]
+[ext_resource type="PackedScene" path="res://scenes/modals/shop_modal.tscn" id="13_shop"]
+[ext_resource type="Script" path="res://scripts/run/run_controller.gd" id="14_run"]
 
-; [rune floor demo] Design canvas concept A as a playable combat loop. The world
-; takes the whole 1080 x 1920 screen; the invoker dock floats over the bottom
-; band and a thin title bar over the top. The real SlotMachine lives in
-; HiddenCabinet, never drawn - RuneFloor mirrors its board onto the ground.
+; [expedition phase II] The RUNE_FLOOR expedition (PRD §5.1), routed to for a
+; quest whose style resolves to RUNE_FLOOR (SceneRouter.PATHS[Place.QUEST]). The
+; world takes the whole 1080 x 1920 screen; the plate dock floats over the bottom
+; band and a thin top bar under the Hud's own bag / party / minimap row. The real
+; SlotMachine lives in HiddenCabinet, never drawn - RuneFloor mirrors its board
+; onto the ground. RunController, last, drives it all through the root's
+; ExpeditionPresentation half.
+;
+; Hand-written with comments: edit on disk and reload, never save it through the
+; editor (CLAUDE.md, godot-ai rule 3).
 
 [sub_resource type="ShaderMaterial" id="vignette_mat"]
 shader = ExtResource("7_vignette")
@@ -28,8 +35,8 @@ shader_parameter/top_bias = 0.0
 shader_parameter/aspect = Vector2(1, 1.778)
 
 [sub_resource type="Gradient" id="top_grad"]
-offsets = PackedFloat32Array(0, 1)
-colors = PackedColorArray(0.016, 0.027, 0.035, 0.92, 0.016, 0.027, 0.035, 0)
+offsets = PackedFloat32Array(0, 0.7, 1)
+colors = PackedColorArray(0.016, 0.027, 0.035, 0.92, 0.016, 0.027, 0.035, 0.6, 0.016, 0.027, 0.035, 0)
 
 [sub_resource type="GradientTexture2D" id="top_tex"]
 gradient = SubResource("top_grad")
@@ -42,31 +49,7 @@ bg_color = Color(0.078, 0.059, 0.11, 1)
 border_width_top = 6
 border_color = Color(0.847, 0.686, 0.322, 1)
 
-[sub_resource type="StyleBoxFlat" id="back_style"]
-bg_color = Color(0.016, 0.027, 0.035, 0.86)
-border_width_left = 3
-border_width_top = 3
-border_width_right = 3
-border_width_bottom = 3
-border_color = Color(0.937, 0.839, 0.58, 0.9)
-corner_radius_top_left = 12
-corner_radius_top_right = 12
-corner_radius_bottom_right = 12
-corner_radius_bottom_left = 12
-
-[sub_resource type="StyleBoxFlat" id="back_style_pressed"]
-bg_color = Color(0.09, 0.075, 0.05, 0.92)
-border_width_left = 3
-border_width_top = 3
-border_width_right = 3
-border_width_bottom = 3
-border_color = Color(1, 0.91, 0.66, 1)
-corner_radius_top_left = 12
-corner_radius_top_right = 12
-corner_radius_bottom_right = 12
-corner_radius_bottom_left = 12
-
-[node name="RuneFloorDemo" type="Control"]
+[node name="ExpeditionRuneFloor" type="Control"]
 layout_mode = 3
 anchors_preset = 15
 anchor_right = 1.0
@@ -75,7 +58,7 @@ grow_horizontal = 2
 grow_vertical = 2
 mouse_filter = 2
 theme = ExtResource("1_theme")
-script = ExtResource("2_demo")
+script = ExtResource("2_presentation")
 
 [node name="BattleView" type="SubViewportContainer" parent="."]
 layout_mode = 0
@@ -104,78 +87,33 @@ layout_mode = 0
 offset_right = 1080.0
 offset_bottom = 1920.0
 
+; The Hud's bag, party and minimap row covers y 24-128 (hud.tscn); the quest's
+; name sits under it. The gradient keeps both legible over the void.
 [node name="TopBar" type="TextureRect" parent="."]
 layout_mode = 0
 offset_right = 1080.0
-offset_bottom = 190.0
+offset_bottom = 250.0
 mouse_filter = 2
 texture = SubResource("top_tex")
 expand_mode = 1
 
-[node name="Title" type="Label" parent="TopBar"]
+[node name="QuestName" type="Label" parent="TopBar"]
 layout_mode = 0
 offset_left = 40.0
-offset_top = 34.0
-offset_right = 640.0
-offset_bottom = 94.0
+offset_top = 140.0
+offset_right = 1040.0
+offset_bottom = 200.0
 theme_override_colors/font_color = Color(0.937, 0.839, 0.58, 1)
 theme_override_colors/font_outline_color = Color(0.141, 0.118, 0.078, 1)
 theme_override_constants/outline_size = 10
 theme_override_fonts/font = ExtResource("8_cinzel")
-theme_override_font_sizes/font_size = 46
-text = "RUNE FLOOR"
+theme_override_font_sizes/font_size = 42
+text = "The Whispering Wood"
+text_overrun_behavior = 3
 
-[node name="FightLabel" type="Label" parent="TopBar"]
-layout_mode = 0
-offset_left = 40.0
-offset_top = 96.0
-offset_right = 700.0
-offset_bottom = 142.0
-theme_override_colors/font_color = Color(0.71, 0.824, 0.784, 1)
-theme_override_colors/font_outline_color = Color(0.141, 0.118, 0.078, 1)
-theme_override_constants/outline_size = 8
-theme_override_fonts/font = ExtResource("9_baloo")
-theme_override_font_sizes/font_size = 36
-text = "Fight 1"
-
-[node name="RecordLabel" type="Label" parent="TopBar"]
-layout_mode = 0
-offset_left = 480.0
-offset_top = 44.0
-offset_right = 1040.0
-offset_bottom = 90.0
-theme_override_colors/font_color = Color(0.71, 0.824, 0.784, 1)
-theme_override_colors/font_outline_color = Color(0.141, 0.118, 0.078, 1)
-theme_override_constants/outline_size = 8
-theme_override_fonts/font = ExtResource("9_baloo")
-theme_override_font_sizes/font_size = 36
-text = "0 won · 0 lost"
-horizontal_alignment = 2
-
-; Back to town. Leaving restores the player's own profile from disk (see
-; rune_floor_demo.gd's _exit_tree()).
-[node name="BackButton" type="Button" parent="TopBar"]
-layout_mode = 0
-offset_left = 820.0
-offset_top = 100.0
-offset_right = 1040.0
-offset_bottom = 172.0
-theme_override_colors/font_color = Color(0.937, 0.839, 0.58, 1)
-theme_override_colors/font_pressed_color = Color(1, 0.91, 0.66, 1)
-theme_override_colors/font_hover_color = Color(1, 0.91, 0.66, 1)
-theme_override_colors/font_outline_color = Color(0.141, 0.118, 0.078, 1)
-theme_override_constants/outline_size = 8
-theme_override_fonts/font = ExtResource("8_cinzel")
-theme_override_font_sizes/font_size = 36
-theme_override_styles/normal = SubResource("back_style")
-theme_override_styles/hover = SubResource("back_style")
-theme_override_styles/pressed = SubResource("back_style_pressed")
-text = "Town"
-
-; [rune floor dock] Design A of the dock mockups (2026-09-26): one plate per
-; hero, health on top, portrait in a segmented charge ring, the special's name in
-; a pill; the whole plate is the special's button. Replaces the Meshy invoker tray
-; and the HP strip under it, whose text read at 7-9 pt on a phone.
+; One plate per hero (#202): health on top, portrait in a segmented charge ring,
+; the special's name in a pill; the whole plate is the special's button. A hero
+; not in the party yet keeps an empty "recruit to fill" plate (#220).
 [node name="Dock" type="Panel" parent="."]
 layout_mode = 0
 offset_top = 1487.0
@@ -219,22 +157,6 @@ special_name = "Healing Aura"
 portrait = ExtResource("12_mage")
 owner_color = Color(0.627, 0.486, 0.969, 1)
 
-[node name="Banner" type="Label" parent="."]
-layout_mode = 0
-offset_top = 330.0
-offset_right = 1080.0
-offset_bottom = 460.0
-pivot_offset = Vector2(540, 65)
-mouse_filter = 2
-theme_override_colors/font_color = Color(0.961, 0.875, 0.627, 1)
-theme_override_colors/font_outline_color = Color(0.141, 0.118, 0.078, 1)
-theme_override_constants/outline_size = 18
-theme_override_fonts/font = ExtResource("8_cinzel")
-theme_override_font_sizes/font_size = 84
-text = "Cleared"
-horizontal_alignment = 1
-vertical_alignment = 1
-
 [node name="HiddenCabinet" type="Control" parent="."]
 visible = false
 layout_mode = 0
@@ -245,3 +167,20 @@ mouse_filter = 2
 
 [node name="SlotMachine" parent="HiddenCabinet" instance=ExtResource("5_slot")]
 layout_mode = 0
+
+[node name="ModalLayer" type="Control" parent="."]
+process_mode = 3
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+
+[node name="ShopModal" parent="ModalLayer" instance=ExtResource("13_shop")]
+visible = false
+layout_mode = 1
+
+[node name="RunController" type="Node" parent="."]
+script = ExtResource("14_run")

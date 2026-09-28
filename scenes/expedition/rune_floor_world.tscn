@@ -1,14 +1,16 @@
-[gd_scene load_steps=5 format=3]
+[gd_scene load_steps=6 format=3]
 
 [ext_resource type="Script" path="res://scripts/expedition/rune_floor_world.gd" id="1_world"]
-[ext_resource type="Script" path="res://scripts/expedition/rune_floor_scenery.gd" id="2_scenery"]
+[ext_resource type="Script" path="res://scripts/expedition/rune_floor_surround.gd" id="2_surround"]
+[ext_resource type="Script" path="res://scripts/expedition/rune_floor_track.gd" id="4_track"]
 [ext_resource type="Script" path="res://scripts/expedition/rune_floor.gd" id="3_floor"]
 
-; [rune floor demo] A BattleWorld for the Rune Floor concept. The node names
-; below are the ones battle_world.gd and BattleDirector reach for; the camera is
-; placed by rune_floor_world.gd, the island and board are built by the Scenery
-; and RuneFloor scripts. The background is a void, not a sky: the island is the
-; lit thing, the Lantern spec's "lit object held in real darkness".
+; [expedition phase II] The Rune Floor's BattleWorld. The node names below are
+; the ones battle_world.gd and BattleDirector reach for; the camera is placed by
+; rune_floor_world.gd. Surround builds the void around the stage (per biome),
+; Track the encounter islands the party crosses between, RuneFloor the board.
+; The background is a void, not a sky: the island is the lit thing, the Lantern
+; spec's "lit object held in real darkness".
 
 [sub_resource type="Environment" id="env"]
 background_mode = 1
@@ -71,8 +73,11 @@ far = 300.0
 
 [node name="ProjectileRoot" type="Node3D" parent="."]
 
-[node name="Scenery" type="Node3D" parent="."]
-script = ExtResource("2_scenery")
+[node name="Surround" type="Node3D" parent="."]
+script = ExtResource("2_surround")
+
+[node name="Track" type="Node3D" parent="."]
+script = ExtResource("4_track")
 
 [node name="RuneFloor" type="Node3D" parent="."]
 script = ExtResource("3_floor")

@@ -20,9 +20,9 @@ enum Place { TOWN, INN, BLACKSMITH, MAYOR, QUEST, ITEM_FORGE, SLOTWORKS, RUNE_FL
 ##
 ## [expedition phase II] Place.QUEST is the one entry keyed a second time, by
 ## the expedition's AreaDef.ExpeditionStyle (PRD §6.1). Resolve through
-## path_for(), never PATHS directly. The Rune Floor scene arrives with
-## milestone 2 (#212); until then no shipped area or quest resolves to it
-## (test_expedition_style).
+## path_for(), never PATHS directly. The Rune Floor scene exists from milestone
+## 2 (#212), but no shipped area defaults to it until milestone 7 flips the
+## default; a quest reaches it through its style override.
 const PATHS := {
 	Place.TOWN:       "res://scenes/town/town.tscn",
 	Place.INN:        "res://scenes/town/inn.tscn",

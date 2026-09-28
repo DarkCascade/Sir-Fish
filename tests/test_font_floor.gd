@@ -21,7 +21,6 @@ const TestSupport := preload("res://tests/test_support.gd")
 const GRANDFATHERED := {
 	"res://scenes/town/mayor_office.tscn": 5,
 	"res://scenes/modals/compare_flyout.tscn": 4,
-	"res://scenes/demo/rune_floor_demo.tscn": 3,
 	"res://scenes/modals/item_row.tscn": 3,
 	"res://scenes/overlay/battle_overlay.tscn": 2,
 	"res://scenes/console/upgrade_button.tscn": 1,
