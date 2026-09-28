@@ -199,8 +199,8 @@ each crossing.
 - The islands ahead **are** the progress readout: loot, shop and boss islands each read at
   a glance (the demo already shapes them differently).
 - Keep Hud's `ExpeditionMinimap` in the top bar as the exact readout (where am I, how many
-  left). It is text-free by design, so it is unaffected by decision 10.4. Revisit it if the
-  islands prove sufficient on a phone.
+  left). It is text-free by design, so it is unaffected by decision 10.4. The milestone 2
+  phone playtest kept it: it stays out of the way of the oncoming islands (Q3, #220).
 
 ### 5.9 The Guppy, the amulet and Sir Fish
 
@@ -385,6 +385,8 @@ Also to decide:
 - **Classic:** keep it selectable, or retire it (§7.1)? Retiring it deletes the console,
   the Sir Fish tank's current home and several grandfathered small fonts (#205).
 - **The minimap:** keep it next to the islands, or rely on the islands alone (§5.8)?
+  **Decided 2026-09-28 by the milestone 2 phone playtest: keep it**
+  ([#220](https://github.com/DarkCascade/Sir-Fish/issues/220)).
 - **One- and two-hero parties:** the dock has three plate slots. Centre the plates that
   exist, or keep empty slots as "recruit to fill" teasers? **Decided 2026-09-27: keep the
   empty slots as "recruit to fill" teasers** ([#220](https://github.com/DarkCascade/Sir-Fish/issues/220)).
