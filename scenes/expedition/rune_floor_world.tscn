@@ -1,8 +1,8 @@
 [gd_scene load_steps=5 format=3]
 
-[ext_resource type="Script" path="res://scripts/demo/rune_floor_world.gd" id="1_world"]
-[ext_resource type="Script" path="res://scripts/demo/rune_floor_scenery.gd" id="2_scenery"]
-[ext_resource type="Script" path="res://scripts/demo/rune_floor.gd" id="3_floor"]
+[ext_resource type="Script" path="res://scripts/expedition/rune_floor_world.gd" id="1_world"]
+[ext_resource type="Script" path="res://scripts/expedition/rune_floor_scenery.gd" id="2_scenery"]
+[ext_resource type="Script" path="res://scripts/expedition/rune_floor.gd" id="3_floor"]
 
 ; [rune floor demo] A BattleWorld for the Rune Floor concept. The node names
 ; below are the ones battle_world.gd and BattleDirector reach for; the camera is

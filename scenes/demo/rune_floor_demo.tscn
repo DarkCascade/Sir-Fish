@@ -2,10 +2,10 @@
 
 [ext_resource type="Theme" path="res://assets/theme.tres" id="1_theme"]
 [ext_resource type="Script" path="res://scripts/demo/rune_floor_demo.gd" id="2_demo"]
-[ext_resource type="PackedScene" path="res://scenes/demo/rune_floor_world.tscn" id="3_world"]
+[ext_resource type="PackedScene" path="res://scenes/expedition/rune_floor_world.tscn" id="3_world"]
 [ext_resource type="PackedScene" path="res://scenes/overlay/battle_overlay.tscn" id="4_overlay"]
 [ext_resource type="PackedScene" path="res://scenes/console/slot_machine.tscn" id="5_slot"]
-[ext_resource type="PackedScene" path="res://scenes/demo/hero_plate.tscn" id="6_plate"]
+[ext_resource type="PackedScene" path="res://scenes/expedition/hero_plate.tscn" id="6_plate"]
 [ext_resource type="Shader" path="res://assets/shaders/vignette.gdshader" id="7_vignette"]
 [ext_resource type="FontFile" path="res://assets/fonts/Cinzel-VariableFont.ttf" id="8_cinzel"]
 [ext_resource type="FontFile" path="res://assets/fonts/Baloo2-Variable.ttf" id="9_baloo"]

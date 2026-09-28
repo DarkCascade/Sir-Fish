@@ -1,8 +1,8 @@
 [gd_scene load_steps=9 format=3]
 
-[ext_resource type="Script" path="res://scripts/demo/hero_plate.gd" id="1_plate"]
-[ext_resource type="Script" path="res://scripts/demo/plate_hp_bar.gd" id="2_bar"]
-[ext_resource type="Script" path="res://scripts/demo/plate_charge_ring.gd" id="3_ring"]
+[ext_resource type="Script" path="res://scripts/expedition/hero_plate.gd" id="1_plate"]
+[ext_resource type="Script" path="res://scripts/expedition/plate_hp_bar.gd" id="2_bar"]
+[ext_resource type="Script" path="res://scripts/expedition/plate_charge_ring.gd" id="3_ring"]
 [ext_resource type="FontFile" path="res://assets/fonts/Baloo2-Variable.ttf" id="4_baloo"]
 
 ; [rune floor dock] Design A of the dock mockups: one hero's plate, which is also
