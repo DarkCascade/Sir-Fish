@@ -9,6 +9,11 @@ class_name HeroPlate
 ## Pressing asks the director to fire the hero's special, and the director
 ## refuses if it cannot happen (BattleDirector.invoke_hero_special), exactly as
 ## SpecialInvoker does - no rule lives twice.
+##
+## [expedition phase II] A hero not in the party yet keeps their plate as a
+## "recruit to fill" teaser (#220, decided 2026-09-27): no health, the portrait
+## in silhouette, `empty_text` in the pill, and nothing to press. The dock keeps
+## one shape whatever the party's size, and the empty slot says it can grow.
 
 ## Authored per instance: whose plate this is, what their special is called,
 ## and their portrait and rune colour.
@@ -20,6 +25,8 @@ class_name HeroPlate
 ## The plate's face while the special is not ready, and once a press would fire.
 @export var idle_style: StyleBox
 @export var lit_style: StyleBox
+## What an empty slot's pill says.
+@export var empty_text: String = "Recruit"
 ## How far a downed hero's plate dims.
 const DOWN_DIM := Color(0.55, 0.55, 0.6)
 
@@ -28,10 +35,12 @@ const DOWN_DIM := Color(0.55, 0.55, 0.6)
 @onready var _pill: PanelContainer = $Column/NamePill
 @onready var _name: Label = $Column/NamePill/Name
 
-## Set by the demo. Null out of combat, when every plate reads from the profile.
+## Set by the presentation. Null out of combat, when every plate reads from the
+## profile.
 var director = null
 
 var _lit := false
+var _empty := false
 var _pill_style: StyleBoxFlat
 
 func _ready() -> void:
@@ -43,12 +52,13 @@ func _ready() -> void:
 	_pill_style = (_pill.get_theme_stylebox("panel") as StyleBoxFlat).duplicate()
 	_pill.add_theme_stylebox_override("panel", _pill_style)
 	_apply_lit(false, true)
+	_apply_empty(not GameState.active_party.has(hero_class), true)
 
 ## Polled, like SpecialInvoker: whether a press would fire depends on HP and
 ## state no single signal covers.
 func _process(_delta: float) -> void:
-	visible = GameState.active_party.has(hero_class)
-	if not visible:
+	_apply_empty(not GameState.active_party.has(hero_class))
+	if _empty:
 		return
 	var hero := _hero()
 	if hero != null:
@@ -60,6 +70,23 @@ func _process(_delta: float) -> void:
 	_ring.set_state(GameState.special_charge(hero_class), lit)
 	_apply_lit(lit)
 	modulate = DOWN_DIM if not _hp.alive else Color.WHITE
+
+func _apply_empty(empty: bool, force: bool = false) -> void:
+	if empty == _empty and not force:
+		return
+	_empty = empty
+	disabled = empty
+	_hp.modulate.a = 0.0 if empty else 1.0
+	_ring.silhouette = empty
+	_name.text = empty_text if empty else special_name
+	if empty:
+		_apply_lit(false, true)
+		_ring.set_state(0, false)
+		_pill_style.border_color = Tuning.C_GLASS_FACET
+		_name.add_theme_color_override("font_color", Tuning.C_TEXT_DIM)
+		modulate = Color.WHITE
+	else:
+		_apply_lit(_lit, true)
 
 func _apply_lit(lit: bool, force: bool = false) -> void:
 	if lit == _lit and not force:

@@ -14,6 +14,11 @@ extends Control
 @onready var _item_forge_button: Button = $ItemForgeButton
 @onready var _rune_floor_button: Button = $RuneFloorButton
 
+## [expedition phase II] The quest the Rune Floor button plays (#212). Until
+## milestone 7 makes the Rune Floor every area's default, this is how a phone
+## build reaches it: the release export has no debug console.
+const RUNE_FLOOR_QUEST := preload("res://resources/quests/easy.tres")
+
 func _ready() -> void:
 	# spec 3.1: every routed scene re-asserts its own place, so a direct launch
 	# (F5, MCP play_scene) that never went through go() still reads true.
@@ -23,4 +28,15 @@ func _ready() -> void:
 	_mayor_button.pressed.connect(SceneRouter.go.bind(SceneRouter.Place.MAYOR))
 	_slotworks_button.pressed.connect(SceneRouter.go.bind(SceneRouter.Place.SLOTWORKS))
 	_item_forge_button.pressed.connect(SceneRouter.go.bind(SceneRouter.Place.ITEM_FORGE))
-	_rune_floor_button.pressed.connect(SceneRouter.go.bind(SceneRouter.Place.RUNE_FLOOR))
+	_rune_floor_button.pressed.connect(_start_rune_floor_quest)
+
+## Accepts the easy quest in the Rune Floor style, exactly as the mayor's office
+## accepts a notice (mayor_office.gd's _accept()): the real profile and party,
+## saved on the way out. The style is set on a copy, so the authored quest
+## still defers to its area on the mayor's board.
+func _start_rune_floor_quest() -> void:
+	var q := RUNE_FLOOR_QUEST.duplicate() as QuestDef
+	q.expedition_style = AreaDef.ExpeditionStyle.RUNE_FLOOR
+	GameState.start_expedition(q)
+	SaveGame.save_profile()
+	SceneRouter.go(SceneRouter.Place.QUEST)

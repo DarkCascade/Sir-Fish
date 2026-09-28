@@ -20,9 +20,9 @@ enum Place { TOWN, INN, BLACKSMITH, MAYOR, QUEST, ITEM_FORGE, SLOTWORKS, RUNE_FL
 ##
 ## [expedition phase II] Place.QUEST is the one entry keyed a second time, by
 ## the expedition's AreaDef.ExpeditionStyle (PRD §6.1). Resolve through
-## path_for(), never PATHS directly. The Rune Floor scene arrives with
-## milestone 2 (#212); until then no shipped area or quest resolves to it
-## (test_expedition_style).
+## path_for(), never PATHS directly. The Rune Floor scene exists from milestone
+## 2 (#212), but no shipped area defaults to it until milestone 7 flips the
+## default; a quest reaches it through its style override.
 const PATHS := {
 	Place.TOWN:       "res://scenes/town/town.tscn",
 	Place.INN:        "res://scenes/town/inn.tscn",
@@ -34,8 +34,9 @@ const PATHS := {
 	},
 	Place.ITEM_FORGE: "res://scenes/town/item_forge.tscn",
 	Place.SLOTWORKS:  "res://scenes/town/slotworks.tscn",
-	# [rune floor spike] The looping combat demo, reached from a town button so
-	# it can be tried on a phone build. Runs on a throwaway profile.
+	# [rune floor spike] The looping combat demo, on a throwaway profile. The
+	# town's button now starts a real Rune Floor quest instead (#212); this is
+	# reached by launching the scene directly.
 	Place.RUNE_FLOOR: "res://scenes/demo/rune_floor_demo.tscn",
 }
 

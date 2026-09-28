@@ -14,7 +14,10 @@ description lists its ops.
 
 - The Godot editor must be open with the plugin enabled. The plugin starts the local
   server (HTTP 8000, WebSocket 9500, localhost only), and Claude Code attaches through the
-  user-scoped `godot-ai` entry, which runs the pinned release wheel through `uvx`.
+  user-scoped `godot-ai` entry. That entry runs the server from a local checkout,
+  `C:/Projects/Godot/Godot-MCP_bebabin/.venv/Scripts/pythonw.exe -m godot_ai attach`,
+  so `session_manage` reports `server_launch_mode: dev_venv`. Keep the checkout on the
+  `v5.0.45` tag with no local changes, so the server matches the pinned addon.
 - `session_manage(op="list")` shows each editor session with its readiness and the server
   and plugin versions. The two versions must match. `editor_state` gives the open scene,
   readiness and whether the game is live.
@@ -76,6 +79,18 @@ description lists its ops.
    whichever editor tab is showing.
 9. **The web export excludes `addons/godot_ai/*`.** The plugin's export hook strips its
    `_mcp_game_helper` autoload from exported packs, so nothing of it ships.
+10. **Script diagnostics lie about `class_name` scripts.** `script_manage(op="validate")`,
+    and the diagnostics `script_patch`, `script_create` and `filesystem_manage` writes
+    attach, compile a pathless copy of the source
+    (`addons/godot_ai/handlers/script_handler.gd`, `_validate_gdscript_source`). Godot
+    rejects that copy with "hides a global script class" whenever the `class_name` is
+    already registered, so a good script such as `battle_director.gd` reports "GDScript
+    reload failed with error code 43" at its last line. The write itself lands, but the
+    editor's loaded copy is not refreshed (`reload_reason: parse_error`). Genuine errors
+    come back the same way, without the real message or line. For a `class_name` script,
+    ignore that result and check with `python tools/run_tests.py`, or with
+    `filesystem_manage(op="scan")` and then `logs_read(source="editor")`. Scripts without
+    a `class_name` validate correctly. Unfixed upstream as of 5.0.45.
 
 ## Best Practices
 

@@ -1,18 +1,20 @@
 extends "res://scripts/battle/battle_world.gd"
-## [rune floor demo] The battle world for the Rune Floor concept: a floating
-## moss island in a black void, seen from a high tactical camera behind the
-## party, with the slot board carved into the ground between the two sides.
+## [expedition phase II] The Rune Floor's battle world (PRD §4, §6.1): floating
+## moss islands in a black void, seen from a high tactical camera behind the
+## party, with the slot board on the ground between the two sides.
 ##
 ## Everything BattleDirector, the abilities and BattleVfx reach for is the real
 ## BattleWorld API, inherited: the slot positions still derive from
 ## Tuning.PARTY_ANCHOR / RUN_DIR / ENEMY_DISTANCE, each side pushed back from the
 ## board by party_setback / enemy_setback. Combat rules are an expedition's; only
-## the camera, the spacing and the scenery differ. OverworldField
-## is an empty stand-in here - the demo never travels, so nothing scrolls it.
+## the camera, the spacing and the scenery differ.
+##
+## Travel is Track's treadmill (RuneFloorTrack), not a scrolling ground, so
+## OverworldField is an empty stand-in and the scroll calls below do nothing.
 
 ## The camera looks at a point this far up-run from the party anchor, from this
 ## far away, pitched this many degrees below the horizon. Solved against the
-## full 1080 x 1920 portrait view with the invoker dock over the bottom band:
+## full 1080 x 1920 portrait view with the plate dock over the bottom band:
 ## low enough that the next islands (loot, shop, boss) hang in the top of the
 ## frame, as on the concept board. At this angle the far row's icons stand in
 ## front of the middle row's tiles - the billboards read through it.
@@ -26,15 +28,19 @@ extends "res://scripts/battle/battle_world.gd"
 ## (1). A little past halfway, so the warrior's model clears its near edge.
 @export_range(0.3, 0.7, 0.01) var board_fraction: float = 0.55
 
-## Both sides stand further from the board than an expedition's slots put them,
-## so the board has the ground between them to itself: the party this far back
-## down-run, the enemy line this far further up-run. Demo-only - Tuning's slot
-## geometry, which the expedition camera is solved against, is untouched.
+## Both sides stand further from the board than a CLASSIC expedition's slots put
+## them, so the board has the ground between them to itself: the party this far
+## back down-run, the enemy line this far further up-run. Rune Floor only -
+## Tuning's slot geometry, which the CLASSIC camera is solved against, is
+## untouched.
 @export var party_setback: float = 1.5
 @export var enemy_setback: float = 1.2
 
 @export var fog_begin: float = 22.0
 @export var fog_end: float = 70.0
+
+@onready var track: RuneFloorTrack = $Track
+@onready var rune_floor: RuneFloor = $RuneFloor
 
 func _ready() -> void:
 	frame_camera()
@@ -68,3 +74,11 @@ func frame_camera() -> void:
 	camera.keep_aspect = Camera3D.KEEP_WIDTH
 	camera.fov = fov_deg
 	camera.look_at_from_position(eye, focus, Vector3.UP)
+
+## No ground scrolls here: a crossing slides the islands instead (RuneFloorTrack).
+## RunController's victory run-off still calls these, so they must answer.
+func set_scroll_speed(_value: float) -> void:
+	pass
+
+func get_scroll_speed() -> float:
+	return 0.0

@@ -1,7 +1,7 @@
 class_name RuneFloor
 extends Node3D
-## [rune floor demo] The slot board, carved into the battlefield between the
-## party and the enemies. It does not run a slot of its own: it mirrors the real
+## [expedition phase II] The slot board, on the battlefield between the party
+## and the enemies. It does not run a slot of its own: it mirrors the real
 ## SlotMachine (hidden, off-screen) through that machine's board_dealt /
 ## reel_stopped / lines_won / cell_resolved signals, so every rule - the bag,
 ## the draw, the paylines, owner swings, charge - is the shipped one.
@@ -24,6 +24,10 @@ const LABEL_FONT := preload("res://assets/fonts/Baloo2-Variable.ttf")
 @export var icon_size: float = 1.15
 ## Seconds between face changes on a spinning column.
 @export var spin_flicker: float = 0.07
+## Seconds the board takes to unfold on arrival and to fold away once a fight
+## is won (PRD §5.2).
+@export var unfold_time: float = 0.45
+@export var fold_time: float = 0.35
 
 @export_group("Palette")
 @export var slab_color: Color = Color("0f2322")
@@ -42,6 +46,8 @@ var _spinning: Array[bool] = [false, false, false]
 var _flicker_left: float = 0.0
 var _beams: Array[Node3D] = []
 var _glow_tex: GradientTexture2D
+var _shown: bool = true
+var _fold: Tween
 
 func _ready() -> void:
 	var world = get_parent()
@@ -53,8 +59,8 @@ func _ready() -> void:
 	EventBus.combat_ended.connect(_on_combat_ended)
 	set_process(false)
 
-## Hooked up by the demo controller once the hidden SlotMachine and the director
-## both exist.
+## Hooked up by the presentation (or the looping demo) once the hidden
+## SlotMachine and the director both exist.
 func bind(slot, a_director) -> void:
 	director = a_director
 	slot.board_dealt.connect(_on_board_dealt)
@@ -186,6 +192,39 @@ func _make_glow_texture() -> GradientTexture2D:
 	t.width = 128
 	t.height = 128
 	return t
+
+# --- shown / folded ------------------------------------------------------------
+
+## [expedition phase II] The board's states (PRD §5.2): folded away while the
+## party travels, unfolding across the ground on arrival, lit through the fight,
+## folding away once it is won and before the drops land. The looping demo never
+## calls this, so its board stays out.
+func show_board(on: bool, animate: bool) -> void:
+	if _fold != null and _fold.is_valid():
+		_fold.kill()
+	_fold = null
+	var flat := Vector3(0.02, 1.0, 0.02)
+	if not animate:
+		_shown = on
+		visible = on
+		scale = Vector3.ONE if on else flat
+		return
+	if on == _shown and visible == on:
+		return
+	_shown = on
+	_fold = create_tween()
+	if on:
+		visible = true
+		scale = flat
+		_fold.tween_property(self, "scale", Vector3.ONE, unfold_time) \
+			.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	else:
+		_fold.tween_property(self, "scale", flat, fold_time) \
+			.set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		_fold.tween_callback(hide)
+
+func is_shown() -> bool:
+	return _shown
 
 # --- colour --------------------------------------------------------------------
 

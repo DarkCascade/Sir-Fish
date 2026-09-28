@@ -23,6 +23,15 @@ var track_color := Tuning.C_GLASS_FACET
 var charge: int = 0
 ## True when a press would fire right now: the whole ring turns gold.
 var lit: bool = false
+## [expedition phase II] The hero is not in the party yet: the portrait draws as a
+## dark silhouette in an empty track, the "recruit to fill" teaser (#220).
+var silhouette: bool = false:
+	set(value):
+		if value != silhouette:
+			silhouette = value
+			queue_redraw()
+
+const SILHOUETTE_TINT := Color(0.16, 0.15, 0.2)
 
 func set_state(new_charge: int, is_lit: bool) -> void:
 	if new_charge == charge and is_lit == lit:
@@ -52,4 +61,4 @@ func _draw() -> void:
 		var unit := Vector2(cos(a), sin(a))
 		points.append(centre + unit * portrait_radius)
 		uvs.append(Vector2(0.5, 0.5) + unit * 0.5)
-	draw_colored_polygon(points, Color.WHITE, uvs, portrait)
+	draw_colored_polygon(points, SILHOUETTE_TINT if silhouette else Color.WHITE, uvs, portrait)
