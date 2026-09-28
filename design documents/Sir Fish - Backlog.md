@@ -2717,6 +2717,29 @@ dock had already read well on the first one.
   `QuestDef.expedition_style` override, and `SceneRouter.PATHS[Place.QUEST]` is keyed by it.
   The Endless Wood authors CLASSIC until milestone 7 flips it, and `test_expedition_style`
   fails if any shipped area or quest resolves to a style whose scene doesn't exist yet.
+- **Milestone 2 ([#212](https://github.com/DarkCascade/Sir-Fish/issues/212), shipped in
+  [#224](https://github.com/DarkCascade/Sir-Fish/pull/224) on 2026-09-28): fights on the Rune Floor.**
+  The phone playtest passed: the board is readable and the action is easy to follow.
+  - **The crossing is a treadmill of full-size islands.** Every encounter gets the same
+    island, so the next one can dock exactly where the last stood, and the board, slots and
+    camera never move. Why not keep the spike's small next island: an island that docks has
+    to be the party's island, and scaling one up as it came in would be a size change the
+    fixed camera shows plainly. So only the preview (slot 2) is small and off to the side,
+    and it resizes while it drifts into line; slots 1 and 0 are one rigid line, and the
+    bridge belongs to the island it leads to.
+  - **The board stays in the world; the islands slide under it.** It folds away before a
+    crossing and unfolds on arrival, and each fight island brings its own lantern posts to
+    the board's corners. Only the docked island's lights are on, which keeps the omni count
+    near the spike's.
+  - **The scenery split** follows PRD §6.2: `RuneFloorIsland` per encounter,
+    `RuneFloorTrack` for the queue, and `rune_floor_surround.gd` for the per-biome void,
+    which is where Q1 ([#218](https://github.com/DarkCascade/Sir-Fish/issues/218)) will plug in.
+  - **Reaching it on a phone:** the Pages build is a release export with no debug console,
+    so the town's Rune Floor button now accepts the easy quest in the Rune Floor style on the
+    real profile. The looping demo is still at `rune_floor_demo.tscn`. The button goes or
+    stays with Q3's last question ([#220](https://github.com/DarkCascade/Sir-Fish/issues/220)).
+  - **Open from the playtest:** whether the minimap earns its place next to the islands
+    (#220). The screen also has no gold or scrap readout, since the console carried it.
 - **Also from the playtest:**
   - [#203](https://github.com/DarkCascade/Sir-Fish/issues/203) halves the payline glow.
   - [#204](https://github.com/DarkCascade/Sir-Fish/issues/204) rebalances the specials.
