@@ -2705,6 +2705,8 @@ dock had already read well on the first one.
       plates re-centring. The layout stays one fixed shape whatever the party size, and an
       empty slot tells a solo warrior's player that the party can grow. Built in milestone 2
       ([#212](https://github.com/DarkCascade/Sir-Fish/issues/212)).
+    - **The minimap, decided 2026-09-28:** kept in the top bar, on the milestone 2 phone
+      playtest's evidence (see milestone 2 below).
 - **Tracked as** epic [#210](https://github.com/DarkCascade/Sir-Fish/issues/210), one issue per PRD §9 milestone ([#211](https://github.com/DarkCascade/Sir-Fish/issues/211) to [#217](https://github.com/DarkCascade/Sir-Fish/issues/217)),
   chained by blocked-by links so each milestone opens when the one it needs ships.
 - **Milestone 1 ([#211](https://github.com/DarkCascade/Sir-Fish/issues/211)): one `RunController` behind a presentation interface.**
@@ -2738,8 +2740,10 @@ dock had already read well on the first one.
     so the town's Rune Floor button now accepts the easy quest in the Rune Floor style on the
     real profile. The looping demo is still at `rune_floor_demo.tscn`. The button goes or
     stays with Q3's last question ([#220](https://github.com/DarkCascade/Sir-Fish/issues/220)).
-  - **Open from the playtest:** whether the minimap earns its place next to the islands
-    (#220). The screen also has no gold or scrap readout, since the console carried it.
+  - **The minimap stays** (Q3, [#220](https://github.com/DarkCascade/Sir-Fish/issues/220)),
+    answered by the playtest: it looks good in the top bar and stays out of the way of the
+    oncoming islands, so the islands and the strip share the progress readout.
+  - **Still open:** the screen has no gold or scrap readout, since the console carried it.
 - **Also from the playtest:**
   - [#203](https://github.com/DarkCascade/Sir-Fish/issues/203) halves the payline glow.
   - [#204](https://github.com/DarkCascade/Sir-Fish/issues/204) rebalances the specials.
