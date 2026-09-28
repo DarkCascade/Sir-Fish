@@ -101,9 +101,11 @@ offset_right = 624.0
 offset_bottom = 983.0
 text = "Item Forge"
 
-; [rune floor spike] A visible, labelled button rather than a hit box: the demo
-; has no building in the painting. Sits on the empty ground below the gate.
-; Loads the looping Rune Floor combat demo on a throwaway profile.
+; [rune floor spike] A visible, labelled button rather than a hit box: the Rune
+; Floor has no building in the painting. Sits on the empty ground below the gate.
+; [expedition phase II] Starts the easy quest in the Rune Floor style with the
+; real profile (town.gd, #212), for phone playtests until milestone 7 makes the
+; Rune Floor the default. The looping demo is still rune_floor_demo.tscn.
 [node name="RuneFloorButton" type="Button" parent="." unique_id=1572585500]
 layout_mode = 0
 offset_left = 290.0
@@ -121,4 +123,4 @@ theme_override_styles/normal = SubResource("StyleBoxFlat_rune")
 theme_override_styles/hover = SubResource("StyleBoxFlat_rune")
 theme_override_styles/pressed = SubResource("StyleBoxFlat_rune_pressed")
 theme_override_styles/focus = SubResource("StyleBoxEmpty_hit")
-text = "Rune Floor (demo)"
+text = "Rune Floor Quest"

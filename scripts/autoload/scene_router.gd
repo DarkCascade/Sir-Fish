@@ -34,8 +34,9 @@ const PATHS := {
 	},
 	Place.ITEM_FORGE: "res://scenes/town/item_forge.tscn",
 	Place.SLOTWORKS:  "res://scenes/town/slotworks.tscn",
-	# [rune floor spike] The looping combat demo, reached from a town button so
-	# it can be tried on a phone build. Runs on a throwaway profile.
+	# [rune floor spike] The looping combat demo, on a throwaway profile. The
+	# town's button now starts a real Rune Floor quest instead (#212); this is
+	# reached by launching the scene directly.
 	Place.RUNE_FLOOR: "res://scenes/demo/rune_floor_demo.tscn",
 }
 

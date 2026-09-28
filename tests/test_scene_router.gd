@@ -46,7 +46,7 @@ func _ready() -> void:
 			SceneRouter.PATHS[SceneRouter.Place.QUEST][AreaDef.ExpeditionStyle.CLASSIC]),
 		"main.tscn (Place.QUEST, CLASSIC) exists")
 	t.check(ResourceLoader.exists(SceneRouter.PATHS[SceneRouter.Place.RUNE_FLOOR]),
-		"rune_floor_demo.tscn exists (Place.RUNE_FLOOR, the town's demo button)")
+		"rune_floor_demo.tscn exists (Place.RUNE_FLOOR, the looping demo)")
 
 	# --- SceneRouter is a live autoload with a clean lifecycle ------------
 	t.check(get_node_or_null("/root/SceneRouter") != null,
