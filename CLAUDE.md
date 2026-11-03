@@ -145,6 +145,13 @@ Task state lives on the **Sir Fish** GitHub Project (https://github.com/users/Da
 backed by the issues in `DarkCascade/Sir-Fish`. `design documents/Sir Fish - Backlog.md` is design
 rationale and history: it explains why something was decided, not whether it is done.
 
+The **roadmap** (https://claude.ai/artifact/SZAy7uB2eMLr1TRVbfzKbX) says *when*: Valve's Next Fest
+deadlines, milestones M1-M10 and open decisions. Each GitHub milestone is a roadmap milestone, and
+each game task on the roadmap lists its issues. The page can't reach GitHub, so refresh its status
+with `python tools/roadmap_sync.py <out.json>`, then ArtifactData `set` on `meta/github` with that
+file. A new issue that belongs to the demo also gets a roadmap row (ArtifactData, collection
+`items`, `issues: [N]`); one that doesn't goes under the After Next Fest milestone.
+
 - Before starting work, check the board (`gh issue list`, `gh project item-list 3 --owner DarkCascade`)
   rather than reading the backlog doc for status. New work gets an issue, not a new doc bullet.
 - Columns: Backlog (blocked), Needs decision, Ready, In progress, In review, Done. Move the card as work
