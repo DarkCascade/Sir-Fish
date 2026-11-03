@@ -2438,6 +2438,9 @@ replacement, against these targets once the ladders exist. The builds above bloc
 | 11.2 | The Slotworks in the demo | **Decided 2026-11-02** | Upgrades and Holds only. Tuning ([#173](https://github.com/DarkCascade/Sir-Fish/issues/173)) and Charms ([#174](https://github.com/DarkCascade/Sir-Fish/issues/174)) wait for after the fest (§11) |
 | 11.3 | Audio source for Steam | **Reopened 2026-11-02, due 2026-12-15** | Procedural (5.1), a library, commissioned, or a mix. #184's slot sounds go ahead either way (§11, [#244](https://github.com/DarkCascade/Sir-Fish/issues/244)) |
 | 11.4 | The demo's board choice | **Reaffirmed 2026-11-02** | Hold-and-respin (7.6); the roadmap's alternative, a pick when an icon lands, is dropped (§11, [#101](https://github.com/DarkCascade/Sir-Fish/issues/101)) |
+| 11.5 | What the town's purple mist is | **Decided 2026-11-02** | Wild slot magic: the magic the Guppy runs on and the amulet focuses, spilling from the castle. It crystallises in the woods and turns creatures to shadow. "Personal to Sir Fish" is kept as a story beat, not the explanation (§11, `Sir Fish - Demo Scope.md`, [#226](https://github.com/DarkCascade/Sir-Fish/issues/226)) |
+| 11.6 | How much of the demo is the mist | **Decided 2026-11-02** | One Rune Floor expedition up the trail and a boss, after the bandit-camps tutorial; not a second region. A mist-affected reel is a stretch goal (§11, Demo Scope, [#256](https://github.com/DarkCascade/Sir-Fish/issues/256), [#260](https://github.com/DarkCascade/Sir-Fish/issues/260)) |
+| 11.7 | Where the demo ends | **Decided 2026-11-02** | At the castle gate, after the mist boss; then the ending card and wishlist screen (§11, Demo Scope, [#249](https://github.com/DarkCascade/Sir-Fish/issues/249)) |
 
 ---
 
@@ -2848,3 +2851,24 @@ milestone instead of being closed.
 - **11.4: The board choice stays hold-and-respin.** The roadmap had reopened it. It is
   already designed (7.6), and it answers the fit check's weakest gameplay row, choices
   between spins.
+
+### Decided: the demo's last act is the mist (2026-11-02)
+
+Opened the scope lock, [#226](https://github.com/DarkCascade/Sir-Fish/issues/226). Until now
+the bandit-camps tutorial was the whole of the demo. The town painting's violet mist, which
+runs from a castle on the ridge down to Mossmere's gate, now gives it somewhere to lead. The
+scope lives in `design documents/Sir Fish - Demo Scope.md`. In short:
+
+- **11.5: The mist is wild slot magic,** spilling from the castle: the same magic the Guppy
+  runs on and the amulet focuses into the board (10.1). Why: it is the one reading where the
+  setting, the Rune Floor and the slot tell one story. A curse was simpler but gave the slot
+  no part in it. "The castle is personal to Sir Fish" is kept as a story beat for the gate,
+  not as the mist's explanation.
+- **11.6: One expedition and a boss,** after the captain falls. Why: the tutorial (M4) and
+  feature-complete (2027-04-15) leave room for a short last act, not a second region. It
+  reuses the Rune Floor, adds a mist surround, and makes its enemies from the reworked shadow
+  monster and tinted existing ones. The boss is the only new model. Tracked as #256 to #259 in
+  M8. **A mist-affected reel is a stretch goal** (#260), to be built after hold-and-respin.
+- **11.7: The demo ends at the castle gate,** after the mist boss, which answers
+  [#249](https://github.com/DarkCascade/Sir-Fish/issues/249). Why: a closed gate with the
+  mist's source behind it is the strongest point to ask for a wishlist.
