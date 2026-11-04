@@ -61,6 +61,12 @@ const HELD_GLOW := 1.4
 const RESPIN_LAND_BASE := 0.15
 const RESPIN_LAND_STAGGER := 0.08
 
+## [cell locks] The gold border a locked cell wears (assets/shaders/lock_border).
+const LOCK_BORDER_SHADER := preload("res://assets/shaders/lock_border.gdshader")
+const TARGET_ICON_SCALE := 1.25
+var _locked: Array = []
+var _target: int = -1
+
 func _ready() -> void:
 	var world = get_parent()
 	transform = Transform3D(world.field_basis(), world.grid_centre())
@@ -83,6 +89,55 @@ func bind(slot, a_director) -> void:
 	slot.hold_changed.connect(_apply_held)
 	slot.hold_ended.connect(_on_hold_ended)
 	slot.board_respun.connect(_on_board_respun)
+	slot.locks_changed.connect(_on_locks_changed)
+	slot.target_changed.connect(_on_target_changed)
+
+## [cell locks] A locked cell wears the gold border and, once the next spin is
+## dealt, neither blurs nor lands again.
+func _on_locks_changed(locked: Array, _left: int) -> void:
+	_locked = locked.duplicate()
+	_refresh_frames()
+
+## The cell a held press is aiming at: gold frame and a slightly larger icon, so
+## which cell a finger means is plain before it is let go. Real-time tweens, since
+## the world is crawling while the press is held.
+func _on_target_changed(index: int) -> void:
+	var previous := _target
+	_target = index
+	_refresh_frames()
+	if previous >= 0 and previous != index:
+		_scale_icon(previous, 1.0)
+	if index >= 0:
+		_scale_icon(index, TARGET_ICON_SCALE)
+
+## A cell wears the frame while it is locked or being aimed at. It pops in as it
+## appears.
+func _refresh_frames() -> void:
+	for i: int in range(_cells.size()):
+		var frame: MeshInstance3D = _cells[i]["lock_frame"]
+		var now := _locked.has(i) or i == _target
+		if now and not frame.visible:
+			frame.scale = Vector3.ONE * 1.25
+			var tw := create_tween()
+			tw.set_ignore_time_scale(true)
+			tw.tween_property(frame, "scale", Vector3.ONE, 0.18) \
+				.set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		frame.visible = now
+
+func _scale_icon(index: int, factor: float) -> void:
+	var sprite: Sprite3D = _cells[index]["sprite"]
+	if not sprite.visible:
+		return
+	# One scale tween per icon, so a target that moves away and back never has
+	# two fighting over the same property.
+	if sprite.has_meta("scale_tween"):
+		var running := sprite.get_meta("scale_tween") as Tween
+		if running != null and running.is_valid():
+			running.kill()
+	var tw := sprite.create_tween()
+	tw.set_ignore_time_scale(true)
+	tw.tween_property(sprite, "scale", Vector3.ONE * factor, 0.08)
+	sprite.set_meta("scale_tween", tw)
 
 ## [hold-and-respin, #101] The board cell under a point on the screen, or -1.
 ## `view_pos` is in the world viewport's own pixels. The ray is cast against the
@@ -188,6 +243,19 @@ func _build_cell(index: int) -> Dictionary:
 	glow.position = Vector3(0, 0.17, 0)
 	glow.rotation.x = -PI * 0.5
 
+	var lock_frame := MeshInstance3D.new()
+	var frame_quad := QuadMesh.new()
+	frame_quad.size = Vector2.ONE * (cell_size - tile_gap)
+	lock_frame.mesh = frame_quad
+	var frame_mat := ShaderMaterial.new()
+	frame_mat.shader = LOCK_BORDER_SHADER
+	lock_frame.material_override = frame_mat
+	lock_frame.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	lock_frame.visible = false
+	root.add_child(lock_frame)
+	lock_frame.position = Vector3(0, 0.17, 0)
+	lock_frame.rotation.x = -PI * 0.5
+
 	var viewport := SubViewport.new()
 	viewport.size = Vector2i(ICON_PX, ICON_PX)
 	viewport.transparent_bg = true
@@ -215,7 +283,8 @@ func _build_cell(index: int) -> Dictionary:
 	sprite.position = Vector3(0, icon_height, 0)
 
 	return { "root": root, "tile_mat": tile_mat, "glow_mat": glow_mat,
-		"viewport": viewport, "symbol": symbol, "sprite": sprite }
+		"viewport": viewport, "symbol": symbol, "sprite": sprite,
+		"lock_frame": lock_frame }
 
 func _make_glow_texture() -> GradientTexture2D:
 	var g := Gradient.new()
@@ -297,7 +366,9 @@ func _on_board_dealt(board: Array) -> void:
 	_clear_beams()
 	for i: int in range(_cells.size()):
 		_set_tile(i, tile_color)
-		_set_glow(i, Color.BLACK, 0.0)
+		# A locked cell sits the spin out, so it keeps the glow it landed with.
+		if not _locked.has(i):
+			_set_glow(i, Color.BLACK, 0.0)
 	_spinning = [true, true, true]
 	_held = []
 	_respinning.clear()
@@ -315,7 +386,8 @@ func _process(delta: float) -> void:
 			continue
 		any = true
 		for row: int in range(3):
-			_show_icon(row * 3 + col, _random_face(), true)
+			if not _locked.has(row * 3 + col):
+				_show_icon(row * 3 + col, _random_face(), true)
 	for index: int in _respinning:
 		any = true
 		_show_icon(index, _random_face(), true)
@@ -406,7 +478,7 @@ func _on_reel_stopped(column: int) -> void:
 ## A column stops: its three icons drop into their runes and the runes light in
 ## their owners' colours. A blank leaves the carved rune dark.
 func _land(index: int) -> void:
-	if index >= _board.size():
+	if index >= _board.size() or _locked.has(index):
 		return
 	var icon: Dictionary = _board[index]
 	var sprite: Sprite3D = _cells[index]["sprite"]

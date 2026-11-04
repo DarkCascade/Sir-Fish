@@ -40,20 +40,85 @@ func _unhandled_input(event: InputEvent) -> void:
 	if click == null or not click.pressed or click.button_index != MOUSE_BUTTON_LEFT:
 		return
 	var slot = $HiddenCabinet/SlotMachine
-	if not slot.is_holding() and slot.holds_left() <= 0:
+	if not slot.taps_available():
 		return
-	var local := ($BattleView as Control).make_input_local(click) as InputEventMouseButton
-	var view_pos := local.position
-	var index := (get_world().rune_floor as RuneFloor).pick_cell(view_pos)
-	if index >= 0 and slot.hold_cell(index):
+	if Tuning.LOCK_MODE:
+		_start_press(click)
+		return
+	var index := (get_world().rune_floor as RuneFloor).pick_cell(_view_pos(click))
+	if index >= 0 and slot.tap_cell(index):
 		get_viewport().set_input_as_handled()
+
+# --- hold to aim a lock (Tuning.LOCK_MODE) -----------------------------------------
+
+## A press that began on the board. Held past Tuning.LOCK_HOLD_DELAY it starts
+## aiming; let go sooner and it counts for nothing.
+var _pressing: bool = false
+## The press has been held past the delay, so it is an aim, never a tap.
+var _hold_reached: bool = false
+var _press_pos: Vector2 = Vector2.ZERO
+var _press_serial: int = 0
+
+func _view_pos(event: InputEventMouse) -> Vector2:
+	return (($BattleView as Control).make_input_local(event) as InputEventMouse).position
+
+func _start_press(click: InputEventMouseButton) -> void:
+	_pressing = true
+	_hold_reached = false
+	_press_pos = _view_pos(click)
+	_press_serial += 1
+	var serial := _press_serial
+	# Real seconds: the delay must not stretch if the world is already crawling.
+	await get_tree().create_timer(Tuning.LOCK_HOLD_DELAY, true, false, true).timeout
+	if serial != _press_serial or not _pressing:
+		return
+	_hold_reached = true
+	var index := (get_world().rune_floor as RuneFloor).pick_cell(_press_pos)
+	if index >= 0:
+		$HiddenCabinet/SlotMachine.begin_target(index)
+
+## The drag and the release arrive here, before the GUI, so a finger that slides
+## over the dock or a button is still followed and a release over one still lands.
+func _input(event: InputEvent) -> void:
+	if not _pressing:
+		return
+	var slot = $HiddenCabinet/SlotMachine
+	var motion := event as InputEventMouseMotion
+	if motion != null:
+		_press_pos = _view_pos(motion)
+		if slot.is_targeting():
+			slot.move_target((get_world().rune_floor as RuneFloor).pick_cell(_press_pos))
+		return
+	var click := event as InputEventMouseButton
+	if click != null and not click.pressed and click.button_index == MOUSE_BUTTON_LEFT:
+		_pressing = false
+		_press_serial += 1
+		if _hold_reached:
+			slot.end_target(true)
+		else:
+			# Let go before the delay: a tap. It only ever frees a locked cell.
+			var index := (get_world().rune_floor as RuneFloor).pick_cell(_view_pos(click))
+			slot.unlock_cell(index)
 
 ## While a hold is unspent the hint tells a new player the board can be tapped;
 ## while picking, the Respin button replaces it.
 func _refresh_hold_ui() -> void:
 	var slot = $HiddenCabinet/SlotMachine
 	var picking: bool = slot.is_holding()
-	($HoldHint as Label).visible = _fighting and not picking and slot.holds_left() > 0
+	var hint := $HoldHint as Label
+	if Tuning.LOCK_MODE:
+		# [cell locks] The hint doubles as the lock counter, and says what a held
+		# press is doing while it is aiming.
+		if slot.is_targeting():
+			hint.text = "Slide to aim  ·  release to lock"
+		elif not slot.locked_cells().is_empty():
+			hint.text = "Tap a locked rune to free it  ·  %d left" % slot.locks_left()
+		else:
+			hint.text = "Hold a rune to lock it  ·  %d left" % slot.locks_left()
+		hint.visible = _fighting and (slot.locks_left() > 0 or slot.is_targeting())
+	else:
+		hint.text = "Tap a rune to hold"
+		hint.visible = _fighting and not picking and slot.holds_left() > 0
 	($RespinButton as Button).visible = picking
 
 func _bind_hold_ui(slot) -> void:
@@ -62,8 +127,13 @@ func _bind_hold_ui(slot) -> void:
 	slot.holds_left_changed.connect(_on_hold_ui_changed)
 	slot.hold_started.connect(_on_hold_ui_changed)
 	slot.hold_ended.connect(_on_hold_ui_changed)
+	slot.locks_changed.connect(_on_locks_ui_changed)
+	slot.target_changed.connect(_on_hold_ui_changed)
 
 func _on_hold_ui_changed(_arg = null) -> void:
+	_refresh_hold_ui()
+
+func _on_locks_ui_changed(_locked: Array, _left: int) -> void:
 	_refresh_hold_ui()
 
 ## [perf] Stops the world re-rendering behind the shop's opaque scrim, as

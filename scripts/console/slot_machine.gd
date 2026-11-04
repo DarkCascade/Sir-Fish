@@ -50,6 +50,12 @@ signal hold_ended()
 signal board_respun(board: Array, held: Array)
 signal holds_left_changed(left: int)
 signal _hold_picked()
+## [cell locks] The cells locked for the next spin (board indices, in the order
+## they were tapped) and the locks still to spend. Fires on every tap, when a
+## spin spends locks, and when locks clear.
+signal locks_changed(locked: Array, left: int)
+## [cell locks] The cell a held press is aiming at, or -1 when nothing is.
+signal target_changed(index: int)
 
 enum HoldPhase { NONE, PICKING }
 
@@ -80,6 +86,17 @@ var _respin_held: Array = []
 var _hold_serial: int = 0
 var _slow_active: bool = false
 var _slow_tween: Tween
+
+# --- cell-lock state (Tuning.LOCK_MODE) ---
+var _locks_left: int = Tuning.LOCKS_PER_RUN
+var _locked: Array = []
+## True once all three reels have landed, until the next spin is dealt: the
+## board is at rest, so a tap can lock or free a cell.
+var _lock_edit_open: bool = false
+## A held press is aiming (the world is crawling), and the cell it is over.
+var _targeting: bool = false
+var _target: int = -1
+var _target_serial: int = 0
 
 ## [ui-project-longshot] Cabinet layout constants - unchanged by slot phase 2,
 ## which does no cabinet, layout or texture work.
@@ -201,6 +218,9 @@ func _tween_cabinet_colors(face: Color, window: Color) -> void:
 func _on_combat_started(_heroes: Array, _enemies: Array) -> void:
 	_should_spin = true
 	_set_holds_left(Tuning.HOLDS_PER_FIGHT_START)
+	if Tuning.LOCKS_RESET_EACH_FIGHT:
+		_locks_left = Tuning.LOCKS_PER_RUN
+	_clear_locks()
 	_leave_attract()
 	if not _running:
 		_spin_loop()
@@ -210,6 +230,10 @@ func _on_combat_ended(_victory: bool) -> void:
 	# A pick in flight must not outlive its fight: the loop is parked on it and
 	# the world is still crawling.
 	_end_pick(false)
+	# The board a lock points at is gone with the fight; unspent locks carry on.
+	end_target(false, true)
+	_lock_edit_open = false
+	_clear_locks()
 
 func _exit_tree() -> void:
 	if _slow_active:
@@ -246,6 +270,9 @@ func _push_attract_strips() -> void:
 ## Called by the retry path (spec 18.3) to put the cabinet back to attract mode.
 func reset_to_attract() -> void:
 	_should_spin = false
+	_lock_edit_open = false
+	_locks_left = Tuning.LOCKS_PER_RUN
+	_clear_locks()
 	_enter_attract(true)
 	_rebuild_bag()
 	_push_attract_strips()
@@ -354,7 +381,11 @@ func _one_spin() -> void:
 	EventBus.slot_spin_started.emit()
 
 	_rebuild_bag()
-	_board = _draw_board()
+	# A press still aiming when the next spin deals commits where it is: the
+	# board it points at is about to change.
+	end_target(true)
+	_lock_edit_open = false
+	_board = _deal_board()
 	_landed = [false, false, false]
 	_respin_held = []
 	board_dealt.emit(_board)
@@ -365,11 +396,14 @@ func _one_spin() -> void:
 	await get_tree().create_timer(Tuning.SLOT_SPIN_DURATION * q).timeout
 	_stop_reel(0)
 	# A landed cell can be held from here on. Only while a hold is unspent.
-	_hold_window = _holds_left > 0
+	_hold_window = _holds_left > 0 and not Tuning.LOCK_MODE
 	await get_tree().create_timer(Tuning.SLOT_REEL_STAGGER * q).timeout
 	_stop_reel(1)
 	await get_tree().create_timer(Tuning.SLOT_REEL_STAGGER * q).timeout
 	_stop_reel(2)
+	# [cell locks] The board is at rest from here to the next deal.
+	_lock_edit_open = Tuning.LOCK_MODE and _should_spin
+	_settle_locks()
 	await get_tree().create_timer(Tuning.SLOT_HOLD_GRACE).timeout
 	_hold_window = false
 
@@ -390,6 +424,142 @@ func _one_spin() -> void:
 	await _resolve_board(wins)
 
 	await get_tree().create_timer(Tuning.SLOT_RESULT_HOLD * q).timeout
+
+# --- cell locks (Tuning.LOCK_MODE) ----------------------------------------------
+
+func locks_left() -> int:
+	return _locks_left
+
+func locked_cells() -> Array:
+	return _locked.duplicate()
+
+## A tap, whichever way Tuning.LOCK_MODE sends it.
+func tap_cell(index: int) -> bool:
+	return lock_cell(index) if Tuning.LOCK_MODE else hold_cell(index)
+
+## Whether a tap could do anything right now, so a presentation can skip the
+## cost of working out which cell was under it.
+func taps_available() -> bool:
+	if Tuning.LOCK_MODE:
+		return _locks_left > 0 or not _locked.is_empty()
+	return is_holding() or _holds_left > 0
+
+## Locks cell `index` for the next spin, or frees it if it is already locked.
+## Only a board at rest takes a tap, a blank cell is never worth a lock, and the
+## locked cells can never outnumber the locks left to pay for them.
+func lock_cell(index: int) -> bool:
+	if not _lock_edit_open or index < 0 or index >= _board.size():
+		return false
+	if _locked.has(index):
+		_locked.erase(index)
+		locks_changed.emit(locked_cells(), _locks_left)
+		return true
+	if SlotIcon.is_blank(_board[index]) or _locked.size() >= _locks_left:
+		return false
+	_locked.append(index)
+	locks_changed.emit(locked_cells(), _locks_left)
+	return true
+
+func is_targeting() -> bool:
+	return _targeting
+
+func target_cell() -> int:
+	return _target
+
+## A press has been held past the delay on `index`: the world crawls and that
+## cell is the target. Only a board at rest can be aimed at.
+func begin_target(index: int) -> bool:
+	if not Tuning.LOCK_MODE or _targeting or not _lock_edit_open \
+			or index < 0 or index >= _board.size():
+		return false
+	_targeting = true
+	_target = index
+	_target_serial += 1
+	_set_slow(true)
+	_target_timeout(_target_serial)
+	target_changed.emit(_target)
+	return true
+
+## The finger moved: the target follows it, or is -1 off the board.
+func move_target(index: int) -> void:
+	if not _targeting:
+		return
+	if index < 0 or index >= _board.size():
+		index = -1
+	if index == _target:
+		return
+	_target = index
+	target_changed.emit(_target)
+
+## The press ended. With `commit`, the target is locked (or freed, if it was
+## already locked) by the same rules as lock_cell(): a blank cell, or no lock
+## left, locks nothing. `instant` snaps the time scale back for a fight cut short.
+func end_target(commit: bool, instant: bool = false) -> void:
+	if not _targeting:
+		return
+	var aimed := _target
+	_targeting = false
+	_target = -1
+	_target_serial += 1
+	_set_slow(false, instant)
+	if commit and aimed >= 0:
+		lock_cell(aimed)
+	target_changed.emit(-1)
+
+## Real seconds, so a press that is held forever does not leave the world
+## crawling: it commits and lets go after HOLD_PICK_TIMEOUT.
+func _target_timeout(serial: int) -> void:
+	await get_tree().create_timer(Tuning.HOLD_PICK_TIMEOUT, true, false, true).timeout
+	if serial == _target_serial and _targeting:
+		end_target(true)
+
+## A quick tap on a locked cell frees it. Never locks: a tap on anything else does
+## nothing, because only a held press aims a lock.
+func unlock_cell(index: int) -> bool:
+	if not _lock_edit_open or not _locked.has(index):
+		return false
+	_locked.erase(index)
+	locks_changed.emit(locked_cells(), _locks_left)
+	return true
+
+## The next board: the locked cells stay as they are and are paid for with a
+## lock each, every other cell is drawn from the bag minus the kept icons. A lock
+## whose icon the bag no longer holds (its owner fell, its item came off) is
+## dropped for free.
+func _deal_board() -> Array:
+	var kept: Array = []
+	for index: int in _locked:
+		if index < _board.size() and _bag_has(_board[index]):
+			kept.append(index)
+	if kept.size() > _locks_left:
+		kept = kept.slice(0, _locks_left)
+	if kept.is_empty():
+		_clear_locks()
+		return _draw_board()
+	_locked = kept
+	_locks_left -= kept.size()
+	locks_changed.emit(locked_cells(), _locks_left)
+	return redraw(_bag, _board, kept)
+
+func _bag_has(icon: Dictionary) -> bool:
+	for entry: Dictionary in _bag:
+		if is_same(entry, icon) or entry == icon:
+			return true
+	return false
+
+## Once the board is at rest, a lock count that has run out frees every cell,
+## and one that cannot cover them all frees the latest taps.
+func _settle_locks() -> void:
+	if _locked.size() <= _locks_left:
+		return
+	_locked = _locked.slice(0, _locks_left)
+	locks_changed.emit(locked_cells(), _locks_left)
+
+func _clear_locks() -> void:
+	if _locked.is_empty():
+		return
+	_locked.clear()
+	locks_changed.emit([], _locks_left)
 
 # --- hold-and-respin (#101) ---------------------------------------------------
 
@@ -483,15 +653,24 @@ func _respin() -> void:
 ## minus the kept icons - still without replacement, off the seeded RNG. Static
 ## so test_hold_respin exercises the real draw.
 static func redraw(bag: Array, board: Array, held: Array) -> Array:
-	var pool: Array = []
-	for icon: Dictionary in bag:
-		var kept := false
-		for index: int in held:
-			if is_same(board[index], icon):
-				kept = true
+	# Each kept icon takes one entry out of the pool: that very icon if the bag
+	# still holds it (a respin inside one spin), else an equal one (a lock across
+	# spins, where the bag was rebuilt and its entries are new copies).
+	var pool: Array = bag.duplicate()
+	for index: int in held:
+		var icon: Dictionary = board[index]
+		var at := -1
+		for i: int in range(pool.size()):
+			if is_same(pool[i], icon):
+				at = i
 				break
-		if not kept:
-			pool.append(icon)
+		if at < 0:
+			for i: int in range(pool.size()):
+				if pool[i] == icon:
+					at = i
+					break
+		if at >= 0:
+			pool.remove_at(at)
 	var fresh := draw_nine(pool)
 	var out: Array = board.duplicate()
 	var next := 0
