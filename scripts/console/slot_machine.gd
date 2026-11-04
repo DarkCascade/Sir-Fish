@@ -39,6 +39,19 @@ signal board_dealt(board: Array)
 signal reel_stopped(column: int)
 signal lines_won(wins: Array)
 signal cell_resolved(board_index: int)
+## [hold-and-respin, #101] A tap on a landed cell started a hold: the world is
+## crawling and `held` (board indices) is what is being kept. hold_changed
+## follows each toggle. hold_ended fires when the pick is over, whether it
+## respins or not; board_respun carries the new board with the held cells
+## untouched, before the respun cells land.
+signal hold_started(held: Array)
+signal hold_changed(held: Array)
+signal hold_ended()
+signal board_respun(board: Array, held: Array)
+signal holds_left_changed(left: int)
+signal _hold_picked()
+
+enum HoldPhase { NONE, PICKING }
 
 var director = null               # BattleDirector (untyped: custom API)
 
@@ -52,6 +65,21 @@ var _home_position: Vector2
 var _bag: Array = []
 ## The nine icons dealt this spin, row-major: [r0c0, r0c1, r0c2, r1c0, ...].
 var _board: Array = []
+
+# --- hold-and-respin state (#101) ---
+var _holds_left: int = Tuning.HOLDS_PER_FIGHT_START
+var _hold_phase: HoldPhase = HoldPhase.NONE
+## True from the first reel landing until SLOT_HOLD_GRACE after the last: the
+## only time a tap may start a hold.
+var _hold_window: bool = false
+## Which reels have landed this spin; only their cells can be held.
+var _landed: Array[bool] = [false, false, false]
+var _held: Dictionary = {}
+## Set by confirm_hold() when it will respin; the spin loop applies it.
+var _respin_held: Array = []
+var _hold_serial: int = 0
+var _slow_active: bool = false
+var _slow_tween: Tween
 
 ## [ui-project-longshot] Cabinet layout constants - unchanged by slot phase 2,
 ## which does no cabinet, layout or texture work.
@@ -172,12 +200,20 @@ func _tween_cabinet_colors(face: Color, window: Color) -> void:
 
 func _on_combat_started(_heroes: Array, _enemies: Array) -> void:
 	_should_spin = true
+	_set_holds_left(Tuning.HOLDS_PER_FIGHT_START)
 	_leave_attract()
 	if not _running:
 		_spin_loop()
 
 func _on_combat_ended(_victory: bool) -> void:
 	_should_spin = false
+	# A pick in flight must not outlive its fight: the loop is parked on it and
+	# the world is still crawling.
+	_end_pick(false)
+
+func _exit_tree() -> void:
+	if _slow_active:
+		Engine.time_scale = 1.0
 
 func _on_party_bonuses_changed(_bonuses: Dictionary) -> void:
 	_rebuild_bag()
@@ -319,6 +355,8 @@ func _one_spin() -> void:
 
 	_rebuild_bag()
 	_board = _draw_board()
+	_landed = [false, false, false]
+	_respin_held = []
 	board_dealt.emit(_board)
 	for c: int in range(3):
 		_reels[c].set_column(_board[c], _board[3 + c], _board[6 + c], _bag)
@@ -326,11 +364,21 @@ func _one_spin() -> void:
 
 	await get_tree().create_timer(Tuning.SLOT_SPIN_DURATION * q).timeout
 	_stop_reel(0)
+	# A landed cell can be held from here on. Only while a hold is unspent.
+	_hold_window = _holds_left > 0
 	await get_tree().create_timer(Tuning.SLOT_REEL_STAGGER * q).timeout
 	_stop_reel(1)
 	await get_tree().create_timer(Tuning.SLOT_REEL_STAGGER * q).timeout
 	_stop_reel(2)
-	await get_tree().create_timer(0.22).timeout
+	await get_tree().create_timer(Tuning.SLOT_HOLD_GRACE).timeout
+	_hold_window = false
+
+	# [hold-and-respin] The pick runs at crawl speed; once it is over the cells
+	# it did not keep respin, and paylines and resolution see only the result.
+	if _hold_phase == HoldPhase.PICKING:
+		await _hold_picked
+	if not _respin_held.is_empty():
+		await _respin()
 
 	EventBus.slot_spin_stopped.emit(_board.map(func(ic: Dictionary) -> StringName:
 		return StringName(ic.get("id", &""))))
@@ -343,7 +391,119 @@ func _one_spin() -> void:
 
 	await get_tree().create_timer(Tuning.SLOT_RESULT_HOLD * q).timeout
 
+# --- hold-and-respin (#101) ---------------------------------------------------
+
+func holds_left() -> int:
+	return _holds_left
+
+func is_holding() -> bool:
+	return _hold_phase == HoldPhase.PICKING
+
+## The cells being kept right now, ascending.
+func held_cells() -> Array:
+	var out: Array = _held.keys()
+	out.sort()
+	return out
+
+## A tap on board cell `index`. Starts a hold when the window is open and the
+## cell's reel has landed; once picking, toggles the cell. False when the tap
+## did nothing, so a presentation can ignore it.
+func hold_cell(index: int) -> bool:
+	if index < 0 or index >= Tuning.SLOT_BOARD_CELLS or not _landed[index % 3]:
+		return false
+	if _hold_phase == HoldPhase.NONE:
+		if not _hold_window or _holds_left <= 0 or not _should_spin:
+			return false
+		_hold_phase = HoldPhase.PICKING
+		_held = { index: true }
+		_set_slow(true)
+		_pick_timeout(_hold_serial)
+		hold_started.emit(held_cells())
+		return true
+	if _held.has(index):
+		_held.erase(index)
+	else:
+		_held[index] = true
+	hold_changed.emit(held_cells())
+	return true
+
+## Ends the pick. Holding nothing, or every cell, leaves nothing to respin: it
+## costs no hold and the board resolves as dealt.
+func confirm_hold() -> void:
+	_end_pick(true)
+
+func _end_pick(allow_respin: bool) -> void:
+	if _hold_phase != HoldPhase.PICKING:
+		return
+	var kept := held_cells()
+	_hold_phase = HoldPhase.NONE
+	_hold_serial += 1
+	_held.clear()
+	_set_slow(false, not allow_respin)
+	if allow_respin and not kept.is_empty() and kept.size() < Tuning.SLOT_BOARD_CELLS:
+		_respin_held = kept
+		_set_holds_left(_holds_left - 1)
+	hold_ended.emit()
+	_hold_picked.emit()
+
+## Real seconds, so a pick at HOLD_TIME_SCALE does not run on forever.
+func _pick_timeout(serial: int) -> void:
+	await get_tree().create_timer(Tuning.HOLD_PICK_TIMEOUT, true, false, true).timeout
+	if serial == _hold_serial and _hold_phase == HoldPhase.PICKING:
+		confirm_hold()
+
+func _set_holds_left(n: int) -> void:
+	_holds_left = maxi(n, 0)
+	holds_left_changed.emit(_holds_left)
+
+## Eases Engine.time_scale in or out in real seconds, as the wipe cinematic's
+## ramp does. `instant` snaps back for a pick the fight cut short, where the
+## wipe's own ramp may be about to take over.
+func _set_slow(on: bool, instant: bool = false) -> void:
+	if _slow_tween != null and _slow_tween.is_valid():
+		_slow_tween.kill()
+	_slow_active = on
+	var target := Tuning.HOLD_TIME_SCALE if on else 1.0
+	if instant or not is_inside_tree():
+		Engine.time_scale = target
+		return
+	_slow_tween = create_tween()
+	_slow_tween.set_ignore_time_scale(true)
+	_slow_tween.tween_property(Engine, "time_scale", target, Tuning.HOLD_TIME_SCALE_RAMP) \
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
+
+func _respin() -> void:
+	var kept := _respin_held
+	_respin_held = []
+	_board = redraw(_bag, _board, kept)
+	board_respun.emit(_board, kept)
+	await get_tree().create_timer(Tuning.SLOT_HOLD_RESPIN_TIME).timeout
+
+## `board` with the cells in `held` kept and every other cell redrawn from `bag`
+## minus the kept icons - still without replacement, off the seeded RNG. Static
+## so test_hold_respin exercises the real draw.
+static func redraw(bag: Array, board: Array, held: Array) -> Array:
+	var pool: Array = []
+	for icon: Dictionary in bag:
+		var kept := false
+		for index: int in held:
+			if is_same(board[index], icon):
+				kept = true
+				break
+		if not kept:
+			pool.append(icon)
+	var fresh := draw_nine(pool)
+	var out: Array = board.duplicate()
+	var next := 0
+	for i: int in range(out.size()):
+		if held.has(i):
+			continue
+		out[i] = fresh[next]
+		next += 1
+	return out
+
 func _stop_reel(index: int) -> void:
+	_landed[index] = true
 	_reels[index].stop_at()
 	reel_stopped.emit(index)
 	_shake_cabinet()

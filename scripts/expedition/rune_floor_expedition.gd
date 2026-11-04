@@ -16,8 +16,55 @@ const CABINET_HEIGHT := 600.0
 
 @onready var quest_name: Label = $TopBar/QuestName
 
+var _fighting: bool = false
+
 func _ready() -> void:
 	_refresh_quest_name()
+	EventBus.combat_started.connect(func(_heroes: Array, _enemies: Array) -> void:
+		_fighting = true
+		_refresh_hold_ui())
+	EventBus.combat_ended.connect(func(_victory: bool) -> void:
+		_fighting = false
+		_refresh_hold_ui())
+	($RespinButton as Button).pressed.connect(func() -> void:
+		($HiddenCabinet/SlotMachine).confirm_hold())
+
+# --- hold and respin (#101) -----------------------------------------------------
+
+## A tap on a rune. The board is in the 3D viewport, which takes no mouse input
+## (BattleView ignores it), so the tap arrives here unhandled and is cast onto
+## the board; the SlotMachine decides whether it starts, toggles or ignores a
+## hold. A tap it refuses falls through untouched.
+func _unhandled_input(event: InputEvent) -> void:
+	var click := event as InputEventMouseButton
+	if click == null or not click.pressed or click.button_index != MOUSE_BUTTON_LEFT:
+		return
+	var slot = $HiddenCabinet/SlotMachine
+	if not slot.is_holding() and slot.holds_left() <= 0:
+		return
+	var local := ($BattleView as Control).make_input_local(click) as InputEventMouseButton
+	var view_pos := local.position
+	var index := (get_world().rune_floor as RuneFloor).pick_cell(view_pos)
+	if index >= 0 and slot.hold_cell(index):
+		get_viewport().set_input_as_handled()
+
+## While a hold is unspent the hint tells a new player the board can be tapped;
+## while picking, the Respin button replaces it.
+func _refresh_hold_ui() -> void:
+	var slot = $HiddenCabinet/SlotMachine
+	var picking: bool = slot.is_holding()
+	($HoldHint as Label).visible = _fighting and not picking and slot.holds_left() > 0
+	($RespinButton as Button).visible = picking
+
+func _bind_hold_ui(slot) -> void:
+	if slot.holds_left_changed.is_connected(_on_hold_ui_changed):
+		return
+	slot.holds_left_changed.connect(_on_hold_ui_changed)
+	slot.hold_started.connect(_on_hold_ui_changed)
+	slot.hold_ended.connect(_on_hold_ui_changed)
+
+func _on_hold_ui_changed(_arg = null) -> void:
+	_refresh_hold_ui()
 
 ## [perf] Stops the world re-rendering behind the shop's opaque scrim, as
 ## main_layout.gd does for CLASSIC. ShopModal calls it on its owner.
@@ -70,6 +117,7 @@ func bind_director(director: BattleDirector) -> void:
 	for plate: HeroPlate in $Dock/Plates.get_children():
 		plate.director = director
 	(get_world().rune_floor as RuneFloor).bind(slot, director)
+	_bind_hold_ui(slot)
 
 ## The dock's and board's black glass arrive with milestone 3 (#213); until
 ## then a boss fight looks like any other.

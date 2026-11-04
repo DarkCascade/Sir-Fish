@@ -157,6 +157,37 @@ special_name = "Healing Aura"
 portrait = ExtResource("12_mage")
 owner_color = Color(0.627, 0.486, 0.969, 1)
 
+; [hold-and-respin, #101] Tapping a rune on the board starts a hold (SlotMachine.
+; hold_cell). The hint teaches that while a hold is unspent; while picking, the
+; Respin button ends the pick. Both float just above the dock, over the void, and
+; stay 36 px or larger (CLAUDE.md best practice 4).
+[node name="HoldHint" type="Label" parent="."]
+visible = false
+layout_mode = 0
+offset_top = 1405.0
+offset_right = 1080.0
+offset_bottom = 1475.0
+mouse_filter = 2
+theme_override_colors/font_color = Color(0.937, 0.839, 0.58, 1)
+theme_override_colors/font_outline_color = Color(0.141, 0.118, 0.078, 1)
+theme_override_constants/outline_size = 10
+theme_override_fonts/font = ExtResource("8_cinzel")
+theme_override_font_sizes/font_size = 36
+text = "Tap a rune to hold"
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="RespinButton" type="Button" parent="."]
+visible = false
+layout_mode = 0
+offset_left = 340.0
+offset_top = 1375.0
+offset_right = 740.0
+offset_bottom = 1470.0
+theme_override_fonts/font = ExtResource("8_cinzel")
+theme_override_font_sizes/font_size = 48
+text = "Respin"
+
 [node name="HiddenCabinet" type="Control" parent="."]
 visible = false
 layout_mode = 0

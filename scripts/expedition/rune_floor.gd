@@ -48,6 +48,18 @@ var _beams: Array[Node3D] = []
 var _glow_tex: GradientTexture2D
 var _shown: bool = true
 var _fold: Tween
+## [hold-and-respin, #101] Cells the player is keeping, and cells re-rolling
+## after a hold; both are board indices.
+var _held: Array = []
+var _respinning: Dictionary = {}
+
+## How high a held icon lifts, the colour it glows, and how its respun
+## neighbours land: a base beat plus a stagger per column, all inside
+## Tuning.SLOT_HOLD_RESPIN_TIME.
+const HELD_LIFT := 0.25
+const HELD_GLOW := 1.4
+const RESPIN_LAND_BASE := 0.15
+const RESPIN_LAND_STAGGER := 0.08
 
 func _ready() -> void:
 	var world = get_parent()
@@ -67,6 +79,32 @@ func bind(slot, a_director) -> void:
 	slot.reel_stopped.connect(_on_reel_stopped)
 	slot.lines_won.connect(_on_lines_won)
 	slot.cell_resolved.connect(_on_cell_resolved)
+	slot.hold_started.connect(_apply_held)
+	slot.hold_changed.connect(_apply_held)
+	slot.hold_ended.connect(_on_hold_ended)
+	slot.board_respun.connect(_on_board_respun)
+
+## [hold-and-respin, #101] The board cell under a point on the screen, or -1.
+## `view_pos` is in the world viewport's own pixels. The ray is cast against the
+## plane the icons float on rather than the stone, so a tap on an icon lands on
+## its own cell instead of the one behind it.
+func pick_cell(view_pos: Vector2) -> int:
+	var camera := get_viewport().get_camera_3d()
+	if camera == null:
+		return -1
+	var origin := camera.project_ray_origin(view_pos)
+	var dir := camera.project_ray_normal(view_pos)
+	var up := global_transform.basis.y.normalized()
+	var plane := Plane(up, global_position + up * icon_height)
+	var hit: Variant = plane.intersects_ray(origin, dir)
+	if hit == null:
+		return -1
+	var local := to_local(hit as Vector3)
+	var col := roundi(local.x / cell_size) + 1
+	var row := roundi(local.z / cell_size) + 1
+	if col < 0 or col > 2 or row < 0 or row > 2:
+		return -1
+	return row * 3 + col
 
 func cell_local(index: int) -> Vector3:
 	@warning_ignore("integer_division")
@@ -261,6 +299,8 @@ func _on_board_dealt(board: Array) -> void:
 		_set_tile(i, tile_color)
 		_set_glow(i, Color.BLACK, 0.0)
 	_spinning = [true, true, true]
+	_held = []
+	_respinning.clear()
 	_flicker_left = 0.0
 	set_process(true)
 
@@ -276,8 +316,64 @@ func _process(delta: float) -> void:
 		any = true
 		for row: int in range(3):
 			_show_icon(row * 3 + col, _random_face(), true)
+	for index: int in _respinning:
+		any = true
+		_show_icon(index, _random_face(), true)
 	if not any:
 		set_process(false)
+
+# --- hold and respin (#101) ---------------------------------------------------------
+
+## The cells being kept: gold under them and the icon lifted, so the picks read
+## from across the board even at a crawl. Everything else is put back as landed.
+func _apply_held(held: Array) -> void:
+	_held = held.duplicate()
+	for i: int in range(_cells.size()):
+		var sprite: Sprite3D = _cells[i]["sprite"]
+		if _held.has(i):
+			_set_glow(i, Tuning.C_GOLD_BRIGHT, HELD_GLOW)
+			sprite.position.y = icon_height + HELD_LIFT
+		else:
+			_restore_landed(i)
+
+## A cell as it looks once its reel has landed and nothing is happening to it.
+func _restore_landed(index: int) -> void:
+	var sprite: Sprite3D = _cells[index]["sprite"]
+	if index >= _board.size() or _respinning.has(index) or _spinning[index % 3] \
+			or not sprite.visible:
+		return
+	sprite.position.y = icon_height
+	var icon: Dictionary = _board[index]
+	if SlotIcon.is_blank(icon):
+		return
+	_set_glow(index, _owner_color(StringName(icon.get("owner", &""))), 1.1)
+
+## The pick is over, so the lock lifts: the kept icons settle back to how they
+## landed while any respin (board_respun) re-rolls everything around them.
+func _on_hold_ended() -> void:
+	for i: int in range(_cells.size()):
+		if _held.has(i):
+			_restore_landed(i)
+
+## The held icons stay put; every other cell blurs and lands again, column by
+## column, with the same drop as a first landing.
+func _on_board_respun(board: Array, held: Array) -> void:
+	_board = board.duplicate()
+	_held = held.duplicate()
+	for i: int in range(_cells.size()):
+		if held.has(i):
+			continue
+		_respinning[i] = true
+		_set_glow(i, Color.BLACK, 0.0)
+		var delay := RESPIN_LAND_BASE + RESPIN_LAND_STAGGER * float(i % 3)
+		get_tree().create_timer(delay).timeout.connect(_land_respun.bind(i))
+	set_process(true)
+
+func _land_respun(index: int) -> void:
+	if not _respinning.has(index):
+		return
+	_respinning.erase(index)
+	_land(index)
 
 ## A face for a spinning cell: any non-blank icon dealt this board, so the blur
 ## shows the party's own icons rather than noise. Cosmetic, so it draws from
@@ -477,6 +573,8 @@ func _fly_mote(from: Vector3, to: Vector3, color: Color) -> void:
 ## The fight is over: the icons sink back into the stone and the runes go dark.
 func _on_combat_ended(_victory: bool) -> void:
 	_spinning = [false, false, false]
+	_held = []
+	_respinning.clear()
 	set_process(false)
 	_clear_beams()
 	for i: int in range(_cells.size()):
