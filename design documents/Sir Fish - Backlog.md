@@ -36,10 +36,17 @@
 > camera. After two phone playtests it becomes the expedition, as Expedition Phase II. Its
 > fiction is decided: the Gilded Guppy projects the board, and Sir Fish's knighting amulet
 > is the lens (#196).
+>
+> **One roadmap to Steam Next Fest (merged 2026-11-02, §11).** Dates, milestones and the order of
+> work now live in the roadmap artifact (https://claude.ai/artifact/SZAy7uB2eMLr1TRVbfzKbX), every
+> game task links its GitHub issue, and each GitHub milestone (M1 to M10, plus After Next Fest) is a
+> roadmap milestone. §0's ranking below is history; the roadmap replaces it.
 
 ---
 
 ## 0. Priority at a glance
+
+> **Superseded 2026-11-02 by the roadmap (§11).** Kept for the reasoning behind the original P-ranking.
 
 | # | Idea | Player value | Effort | Blocked by | Why this position |
 |---|---|---|---|---|---|
@@ -2416,7 +2423,7 @@ replacement, against these targets once the ladders exist. The builds above bloc
 | 4.6 | Move current characters to pack clips | Recommended | Not yet; do it with 4.3 as one visual pass |
 | 4.7 | T-pose or A-pose for Meshy | **Confirmed** | T-pose for `Rig_Medium`, proven by the trial |
 | 4.8 | Weights from the mannequin | **Confirmed** | Nearest-surface transfer from the body parts, a head blend, rigid small parts |
-| 5.1 | Audio content | **Decided 2026-09-25, not built** | Procedural only (sfxr-style effects, procedural or tracker music), every file documented in a manifest for later replacement. First pass: the slot and music. Style: bright arcade-folk (§5, [#168](https://github.com/DarkCascade/Sir-Fish/issues/168), build [#184](https://github.com/DarkCascade/Sir-Fish/issues/184)) |
+| 5.1 | Audio content | **Decided 2026-09-25, not built; source reopened 2026-11-02 for Steam (11.3, [#244](https://github.com/DarkCascade/Sir-Fish/issues/244))** | Procedural only (sfxr-style effects, procedural or tracker music), every file documented in a manifest for later replacement. First pass: the slot and music. Style: bright arcade-folk (§5, [#168](https://github.com/DarkCascade/Sir-Fish/issues/168), build [#184](https://github.com/DarkCascade/Sir-Fish/issues/184)) |
 | 6.1 | Per-push or nightly CI | **Decided 2026-09-23** | Every PR and push to `main`, no `.godot/` cache: a cold CI run is ~2-3 min (the Pages export step, import included, is 51 s; the suite 69 s locally) ([#60](https://github.com/DarkCascade/Sir-Fish/issues/60), [#59](https://github.com/DarkCascade/Sir-Fish/issues/59)) |
 | 6.2 | Does a red suite block the Pages deploy? | **Decided 2026-09-23** | Yes: `deploy-pages.yml` calls `tests.yml` and its build `needs:` it; the suite is also a required check on PRs into `main`; the manual itch deploy stays ungated ([#61](https://github.com/DarkCascade/Sir-Fish/issues/61); built in [#62](https://github.com/DarkCascade/Sir-Fish/issues/62)) |
 | 7.1 | Slot or party as the main character | **Decided 2026-09-20** | Slot mechanically, party emotionally: player decisions live on the slot, the party expresses them (§7) |
@@ -2424,12 +2431,12 @@ replacement, against these targets once the ladders exist. The builds above bloc
 | 7.3 | What gates a special invoke | **Decided, built, live-verified 2026-09-23** | A charge meter, filled by every icon that hero owns. `SPECIAL_CHARGE_COST` is 10; a 30-trial headless probe against a fully-geared party (issue #97) measured 3.7-3.9 spins to full per hero, matching the ~3-spin target - no retune (§7) |
 | 7.4 | One special per class, which ones | **Decided, built 2026-09-23 (issue #96)** | Warrior cleave (replaces Defend), ranger bomb arrow (already existed), mage keeps her party heal as **Healing Aura**, the party's ONLY heal (the slot heal is gone) - only two hit-alls |
 | 7.5 | What happens to the three slot upgrades | **Decided, built 2026-09-21; revised** | They move to town (the Slotworks) and become **permanent**, saved with the profile. No reset at all but a new profile |
-| 7.6 | Hold-and-respin | **Decided 2026-09-24, reshaped and built 2026-11-03** | Became cell locks: press and hold a settled cell to aim in super slow-mo, release to lock, quick-tap a locked cell to free it. Locked cells do not spin, one lock spent per locked cell per spin. Three locks per run, hardcoded; a Slotworks upgrade to raise it is likely later. The lever, the per-fight count and the freeze-or-clock setting were dropped. Bag tuning (7.8) supplies the decision worth making (§7, [#157](https://github.com/DarkCascade/Sir-Fish/issues/157), build [#101](https://github.com/DarkCascade/Sir-Fish/issues/101), slow-mo variant [#263](https://github.com/DarkCascade/Sir-Fish/issues/263)) |
+| 7.6 | Hold-and-respin | **Decided 2026-09-24, reaffirmed 2026-11-02 for the demo (11.4), reshaped and built 2026-11-03** | Became cell locks: press and hold a settled cell to aim in super slow-mo, release to lock, quick-tap a locked cell to free it. Locked cells do not spin, one lock spent per locked cell per spin. Three locks per run, hardcoded; a Slotworks upgrade to raise it is likely later. The lever, the per-fight count and the freeze-or-clock setting were dropped. Bag tuning (7.8) supplies the decision worth making (§7, [#157](https://github.com/DarkCascade/Sir-Fish/issues/157), build [#101](https://github.com/DarkCascade/Sir-Fish/issues/101), slow-mo variant [#263](https://github.com/DarkCascade/Sir-Fish/issues/263)) |
 | 7.7 | Should fights be longer? | **Decided 2026-09-23: no, for now** | Recent playtests found fight times very satisfying, so fights stay 2-6 spins and the harness keeps its 3-9s time-to-kill band. Revisit if playtests say otherwise (§7, [#99](https://github.com/DarkCascade/Sir-Fish/issues/99)) |
-| 7.8 | Slotworks bag tuning | **Decided 2026-09-24, not built** | Category dials: tuning points (a permanent ladder) assigned freely in town to weight a category (+1 copy of each owned icon) or mute it. Dial caps come from `test_level_curves`' jackpots-per-battle case (§7, [#157](https://github.com/DarkCascade/Sir-Fish/issues/157), build [#173](https://github.com/DarkCascade/Sir-Fish/issues/173)) |
-| 7.9 | Slotworks consumables | **Decided 2026-09-24, not built** | Expedition charms: bought in the Slotworks, active for one whole expedition, spent on departure. Charm slots 1, bought up to 3. Starting set Spare Lock, Primer, Loaded Reel (§7, [#157](https://github.com/DarkCascade/Sir-Fish/issues/157), build [#174](https://github.com/DarkCascade/Sir-Fish/issues/174)) |
+| 7.8 | Slotworks bag tuning | **Decided 2026-09-24, not built; after Next Fest (11.2)** | Category dials: tuning points (a permanent ladder) assigned freely in town to weight a category (+1 copy of each owned icon) or mute it. Dial caps come from `test_level_curves`' jackpots-per-battle case (§7, [#157](https://github.com/DarkCascade/Sir-Fish/issues/157), build [#173](https://github.com/DarkCascade/Sir-Fish/issues/173)) |
+| 7.9 | Slotworks consumables | **Decided 2026-09-24, not built; after Next Fest (11.2)** | Expedition charms: bought in the Slotworks, active for one whole expedition, spent on departure. Charm slots 1, bought up to 3. Starting set Spare Lock, Primer, Loaded Reel (§7, [#157](https://github.com/DarkCascade/Sir-Fish/issues/157), build [#174](https://github.com/DarkCascade/Sir-Fish/issues/174)) |
 | 7.10 | The Slotworks ladders | **Decided 2026-09-24, not built** | Each ladder declares its own length (locks and charm slots are two buys). Polish's dead level 4 is fixed with steps 2/2/1/1 (9 -> 3 blanks), keeping 4 pips and the floor. Otherwise unchanged; cost growth is #100's (§7, [#157](https://github.com/DarkCascade/Sir-Fish/issues/157), build [#176](https://github.com/DarkCascade/Sir-Fish/issues/176)) |
-| 7.11 | The Slotworks tabs | **Decided 2026-09-24, not built** | Each ladder sits with its feature. Upgrades: Quick Reels, Overcharge, Polish, Holds and the freeze/clock switch. Tuning: the dials and tuning points. Charms: stock, equipped slots and charm slots (§7, [#157](https://github.com/DarkCascade/Sir-Fish/issues/157)) |
+| 7.11 | The Slotworks tabs | **Decided 2026-09-24, not built** | Each ladder sits with its feature. Upgrades: Quick Reels, Overcharge, Polish and Locks (when sold). Tuning: the dials and tuning points. Charms: stock, equipped slots and charm slots (§7, [#157](https://github.com/DarkCascade/Sir-Fish/issues/157)) |
 | 7.12 | Economy pacing | **Decided 2026-09-25, numbers pending** | Every permanent Slotworks ladder bought out around L15-20 (about one quest per level). Quest rewards and kill gold scale with level, Slotworks ladder prices do not. A charm costs about 25% of a quest's income at the current level. Prices are measured once the ladders exist (§7, [#100](https://github.com/DarkCascade/Sir-Fish/issues/100), build [#182](https://github.com/DarkCascade/Sir-Fish/issues/182)) |
 | 9.1 | The tutorial narrative | **Adopted 2026-09-24, not scheduled** | The bandit-camps arc is the entire tutorial: a solo warrior in a town with no services, to a three-person party in a staffed town. Camp layout and which other services start closed are left for when it is scheduled (§9, [#129](https://github.com/DarkCascade/Sir-Fish/issues/129)) |
 | 9.2 | The stagecoach's name | **Decided 2026-09-24** | **The Gilded Guppy**; the warrior calls it **the Guppy** (§9, [#130](https://github.com/DarkCascade/Sir-Fish/issues/130)) |
@@ -2442,6 +2449,13 @@ replacement, against these targets once the ladders exist. The builds above bloc
 | 10.3 | The Rune Floor dock | **Decided and built 2026-09-26** | Design A, hero plates: health bar on top, portrait in a segmented charge ring, the special's name in a full-width pill; the whole plate is the button (§10, [#202](https://github.com/DarkCascade/Sir-Fish/pull/202)) |
 | 10.4 | The smallest font | **Decided 2026-09-27** | `Tuning.MIN_FONT_SIZE` = 36 px (about 13 pt on a phone), the plate's HP number; enforced by `test_font_floor` as a ratchet (§10, CLAUDE.md, [#205](https://github.com/DarkCascade/Sir-Fish/issues/205)) |
 | 10.5 | The Godot MCP server | **Decided and switched 2026-09-27** | godot-ai (pinned release 5.0.45) replaces Godot MCP Pro; no domain exclusions, no public tunnel (§10, CLAUDE.md, [#222](https://github.com/DarkCascade/Sir-Fish/issues/222)) |
+| 11.1 | One plan to Next Fest | **Decided 2026-11-02** | The roadmap artifact holds dates, milestones and order; the GitHub board holds status; this doc holds the reasons (§11) |
+| 11.2 | The Slotworks in the demo | **Decided 2026-11-02** | Upgrades and Holds only. Tuning ([#173](https://github.com/DarkCascade/Sir-Fish/issues/173)) and Charms ([#174](https://github.com/DarkCascade/Sir-Fish/issues/174)) wait for after the fest (§11) |
+| 11.3 | Audio source for Steam | **Reopened 2026-11-02, due 2026-12-15** | Procedural (5.1), a library, commissioned, or a mix. #184's slot sounds go ahead either way (§11, [#244](https://github.com/DarkCascade/Sir-Fish/issues/244)) |
+| 11.4 | The demo's board choice | **Reaffirmed 2026-11-02** | Hold-and-respin (7.6); the roadmap's alternative, a pick when an icon lands, is dropped (§11, [#101](https://github.com/DarkCascade/Sir-Fish/issues/101)) |
+| 11.5 | What the town's purple mist is | **Decided 2026-11-02** | Wild slot magic: the magic the Guppy runs on and the amulet focuses, spilling from the castle. It crystallises in the woods and turns creatures to shadow. "Personal to Sir Fish" is kept as a story beat, not the explanation (§11, `Sir Fish - Demo Scope.md`, [#226](https://github.com/DarkCascade/Sir-Fish/issues/226)) |
+| 11.6 | How much of the demo is the mist | **Decided 2026-11-02** | One Rune Floor expedition up the trail and a boss, after the bandit-camps tutorial; not a second region. A mist-affected reel is a stretch goal (§11, Demo Scope, [#256](https://github.com/DarkCascade/Sir-Fish/issues/256), [#260](https://github.com/DarkCascade/Sir-Fish/issues/260)) |
+| 11.7 | Where the demo ends | **Decided 2026-11-02** | At the castle gate, after the mist boss; then the ending card and wishlist screen (§11, Demo Scope, [#249](https://github.com/DarkCascade/Sir-Fish/issues/249)) |
 
 ---
 
@@ -2806,3 +2820,72 @@ screenshot-heavy work on the roadmap. Tracked in [#222](https://github.com/DarkC
 - **Install:** the add-on from the 5.0.45 release zip, and the server as that release's wheel
   through `uvx`. The web export excludes `addons/godot_ai/*`, and the plugin's export hook
   strips its game-helper autoload from the pack.
+
+---
+
+## 11. One roadmap to Steam Next Fest (merged 2026-11-02)
+
+Three plans had drifted apart: the Next Fest roadmap artifact (dates and Valve deadlines, made
+2026-11-02 with a Steam fit check), this doc, and the GitHub board. They are now one plan:
+
+- **The roadmap** (https://claude.ai/artifact/SZAy7uB2eMLr1TRVbfzKbX) says what happens when:
+  Valve deadlines, the critical path, milestones M1 to M10, open decisions, and marketing.
+- **The GitHub board** says whether it is done. Every game task on the roadmap links its issue,
+  and each GitHub milestone is a roadmap milestone. The roadmap reads the board through a
+  snapshot: `python tools/roadmap_sync.py <out.json>`, stored as `meta/github` in the
+  artifact's database. A task whose issues are all closed reads as done. Steam and marketing
+  tasks have no issue and are ticked on the page.
+- **This doc** says why.
+
+**Why the roadmap leads rather than the P-ranking (§0):** the June 2027 Next Fest has fixed
+dates (registration closes 2027-04-25, Press Preview submission 2027-05-17), and the P-ranking
+had no dates at all. Work that does not serve the demo moves to the **After Next Fest**
+milestone instead of being closed.
+
+### What the merge changed
+
+- **29 issues were opened** (#226 to #254) for roadmap tasks that had none: the demo scope
+  lock, the first-five-minutes fixes from the fit check, the desktop, controller and Deck
+  work, the demo ending, and the art, audio and AI-disclosure decisions.
+- **Stale roadmap rows were corrected.** P3a's four-modifier sets (#73 to #76) and P3b's
+  visible props (#77) were already built; the settlement receipt (#153), the chest (#87, #88)
+  and the boss tray theme (#151) were already done.
+- **Board issues the roadmap lacked were placed:** sim tooling (#191, #200), the font floor
+  (#205), the P4 clip work (#78, #80, #81, #83), the remaining P5 polish (#89, #91, #141) and
+  the open P7 economy work (#100, #176, #182).
+
+### Decided while merging
+
+- **11.2: The demo's Slotworks is Upgrades and Holds.** The tutorial (decision 9.5) opens the
+  Slotworks in stages, and the roadmap had it teach all three tabs. Why not all three: Tuning
+  and Charms are unbuilt, and a demo is better shorter and clearer. Hold-and-respin needs
+  holds, so Holds stays. (Update 2026-11-03: hold-and-respin became cell locks, three per
+  run and hardcoded for now, with a Slotworks Locks upgrade likely later. Whether the demo's
+  Slotworks still needs a Holds/Locks tab is open until that upgrade is scheduled.)
+- **11.3: The audio source is reopened for Steam.** Procedural-only (5.1) was chosen for a
+  free web build; a paid Steam release may justify a library or commissioned music. #184's
+  slot sounds start anyway, since its manifest makes every file replaceable.
+- **11.4: The board choice stays hold-and-respin.** The roadmap had reopened it. It is
+  already designed (7.6), and it answers the fit check's weakest gameplay row, choices
+  between spins.
+
+### Decided: the demo's last act is the mist (2026-11-02)
+
+Opened the scope lock, [#226](https://github.com/DarkCascade/Sir-Fish/issues/226). Until now
+the bandit-camps tutorial was the whole of the demo. The town painting's violet mist, which
+runs from a castle on the ridge down to Mossmere's gate, now gives it somewhere to lead. The
+scope lives in `design documents/Sir Fish - Demo Scope.md`. In short:
+
+- **11.5: The mist is wild slot magic,** spilling from the castle: the same magic the Guppy
+  runs on and the amulet focuses into the board (10.1). Why: it is the one reading where the
+  setting, the Rune Floor and the slot tell one story. A curse was simpler but gave the slot
+  no part in it. "The castle is personal to Sir Fish" is kept as a story beat for the gate,
+  not as the mist's explanation.
+- **11.6: One expedition and a boss,** after the captain falls. Why: the tutorial (M4) and
+  feature-complete (2027-04-15) leave room for a short last act, not a second region. It
+  reuses the Rune Floor, adds a mist surround, and makes its enemies from the reworked shadow
+  monster and tinted existing ones. The boss is the only new model. Tracked as #256 to #259 in
+  M8. **A mist-affected reel is a stretch goal** (#260), to be built after hold-and-respin.
+- **11.7: The demo ends at the castle gate,** after the mist boss, which answers
+  [#249](https://github.com/DarkCascade/Sir-Fish/issues/249). Why: a closed gate with the
+  mist's source behind it is the strongest point to ask for a wishlist.
