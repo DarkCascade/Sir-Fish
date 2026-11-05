@@ -508,6 +508,46 @@ const SLOT_SWING_SETTLE := 0.45
 ## A full party of three adds 2x this, not 2x SLOT_SWING_SETTLE.
 const SLOT_SWING_STAGGER := 0.12
 
+## [hold-and-respin, #101] Tapping a landed cell starts a hold: the world drops
+## to HOLD_TIME_SCALE while the player picks cells to keep, then the rest respin.
+## Nothing is offered - the board plays at full speed until the tap, so a player
+## who never taps sees the cycle exactly as before. Decision 7.6, reshaped
+## 2026-11-03: slow-mo on demand instead of a lever each spin.
+##
+## How long after the last reel lands a tap can still start a hold. This was a
+## bare 0.22 beat before; a tap on a column that has already landed is also
+## allowed, so the window really opens at reel 1 (about 0.74s in all). Raising
+## it stretches every spin while a hold is unspent, so tune it by feel.
+const SLOT_HOLD_GRACE := 0.22
+## Holds a fight starts with. The Slotworks ladder (#100) adds to it later.
+const HOLDS_PER_FIGHT_START := 1
+## Engine.time_scale while the player picks. The ramp in and out runs in real
+## seconds, like the wipe cinematic's, so it stays a fixed length however slow
+## the world gets.
+const HOLD_TIME_SCALE := 0.05
+const HOLD_TIME_SCALE_RAMP := 0.12
+## Real seconds the pick may last before it confirms itself, so a player who
+## walks away does not leave an enemy's 2s cooldown running 40s of wall clock.
+const HOLD_PICK_TIMEOUT := 4.0
+## Game seconds the respun cells take to land. Only spins that hold pay it.
+const SLOT_HOLD_RESPIN_TIME := 0.45
+
+## [cell locks] An experiment beside hold-and-respin, switched by LOCK_MODE (true
+## swaps the slow-mo hold for locks; false keeps the hold). A tap on a settled
+## cell locks it with a gold border; every spin it stays locked, the cell does not
+## spin and one lock is spent. Tap it again to let it go. The run starts with
+## LOCKS_PER_RUN, so they can be spread across cells or spent on one cell.
+const LOCK_MODE := true
+## In lock mode a lock is aimed with a held press: past LOCK_HOLD_DELAY (real
+## seconds) the world drops to HOLD_TIME_SCALE and the cell under the finger is
+## the target, previewed with an enlarged icon and the gold frame. Dragging moves
+## the target, releasing locks it. A press let go before the delay counts for
+## nothing, so a stray tap never locks anything.
+const LOCK_HOLD_DELAY := 0.18
+const LOCKS_PER_RUN := 3
+## True refills the locks at the start of every fight instead of once a run.
+const LOCKS_RESET_EACH_FIGHT := false
+
 ## The nine scoring cells: _cells[1], _cells[2], _cells[3] on each of the three
 ## reels (offsets -1 / 0 / +1 from the payline). _cells[0] / _cells[4] are
 ## scroll bleed and are never scored.

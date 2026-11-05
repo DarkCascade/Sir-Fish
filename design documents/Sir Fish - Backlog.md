@@ -2255,24 +2255,38 @@ None of the three new lines invents an icon.
 - **The cap on a dial** comes from `test_level_curves`' jackpots-per-battle case (1-2 a
   battle), not from a guess.
 
-**Hold-and-respin (decision 7.6, answered; build issue [#101](https://github.com/DarkCascade/Sir-Fish/issues/101)).** The three questions under "Discussed,
-deferred: hold-and-respin" above, answered:
+**Hold-and-respin (decision 7.6, answered 2026-09-24, reshaped 2026-11-03 into cell locks; build issue [#101](https://github.com/DarkCascade/Sir-Fish/issues/101)).** The three questions under "Discussed,
+deferred: hold-and-respin" above were first answered with a lever. Playtests of the first
+five minutes said combat gave the player nothing to do, and the lever (a short window
+after the reels stop) was easy to miss and added a step. It was replaced, the same day it
+was first built, by locks the player aims at any time:
 
-- **What limits it: holds per fight**, starting at 1 and bought up to about 3 on the
-  Slotworks ladder. In a 2-6 spin fight that is one to three real decisions, and most
-  spins stay passive.
-- **Does combat pause: an opt-in lever.** After the reels stop, a Hold lever lights up for
-  a short beat. Ignored, the board resolves as today, so the 2.22s cycle does not stretch.
-  Pulled, the player picks cells, the rest respin from the bag minus the held cells (still
-  without replacement), and paylines and resolution run once, after the respin.
-- **Freeze or clock: both, as a player setting.** The default freezes combat while cells
-  are picked. The alternative lets enemies keep acting. It is a player choice stored in
-  the profile, not a dev export like `turn_based_combat`. With the options menu deferred
-  (#121), the switch starts in the Slotworks beside the hold ladder and moves to the
-  options menu when that exists.
+- **What the player does: press and hold a settled cell.** Past `Tuning.LOCK_HOLD_DELAY`
+  (0.18s) the world drops to `HOLD_TIME_SCALE` (0.05), the cell under the finger gets a
+  gold frame and a slightly larger icon, and dragging moves the target. Releasing locks
+  it. A quick tap on a locked cell frees it, and a quick tap on any other cell does
+  nothing, so a stray touch never spends a lock. The delay is what settles the old
+  question of whether a tap meant the icon or the cell on the angled board: the aim
+  shows which cell it will be before the finger lifts.
+- **What a lock does: the cell does not spin.** Locked cells keep their icon, the rest
+  deal from the bag minus the locked icons (still without replacement), and paylines run
+  once as normal. Each locked cell costs one lock per spin, so three locks is one cell
+  for three spins or a different cell each spin. Locks can be set between the last reel
+  landing and the next deal, and are cleared when a fight ends.
+- **What limits it: locks per run, three, hardcoded** in `Tuning.LOCKS_PER_RUN`. The
+  count is not reset by a fight (`LOCKS_RESET_EACH_FIGHT` is false) and unspent locks
+  carry into the next one. A Slotworks upgrade that raises the count is likely later;
+  the price and the ladder are #100's and #176's, and nothing is sold yet.
+- **Does combat pause: slow-mo while aiming.** There is no lever and no freeze-or-clock
+  setting (the player setting in the first answer is dropped). The crawl is the pause,
+  and enemies keep acting at 5% speed. The hold-and-respin variant, where picked cells
+  keep and the rest respin on a Respin button, still exists behind
+  `Tuning.LOCK_MODE = false` ([#263](https://github.com/DarkCascade/Sir-Fish/issues/263)).
 - **What the decision is.** Bag tuning supplies it: a near-jackpot line, or a charge that
-  would complete a special, is worth holding. "Hold the non-blanks" stops being the
+  would complete a special, is worth locking. "Lock the non-blanks" stops being the
   obvious answer. The specials layer that gated this (7.3, 7.4) is built.
+- **Verified** on the web build over a phone (touch hold, drag, release and tap-to-free
+  all work) and by `tests/test_cell_locks.gd` and `tests/test_hold_respin.gd`.
 
 **Expedition charms (decision 7.9, build issue [#174](https://github.com/DarkCascade/Sir-Fish/issues/174)).**
 
@@ -2285,7 +2299,8 @@ deferred: hold-and-respin" above, answered:
 - **Not a reversal of 7.5.** That decision made the *upgrades* permanent. Charms are a
   separate line, meant to be spent.
 - **The starting three:**
-  - **Spare Hold**: +1 hold per fight.
+  - **Spare Lock**: +1 lock per run (was Spare Hold, +1 hold per fight, before 7.6 became
+    cell locks).
   - **Primer**: every special starts each fight partly charged.
   - **Loaded Reel**: the first spin of each fight is guaranteed a jackpot line.
   - *Clean Reels* (the first spin of each fight draws no blanks) was offered and left out.
@@ -2416,12 +2431,12 @@ replacement, against these targets once the ladders exist. The builds above bloc
 | 7.3 | What gates a special invoke | **Decided, built, live-verified 2026-09-23** | A charge meter, filled by every icon that hero owns. `SPECIAL_CHARGE_COST` is 10; a 30-trial headless probe against a fully-geared party (issue #97) measured 3.7-3.9 spins to full per hero, matching the ~3-spin target - no retune (§7) |
 | 7.4 | One special per class, which ones | **Decided, built 2026-09-23 (issue #96)** | Warrior cleave (replaces Defend), ranger bomb arrow (already existed), mage keeps her party heal as **Healing Aura**, the party's ONLY heal (the slot heal is gone) - only two hit-alls |
 | 7.5 | What happens to the three slot upgrades | **Decided, built 2026-09-21; revised** | They move to town (the Slotworks) and become **permanent**, saved with the profile. No reset at all but a new profile |
-| 7.6 | Hold-and-respin | **Decided 2026-09-24, reaffirmed 2026-11-02 for the demo (11.4), not built** | Sold in the Slotworks as holds per fight (1, bought up to ~3), behind an opt-in Hold lever after the reels stop. Picking freezes combat by default; a player setting lets the clock run instead. Bag tuning (7.8) supplies the decision worth making (§7, [#157](https://github.com/DarkCascade/Sir-Fish/issues/157), build [#101](https://github.com/DarkCascade/Sir-Fish/issues/101)) |
+| 7.6 | Hold-and-respin | **Decided 2026-09-24, reaffirmed 2026-11-02 for the demo (11.4), reshaped and built 2026-11-03** | Became cell locks: press and hold a settled cell to aim in super slow-mo, release to lock, quick-tap a locked cell to free it. Locked cells do not spin, one lock spent per locked cell per spin. Three locks per run, hardcoded; a Slotworks upgrade to raise it is likely later. The lever, the per-fight count and the freeze-or-clock setting were dropped. Bag tuning (7.8) supplies the decision worth making (§7, [#157](https://github.com/DarkCascade/Sir-Fish/issues/157), build [#101](https://github.com/DarkCascade/Sir-Fish/issues/101), slow-mo variant [#263](https://github.com/DarkCascade/Sir-Fish/issues/263)) |
 | 7.7 | Should fights be longer? | **Decided 2026-09-23: no, for now** | Recent playtests found fight times very satisfying, so fights stay 2-6 spins and the harness keeps its 3-9s time-to-kill band. Revisit if playtests say otherwise (§7, [#99](https://github.com/DarkCascade/Sir-Fish/issues/99)) |
 | 7.8 | Slotworks bag tuning | **Decided 2026-09-24, not built; after Next Fest (11.2)** | Category dials: tuning points (a permanent ladder) assigned freely in town to weight a category (+1 copy of each owned icon) or mute it. Dial caps come from `test_level_curves`' jackpots-per-battle case (§7, [#157](https://github.com/DarkCascade/Sir-Fish/issues/157), build [#173](https://github.com/DarkCascade/Sir-Fish/issues/173)) |
-| 7.9 | Slotworks consumables | **Decided 2026-09-24, not built; after Next Fest (11.2)** | Expedition charms: bought in the Slotworks, active for one whole expedition, spent on departure. Charm slots 1, bought up to 3. Starting set Spare Hold, Primer, Loaded Reel (§7, [#157](https://github.com/DarkCascade/Sir-Fish/issues/157), build [#174](https://github.com/DarkCascade/Sir-Fish/issues/174)) |
-| 7.10 | The Slotworks ladders | **Decided 2026-09-24, not built** | Each ladder declares its own length (holds and charm slots are two buys). Polish's dead level 4 is fixed with steps 2/2/1/1 (9 -> 3 blanks), keeping 4 pips and the floor. Otherwise unchanged; cost growth is #100's (§7, [#157](https://github.com/DarkCascade/Sir-Fish/issues/157), build [#176](https://github.com/DarkCascade/Sir-Fish/issues/176)) |
-| 7.11 | The Slotworks tabs | **Decided 2026-09-24, not built** | Each ladder sits with its feature. Upgrades: Quick Reels, Overcharge, Polish, Holds and the freeze/clock switch. Tuning: the dials and tuning points. Charms: stock, equipped slots and charm slots (§7, [#157](https://github.com/DarkCascade/Sir-Fish/issues/157)) |
+| 7.9 | Slotworks consumables | **Decided 2026-09-24, not built; after Next Fest (11.2)** | Expedition charms: bought in the Slotworks, active for one whole expedition, spent on departure. Charm slots 1, bought up to 3. Starting set Spare Lock, Primer, Loaded Reel (§7, [#157](https://github.com/DarkCascade/Sir-Fish/issues/157), build [#174](https://github.com/DarkCascade/Sir-Fish/issues/174)) |
+| 7.10 | The Slotworks ladders | **Decided 2026-09-24, not built** | Each ladder declares its own length (locks and charm slots are two buys). Polish's dead level 4 is fixed with steps 2/2/1/1 (9 -> 3 blanks), keeping 4 pips and the floor. Otherwise unchanged; cost growth is #100's (§7, [#157](https://github.com/DarkCascade/Sir-Fish/issues/157), build [#176](https://github.com/DarkCascade/Sir-Fish/issues/176)) |
+| 7.11 | The Slotworks tabs | **Decided 2026-09-24, not built** | Each ladder sits with its feature. Upgrades: Quick Reels, Overcharge, Polish and Locks (when sold). Tuning: the dials and tuning points. Charms: stock, equipped slots and charm slots (§7, [#157](https://github.com/DarkCascade/Sir-Fish/issues/157)) |
 | 7.12 | Economy pacing | **Decided 2026-09-25, numbers pending** | Every permanent Slotworks ladder bought out around L15-20 (about one quest per level). Quest rewards and kill gold scale with level, Slotworks ladder prices do not. A charm costs about 25% of a quest's income at the current level. Prices are measured once the ladders exist (§7, [#100](https://github.com/DarkCascade/Sir-Fish/issues/100), build [#182](https://github.com/DarkCascade/Sir-Fish/issues/182)) |
 | 9.1 | The tutorial narrative | **Adopted 2026-09-24, not scheduled** | The bandit-camps arc is the entire tutorial: a solo warrior in a town with no services, to a three-person party in a staffed town. Camp layout and which other services start closed are left for when it is scheduled (§9, [#129](https://github.com/DarkCascade/Sir-Fish/issues/129)) |
 | 9.2 | The stagecoach's name | **Decided 2026-09-24** | **The Gilded Guppy**; the warrior calls it **the Guppy** (§9, [#130](https://github.com/DarkCascade/Sir-Fish/issues/130)) |
@@ -2844,7 +2859,9 @@ milestone instead of being closed.
 - **11.2: The demo's Slotworks is Upgrades and Holds.** The tutorial (decision 9.5) opens the
   Slotworks in stages, and the roadmap had it teach all three tabs. Why not all three: Tuning
   and Charms are unbuilt, and a demo is better shorter and clearer. Hold-and-respin needs
-  holds, so Holds stays.
+  holds, so Holds stays. (Update 2026-11-03: hold-and-respin became cell locks, three per
+  run and hardcoded for now, with a Slotworks Locks upgrade likely later. Whether the demo's
+  Slotworks still needs a Holds/Locks tab is open until that upgrade is scheduled.)
 - **11.3: The audio source is reopened for Steam.** Procedural-only (5.1) was chosen for a
   free web build; a paid Steam release may justify a library or commissioned music. #184's
   slot sounds start anyway, since its manifest makes every file replaceable.
