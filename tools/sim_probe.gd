@@ -77,7 +77,7 @@ func _ready() -> void:
 
 func _bag() -> Array:
 	var bag: Array = []
-	bag.append(SlotIcon.innate(&"warrior", GameState.hero_weapon_power(&"warrior")))
+	bag.append_array(SlotIcon.innate_icons(&"warrior", GameState.hero_weapon_power(&"warrior")))
 	for item: Item in GameState.inventory:
 		if item.equipped_by == &"":
 			continue
@@ -86,7 +86,7 @@ func _bag() -> Array:
 			var ic := SlotIcon.from_modifier(mod, item)
 			if not ic.is_empty():
 				bag.append(ic)
-	for _i: int in range(Tuning.SLOT_BLANK_PAD_START):
+	for _i: int in range(Tuning.SLOT_BLANK_PAD_START - SlotIcon.extra_innate_count(&"warrior")):
 		bag.append(SlotIcon.blank())
 	return bag
 

@@ -212,6 +212,24 @@ static func innate(hero_class: StringName, weapon_power: int = 0) -> Dictionary:
 	return _with_weapon({ "id": id, "roll": weapon_power, "enhanced": false, "innate": true,
 		"owner": hero_class }, hero_class)
 
+## [issue #115] Every innate icon a living `hero_class` puts in the bag: the full
+## icon first, then ClassDef.innate_count - 1 extras worth
+## Tuning.SLOT_INNATE_EXTRA_POWER_PCT of its Power (at least 1). A class with
+## one innate icon gets exactly innate()'s result.
+static func innate_icons(hero_class: StringName, weapon_power: int = 0) -> Array:
+	var icons: Array = [innate(hero_class, weapon_power)]
+	var extra_power := maxi(1, roundi(weapon_power * Tuning.SLOT_INNATE_EXTRA_POWER_PCT / 100.0)) \
+		if weapon_power > 0 else 0
+	for _i: int in range(extra_innate_count(hero_class)):
+		icons.append(innate(hero_class, extra_power))
+	return icons
+
+## How many innate icons beyond the first `hero_class` carries. Each takes the
+## place of one blank, so the bag keeps its size (SlotMachine._blank_pad).
+static func extra_innate_count(hero_class: StringName) -> int:
+	var cdef := GameState.get_class_def(hero_class)
+	return maxi(0, cdef.innate_count - 1) if cdef != null else 0
+
 static func blank() -> Dictionary:
 	return { "id": BLANK, "roll": 0, "enhanced": false }
 

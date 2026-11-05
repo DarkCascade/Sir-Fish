@@ -566,8 +566,10 @@ func _build_bag(party: Array) -> Array:
 	for h: Dictionary in party:
 		if int(h["hp"]) > 0:
 			living.append(h["id"])
+	var extra_innate := 0
 	for id: StringName in living:
-		bag.append(SlotIcon.innate(id, GameState.hero_weapon_power(id)))
+		bag.append_array(SlotIcon.innate_icons(id, GameState.hero_weapon_power(id)))
+		extra_innate += SlotIcon.extra_innate_count(id)
 	for item: Item in GameState.inventory:
 		if item.equipped_by == &"" or item.equipped_by not in living:
 			continue
@@ -583,7 +585,7 @@ func _build_bag(party: Array) -> Array:
 			bag.append(ic)
 	var pad: int = maxi(Tuning.SLOT_BLANK_PAD_START - Upgrades.polish_blanks_removed(),
 		Tuning.SLOT_BLANK_PAD_FLOOR)
-	for _i: int in range(pad):
+	for _i: int in range(maxi(pad - extra_innate, 0)):
 		bag.append(SlotIcon.blank())
 	return bag
 

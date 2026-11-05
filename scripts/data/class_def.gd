@@ -22,6 +22,14 @@ extends Resource
 ## SlotIcon.innate_for()'s hardcoded ternary.
 @export var innate_icon: StringName = &""
 
+## How many innate icons a living hero of this class puts in the bag. The first
+## is worth the hero's full weapon Power; each one after it is worth
+## Tuning.SLOT_INNATE_EXTRA_POWER_PCT of it and takes a blank's place in the bag
+## rather than growing it (SlotIcon.innate_icons, SlotMachine._blank_pad). The
+## warrior's extra strikes are the #115 try: a solo level-1 board needs three of
+## one category to land a line (backlog doc §3.9).
+@export_range(1, 6) var innate_count: int = 1
+
 ## The executor rule (D1): which SlotIcon.Kind values (as ints - kept plain
 ## rather than Array[SlotIcon.Kind] so a .tres doesn't have to guess how Godot
 ## serialises a typed array of a nested enum) this class resolves the

@@ -31,6 +31,7 @@ func _ready() -> void:
 	_test_unbiased(t)
 	_test_never_all_blank(t)
 	_test_cold_streak(t)
+	_test_extra_innate(t)
 	t.finish(get_tree(), "test_slot_odds")
 
 # --- board density (§2 table) ---------------------------------------------------
@@ -134,6 +135,38 @@ func _test_cold_streak(t: RefCounted) -> void:
 
 ## A bag of `n_icons` non-blank icons (one innate, the rest rotating modifier
 ## icons) padded with blanks to `bag_size`.
+## [issue #115] The warrior's extra innate strikes: the first icon is full Power,
+## the rest a fraction of it, they replace blanks one for one so the bag keeps its
+## size, and a one-innate class (the mage) is untouched.
+func _test_extra_innate(t: RefCounted) -> void:
+	var warrior := SlotIcon.innate_icons(&"warrior", 20)
+	t.check(warrior.size() == 3, "warrior puts three innate icons in the bag (got %d)" % warrior.size())
+	t.check(int(warrior[0]["roll"]) == 20, "the first innate icon is full weapon Power")
+	var extra := maxi(1, roundi(20 * Tuning.SLOT_INNATE_EXTRA_POWER_PCT / 100.0))
+	t.check(int(warrior[1]["roll"]) == extra and int(warrior[2]["roll"]) == extra,
+		"the extra innate icons carry SLOT_INNATE_EXTRA_POWER_PCT of Power (got %d, %d)"
+		% [int(warrior[1]["roll"]), int(warrior[2]["roll"])])
+	t.check(warrior.all(func(ic: Dictionary) -> bool: return bool(ic["innate"]) and ic["owner"] == &"warrior"),
+		"every extra is an innate icon owned by the warrior")
+	t.check(SlotIcon.extra_innate_count(&"warrior") == 2, "the warrior displaces two blanks")
+	t.check(SlotIcon.innate_icons(&"mage", 20).size() == 1 and SlotIcon.extra_innate_count(&"mage") == 0,
+		"the mage keeps a single innate icon")
+	t.check(SlotIcon.innate_icons(&"warrior", 0).all(func(ic: Dictionary) -> bool: return int(ic["roll"]) == 0),
+		"an unarmed warrior's extras are worth nothing too")
+	var machine = SlotMachineScript.new()
+	machine._rebuild_bag()
+	var blanks := 0
+	var strikes := 0
+	for ic: Dictionary in machine._bag:
+		if SlotIcon.is_blank(ic):
+			blanks += 1
+		elif bool(ic.get("innate", false)):
+			strikes += 1
+	t.check(strikes == 3, "a fresh solo bag holds the warrior's three innate icons (got %d)" % strikes)
+	t.check(blanks == Tuning.SLOT_BLANK_PAD_START - 2,
+		"...and two fewer blanks than the pad (got %d)" % blanks)
+	machine.free()
+
 func _bag(n_icons: int, bag_size: int) -> Array:
 	var bag: Array = [SlotIcon.innate(&"warrior")]
 	for i: int in range(maxi(n_icons - 1, 0)):
