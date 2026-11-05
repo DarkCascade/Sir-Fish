@@ -585,6 +585,12 @@ const SLOT_BLANK_PAD_FLOOR := 3
 ## it is a property of the swing, not of any one item.
 const SLOT_ATTACK_ICON_FLOOR := 7
 
+## [issue #115] What an extra innate icon (ClassDef.innate_count above 1) is
+## worth, as a percent of the hero's weapon Power. The extras exist to put three
+## of a kind on a solo level-1 board, not to add damage, so they hit softer than
+## the first. Tuned against the time-to-kill band.
+const SLOT_INNATE_EXTRA_POWER_PCT := 25
+
 ## Innate icons (§2): every living hero puts ONE icon in the bag regardless of
 ## gear - a damage icon for the warrior and ranger, a heal icon for the mage.
 ## They have no item behind them, so their magnitude is fixed here rather than

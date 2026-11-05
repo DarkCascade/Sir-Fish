@@ -8,6 +8,7 @@ script = ExtResource("1_cdef")
 id = &"warrior"
 roster_order = 2
 innate_icon = &"innate_dmg"
+innate_count = 3
 executes = Array[int]([1, 2])
 glyph = ExtResource("2_glyph")
 glyph_box_fraction = 0.72

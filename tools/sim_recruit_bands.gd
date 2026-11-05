@@ -235,7 +235,7 @@ func _hero_icons(hero_class: StringName, items: Array[Item]) -> Array:
 		if item.slot() == Item.Slot.WEAPON:
 			weapon_power = item.power()
 			break
-	var icons: Array = [SlotIcon.innate(hero_class, weapon_power)]
+	var icons: Array = SlotIcon.innate_icons(hero_class, weapon_power)
 	for item: Item in items:
 		icons.append(SlotIcon.from_item_base(item))
 		for mod: Dictionary in item.modifiers:
@@ -248,7 +248,10 @@ func _party_bag(party: Array) -> Array:
 	var bag: Array = []
 	for h: Dictionary in party:
 		bag.append_array(_hero_icons(h["class"], h["items"]))
-	for _i: int in range(Tuning.SLOT_BLANK_PAD_START):
+	var extra_innate := 0
+	for h: Dictionary in party:
+		extra_innate += SlotIcon.extra_innate_count(h["class"])
+	for _i: int in range(Tuning.SLOT_BLANK_PAD_START - extra_innate):
 		bag.append(SlotIcon.blank())
 	return bag
 

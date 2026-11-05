@@ -282,8 +282,10 @@ func reset_to_attract() -> void:
 func _rebuild_bag() -> void:
 	_bag.clear()
 	var living := _living_hero_classes()
+	var extra_innate := 0
 	for hero_class: StringName in living:
-		_bag.append(SlotIcon.innate(hero_class, GameState.hero_weapon_power(hero_class)))
+		_bag.append_array(SlotIcon.innate_icons(hero_class, GameState.hero_weapon_power(hero_class)))
+		extra_innate += SlotIcon.extra_innate_count(hero_class)
 	for item: Item in GameState.inventory:
 		# [content phase 1 §1.5] A dead hero's gear stops putting icons in the
 		# bag on the very next rebuild, same as its innate icon already does
@@ -312,7 +314,8 @@ func _rebuild_bag() -> void:
 	# a single damage icon so the board can still do something.
 	if _icon_count() == 0:
 		_bag.append(SlotIcon.innate(&"warrior", GameState.hero_weapon_power(&"warrior")))
-	for _i: int in range(_blank_pad()):
+	# [issue #115] Extra innate icons take blanks' places, so the bag keeps its size.
+	for _i: int in range(maxi(_blank_pad() - extra_innate, 0)):
 		_bag.append(SlotIcon.blank())
 
 ## The living heroes' classes - from the director mid-combat (so a hero dying

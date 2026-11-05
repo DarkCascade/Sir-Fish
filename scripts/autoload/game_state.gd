@@ -800,9 +800,9 @@ func party_status() -> Array[Dictionary]:
 ## so combat's HP payload stays lean.
 func hero_reel_icons(hero_class: StringName) -> Dictionary:
 	var icons: Array = []
-	var innate := SlotIcon.innate(hero_class, hero_weapon_power(hero_class))
-	innate["label"] = _reel_icon_label(innate)
-	icons.append(innate)
+	for innate: Dictionary in SlotIcon.innate_icons(hero_class, hero_weapon_power(hero_class)):
+		innate["label"] = _reel_icon_label(innate)
+		icons.append(innate)
 	for it: Item in equipped_set(hero_class):
 		# [levels] Every equipped item's base icon, same as _rebuild_bag() -
 		# this readout is meant to be "what hero_class currently puts in the
